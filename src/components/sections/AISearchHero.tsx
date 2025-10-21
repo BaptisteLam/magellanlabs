@@ -26,9 +26,9 @@ const AISearchHero = () => {
       <div className="relative z-10 w-full max-w-4xl px-4 text-center -mt-48">
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-sm mb-6"
-             style={{ borderColor: 'rgba(91, 224, 229, 0.3)', backgroundColor: 'rgba(91, 224, 229, 0.1)' }}>
-          <Sparkles className="w-4 h-4" style={{ color: '#5BE0E5' }} />
-          <span className="text-sm font-light" style={{ color: '#5BE0E5' }}>Propulsé par Mistral IA</span>
+             style={{ borderColor: 'rgba(1, 74, 173, 0.3)', backgroundColor: 'rgba(1, 74, 173, 0.1)' }}>
+          <Sparkles className="w-4 h-4" style={{ color: '#014AAD' }} />
+          <span className="text-sm font-light" style={{ color: '#014AAD' }}>Propulsé par Mistral IA</span>
         </div>
 
         {/* Main title */}
