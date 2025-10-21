@@ -81,7 +81,7 @@ const AISearchHero = () => {
             <div className="flex items-center justify-between mt-3">
               <Button 
                 variant="ghost" 
-                className="text-sm text-slate-600 hover:bg-slate-100 gap-2"
+                className="text-sm text-slate-600 hover:text-white hover:bg-[#014AAD] gap-2 transition-colors [&_svg]:hover:text-white"
               >
                 <Paperclip className="w-4 h-4" />
                 Joindre un fichier
