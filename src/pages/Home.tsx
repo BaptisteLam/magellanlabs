@@ -1,17 +1,9 @@
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import HeroSection from '@/components/sections/HeroSection';
-import ServicesSection from '@/components/sections/ServicesSection';
-import TestimonialsSection from '@/components/sections/TestimonialsSection';
+import AISearchHero from '@/components/sections/AISearchHero';
 import SEOHead from '@/components/SEOHead';
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
-import { useTranslation } from '@/hooks/useTranslation';
 
 const Home = () => {
-  const { t } = useTranslation();
-
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -47,46 +39,8 @@ const Home = () => {
       />
       <Header />
       
-      <main>
-        <HeroSection />
-        <ServicesSection />
-        <TestimonialsSection />
-        
-        {/* CTA Final */}
-        <section className="py-12 lg:py-16">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="max-w-3xl mx-auto fade-in">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-trinity-blue mb-4 px-4">
-                {t('cta.final.title')}
-              </h2>
-              <p className="text-xl sm:text-2xl text-muted-foreground mb-6 px-4">
-                {t('cta.final.subtitle')}
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center px-4">
-                <Button 
-                  asChild 
-                  size="lg"
-                  className="btn-trinity-hero group w-full sm:w-auto"
-                >
-                  <Link to="/contact">
-                    {t('cta.final.primary')}
-                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
-                </Button>
-                <Button 
-                  asChild 
-                  variant="outline"
-                  size="lg"
-                  className="btn-trinity-outline w-full sm:w-auto"
-                 >
-                   <Link to="/portfolio">
-                     {t('cta.final.secondary')}
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </section>
+      <main className="bg-white">
+        <AISearchHero />
       </main>
       
       <Footer />
