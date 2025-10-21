@@ -67,7 +67,7 @@ const Pricing = () => {
           {/* Pricing Cards */}
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {/* Monthly Plan */}
-            <Card className="p-8 bg-white/40 backdrop-blur-md border border-slate-200/50 hover:bg-white/50 transition-all">
+            <Card className="p-8 bg-white/40 backdrop-blur-md border border-slate-200/50 hover:bg-white/50 transition-all flex flex-col">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">Offre Mensuelle</h2>
                 <div className="flex items-baseline gap-2">
@@ -76,7 +76,7 @@ const Pricing = () => {
                 </div>
               </div>
 
-              <ul className="space-y-3 mb-8">
+              <ul className="space-y-3 mb-8 flex-grow">
                 {monthlyFeatures.map((feature, index) => (
                   <li key={index} className="flex items-start gap-3">
                     <Check className="w-4 h-4 flex-shrink-0 mt-1 text-slate-700" />
@@ -86,7 +86,8 @@ const Pricing = () => {
               </ul>
 
               <Button 
-                className="w-full bg-slate-900 text-white hover:bg-slate-800 transition-colors border-0"
+                className="w-full text-white hover:opacity-90 transition-opacity border-0"
+                style={{ backgroundColor: '#014AAD' }}
                 size="lg"
               >
                 Commencer maintenant
@@ -94,7 +95,7 @@ const Pricing = () => {
             </Card>
 
             {/* Annual Plan - Popular */}
-            <Card className="p-8 bg-white/40 backdrop-blur-md border border-slate-200/50 hover:bg-white/50 transition-all relative overflow-hidden">
+            <Card className="p-8 bg-white/40 backdrop-blur-md border border-slate-200/50 hover:bg-white/50 transition-all relative overflow-hidden flex flex-col">
               {/* Popular Badge */}
               <div 
                 className="absolute top-0 right-0 bg-slate-900 text-white text-xs font-semibold px-3 py-1.5"
@@ -111,7 +112,7 @@ const Pricing = () => {
                 <p className="text-sm text-slate-500 mt-1">soit 8,32€/mois</p>
               </div>
 
-              <ul className="space-y-3 mb-8">
+              <ul className="space-y-3 mb-8 flex-grow">
                 {annualFeatures.map((feature, index) => (
                   <li key={index} className="flex items-start gap-3">
                     <Check className="w-4 h-4 flex-shrink-0 mt-1 text-slate-700" />
@@ -121,7 +122,8 @@ const Pricing = () => {
               </ul>
 
               <Button 
-                className="w-full bg-slate-900 text-white hover:bg-slate-800 transition-colors border-0"
+                className="w-full text-white hover:opacity-90 transition-opacity border-0"
+                style={{ backgroundColor: '#014AAD' }}
                 size="lg"
               >
                 Souscrire à l'offre annuelle
