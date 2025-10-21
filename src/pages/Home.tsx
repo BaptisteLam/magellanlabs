@@ -39,7 +39,7 @@ const Home = () => {
       />
       <Header />
       
-      <main className="bg-white">
+      <main>
         <AISearchHero />
       </main>
       

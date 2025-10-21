@@ -1,15 +1,11 @@
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Linkedin, Twitter } from 'lucide-react';
-import { useTranslation } from '@/hooks/useTranslation';
 
 const Footer = () => {
-  const { t } = useTranslation();
   const navigation = [
-    { name: t('nav.home'), href: '/' },
-    { name: t('nav.services'), href: '/services' },
-    { name: t('nav.portfolio'), href: '/portfolio' },
-    { name: t('nav.about'), href: '/about' },
-    { name: t('nav.contact'), href: '/contact' },
+    { name: 'Entreprise', href: '/about' },
+    { name: 'Tarif', href: '/services' },
+    { name: 'Support', href: '/contact' },
   ];
 
   const socialLinks = [
@@ -20,20 +16,27 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="bg-trinity-blue text-white">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <footer className="relative bg-white/80 backdrop-blur-md overflow-hidden">
+      {/* Blue glows extending from above */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[400px] left-1/4 w-[800px] h-[800px] bg-blue-600/20 rounded-full blur-[150px]" />
+        <div className="absolute -top-[400px] right-1/4 w-[800px] h-[800px] bg-blue-500/15 rounded-full blur-[150px]" />
+      </div>
+
+      <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Logo et description */}
           <div className="md:col-span-2">
             <div className="flex items-center space-x-3 mb-4">
               <img 
-                src="/lovable-uploads/dff9dd89-d57a-4a5c-9be4-818635659267.png" 
+                src="/lovable-uploads/trinity-logo.png" 
                 alt="Trinity Studio - Agence Web"
-                className="h-10 w-auto brightness-0 invert"
+                className="h-10 w-auto"
               />
             </div>
-            <p className="text-white/80 max-w-md">
-              {t('footer.description')}
+            <p className="text-foreground/70 max-w-md text-sm">
+              Chez Trinity, notre mission est simple : rendre la création de site web aussi rapide qu'une recherche Google.
+              Plus besoin de coder, de payer une agence ou d'attendre : l'IA vous génère un site professionnel, en temps réel.
             </p>
           </div>
 
@@ -44,7 +47,7 @@ const Footer = () => {
                 <li key={item.name}>
                   <Link
                     to={item.href}
-                    className="text-white/80 hover:text-white transition-colors"
+                    className="text-foreground/70 hover:text-foreground transition-colors text-sm"
                   >
                     {item.name}
                   </Link>
@@ -59,7 +62,7 @@ const Footer = () => {
               <li>
                 <a
                   href="mailto:contact@trinitystudio.fr"
-                  className="text-white/80 hover:text-white transition-colors"
+                  className="text-foreground/70 hover:text-foreground transition-colors text-sm"
                 >
                   contact@trinitystudio.fr
                 </a>
@@ -72,7 +75,7 @@ const Footer = () => {
                   <a
                     key={social.name}
                     href={social.href}
-                    className="text-white/80 hover:text-trinity-blue-light transition-colors"
+                    className="text-foreground/70 hover:text-foreground transition-colors"
                     aria-label={social.name}
                   >
                     <Icon className="w-5 h-5" />
@@ -81,6 +84,10 @@ const Footer = () => {
               })}
             </div>
           </div>
+        </div>
+        
+        <div className="mt-8 pt-8 border-t border-border text-center text-sm text-foreground/60">
+          <p>&copy; {new Date().getFullYear()} Trinity Studio. Tous droits réservés.</p>
         </div>
       </div>
     </footer>

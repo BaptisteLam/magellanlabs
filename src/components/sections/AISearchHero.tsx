@@ -1,65 +1,46 @@
-import { Search } from 'lucide-react';
-import { useState } from 'react';
+import { Sparkles } from 'lucide-react';
 
 const AISearchHero = () => {
-  const [searchValue, setSearchValue] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Search:', searchValue);
-    // Add your search logic here
-  };
-
   return (
-    <div className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
-      {/* Grid background */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-[0.03]" />
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950">
+      {/* Grid background - more visible */}
+      <div className="absolute inset-0 bg-grid-pattern opacity-[0.15]" />
       
-      {/* Animated blue glows */}
+      {/* Large blue glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-trinity-blue/20 rounded-full blur-[120px] animate-pulse-slow" />
-        <div className="absolute bottom-1/3 right-1/4 w-96 h-96 bg-trinity-blue-light/15 rounded-full blur-[120px] animate-pulse-slower" />
+        <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-blue-600/30 rounded-full blur-[150px] animate-pulse-slow" />
+        <div className="absolute bottom-0 right-1/4 w-[800px] h-[800px] bg-blue-500/25 rounded-full blur-[150px] animate-pulse-slower" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[120px]" />
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 w-full max-w-3xl px-4">
-        <form onSubmit={handleSubmit} className="relative group">
-          <div 
-            className={`
-              relative bg-white rounded-2xl shadow-xl
-              transition-all duration-500 ease-out
-              ${isFocused ? 'shadow-2xl ring-2 ring-trinity-blue/20 scale-[1.02]' : 'shadow-lg'}
-            `}
-          >
-            <div className="flex items-center gap-4 px-6 py-5">
-              <Search 
-                className={`
-                  w-6 h-6 flex-shrink-0 transition-colors duration-300
-                  ${isFocused ? 'text-trinity-blue' : 'text-muted-foreground'}
-                `} 
-              />
-              <input
-                type="text"
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                placeholder="Décrivez votre projet IA..."
-                className="flex-1 bg-transparent border-none outline-none text-lg placeholder:text-muted-foreground/50 font-light"
-              />
-            </div>
-          </div>
+      <div className="relative z-10 w-full max-w-4xl px-4 text-center">
+        {/* Badge */}
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm mb-8">
+          <Sparkles className="w-4 h-4 text-white" />
+          <span className="text-sm text-white/90 font-light">Propulsé par Mistral IA</span>
+        </div>
 
-          {/* Subtle glow effect on focus */}
-          {isFocused && (
-            <div className="absolute -inset-1 bg-gradient-to-r from-trinity-blue/10 via-trinity-blue-light/10 to-trinity-blue/10 rounded-2xl blur-xl -z-10 animate-pulse" />
-          )}
-        </form>
+        {/* Main title */}
+        <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+          Crée ton site web en quelques secondes avec l'IA
+        </h1>
 
-        <p className="text-center mt-6 text-sm text-muted-foreground font-light">
-          Propulsé par l'intelligence artificielle Trinity
+        {/* Subtitle */}
+        <p className="text-xl md:text-2xl text-white/70 font-light mb-12">
+          Décris ton activité en une phrase... l'IA s'occupe du reste.
         </p>
+
+        {/* Search input */}
+        <div className="max-w-2xl mx-auto">
+          <div className="relative bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl">
+            <input
+              type="text"
+              placeholder="Décris ton projet en quelques mots..."
+              className="w-full bg-transparent border-none outline-none text-lg text-white placeholder:text-white/40 font-light px-6 py-5"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
