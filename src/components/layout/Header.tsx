@@ -1,32 +1,35 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 const Header = () => {
+  const location = useLocation();
+  
   const navigation = [
-    { name: 'Entreprise', href: '/about' },
-    { name: 'Tarif', href: '/services' },
-    { name: 'Support', href: '/contact' },
+    { name: 'Accueil', href: '/' },
+    { name: 'Services', href: '/services' },
+    { name: 'Portfolio', href: '/portfolio' },
+    { name: 'À propos', href: '/about' },
+    { name: 'Contact', href: '/contact' },
   ];
 
-  return (
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-border/50">
-      <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
-          {/* Logo */}
-          <Link to="/" className="flex items-center">
-            <img 
-              src="/lovable-uploads/trinity-logo.png" 
-              alt="Trinity Studio"
-              className="h-14 w-auto"
-            />
-          </Link>
+  const isActive = (href: string) => location.pathname === href;
 
-          {/* Desktop Navigation */}
-          <div className="flex items-center gap-10">
+  return (
+    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-border/30">
+      <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-center h-20">
+          {/* Centered Navigation */}
+          <div className="flex items-center gap-12">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
-                className="text-sm text-foreground/70 hover:text-foreground transition-colors duration-200 font-normal"
+                className={`
+                  text-base font-normal transition-all duration-200 relative
+                  ${isActive(item.href) 
+                    ? 'text-foreground after:absolute after:bottom-[-8px] after:left-0 after:w-full after:h-[2px] after:bg-foreground' 
+                    : 'text-foreground/60 hover:text-foreground'
+                  }
+                `}
               >
                 {item.name}
               </Link>
