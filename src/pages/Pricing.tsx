@@ -103,7 +103,7 @@ const Pricing = () => {
                 2 MOIS OFFERTS
               </div>
 
-              <div className="mb-6 pt-6">
+              <div className="mb-6">
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">Offre Annuelle</h2>
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl font-bold text-slate-900">99,90€</span>
