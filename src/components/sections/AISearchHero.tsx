@@ -23,7 +23,7 @@ const AISearchHero = () => {
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 w-full max-w-4xl px-4 text-center -mt-48">
+      <div className="relative z-10 w-full max-w-4xl px-4 text-center -mt-64">
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-sm mb-6"
              style={{ borderColor: 'rgba(1, 74, 173, 0.3)', backgroundColor: 'rgba(1, 74, 173, 0.1)' }}>
