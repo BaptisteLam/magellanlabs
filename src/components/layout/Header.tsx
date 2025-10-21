@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 const Header = () => {
   const navigation = [
     { name: 'Entreprise', href: '/about' },
-    { name: 'Tarif', href: '/services' },
+    { name: 'Tarifs', href: '/tarifs' },
     { name: 'Support', href: '/contact' },
   ];
 
