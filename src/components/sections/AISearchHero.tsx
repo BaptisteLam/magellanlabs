@@ -1,4 +1,6 @@
-import { Sparkles } from 'lucide-react';
+import { Sparkles, ArrowUp, Paperclip } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 
 const AISearchHero = () => {
   return (
@@ -41,14 +43,29 @@ const AISearchHero = () => {
           Décris ton activité en une phrase... l'IA s'occupe du reste.
         </p>
 
-        {/* Search input */}
+        {/* AI Input Area */}
         <div className="max-w-2xl mx-auto">
-          <div className="relative bg-white backdrop-blur-md rounded-2xl border border-slate-200 shadow-xl">
-            <input
-              type="text"
-              placeholder="Décris ton projet en quelques mots..."
-              className="w-full bg-transparent border-none outline-none text-lg text-slate-900 placeholder:text-slate-400 font-light px-6 py-5"
+          <div className="bg-white rounded-lg border border-slate-300 shadow-xl p-4">
+            <Textarea
+              placeholder="J'ai une entreprise de paysagiste à Rennes."
+              className="w-full min-h-[100px] resize-none border-0 p-0 text-sm text-slate-700 placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+              style={{ fontSize: '14px' }}
             />
+            <div className="flex items-center justify-between mt-3">
+              <Button 
+                variant="ghost" 
+                className="text-sm text-slate-600 hover:bg-slate-100 gap-2"
+              >
+                <Paperclip className="w-4 h-4" />
+                Joindre un fichier
+              </Button>
+              <Button
+                className="w-10 h-10 rounded-full p-0 transition-all hover:shadow-lg hover:shadow-blue-500/30"
+                style={{ backgroundColor: '#014AAD' }}
+              >
+                <ArrowUp className="w-5 h-5 text-white" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
