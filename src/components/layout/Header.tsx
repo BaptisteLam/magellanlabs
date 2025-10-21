@@ -26,7 +26,7 @@ const Header = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3">
             <img 
-              src="/lovable-uploads/dff9dd89-d57a-4a5c-9be4-818635659267.png" 
+              src="/lovable-uploads/trinity-logo.png" 
               alt="Trinity Studio - Agence Web"
               className="h-12 w-auto"
             />
