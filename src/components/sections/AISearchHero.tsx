@@ -1,6 +1,7 @@
 import { Sparkles, ArrowUp, Paperclip } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import TextType from '@/components/ui/TextType';
 
 const AISearchHero = () => {
   return (
@@ -46,11 +47,30 @@ const AISearchHero = () => {
         {/* AI Input Area */}
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-lg border border-slate-300 shadow-xl p-4">
-            <Textarea
-              placeholder="J'ai une entreprise de paysagiste à Rennes."
-              className="w-full min-h-[100px] resize-none border-0 p-0 text-sm text-slate-700 placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
-              style={{ fontSize: '14px' }}
-            />
+            <div className="relative">
+              <Textarea
+                placeholder=""
+                className="w-full min-h-[100px] resize-none border-0 p-0 text-sm text-slate-700 placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+                style={{ fontSize: '14px' }}
+              />
+              <div className="absolute top-0 left-0 pointer-events-none text-slate-400" style={{ fontSize: '14px' }}>
+                <TextType
+                  text={[
+                    "J'ai un foodtruck de burgers artisanaux",
+                    "Je suis naturopathe pour les femmes",
+                    "Consultant RH à Bordeaux",
+                    "Je veux un site pro pour mon activité de drone",
+                    "J'ai un bureau d'études en bâtiment"
+                  ]}
+                  typingSpeed={60}
+                  deletingSpeed={40}
+                  pauseDuration={3000}
+                  showCursor={true}
+                  cursorCharacter="|"
+                  loop={true}
+                />
+              </div>
+            </div>
             <div className="flex items-center justify-between mt-3">
               <Button 
                 variant="ghost" 
