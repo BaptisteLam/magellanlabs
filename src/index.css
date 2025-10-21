@@ -1,0 +1,229 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Trinity Studio Design System - Professional & Innovative
+All colors MUST be HSL for design consistency.
+*/
+
+@layer base {
+  :root {
+    /* Trinity Brand Colors */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    
+    /* Trinity Brand Colors - Navy Blue Focus (No Cyan/Azur) */
+    --trinity-blue: 210 88% 25%;        /* #1B4F8C - Navy blue from logo */
+    --trinity-blue-light: 210 75% 45%;  /* Lighter navy blue */
+    --trinity-blue-soft: 210 40% 97%;   /* Very light navy blue */
+    --trinity-blue-muted: 210 20% 85%;  /* Muted navy for borders */
+    --trinity-turquoise: 210 75% 45%;   /* Secondary navy accent */
+    
+    /* Core Design Tokens */
+    --primary: 210 88% 25%;              /* Trinity navy blue */
+    --primary-foreground: 0 0% 100%;     /* White text on blue */
+    --primary-light: 210 75% 45%;        /* Lighter navy for hover */
+    
+    --secondary: 0 0% 97%;               /* Light gray backgrounds */
+    --secondary-foreground: 0 0% 15%;    /* Dark text */
+    
+    --accent: 210 75% 45%;               /* Navy accent */
+    --accent-foreground: 0 0% 100%;      /* White text */
+    
+    --muted: 210 15% 96%;                /* Subtle backgrounds */
+    --muted-foreground: 210 10% 40%;     /* Muted text */
+    
+    --card: 0 0% 100%;                   /* Pure white cards */
+    --card-foreground: 0 0% 0%;          /* Black text */
+    --card-border: 210 25% 90%;          /* Subtle card borders */
+    
+    --border: 210 20% 90%;               /* General borders */
+    --input: 210 20% 95%;                /* Input backgrounds */
+    --ring: 210 75% 15%;                 /* Focus rings - Trinity blue */
+    
+    /* Popover and Dialog */
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Design System Variables */
+    --radius: 1rem;                      /* Rounded corners */
+    --radius-xl: 1.5rem;                 /* Extra rounded for cards */
+    
+    /* Trinity Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(var(--trinity-blue)) 0%, hsl(186 100% 60%) 100%);
+    --gradient-soft: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--trinity-blue-soft)) 100%);
+    
+    /* Trinity Shadows */
+    --shadow-trinity: 0 10px 40px -10px hsl(var(--trinity-blue) / 0.25);
+    --shadow-card: 0 4px 20px -4px hsl(var(--trinity-blue) / 0.15);
+    --shadow-button: 0 4px 12px -2px hsl(var(--trinity-turquoise) / 0.3);
+    
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Custom font imports */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer components {
+  /* Trinity Animation Classes */
+  .fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+  
+  .slide-in-up {
+    animation: slideInUp 0.6s ease-out forwards;
+  }
+  
+  .hover-lift {
+    transition: var(--transition-smooth);
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-card);
+  }
+  
+  /* Trinity Button Variants */
+  .btn-trinity-hero {
+    @apply bg-primary text-primary-foreground px-8 py-4 rounded-xl font-semibold;
+    background: linear-gradient(135deg, hsl(var(--trinity-blue)) 0%, hsl(186 100% 60%) 100%);
+    @apply transform transition-all duration-300;
+    @apply hover:scale-105 hover:shadow-lg;
+    box-shadow: var(--shadow-button);
+  }
+  
+  .btn-trinity-outline {
+    @apply border-2 border-primary text-primary px-6 py-3 rounded-xl font-semibold;
+    @apply hover:bg-trinity-blue-light hover:border-trinity-blue-light hover:text-white;
+    @apply transition-all duration-300;
+  }
+  
+  /* Trinity Card Component */
+  .trinity-card {
+    @apply bg-card border border-card-border rounded-xl p-6;
+    @apply hover-lift;
+    box-shadow: var(--shadow-card);
+  }
+  
+  .trinity-card-service {
+    @apply trinity-card;
+    @apply hover:border-trinity-blue-light/30 hover:shadow-lg;
+    transition: var(--transition-smooth);
+  }
+}
+
+@layer utilities {
+  /* Trinity Gradients */
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
+  }
+  
+  .bg-gradient-soft {
+    background: var(--gradient-soft);
+  }
+  
+  /* Trinity Colors */
+  .text-trinity-blue {
+    color: hsl(var(--trinity-blue));
+  }
+  
+  .bg-trinity-blue {
+    background-color: hsl(var(--trinity-blue));
+  }
+  
+  .border-trinity-blue {
+    border-color: hsl(var(--trinity-blue));
+  }
+}

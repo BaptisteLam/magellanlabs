@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  
+  <!-- Page d'accueil - priorité maximale -->
+  <url>
+    <loc>https://trinity-studio.fr/</loc>
+    <lastmod>2025-01-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- Pages principales - haute priorité -->
+  <url>
+    <loc>https://trinity-studio.fr/services</loc>
+    <lastmod>2025-01-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <url>
+    <loc>https://trinity-studio.fr/portfolio</loc>
+    <lastmod>2025-01-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <url>
+    <loc>https://trinity-studio.fr/contact</loc>
+    <lastmod>2025-01-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- Pages secondaires -->
+  <url>
+    <loc>https://trinity-studio.fr/about</loc>
+    <lastmod>2025-01-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>https://trinity-studio.fr/booking</loc>
+    <lastmod>2025-01-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Pages légales -->
+  <url>
+    <loc>https://trinity-studio.fr/politique-de-confidentialite</loc>
+    <lastmod>2025-01-10</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  
+  <url>
+    <loc>https://trinity-studio.fr/cgv</loc>
+    <lastmod>2025-01-10</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  
+</urlset>
