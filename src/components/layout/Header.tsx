@@ -28,7 +28,7 @@ const Header = () => {
             <img 
               src="/lovable-uploads/trinity-logo.png" 
               alt="Trinity Studio - Agence Web"
-              className="h-12 w-auto"
+              className="h-16 w-auto"
             />
           </Link>
 
