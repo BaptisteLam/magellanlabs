@@ -68,6 +68,7 @@ const AISearchHero = () => {
                   showCursor={true}
                   cursorCharacter="|"
                   loop={true}
+                  textColors={['#94a3b8']}
                 />
               </div>
             </div>
