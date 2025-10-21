@@ -2,9 +2,9 @@ import { Sparkles } from 'lucide-react';
 
 const AISearchHero = () => {
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white pt-20">
       {/* Grid background - more visible */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-[0.15]" />
+      <div className="absolute inset-0 bg-grid-pattern opacity-[0.08]" />
       
       {/* Large blue glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -14,30 +14,30 @@ const AISearchHero = () => {
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 w-full max-w-4xl px-4 text-center">
+      <div className="relative z-10 w-full max-w-4xl px-4 text-center -mt-32">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm mb-8">
-          <Sparkles className="w-4 h-4 text-white" />
-          <span className="text-sm text-white/90 font-light">Propulsé par Mistral IA</span>
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-200 bg-blue-50 backdrop-blur-sm mb-6">
+          <Sparkles className="w-4 h-4 text-blue-600" />
+          <span className="text-sm text-blue-600 font-light">Propulsé par Mistral IA</span>
         </div>
 
         {/* Main title */}
-        <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+        <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 leading-tight">
           Crée ton site web en quelques secondes avec l'IA
         </h1>
 
         {/* Subtitle */}
-        <p className="text-xl md:text-2xl text-white/70 font-light mb-12">
+        <p className="text-lg md:text-xl text-slate-600 font-light mb-10">
           Décris ton activité en une phrase... l'IA s'occupe du reste.
         </p>
 
         {/* Search input */}
         <div className="max-w-2xl mx-auto">
-          <div className="relative bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl">
+          <div className="relative bg-white backdrop-blur-md rounded-2xl border border-slate-200 shadow-xl">
             <input
               type="text"
               placeholder="Décris ton projet en quelques mots..."
-              className="w-full bg-transparent border-none outline-none text-lg text-white placeholder:text-white/40 font-light px-6 py-5"
+              className="w-full bg-transparent border-none outline-none text-lg text-slate-900 placeholder:text-slate-400 font-light px-6 py-5"
             />
           </div>
         </div>
