@@ -3,17 +3,23 @@ import { Sparkles } from 'lucide-react';
 const AISearchHero = () => {
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white pt-20">
-      {/* Grid background - more visible */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-[0.08]" />
-      
-      {/* Large cyan glows with animation */}
+      {/* Grid background - large squares, light gray */}
+      <div className="absolute inset-0" 
+           style={{ 
+             backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
+             backgroundSize: '80px 80px'
+           }} 
+      />
+      {/* Large cyan and teal glows with animation */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slow" 
              style={{ backgroundColor: 'rgba(91, 224, 229, 0.3)' }} />
         <div className="absolute bottom-0 right-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slower" 
-             style={{ backgroundColor: 'rgba(91, 224, 229, 0.25)' }} />
+             style={{ backgroundColor: 'rgba(3, 165, 192, 0.3)' }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[120px] animate-pulse" 
-             style={{ backgroundColor: 'rgba(91, 224, 229, 0.2)' }} />
+             style={{ backgroundColor: 'rgba(91, 224, 229, 0.25)' }} />
+        <div className="absolute top-1/3 right-1/3 w-[700px] h-[700px] rounded-full blur-[140px] animate-pulse-slow" 
+             style={{ backgroundColor: 'rgba(3, 165, 192, 0.25)' }} />
       </div>
 
       {/* Main content */}
