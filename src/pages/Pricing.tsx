@@ -25,7 +25,7 @@ const Pricing = () => {
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white">
       <SEOHead 
         title="Tarifs - Trinity Studio | Abonnement Site Web dès 9,90€/mois"
         description="Créez votre site professionnel avec l'IA dès 9,90€/mois. Sans engagement, hébergement inclus, mises à jour illimitées. Offre annuelle à 99,90€/an avec 2 mois offerts."
@@ -34,8 +34,26 @@ const Pricing = () => {
       />
       <Header />
       
-      <main className="pt-24 pb-16">
-        <div className="container mx-auto px-4">
+      <main className="relative pt-24 pb-16 overflow-hidden">
+        {/* Grid background */}
+        <div className="absolute inset-0" 
+             style={{ 
+               backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
+               backgroundSize: '80px 80px'
+             }} 
+        />
+        
+        {/* Animated glows */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slow" 
+               style={{ backgroundColor: 'rgba(91, 224, 229, 0.3)' }} />
+          <div className="absolute bottom-0 right-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slower" 
+               style={{ backgroundColor: 'rgba(3, 165, 192, 0.3)' }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[120px] animate-pulse" 
+               style={{ backgroundColor: 'rgba(91, 224, 229, 0.25)' }} />
+        </div>
+
+        <div className="relative container mx-auto px-4">
           {/* Header Section */}
           <div className="text-center mb-16">
             <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
@@ -47,29 +65,28 @@ const Pricing = () => {
           </div>
 
           {/* Pricing Cards */}
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {/* Monthly Plan */}
-            <Card className="p-8 border-2 border-slate-200 hover:border-slate-300 transition-all">
+            <Card className="p-8 bg-white/40 backdrop-blur-md border border-slate-200/50 hover:bg-white/50 transition-all">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">Offre Mensuelle</h2>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-bold" style={{ color: '#014AAD' }}>9,90€</span>
+                  <span className="text-5xl font-bold text-slate-900">9,90€</span>
                   <span className="text-slate-600">/ mois</span>
                 </div>
               </div>
 
-              <ul className="space-y-4 mb-8">
+              <ul className="space-y-3 mb-8">
                 {monthlyFeatures.map((feature, index) => (
                   <li key={index} className="flex items-start gap-3">
-                    <Check className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#014AAD' }} />
-                    <span className="text-slate-700">{feature}</span>
+                    <Check className="w-4 h-4 flex-shrink-0 mt-1 text-slate-700" />
+                    <span className="text-sm text-slate-700">{feature}</span>
                   </li>
                 ))}
               </ul>
 
               <Button 
-                className="w-full text-white hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: '#014AAD' }}
+                className="w-full bg-slate-900 text-white hover:bg-slate-800 transition-colors border-0"
                 size="lg"
               >
                 Commencer maintenant
@@ -77,11 +94,10 @@ const Pricing = () => {
             </Card>
 
             {/* Annual Plan - Popular */}
-            <Card className="p-8 border-2 relative overflow-hidden" style={{ borderColor: '#014AAD' }}>
+            <Card className="p-8 bg-white/40 backdrop-blur-md border border-slate-200/50 hover:bg-white/50 transition-all relative overflow-hidden">
               {/* Popular Badge */}
               <div 
-                className="absolute top-0 right-0 text-white text-sm font-semibold px-4 py-1"
-                style={{ backgroundColor: '#014AAD' }}
+                className="absolute top-0 right-0 bg-slate-900 text-white text-xs font-semibold px-3 py-1.5"
               >
                 2 MOIS OFFERTS
               </div>
@@ -89,24 +105,23 @@ const Pricing = () => {
               <div className="mb-6 pt-6">
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">Offre Annuelle</h2>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-bold" style={{ color: '#014AAD' }}>99,90€</span>
+                  <span className="text-5xl font-bold text-slate-900">99,90€</span>
                   <span className="text-slate-600">/ an</span>
                 </div>
                 <p className="text-sm text-slate-500 mt-1">soit 8,32€/mois</p>
               </div>
 
-              <ul className="space-y-4 mb-8">
+              <ul className="space-y-3 mb-8">
                 {annualFeatures.map((feature, index) => (
                   <li key={index} className="flex items-start gap-3">
-                    <Check className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#014AAD' }} />
-                    <span className="text-slate-700">{feature}</span>
+                    <Check className="w-4 h-4 flex-shrink-0 mt-1 text-slate-700" />
+                    <span className="text-sm text-slate-700">{feature}</span>
                   </li>
                 ))}
               </ul>
 
               <Button 
-                className="w-full text-white hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: '#014AAD' }}
+                className="w-full bg-slate-900 text-white hover:bg-slate-800 transition-colors border-0"
                 size="lg"
               >
                 Souscrire à l'offre annuelle
@@ -118,15 +133,15 @@ const Pricing = () => {
           <div className="mt-16 text-center max-w-3xl mx-auto">
             <h3 className="text-2xl font-bold text-slate-900 mb-4">Questions fréquentes</h3>
             <div className="space-y-4 text-left">
-              <div className="p-6 bg-slate-50 rounded-lg">
+              <div className="p-6 bg-white/40 backdrop-blur-md border border-slate-200/50 rounded-lg">
                 <h4 className="font-semibold text-slate-900 mb-2">Puis-je changer d'offre en cours d'abonnement ?</h4>
                 <p className="text-slate-600">Oui, vous pouvez passer de l'offre mensuelle à l'offre annuelle à tout moment. La différence sera calculée au prorata.</p>
               </div>
-              <div className="p-6 bg-slate-50 rounded-lg">
+              <div className="p-6 bg-white/40 backdrop-blur-md border border-slate-200/50 rounded-lg">
                 <h4 className="font-semibold text-slate-900 mb-2">Comment résilier mon abonnement ?</h4>
                 <p className="text-slate-600">L'offre mensuelle est sans engagement. Vous pouvez résilier à tout moment depuis votre espace client, sans frais.</p>
               </div>
-              <div className="p-6 bg-slate-50 rounded-lg">
+              <div className="p-6 bg-white/40 backdrop-blur-md border border-slate-200/50 rounded-lg">
                 <h4 className="font-semibold text-slate-900 mb-2">Que se passe-t-il après l'abonnement ?</h4>
                 <p className="text-slate-600">Votre site reste en ligne tant que votre abonnement est actif. Si vous résiliez, vous aurez accès à une sauvegarde complète de votre site.</p>
               </div>
