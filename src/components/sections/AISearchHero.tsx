@@ -6,19 +6,23 @@ const AISearchHero = () => {
       {/* Grid background - more visible */}
       <div className="absolute inset-0 bg-grid-pattern opacity-[0.08]" />
       
-      {/* Large blue glows */}
+      {/* Large cyan glows with animation */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-blue-600/30 rounded-full blur-[150px] animate-pulse-slow" />
-        <div className="absolute bottom-0 right-1/4 w-[800px] h-[800px] bg-blue-500/25 rounded-full blur-[150px] animate-pulse-slower" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[120px]" />
+        <div className="absolute top-0 left-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slow" 
+             style={{ backgroundColor: 'rgba(91, 224, 229, 0.3)' }} />
+        <div className="absolute bottom-0 right-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slower" 
+             style={{ backgroundColor: 'rgba(91, 224, 229, 0.25)' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[120px] animate-pulse" 
+             style={{ backgroundColor: 'rgba(91, 224, 229, 0.2)' }} />
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 w-full max-w-4xl px-4 text-center -mt-32">
+      <div className="relative z-10 w-full max-w-4xl px-4 text-center -mt-48">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-200 bg-blue-50 backdrop-blur-sm mb-6">
-          <Sparkles className="w-4 h-4 text-blue-600" />
-          <span className="text-sm text-blue-600 font-light">Propulsé par Mistral IA</span>
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-sm mb-6"
+             style={{ borderColor: 'rgba(91, 224, 229, 0.3)', backgroundColor: 'rgba(91, 224, 229, 0.1)' }}>
+          <Sparkles className="w-4 h-4" style={{ color: '#5BE0E5' }} />
+          <span className="text-sm font-light" style={{ color: '#5BE0E5' }}>Propulsé par Mistral IA</span>
         </div>
 
         {/* Main title */}

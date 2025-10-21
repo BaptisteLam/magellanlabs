@@ -16,11 +16,13 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="relative bg-white/80 backdrop-blur-md overflow-hidden">
-      {/* Blue glows extending from above */}
+    <footer className="relative bg-white/80 backdrop-blur-md overflow-hidden border-t border-slate-200">
+      {/* Cyan glows extending from above */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[400px] left-1/4 w-[800px] h-[800px] bg-blue-600/20 rounded-full blur-[150px]" />
-        <div className="absolute -top-[400px] right-1/4 w-[800px] h-[800px] bg-blue-500/15 rounded-full blur-[150px]" />
+        <div className="absolute -top-[400px] left-1/4 w-[800px] h-[800px] rounded-full blur-[150px]"
+             style={{ backgroundColor: 'rgba(91, 224, 229, 0.2)' }} />
+        <div className="absolute -top-[400px] right-1/4 w-[800px] h-[800px] rounded-full blur-[150px]"
+             style={{ backgroundColor: 'rgba(91, 224, 229, 0.15)' }} />
       </div>
 
       <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -29,8 +31,8 @@ const Footer = () => {
           <div className="md:col-span-2">
             <div className="flex items-center space-x-3 mb-4">
               <img 
-                src="/lovable-uploads/trinity-logo.png" 
-                alt="Trinity Studio - Agence Web"
+                src="/lovable-uploads/trinity-ai-logo.png" 
+                alt="Trinity AI - Agence Web"
                 className="h-10 w-auto"
               />
             </div>

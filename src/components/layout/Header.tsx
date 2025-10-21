@@ -14,14 +14,14 @@ const Header = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img 
-              src="/lovable-uploads/trinity-logo.png" 
-              alt="Trinity Studio"
+              src="/lovable-uploads/trinity-ai-logo.png" 
+              alt="Trinity AI"
               className="h-14 w-auto"
             />
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="flex items-center gap-10">
+          {/* Desktop Navigation - Centered */}
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-10">
             {navigation.map((item) => (
               <Link
                 key={item.name}
