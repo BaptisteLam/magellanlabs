@@ -4,17 +4,17 @@ import './RippleGrid.css';
 
 const RippleGrid = ({
   enableRainbow = false,
-  gridColor = '#ffffff',
-  rippleIntensity = 0.05,
-  gridSize = 10.0,
-  gridThickness = 15.0,
-  fadeDistance = 1.5,
-  vignetteStrength = 2.0,
-  glowIntensity = 0.1,
-  opacity = 1.0,
+  gridColor = '#5BE0E5',
+  rippleIntensity = 0.01,
+  gridSize = 22,
+  gridThickness = 13,
+  fadeDistance = 1.2,
+  vignetteStrength = 5,
+  glowIntensity = 1,
+  opacity = 1,
   gridRotation = 0,
   mouseInteraction = true,
-  mouseInteractionRadius = 1
+  mouseInteractionRadius = 1.2
 }) => {
   const containerRef = useRef(null);
   const mousePositionRef = useRef({ x: 0.5, y: 0.5 });
@@ -47,11 +47,12 @@ const RippleGrid = ({
 attribute vec2 position;
 varying vec2 vUv;
 void main() {
-    vUv = position * 0.5 + 0.5;
-    gl_Position = vec4(position, 0.0, 1.0);
+  vUv = position * 0.5 + 0.5;
+  gl_Position = vec4(position, 0.0, 1.0);
 }`;
 
-    const frag = `precision highp float;
+    const frag = `
+precision highp float;
 uniform float iTime;
 uniform vec2 iResolution;
 uniform bool enableRainbow;
@@ -73,9 +74,9 @@ varying vec2 vUv;
 float pi = 3.141592;
 
 mat2 rotate(float angle) {
-    float s = sin(angle);
-    float c = cos(angle);
-    return mat2(c, -s, s, c);
+  float s = sin(angle);
+  float c = cos(angle);
+  return mat2(c, -s, s, c);
 }
 
 void main() {
@@ -184,13 +185,11 @@ void main() {
     };
 
     const handleMouseEnter = () => {
-      if (!mouseInteraction) return;
-      mouseInfluenceRef.current = 1.0;
+      if (mouseInteraction) mouseInfluenceRef.current = 1.0;
     };
 
     const handleMouseLeave = () => {
-      if (!mouseInteraction) return;
-      mouseInfluenceRef.current = 0.0;
+      if (mouseInteraction) mouseInfluenceRef.current = 0.0;
     };
 
     window.addEventListener('resize', resize);
@@ -231,43 +230,6 @@ void main() {
       containerRef.current?.removeChild(gl.canvas);
     };
   }, []);
-
-  useEffect(() => {
-    if (!uniformsRef.current) return;
-
-    const hexToRgb = hex => {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return result
-        ? [parseInt(result[1], 16) / 255, parseInt(result[2], 16) / 255, parseInt(result[3], 16) / 255]
-        : [1, 1, 1];
-    };
-
-    uniformsRef.current.enableRainbow.value = enableRainbow;
-    uniformsRef.current.gridColor.value = hexToRgb(gridColor);
-    uniformsRef.current.rippleIntensity.value = rippleIntensity;
-    uniformsRef.current.gridSize.value = gridSize;
-    uniformsRef.current.gridThickness.value = gridThickness;
-    uniformsRef.current.fadeDistance.value = fadeDistance;
-    uniformsRef.current.vignetteStrength.value = vignetteStrength;
-    uniformsRef.current.glowIntensity.value = glowIntensity;
-    uniformsRef.current.opacity.value = opacity;
-    uniformsRef.current.gridRotation.value = gridRotation;
-    uniformsRef.current.mouseInteraction.value = mouseInteraction;
-    uniformsRef.current.mouseInteractionRadius.value = mouseInteractionRadius;
-  }, [
-    enableRainbow,
-    gridColor,
-    rippleIntensity,
-    gridSize,
-    gridThickness,
-    fadeDistance,
-    vignetteStrength,
-    glowIntensity,
-    opacity,
-    gridRotation,
-    mouseInteraction,
-    mouseInteractionRadius
-  ]);
 
   return <div ref={containerRef} className="ripple-grid-container" />;
 };
