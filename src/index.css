@@ -262,4 +262,27 @@ All colors MUST be HSL for design consistency.
   .animate-pulse-slower {
     animation: pulse-slower 12s ease-in-out infinite;
   }
+
+  /* Loading animations */
+  @keyframes loadProgress {
+    from {
+      width: 0%;
+    }
+    to {
+      width: 100%;
+    }
+  }
+
+  @keyframes scroll-down {
+    from {
+      background-position: 0 0;
+    }
+    to {
+      background-position: 0 80px;
+    }
+  }
+
+  .animate-scroll-down {
+    animation: scroll-down 2s linear infinite;
+  }
 }

@@ -146,19 +146,30 @@ const AISearchHero = () => {
   if (isLoading && !generatedHtml) {
     return (
       <div className="min-h-screen flex flex-col">
-        <div className="flex-1 flex flex-col items-center justify-center bg-white">
+        <div className="flex-1 flex flex-col items-center justify-center bg-white relative overflow-hidden">
+          {/* Grid background animé */}
+          <div 
+            className="absolute inset-0 animate-scroll-down" 
+            style={{ 
+              backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
+              backgroundSize: '80px 80px'
+            }} 
+          />
+          
           <img 
             src="/src/assets/trinity-logo-loading.png" 
             alt="Loading" 
-            className="w-20 h-20 mb-8 animate-spin"
-            style={{ animationDuration: '2s' }}
+            className="w-20 h-20 mb-8 relative z-10"
+            style={{ 
+              animation: 'spin 2s linear infinite'
+            }}
           />
-          <div className="w-64 h-1 bg-slate-200 rounded-full overflow-hidden">
+          <div className="w-64 h-1 bg-slate-200 rounded-full overflow-hidden relative z-10">
             <div 
-              className="h-full animate-pulse rounded-full"
+              className="h-full rounded-full"
               style={{ 
                 backgroundColor: '#5BE0E5',
-                animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                animation: 'loadProgress 5s linear forwards'
               }}
             />
           </div>
