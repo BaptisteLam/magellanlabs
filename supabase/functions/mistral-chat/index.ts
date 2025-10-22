@@ -13,10 +13,10 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt } = await req.json();
+    const { messages } = await req.json();
     
-    if (!prompt) {
-      throw new Error('Prompt is required');
+    if (!messages || !Array.isArray(messages)) {
+      throw new Error('Messages array is required');
     }
 
     const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
@@ -25,7 +25,7 @@ serve(async (req) => {
       throw new Error('MISTRAL_API_KEY is not configured');
     }
 
-    console.log('Calling OpenRouter API with prompt:', prompt);
+    console.log('Calling OpenRouter API with messages:', messages);
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -37,32 +37,40 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'mistralai/mistral-small-3.2-24b-instruct',
-        temperature: 0.5,
+        temperature: 0.7,
         messages: [
           { 
             role: 'system', 
             content: `You are Mistral Small 3.2 with the "Landing Page Builder" capability.
-When the user provides a project or idea, automatically generate:
-- HTML, CSS, and JS code for a responsive landing page
-- A live preview of the page on the right side
-- The editable source code on the left side
-- Allow the user to edit both text and code, and instantly update the preview.
 
-IMPORTANT: Use the built-in landing page builder mode.` 
+When the user provides a project or idea, automatically generate a complete, responsive landing page with:
+- Clean HTML5 structure with semantic tags
+- Embedded CSS in <style> tags (modern, professional design)
+- Optional vanilla JavaScript for interactivity
+- Mobile-responsive design
+- Professional typography and color scheme
+
+When the user asks to modify the page, apply the changes while keeping the rest intact.
+
+IMPORTANT: 
+- Return ONLY the complete HTML code, nothing else
+- No markdown code blocks, no explanations
+- Start with <!DOCTYPE html> and end with </html>
+- The code must be ready to display in an iframe` 
           },
-          { role: 'user', content: prompt }
+          ...messages
         ],
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Mistral API error:', response.status, errorText);
-      throw new Error(`Mistral API error: ${response.status}`);
+      console.error('OpenRouter API error:', response.status, errorText);
+      throw new Error(`OpenRouter API error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('Mistral API response received');
+    console.log('OpenRouter API response received');
     
     const generatedText = data.choices[0].message.content;
 

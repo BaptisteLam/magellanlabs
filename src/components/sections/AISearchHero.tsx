@@ -18,22 +18,23 @@ const AISearchHero = () => {
     if (!inputValue.trim()) {
       toast({
         title: "Erreur",
-        description: "Veuillez entrer une description de votre activité",
+        description: "Veuillez entrer votre message",
         variant: "destructive",
       });
       return;
     }
 
     const userMessage = inputValue;
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    const newMessages = [...messages, { role: 'user' as const, content: userMessage }];
+    setMessages(newMessages);
     setInputValue('');
     setIsLoading(true);
 
     try {
-      console.log('Envoi du prompt à l\'IA:', userMessage);
+      console.log('Envoi des messages à OpenRouter:', newMessages);
       
       const { data, error } = await supabase.functions.invoke('mistral-chat', {
-        body: { prompt: userMessage }
+        body: { messages: newMessages }
       });
 
       if (error) {
@@ -44,15 +45,24 @@ const AISearchHero = () => {
       console.log('Réponse reçue:', data);
       
       if (data?.response) {
-        setGeneratedHtml(data.response);
-        setMessages(prev => [...prev, { role: 'assistant', content: 'Très bien, je crée votre site web !' }]);
-        toast({
-          title: "Site généré !",
-          description: "Votre site web a été créé avec succès",
-        });
+        const aiResponse = data.response;
+        setGeneratedHtml(aiResponse);
+        setMessages([...newMessages, { role: 'assistant', content: aiResponse }]);
+        
+        if (!generatedHtml) {
+          toast({
+            title: "Site généré !",
+            description: "Votre site web a été créé. Vous pouvez maintenant le modifier via le chat.",
+          });
+        } else {
+          toast({
+            title: "Modifications appliquées !",
+            description: "Le site a été mis à jour selon vos demandes.",
+          });
+        }
       }
     } catch (error) {
-      console.error('Erreur lors de l\'appel à l\'IA:', error);
+      console.error('Erreur lors de l\'appel à OpenRouter:', error);
       toast({
         title: "Erreur",
         description: error instanceof Error ? error.message : "Une erreur est survenue",
@@ -67,25 +77,57 @@ const AISearchHero = () => {
     return (
       <div className="h-screen pt-16">
         <ResizablePanelGroup direction="horizontal" className="h-full">
-          <ResizablePanel defaultSize={25} minSize={20}>
-            <div className="h-full overflow-y-auto bg-slate-50 p-6">
-              <div className="space-y-4">
+          <ResizablePanel defaultSize={30} minSize={25}>
+            <div className="h-full flex flex-col bg-slate-50">
+              {/* Chat history */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {messages.map((msg, idx) => (
-                  <div key={idx} className={`p-3 rounded-lg ${msg.role === 'user' ? 'bg-white border border-slate-200' : 'bg-blue-50 border border-blue-100'}`}>
-                    <p className="text-sm font-medium text-slate-700 mb-1">
-                      {msg.role === 'user' ? 'Vous' : 'Assistant IA'}
+                  <div key={idx} className={`p-4 rounded-lg ${msg.role === 'user' ? 'bg-white border border-slate-200 ml-4' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mr-4'}`}>
+                    <p className="text-xs font-semibold text-slate-500 mb-2">
+                      {msg.role === 'user' ? '👤 Vous' : '🤖 Mistral AI'}
                     </p>
-                    <p className="text-sm text-slate-600">{msg.content}</p>
+                    {msg.role === 'user' ? (
+                      <p className="text-sm text-slate-700">{msg.content}</p>
+                    ) : (
+                      <p className="text-xs text-slate-500 font-mono">HTML généré/modifié</p>
+                    )}
                   </div>
                 ))}
+              </div>
+              
+              {/* Chat input */}
+              <div className="border-t border-slate-200 p-4 bg-white">
+                <div className="flex gap-2">
+                  <Textarea
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmit();
+                      }
+                    }}
+                    placeholder="Demandez des modifications..."
+                    className="min-h-[60px] resize-none text-sm"
+                    disabled={isLoading}
+                  />
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isLoading}
+                    className="self-end"
+                    style={{ backgroundColor: '#014AAD' }}
+                  >
+                    <ArrowUp className="w-5 h-5" />
+                  </Button>
+                </div>
               </div>
             </div>
           </ResizablePanel>
           
           <ResizableHandle withHandle />
           
-          <ResizablePanel defaultSize={75}>
-            <div className="h-full w-full">
+          <ResizablePanel defaultSize={70}>
+            <div className="h-full w-full bg-white">
               <iframe 
                 srcDoc={generatedHtml}
                 className="w-full h-full border-0"
