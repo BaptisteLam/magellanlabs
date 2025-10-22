@@ -3,9 +3,61 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import TextType from '@/components/ui/TextType';
 import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const AISearchHero = () => {
   const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [response, setResponse] = useState('');
+  const { toast } = useToast();
+
+  const handleSubmit = async () => {
+    if (!inputValue.trim()) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez entrer une description de votre activité",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setResponse('');
+
+    try {
+      console.log('Envoi du prompt à Mistral AI:', inputValue);
+      
+      const { data, error } = await supabase.functions.invoke('mistral-chat', {
+        body: { prompt: inputValue }
+      });
+
+      if (error) {
+        console.error('Erreur Edge Function:', error);
+        throw error;
+      }
+
+      console.log('Réponse reçue:', data);
+      
+      if (data?.response) {
+        setResponse(data.response);
+        toast({
+          title: "Réponse générée !",
+          description: "Votre site web peut être créé avec ces informations",
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'appel à Mistral:', error);
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white pt-20">
       {/* Grid background - large squares, light gray */}
@@ -87,13 +139,23 @@ const AISearchHero = () => {
                 Joindre un fichier
               </Button>
               <Button
-                className="w-10 h-10 rounded-full p-0 transition-all hover:shadow-lg hover:shadow-blue-500/30"
+                onClick={handleSubmit}
+                disabled={isLoading}
+                className="w-10 h-10 rounded-full p-0 transition-all hover:shadow-lg hover:shadow-blue-500/30 disabled:opacity-50"
                 style={{ backgroundColor: '#014AAD' }}
               >
                 <ArrowUp className="w-5 h-5 text-white" />
               </Button>
             </div>
           </div>
+
+          {/* Response Display */}
+          {response && (
+            <div className="mt-8 max-w-2xl mx-auto bg-white rounded-lg border border-slate-300 shadow-xl p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-3">Réponse de l'IA :</h3>
+              <p className="text-slate-700 whitespace-pre-wrap">{response}</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
