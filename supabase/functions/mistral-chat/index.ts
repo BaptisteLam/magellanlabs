@@ -302,7 +302,12 @@ Ce style est celui basic que tu peux utiliser si le prompt qu'on te donne n'est 
     const data = await response.json();
     console.log("OpenRouter API response received");
 
-    const generatedText = data.choices[0].message.content;
+    let generatedText = data.choices[0].message.content;
+
+    // Contrôle de contraste automatique
+    if (/background:\s*(#0f172a|#000)/i.test(generatedText) && /color:\s*(#000|black)/i.test(generatedText)) {
+      generatedText = generatedText.replace(/color:\s*(#000|black)/gi, 'color: #f8fafc');
+    }
 
     return new Response(JSON.stringify({ response: generatedText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
