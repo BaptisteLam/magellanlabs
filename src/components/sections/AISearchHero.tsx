@@ -181,7 +181,7 @@ const AISearchHero = () => {
 
   if (generatedHtml) {
     return (
-      <div className="h-[calc(100vh-64px)]">
+      <div className="h-screen">
         {/* Barre d'outils discrète */}
         <div className="h-10 bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 flex items-center justify-end px-4 gap-3">
           <Button
@@ -219,7 +219,7 @@ const AISearchHero = () => {
           </div>
         </div>
 
-        <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-6.5rem)]">
+        <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-2.5rem)]">
           <ResizablePanel defaultSize={30} minSize={25}>
             <div className="h-full flex flex-col bg-slate-50">
               {/* Chat history */}
