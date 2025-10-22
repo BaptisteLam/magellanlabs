@@ -276,13 +276,16 @@ const AISearchHero = () => {
       <div className="absolute inset-0">
         <RippleGrid
           enableRainbow={false}
-          gridColor="#ffffff"
-          rippleIntensity={0.05}
-          gridSize={10}
-          gridThickness={15}
+          gridColor="#5BE0E5"
+          rippleIntensity={0.02}
+          gridSize={22}
+          gridThickness={13}
+          fadeDistance={1.2}
+          vignetteStrength={5}
+          glowIntensity={1}
           mouseInteraction={true}
-          mouseInteractionRadius={1.2}
-          opacity={0.8}
+          mouseInteractionRadius={2.5}
+          opacity={1}
         />
       </div>
 
