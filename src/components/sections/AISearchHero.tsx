@@ -11,6 +11,7 @@ import { toast as sonnerToast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import trinityLogoLoading from '@/assets/trinity-logo-loading.png';
 
 const AISearchHero = () => {
   const [inputValue, setInputValue] = useState('');
@@ -157,7 +158,7 @@ const AISearchHero = () => {
           />
           
           <img 
-            src="/src/assets/trinity-logo-loading.png" 
+            src={trinityLogoLoading} 
             alt="Loading" 
             className="w-20 h-20 mb-8 relative z-10"
             style={{ 
