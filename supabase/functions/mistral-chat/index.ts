@@ -33,11 +33,13 @@ serve(async (req) => {
         Authorization: `Bearer ${MISTRAL_API_KEY}`,
         "Content-Type": "application/json",
         "HTTP-Referer": "https://trinitystudio.fr",
-        "X-Title": "Trinity Studio AI",
+        "X-Title": "Trinity AI",
       },
       body: JSON.stringify({
         model: "mistralai/mistral-small-3.2-24b-instruct",
-        temperature: 0.7,
+        temperature: 0.6,
+        top_p: 0.9,
+        max_tokens: 8000,
         messages: [
           {
             role: "system",
@@ -76,7 +78,7 @@ Primary call to action
 
 Constraints
 1. One-page landing structure: hero, benefits, features, testimonials, pricing or menu, FAQ, contact.
-2. Max 1000 lignes de HTML pour rester lisible.
+2. Max 1500 lignes de HTML pour rester lisible.
 3. Use French copywriting, short paragraphs, clear CTAs.
 `,
           },
