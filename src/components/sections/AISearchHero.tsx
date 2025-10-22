@@ -169,7 +169,7 @@ const AISearchHero = () => {
 
   if (generatedHtml) {
     return (
-      <div className="h-screen pt-16">
+      <div className="h-[calc(100vh-64px)]">
         {/* Barre d'outils discrète */}
         <div className="h-10 bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 flex items-center justify-end px-4 gap-3">
           <Button
@@ -215,7 +215,7 @@ const AISearchHero = () => {
                 {messages.map((msg, idx) => (
                   <div key={idx} className={`p-4 rounded-lg ${msg.role === 'user' ? 'bg-white border border-slate-200 ml-4' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mr-4'}`}>
                     <p className="text-xs font-semibold text-slate-500 mb-2">
-                      {msg.role === 'user' ? '👤 Vous' : '🤖 Mistral AI'}
+                      {msg.role === 'user' ? '👤 Vous' : '🤖 Trinity'}
                     </p>
                     {msg.role === 'user' ? (
                       <p className="text-sm text-slate-700">{msg.content}</p>
@@ -347,7 +347,7 @@ const AISearchHero = () => {
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-sm mb-6"
              style={{ borderColor: 'rgba(1, 74, 173, 0.3)', backgroundColor: 'rgba(1, 74, 173, 0.1)' }}>
           <Sparkles className="w-4 h-4" style={{ color: '#014AAD' }} />
-          <span className="text-sm font-light" style={{ color: '#014AAD' }}>Propulsé par Mistral AI</span>
+          <span className="text-sm font-light" style={{ color: '#014AAD' }}>Propulsé par Trinity AI</span>
         </div>
 
         {/* Main title */}

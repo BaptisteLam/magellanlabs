@@ -5,8 +5,6 @@ import SEOHead from '@/components/SEOHead';
 import { useLocation } from 'react-router-dom';
 
 const Home = () => {
-  const location = useLocation();
-  const showFooter = !location.state?.generatedHtml;
   
   const structuredData = {
     "@context": "https://schema.org",
@@ -47,7 +45,7 @@ const Home = () => {
         <AISearchHero />
       </main>
       
-      {showFooter && <Footer />}
+      <Footer />
     </div>
   );
 };
