@@ -78,7 +78,215 @@ Constraints
 1. One-page landing structure: hero, benefits, features, testimonials, pricing or menu, FAQ, contact.
 2. Max 1000 lignes de HTML pour rester lisible.
 3. Use French copywriting, short paragraphs, clear CTAs.
-`,
+<style>
+/* —––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– */
+/* CSS Baseline générique pour landing pages – adaptable à tout métier */
+/* Ne supprimez/écrasez pas ces classes/variables ; vous pouvez ajouter des styles */
+/* —––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– */
+
+:root {
+  /* — Variables de palette (à personnaliser) */
+  --brand-primary: #2563eb;
+  --brand-secondary: #60a5fa;
+  --bg-light: #ffffff;
+  --bg-dark: #0f172a;
+  --fg-light: #f8fafc;
+  --fg-dark: #0b111b;
+  --muted-light: #94a3b8;
+  --muted-dark: #6b7280;
+  --accent-gradient: linear-gradient(90deg, var(--brand-primary), var(--brand-secondary));
+
+  /* — Espace & typographie */
+  --space: clamp(12px, 2vw, 24px);
+  --radius: 14px;
+  --font-system: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  
+  /* — Typographie fluides */
+  --font-size-base: clamp(1rem, 1.5vw, 1.1rem);
+  --font-size-lg: clamp(1.5rem, 2.5vw, 2rem);
+  --font-size-xl: clamp(2rem, 4vw, 3rem);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-system);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  background: var(--bg-light);
+  color: var(--fg-dark);
+}
+
+/* — Mode sombre (optionnel) */
+/* Pour utiliser un thème sombre, ajouter la classe .theme-dark sur html ou body */
+.theme-dark {
+  background: var(--bg-dark);
+  color: var(--fg-light);
+}
+.theme-dark a {
+  color: var(--brand-secondary);
+}
+
+.container {
+  max-width: 1080px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space);
+  padding-right: var(--space);
+}
+
+.grid {
+  display: grid;
+  gap: var(--space);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space);
+}
+@media (min-width: 900px) {
+  .grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.section {
+  padding-top: calc(var(--space) * 2);
+  padding-bottom: calc(var(--space) * 2);
+}
+
+.card {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius);
+  padding: var(--space);
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.2rem;
+  border-radius: var(--radius);
+  background: var(--accent-gradient);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+.btn:hover,
+.btn:focus {
+  opacity: 0.85;
+}
+
+h1 {
+  font-size: var(--font-size-xl);
+  margin-bottom: var(--space);
+}
+h2 {
+  font-size: var(--font-size-lg);
+  margin-bottom: calc(var(--space) * 0.75);
+}
+h3 {
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+  margin-bottom: calc(var(--space) * 0.5);
+}
+
+p {
+  margin-bottom: var(--space);
+}
+
+a {
+  color: var(--brand-primary);
+  text-decoration: none;
+}
+a:hover,
+a:focus {
+  text-decoration: underline;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius);
+}
+
+/* Utility classes */
+.text-center {
+  text-align: center;
+}
+.flex {
+  display: flex;
+  gap: var(--space);
+}
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mt-0 { margin-top: 0; }
+.mb-0 { margin-bottom: 0; }
+.pb-0 { padding-bottom: 0; }
+
+/* Accessibility helpers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Default form styles */
+input, textarea, select, button {
+  font-family: var(--font-system);
+  font-size: var(--font-size-base);
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--muted-dark);
+  border-radius: var(--radius);
+  background: var(--bg-light);
+  color: var(--fg-dark);
+}
+input:focus, textarea:focus, select:focus, button:focus {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+/* Responsive iframe/video */
+.embed-responsive {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 aspect */
+}
+.embed-responsive iframe,
+.embed-responsive video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+  a::after {
+    content: " (" attr(href) ")";
+  }
+}
+
+</style>
+Ce style est celui basic que tu peux utiliser si le prompt qu'on te donne n'est pas beaucoup documenté mais tu peux innové selon la demande du prompt`,
           },
           ...messages,
         ],
@@ -95,82 +303,6 @@ Constraints
     console.log("OpenRouter API response received");
 
     const generatedText = data.choices[0].message.content;
-
-    const BASE_STYLE = `
-<style>
-:root {
-  --brand: #2563eb;
-  --bg: #0f172a;
-  --fg: #f8fafc;
-  --muted: #94a3b8;
-  --radius: 14px;
-  --space: clamp(12px, 2vw, 24px);
-  --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-}
-*,
-*::before,
-*::after { box-sizing: border-box; }
-html, body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--font);
-  line-height: 1.6;
-}
-.container {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 0 var(--space);
-}
-.grid { display: grid; gap: var(--space); }
-.grid-2 {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space);
-}
-@media(min-width: 900px) {
-  .grid-2 { grid-template-columns: 1fr 1fr; }
-}
-.card {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius);
-  padding: var(--space);
-}
-.btn {
-  display: inline-block;
-  padding: 0.75rem 1.2rem;
-  border-radius: var(--radius);
-  background: linear-gradient(90deg, var(--brand), #60a5fa);
-  color: white;
-  text-decoration: none;
-  font-weight: 600;
-  transition: opacity 0.2s;
-}
-.btn:hover { opacity: 0.85; }
-h1, h2, h3 { line-height: 1.2; margin-bottom: 0.5em; }
-a { color: var(--brand); }
-img { max-width: 100%; border-radius: var(--radius); }
-</style>
-`;
-
-    // 💡 Étape 2 : injecter le style si manquant
-    if (!/<style>[\s\S]*<\/style>/i.test(html)) {
-      html = html.replace(/<head[^>]*>/i, (match) => `${match}\n${BASE_STYLE}`);
-    }
-
-    // ♿ Étape 3 : petite vérif accessibilité de base
-    function checkSEO(html: string) {
-      const errors: string[] = [];
-      if (!/<h1[^>]*>[\s\S]*<\/h1>/i.test(html)) errors.push("❌ Pas de <h1>");
-      if (!/<title>[\s\S]*<\/title>/i.test(html)) errors.push("❌ Pas de <title>");
-      if (!/<meta name="description"/i.test(html)) errors.push("❌ Pas de meta description");
-      const imgs = html.match(/<img(?![^>]*alt=)[^>]*>/gi);
-      if (imgs?.length) errors.push(`⚠️ ${imgs.length} image(s) sans alt`);
-      return errors;
-    }
-
-    const checks = checkSEO(html);
-    if (checks.length) console.warn("SEO/A11y checks:", checks);
 
     return new Response(JSON.stringify({ response: generatedText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
