@@ -27,16 +27,14 @@ serve(async (req) => {
 
     console.log('Calling OpenRouter API with prompt:', prompt);
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${MISTRAL_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://trinitystudio.fr',
-        'X-Title': 'Trinity Studio AI',
       },
       body: JSON.stringify({
-        model: 'mistralai/mistral-large',
+        model: 'mistral-large-latest',
         temperature: 0.5,
         messages: [
           { 
