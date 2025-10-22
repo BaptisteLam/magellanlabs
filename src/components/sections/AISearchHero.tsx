@@ -160,7 +160,7 @@ const AISearchHero = () => {
           <img 
             src={trinityLogoLoading} 
             alt="Loading" 
-            className="w-20 h-20 mb-8 relative z-10"
+            className="w-20 h-20 mb-12 relative z-10 -mt-32"
             style={{ 
               animation: 'spin 2s linear infinite'
             }}
@@ -170,7 +170,7 @@ const AISearchHero = () => {
               className="h-full rounded-full"
               style={{ 
                 backgroundColor: '#5BE0E5',
-                animation: 'loadProgress 5s linear forwards'
+                animation: 'loadProgress 20s linear forwards'
               }}
             />
           </div>
