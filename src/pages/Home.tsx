@@ -2,8 +2,12 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import AISearchHero from '@/components/sections/AISearchHero';
 import SEOHead from '@/components/SEOHead';
+import { useLocation } from 'react-router-dom';
 
 const Home = () => {
+  const location = useLocation();
+  const showFooter = !location.state?.generatedHtml;
+  
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -43,7 +47,7 @@ const Home = () => {
         <AISearchHero />
       </main>
       
-      <Footer />
+      {showFooter && <Footer />}
     </div>
   );
 };

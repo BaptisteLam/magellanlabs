@@ -1,4 +1,4 @@
-import { Sparkles, ArrowUp, Paperclip, Save, User } from 'lucide-react';
+import { Sparkles, ArrowUp, Paperclip, Save, User, Eye, Code2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import TextType from '@/components/ui/TextType';
@@ -21,6 +21,7 @@ const AISearchHero = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [websiteTitle, setWebsiteTitle] = useState('');
+  const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -144,27 +145,44 @@ const AISearchHero = () => {
   if (generatedHtml) {
     return (
       <div className="h-screen pt-16">
-        {/* Barre d'action en haut */}
-        <div className="absolute top-16 right-4 z-50 flex gap-2">
-          <Button
-            onClick={() => navigate('/dashboard')}
-            variant="outline"
-            className="bg-white/90 backdrop-blur-sm"
-          >
-            <User className="w-4 h-4 mr-2" />
-            {user ? 'Dashboard' : 'Connexion'}
-          </Button>
+        {/* Barre d'outils discrète */}
+        <div className="h-10 bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 flex items-center justify-end px-4 gap-3">
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
           >
-            <Save className="w-4 h-4 mr-2" />
-            {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+            <Save className="w-3.5 h-3.5 mr-1.5" />
+            Enregistrer
           </Button>
+          
+          <div className="h-5 w-px bg-slate-300" />
+          
+          <div className="flex items-center gap-1 bg-white rounded-md border border-slate-200 p-0.5">
+            <Button
+              variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => setViewMode('preview')}
+            >
+              <Eye className="w-3 h-3 mr-1" />
+              Preview
+            </Button>
+            <Button
+              variant={viewMode === 'code' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => setViewMode('code')}
+            >
+              <Code2 className="w-3 h-3 mr-1" />
+              Code
+            </Button>
+          </div>
         </div>
 
-        <ResizablePanelGroup direction="horizontal" className="h-full">
+        <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-6.5rem)]">
           <ResizablePanel defaultSize={30} minSize={25}>
             <div className="h-full flex flex-col bg-slate-50">
               {/* Chat history */}
@@ -216,12 +234,20 @@ const AISearchHero = () => {
           
           <ResizablePanel defaultSize={70}>
             <div className="h-full w-full bg-white">
-              <iframe 
-                srcDoc={generatedHtml}
-                className="w-full h-full border-0"
-                title="Site web généré"
-                sandbox="allow-same-origin allow-scripts"
-              />
+              {viewMode === 'preview' ? (
+                <iframe 
+                  srcDoc={generatedHtml}
+                  className="w-full h-full border-0"
+                  title="Site web généré"
+                  sandbox="allow-same-origin allow-scripts"
+                />
+              ) : (
+                <div className="h-full w-full overflow-auto bg-slate-900 p-4">
+                  <pre className="text-xs text-slate-100 font-mono">
+                    <code>{generatedHtml}</code>
+                  </pre>
+                </div>
+              )}
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
