@@ -36,7 +36,7 @@ serve(async (req) => {
         'X-Title': 'Trinity Studio AI',
       },
       body: JSON.stringify({
-        model: 'mistralai/mistral-small-3.2-24b',
+        model: 'mistralai/mistral-small-3.2-24b-instruct',
         temperature: 0.5,
         messages: [
           { 
