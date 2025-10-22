@@ -5,11 +5,13 @@ import TextType from '@/components/ui/TextType';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
 const AISearchHero = () => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [response, setResponse] = useState('');
+  const [generatedHtml, setGeneratedHtml] = useState('');
+  const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
   const { toast } = useToast();
 
   const handleSubmit = async () => {
@@ -22,14 +24,16 @@ const AISearchHero = () => {
       return;
     }
 
+    const userMessage = inputValue;
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setInputValue('');
     setIsLoading(true);
-    setResponse('');
 
     try {
-      console.log('Envoi du prompt à Mistral AI:', inputValue);
+      console.log('Envoi du prompt à l\'IA:', userMessage);
       
       const { data, error } = await supabase.functions.invoke('mistral-chat', {
-        body: { prompt: inputValue }
+        body: { prompt: userMessage }
       });
 
       if (error) {
@@ -40,14 +44,15 @@ const AISearchHero = () => {
       console.log('Réponse reçue:', data);
       
       if (data?.response) {
-        setResponse(data.response);
+        setGeneratedHtml(data.response);
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Très bien, je crée votre site web !' }]);
         toast({
-          title: "Réponse générée !",
-          description: "Votre site web peut être créé avec ces informations",
+          title: "Site généré !",
+          description: "Votre site web a été créé avec succès",
         });
       }
     } catch (error) {
-      console.error('Erreur lors de l\'appel à Mistral:', error);
+      console.error('Erreur lors de l\'appel à l\'IA:', error);
       toast({
         title: "Erreur",
         description: error instanceof Error ? error.message : "Une erreur est survenue",
@@ -57,6 +62,42 @@ const AISearchHero = () => {
       setIsLoading(false);
     }
   };
+
+  if (generatedHtml) {
+    return (
+      <div className="h-screen pt-16">
+        <ResizablePanelGroup direction="horizontal" className="h-full">
+          <ResizablePanel defaultSize={25} minSize={20}>
+            <div className="h-full overflow-y-auto bg-slate-50 p-6">
+              <div className="space-y-4">
+                {messages.map((msg, idx) => (
+                  <div key={idx} className={`p-3 rounded-lg ${msg.role === 'user' ? 'bg-white border border-slate-200' : 'bg-blue-50 border border-blue-100'}`}>
+                    <p className="text-sm font-medium text-slate-700 mb-1">
+                      {msg.role === 'user' ? 'Vous' : 'Assistant IA'}
+                    </p>
+                    <p className="text-sm text-slate-600">{msg.content}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ResizablePanel>
+          
+          <ResizableHandle withHandle />
+          
+          <ResizablePanel defaultSize={75}>
+            <div className="h-full w-full">
+              <iframe 
+                srcDoc={generatedHtml}
+                className="w-full h-full border-0"
+                title="Site web généré"
+                sandbox="allow-same-origin allow-scripts"
+              />
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white pt-20">
@@ -148,14 +189,6 @@ const AISearchHero = () => {
               </Button>
             </div>
           </div>
-
-          {/* Response Display */}
-          {response && (
-            <div className="mt-8 max-w-2xl mx-auto bg-white rounded-lg border border-slate-300 shadow-xl p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Réponse de l'IA :</h3>
-              <p className="text-slate-700 whitespace-pre-wrap">{response}</p>
-            </div>
-          )}
         </div>
       </div>
     </div>
