@@ -142,6 +142,31 @@ const AISearchHero = () => {
     }
   };
 
+  // État de chargement
+  if (isLoading && !generatedHtml) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <div className="flex-1 flex flex-col items-center justify-center bg-white">
+          <img 
+            src="/src/assets/trinity-logo-loading.png" 
+            alt="Loading" 
+            className="w-20 h-20 mb-8 animate-spin"
+            style={{ animationDuration: '2s' }}
+          />
+          <div className="w-64 h-1 bg-slate-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full animate-pulse rounded-full"
+              style={{ 
+                backgroundColor: '#5BE0E5',
+                animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (generatedHtml) {
     return (
       <div className="h-screen pt-16">
