@@ -5,16 +5,16 @@ import './RippleGrid.css';
 const RippleGrid = ({
   enableRainbow = false,
   gridColor = '#5BE0E5',
-  rippleIntensity = 0.01,
-  gridSize = 20.0,
-  gridThickness = 13.0,
-  fadeDistance = 1.2,
-  vignetteStrength = 5.0,
-  glowIntensity = 1.0,
-  opacity = 1.0,
+  rippleIntensity = 0.003,
+  gridSize = 19.0,
+  gridThickness = 12.0,
+  fadeDistance = 1.5,
+  vignetteStrength = 1.0,
+  glowIntensity = 0.0,
+  opacity = 0.35,
   gridRotation = 0,
   mouseInteraction = true,
-  mouseInteractionRadius = 2
+  mouseInteractionRadius = 2.0
 }) => {
   const containerRef = useRef(null);
   const mousePositionRef = useRef({ x: 0.5, y: 0.5 });
@@ -51,7 +51,8 @@ void main() {
     gl_Position = vec4(position, 0.0, 1.0);
 }`;
 
-    const frag = `precision highp float;
+    const frag = `
+precision highp float;
 uniform float iTime;
 uniform vec2 iResolution;
 uniform bool enableRainbow;
@@ -73,75 +74,48 @@ varying vec2 vUv;
 float pi = 3.141592;
 
 mat2 rotate(float angle) {
-    float s = sin(angle);
-    float c = cos(angle);
-    return mat2(c, -s, s, c);
+  float s = sin(angle);
+  float c = cos(angle);
+  return mat2(c, -s, s, c);
 }
 
 void main() {
-    vec2 uv = vUv * 2.0 - 1.0;
-    uv.x *= iResolution.x / iResolution.y;
+  vec2 uv = vUv * 2.0 - 1.0;
+  uv.x *= iResolution.x / iResolution.y;
 
-    if (gridRotation != 0.0) {
-        uv = rotate(gridRotation * pi / 180.0) * uv;
-    }
+  if (gridRotation != 0.0) {
+    uv = rotate(gridRotation * pi / 180.0) * uv;
+  }
 
-    float dist = length(uv);
-    float func = sin(pi * (iTime - dist));
-    vec2 rippleUv = uv + uv * func * rippleIntensity;
+  float dist = length(uv);
+  float func = sin(pi * (iTime * 0.3 - dist)); // mouvement très lent
+  vec2 rippleUv = uv + uv * func * rippleIntensity;
 
-    if (mouseInteraction && mouseInfluence > 0.0) {
-        vec2 mouseUv = (mousePosition * 2.0 - 1.0);
-        mouseUv.x *= iResolution.x / iResolution.y;
-        float mouseDist = length(uv - mouseUv);
-        
-        float influence = mouseInfluence * exp(-mouseDist * mouseDist / (mouseInteractionRadius * mouseInteractionRadius));
-        
-        float mouseWave = sin(pi * (iTime * 2.0 - mouseDist * 3.0)) * influence;
-        rippleUv += normalize(uv - mouseUv) * mouseWave * rippleIntensity * 0.3;
-    }
+  if (mouseInteraction && mouseInfluence > 0.0) {
+    vec2 mouseUv = (mousePosition * 2.0 - 1.0);
+    mouseUv.x *= iResolution.x / iResolution.y;
+    float mouseDist = length(uv - mouseUv);
+    float influence = mouseInfluence * exp(-mouseDist * mouseDist / (mouseInteractionRadius * mouseInteractionRadius));
+    float mouseWave = sin(pi * (iTime * 2.0 - mouseDist * 3.0)) * influence;
+    rippleUv += normalize(uv - mouseUv) * mouseWave * rippleIntensity * 3.0; // effet plus fort au survol
+  }
 
-    vec2 a = sin(gridSize * 0.5 * pi * rippleUv - pi / 2.0);
-    vec2 b = abs(a);
+  vec2 a = sin(gridSize * 0.5 * pi * rippleUv - pi / 2.0);
+  vec2 b = abs(a);
 
-    float aaWidth = 0.5;
-    vec2 smoothB = vec2(
-        smoothstep(0.0, aaWidth, b.x),
-        smoothstep(0.0, aaWidth, b.y)
-    );
+  float aaWidth = 0.5;
+  vec2 smoothB = vec2(
+    smoothstep(0.0, aaWidth, b.x),
+    smoothstep(0.0, aaWidth, b.y)
+  );
 
-    vec3 color = vec3(0.0);
-    color += exp(-gridThickness * smoothB.x * (0.8 + 0.5 * sin(pi * iTime)));
-    color += exp(-gridThickness * smoothB.y);
-    color += 0.5 * exp(-(gridThickness / 4.0) * sin(smoothB.x));
-    color += 0.5 * exp(-(gridThickness / 3.0) * smoothB.y);
+  vec3 color = gridColor;
 
-    if (glowIntensity > 0.0) {
-        color += glowIntensity * exp(-gridThickness * 0.5 * smoothB.x);
-        color += glowIntensity * exp(-gridThickness * 0.5 * smoothB.y);
-    }
+  float gridLine = (1.0 - smoothB.x) + (1.0 - smoothB.y);
+  gridLine = pow(gridLine, 3.0);
 
-    float ddd = exp(-2.0 * clamp(pow(dist, fadeDistance), 0.0, 1.0));
-    
-    vec2 vignetteCoords = vUv - 0.5;
-    float vignetteDistance = length(vignetteCoords);
-    float vignette = 1.0 - pow(vignetteDistance * 2.0, vignetteStrength);
-    vignette = clamp(vignette, 0.0, 1.0);
-    
-    vec3 t;
-    if (enableRainbow) {
-        t = vec3(
-            uv.x * 0.5 + 0.5 * sin(iTime),
-            uv.y * 0.5 + 0.5 * cos(iTime),
-            pow(cos(iTime), 4.0)
-        ) + 0.5;
-    } else {
-        t = gridColor;
-    }
-
-    float finalFade = ddd * vignette;
-    float alpha = length(color) * finalFade * opacity;
-    gl_FragColor = vec4(color * t * finalFade * opacity, alpha);
+  float alpha = gridLine * opacity;
+  gl_FragColor = vec4(color, alpha);
 }`;
 
     const uniforms = {
@@ -204,13 +178,13 @@ void main() {
     const render = t => {
       uniforms.iTime.value = t * 0.001;
 
-      const lerpFactor = 0.1;
+      const lerpFactor = 0.08;
       mousePositionRef.current.x += (targetMouseRef.current.x - mousePositionRef.current.x) * lerpFactor;
       mousePositionRef.current.y += (targetMouseRef.current.y - mousePositionRef.current.y) * lerpFactor;
 
       const currentInfluence = uniforms.mouseInfluence.value;
       const targetInfluence = mouseInfluenceRef.current;
-      uniforms.mouseInfluence.value += (targetInfluence - currentInfluence) * 0.05;
+      uniforms.mouseInfluence.value += (targetInfluence - currentInfluence) * 0.1;
 
       uniforms.mousePosition.value = [mousePositionRef.current.x, mousePositionRef.current.y];
 
