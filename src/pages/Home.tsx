@@ -2,9 +2,10 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import AISearchHero from '@/components/sections/AISearchHero';
 import SEOHead from '@/components/SEOHead';
-import { useLocation } from 'react-router-dom';
+import { useState } from 'react';
 
 const Home = () => {
+  const [showFooter, setShowFooter] = useState(true);
   
   const structuredData = {
     "@context": "https://schema.org",
@@ -42,10 +43,10 @@ const Home = () => {
       <Header />
       
       <main>
-        <AISearchHero />
+        <AISearchHero onGeneratedChange={setShowFooter} />
       </main>
       
-      <Footer />
+      {showFooter && <Footer />}
     </div>
   );
 };

@@ -13,7 +13,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import trinityLogoLoading from '@/assets/trinity-logo-loading.png';
 
-const AISearchHero = () => {
+interface AISearchHeroProps {
+  onGeneratedChange?: (hasGenerated: boolean) => void;
+}
+
+const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [generatedHtml, setGeneratedHtml] = useState('');
@@ -72,6 +76,7 @@ const AISearchHero = () => {
         const aiResponse = data.response;
         setGeneratedHtml(aiResponse);
         setMessages([...newMessages, { role: 'assistant', content: aiResponse }]);
+        onGeneratedChange?.(true);
         
         if (!generatedHtml) {
           toast({
@@ -227,7 +232,7 @@ const AISearchHero = () => {
                 {messages.map((msg, idx) => (
                   <div key={idx} className={`p-4 rounded-lg ${msg.role === 'user' ? 'bg-white border border-slate-200 ml-4' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mr-4'}`}>
                     <p className="text-xs font-semibold text-slate-500 mb-2">
-                      {msg.role === 'user' ? '👤 Vous' : '🤖 Trinity'}
+                      {msg.role === 'user' ? 'Vous' : 'Trinity'}
                     </p>
                     {msg.role === 'user' ? (
                       <p className="text-sm text-slate-700">{msg.content}</p>
