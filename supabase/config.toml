@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.mistral-chat]
 verify_jwt = false
+
+[functions.deploy-to-cloudflare]
+verify_jwt = true

@@ -1,18 +1,40 @@
-import { Sparkles, ArrowUp, Paperclip } from 'lucide-react';
+import { Sparkles, ArrowUp, Paperclip, Save, User } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import TextType from '@/components/ui/TextType';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { useNavigate } from 'react-router-dom';
+import { toast as sonnerToast } from 'sonner';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const AISearchHero = () => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [generatedHtml, setGeneratedHtml] = useState('');
   const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [user, setUser] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [websiteTitle, setWebsiteTitle] = useState('');
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleSubmit = async () => {
     if (!inputValue.trim()) {
@@ -73,9 +95,75 @@ const AISearchHero = () => {
     }
   };
 
+  const handleSave = async () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    setShowSaveDialog(true);
+  };
+
+  const confirmSave = async () => {
+    if (!websiteTitle.trim()) {
+      sonnerToast.error("Veuillez entrer un titre pour votre site");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('deploy-to-cloudflare', {
+        body: { 
+          htmlContent: generatedHtml,
+          title: websiteTitle 
+        }
+      });
+
+      if (error) throw error;
+
+      sonnerToast.success(`Site enregistré et déployé sur Cloudflare !`, {
+        description: `URL: ${data.url}`,
+        duration: 5000,
+      });
+
+      setShowSaveDialog(false);
+      setWebsiteTitle('');
+      
+      // Rediriger vers le dashboard après 2 secondes
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+    } catch (error: any) {
+      console.error('Erreur lors de la sauvegarde:', error);
+      sonnerToast.error(error.message || "Erreur lors de la sauvegarde du site");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (generatedHtml) {
     return (
       <div className="h-screen pt-16">
+        {/* Barre d'action en haut */}
+        <div className="absolute top-16 right-4 z-50 flex gap-2">
+          <Button
+            onClick={() => navigate('/dashboard')}
+            variant="outline"
+            className="bg-white/90 backdrop-blur-sm"
+          >
+            <User className="w-4 h-4 mr-2" />
+            {user ? 'Dashboard' : 'Connexion'}
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+          </Button>
+        </div>
+
         <ResizablePanelGroup direction="horizontal" className="h-full">
           <ResizablePanel defaultSize={30} minSize={25}>
             <div className="h-full flex flex-col bg-slate-50">
@@ -137,6 +225,46 @@ const AISearchHero = () => {
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
+
+        {/* Dialog pour sauvegarder */}
+        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Enregistrer votre site</DialogTitle>
+              <DialogDescription>
+                Votre site sera déployé sur Cloudflare et enregistré dans votre dashboard
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Titre du site</Label>
+                <Input
+                  id="title"
+                  placeholder="Mon super site web"
+                  value={websiteTitle}
+                  onChange={(e) => setWebsiteTitle(e.target.value)}
+                  disabled={isSaving}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowSaveDialog(false)}
+                disabled={isSaving}
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={confirmSave}
+                disabled={isSaving}
+                className="bg-gradient-to-r from-blue-600 to-cyan-600"
+              >
+                {isSaving ? 'Déploiement...' : 'Enregistrer et déployer'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
