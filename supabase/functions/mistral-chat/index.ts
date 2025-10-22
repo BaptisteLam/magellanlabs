@@ -33,13 +33,11 @@ serve(async (req) => {
         Authorization: `Bearer ${MISTRAL_API_KEY}`,
         "Content-Type": "application/json",
         "HTTP-Referer": "https://trinitystudio.fr",
-        "X-Title": "Trinity AI",
+        "X-Title": "Trinity Studio AI",
       },
       body: JSON.stringify({
         model: "mistralai/mistral-small-3.2-24b-instruct",
-        temperature: 0.6,
-        top_p: 0.9,
-        max_tokens: 8000,
+        temperature: 0.7,
         messages: [
           {
             role: "system",
@@ -78,7 +76,7 @@ Primary call to action
 
 Constraints
 1. One-page landing structure: hero, benefits, features, testimonials, pricing or menu, FAQ, contact.
-2. Max 1500 lignes de HTML pour rester lisible.
+2. Max 1000 lignes de HTML pour rester lisible.
 3. Use French copywriting, short paragraphs, clear CTAs.
 `,
           },
@@ -97,6 +95,82 @@ Constraints
     console.log("OpenRouter API response received");
 
     const generatedText = data.choices[0].message.content;
+
+    const BASE_STYLE = `
+<style>
+:root {
+  --brand: #2563eb;
+  --bg: #0f172a;
+  --fg: #f8fafc;
+  --muted: #94a3b8;
+  --radius: 14px;
+  --space: clamp(12px, 2vw, 24px);
+  --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+*,
+*::before,
+*::after { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  line-height: 1.6;
+}
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 var(--space);
+}
+.grid { display: grid; gap: var(--space); }
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space);
+}
+@media(min-width: 900px) {
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+}
+.card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius);
+  padding: var(--space);
+}
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.2rem;
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, var(--brand), #60a5fa);
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+.btn:hover { opacity: 0.85; }
+h1, h2, h3 { line-height: 1.2; margin-bottom: 0.5em; }
+a { color: var(--brand); }
+img { max-width: 100%; border-radius: var(--radius); }
+</style>
+`;
+
+    // 💡 Étape 2 : injecter le style si manquant
+    if (!/<style>[\s\S]*<\/style>/i.test(html)) {
+      html = html.replace(/<head[^>]*>/i, (match) => `${match}\n${BASE_STYLE}`);
+    }
+
+    // ♿ Étape 3 : petite vérif accessibilité de base
+    function checkSEO(html: string) {
+      const errors: string[] = [];
+      if (!/<h1[^>]*>[\s\S]*<\/h1>/i.test(html)) errors.push("❌ Pas de <h1>");
+      if (!/<title>[\s\S]*<\/title>/i.test(html)) errors.push("❌ Pas de <title>");
+      if (!/<meta name="description"/i.test(html)) errors.push("❌ Pas de meta description");
+      const imgs = html.match(/<img(?![^>]*alt=)[^>]*>/gi);
+      if (imgs?.length) errors.push(`⚠️ ${imgs.length} image(s) sans alt`);
+      return errors;
+    }
+
+    const checks = checkSEO(html);
+    if (checks.length) console.warn("SEO/A11y checks:", checks);
 
     return new Response(JSON.stringify({ response: generatedText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
