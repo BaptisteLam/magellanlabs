@@ -11,7 +11,6 @@ import { toast as sonnerToast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import RippleGrid from '@/components/ui/RippleGrid';
 
 const AISearchHero = () => {
   const [inputValue, setInputValue] = useState('');
@@ -272,21 +271,23 @@ const AISearchHero = () => {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white pt-20">
-      {/* RippleGrid background */}
-      <div className="absolute inset-0">
-        <RippleGrid
-          enableRainbow={false}
-          gridColor="#5BE0E5"
-          rippleIntensity={0.02}
-          gridSize={20.0}
-          gridThickness={13.0}
-          fadeDistance={1.2}
-          vignetteStrength={5.0}
-          glowIntensity={1.0}
-          opacity={0.8}
-          mouseInteraction={true}
-          mouseInteractionRadius={2}
-        />
+      {/* Grid background - large squares, light gray */}
+      <div className="absolute inset-0" 
+           style={{ 
+             backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
+             backgroundSize: '80px 80px'
+           }} 
+      />
+      {/* Large cyan and teal glows with animation */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slow" 
+             style={{ backgroundColor: 'rgba(91, 224, 229, 0.3)' }} />
+        <div className="absolute bottom-0 right-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slower" 
+             style={{ backgroundColor: 'rgba(3, 165, 192, 0.3)' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[120px] animate-pulse" 
+             style={{ backgroundColor: 'rgba(91, 224, 229, 0.25)' }} />
+        <div className="absolute top-1/3 right-1/3 w-[700px] h-[700px] rounded-full blur-[140px] animate-pulse-slow" 
+             style={{ backgroundColor: 'rgba(3, 165, 192, 0.25)' }} />
       </div>
 
       {/* Main content */}
