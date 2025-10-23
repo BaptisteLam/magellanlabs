@@ -289,15 +289,38 @@ export default function BuilderSession() {
         
         <ResizableHandle withHandle />
         
-        <ResizablePanel defaultSize={70}>
-          <div className="h-full w-full bg-white flex flex-col">
-            {viewMode === 'preview' ? (
-              <iframe 
-                srcDoc={generatedHtml}
-                className="w-full h-full border-0"
-                title="Site web généré"
-                sandbox="allow-same-origin allow-scripts"
-              />
+          <ResizablePanel defaultSize={70}>
+            <div className="h-full w-full bg-white flex flex-col">
+              {viewMode === 'preview' ? (
+                <iframe 
+                  srcDoc={`
+                    ${generatedHtml}
+                    <script>
+                      // Empêcher la navigation vers Trinity depuis l'iframe
+                      document.addEventListener('click', function(e) {
+                        const target = e.target.closest('a, button');
+                        if (target) {
+                          const href = target.getAttribute('href');
+                          // Bloquer les liens vides, # ou sans href
+                          if (!href || href === '#' || href === '' || href === 'javascript:void(0)') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return false;
+                          }
+                          // Bloquer les liens qui pointent vers des routes internes de Trinity
+                          if (href && (href.startsWith('/') || href.startsWith('#'))) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return false;
+                          }
+                        }
+                      }, true);
+                    </script>
+                  `}
+                  className="w-full h-full border-0"
+                  title="Site web généré"
+                  sandbox="allow-same-origin allow-scripts"
+                />
             ) : (
               <div className="h-full w-full flex flex-col">
                 <div className="bg-slate-800 border-b border-slate-700 px-4 py-2 flex items-center gap-2">
