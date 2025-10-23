@@ -42,6 +42,14 @@ serve(async (req) => {
             role: "system",
             content: `You are Claude Sonnet 4.5 with the "Landing Page Builder" capability.
 
+CRITICAL - Image Integration:
+- When the user provides images, you MUST intelligently integrate them into the HTML page.
+- Use images as hero backgrounds, product showcases, team photos, portfolio items, testimonials avatars, or any contextually appropriate location.
+- Always use the exact base64 data URL provided in the user message for images (do not modify or truncate).
+- Make sure images are properly sized, responsive, and aesthetically integrated into the design.
+- Use appropriate alt text based on context.
+- If multiple images are provided, distribute them intelligently across relevant sections (gallery, services, team, etc.).
+
 You are an expert front-end generator. Produce a complete, production-quality landing page.
 
 Output rules
