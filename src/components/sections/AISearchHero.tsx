@@ -1,8 +1,8 @@
-import { Sparkles, ArrowUp, Paperclip, Save, User, Eye, Code2 } from 'lucide-react';
+import { Sparkles, ArrowUp, Paperclip, Save, User, Eye, Code2, X } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import TextType from '@/components/ui/TextType';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
@@ -21,12 +21,14 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [generatedHtml, setGeneratedHtml] = useState('');
-  const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>}>>([]);
   const [user, setUser] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [websiteTitle, setWebsiteTitle] = useState('');
   const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
+  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -42,21 +44,76 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles: Array<{ name: string; base64: string; type: string }> = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      if (!file.type.startsWith('image/')) {
+        sonnerToast.error(`${file.name} n'est pas une image`);
+        continue;
+      }
+
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const base64 = await base64Promise;
+      newFiles.push({ name: file.name, base64, type: file.type });
+    }
+
+    setAttachedFiles([...attachedFiles, ...newFiles]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setAttachedFiles(attachedFiles.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
-    if (!inputValue.trim()) {
-      sonnerToast.error("Veuillez entrer votre message");
+    if (!inputValue.trim() && attachedFiles.length === 0) {
+      sonnerToast.error("Veuillez entrer votre message ou joindre un fichier");
       return;
     }
 
     setIsLoading(true);
 
     try {
+      // Construire le message avec texte et images
+      let userMessageContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+      
+      if (attachedFiles.length > 0) {
+        const contentArray: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+        if (inputValue.trim()) {
+          contentArray.push({ type: 'text', text: inputValue });
+        }
+        attachedFiles.forEach(file => {
+          contentArray.push({ 
+            type: 'image_url', 
+            image_url: { url: file.base64 }
+          });
+        });
+        userMessageContent = contentArray;
+      } else {
+        userMessageContent = inputValue;
+      }
+
       // Créer une nouvelle session
       const { data: sessionData, error: sessionError } = await supabase
         .from('build_sessions')
         .insert({
           user_id: user?.id || null,
-          messages: [{ role: 'user', content: inputValue }],
+          messages: [{ role: 'user', content: userMessageContent }],
           html_content: '',
         })
         .select()
@@ -65,7 +122,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       if (sessionError) throw sessionError;
 
       // Appeler l'IA
-      const messages = [{ role: 'user', content: inputValue }];
+      const messages = [{ role: 'user', content: userMessageContent }];
       const { data, error } = await supabase.functions.invoke('claude', {
         body: { messages }
       });
@@ -79,7 +136,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
           .update({
             html_content: data.response,
             messages: [
-              { role: 'user', content: inputValue },
+              { role: 'user', content: userMessageContent },
               { role: 'assistant', content: data.response }
             ]
           })
@@ -228,7 +285,21 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
                       {msg.role === 'user' ? 'Vous' : 'Trinity'}
                     </p>
                     {msg.role === 'user' ? (
-                      <p className="text-sm text-slate-700">{msg.content}</p>
+                      <div>
+                        {typeof msg.content === 'string' ? (
+                          <p className="text-sm text-slate-700">{msg.content}</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {msg.content.map((item, i) => (
+                              item.type === 'text' ? (
+                                <p key={i} className="text-sm text-slate-700">{item.text}</p>
+                              ) : (
+                                <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />
+                              )
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <p className="text-xs text-slate-500 font-mono">HTML généré/modifié</p>
                     )}
@@ -392,15 +463,39 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         {/* AI Input Area */}
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-lg border border-slate-300 shadow-xl p-4">
+            {/* Fichiers attachés */}
+            {attachedFiles.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {attachedFiles.map((file, idx) => (
+                  <div key={idx} className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5">
+                    <span className="text-xs text-blue-700 truncate max-w-[150px]">{file.name}</span>
+                    <button
+                      onClick={() => removeFile(idx)}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
             <div className="relative">
               <Textarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
                 placeholder=""
                 className="w-full min-h-[100px] resize-none border-0 p-0 text-sm text-slate-700 placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
                 style={{ fontSize: '14px' }}
+                disabled={isLoading}
               />
-              {!inputValue && (
+              {!inputValue && attachedFiles.length === 0 && (
                 <div className="absolute top-0 left-0 pointer-events-none text-slate-400" style={{ fontSize: '14px' }}>
                 <TextType
                   text={[
@@ -422,12 +517,23 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
               )}
             </div>
             <div className="flex items-center justify-between mt-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={isLoading}
+              />
               <Button 
                 variant="ghost" 
                 className="text-sm text-slate-600 hover:text-white hover:bg-[#014AAD] gap-2 transition-colors [&_svg]:hover:text-white"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
               >
                 <Paperclip className="w-4 h-4" />
-                Joindre un fichier
+                Joindre une image
               </Button>
               <Button
                 onClick={handleSubmit}
