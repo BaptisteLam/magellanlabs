@@ -19,29 +19,26 @@ serve(async (req) => {
       throw new Error("Messages array is required");
     }
 
-    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 
-    if (!MISTRAL_API_KEY) {
-      throw new Error("MISTRAL_API_KEY is not configured");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
-    console.log("Calling OpenRouter API with messages:", messages);
+    console.log("Calling Anthropic API with messages:", messages);
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${MISTRAL_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://trinitystudio.fr",
-        "X-Title": "Trinity Studio AI",
       },
       body: JSON.stringify({
-        model: "mistralai/mistral-small-3.2-24b-instruct",
+        model: "claude-sonnet-4-5",
+        max_tokens: 5000,
         temperature: 0.7,
-        messages: [
-          {
-            role: "system",
-            content: `You are Mistral Small 3.2 with the "Landing Page Builder" capability.
+        system: `You are Claude Sonnet 4.5 with the "Landing Page Builder" capability.
 
 You are an expert front-end generator. Produce a complete, production-quality landing page.
 
@@ -287,22 +284,20 @@ input:focus, textarea:focus, select:focus, button:focus {
 
 </style>
 Ce style est celui basic que tu peux utiliser si le prompt qu'on te donne n'est pas beaucoup documenté mais tu peux innové selon la demande du prompt`,
-          },
-          ...messages,
-        ],
+        messages,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("OpenRouter API error:", response.status, errorText);
-      throw new Error(`OpenRouter API error: ${response.status}`);
+      console.error("Anthropic API error:", response.status, errorText);
+      throw new Error(`Anthropic API error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log("OpenRouter API response received");
+    console.log("Anthropic API response received");
 
-    let generatedText = data.choices[0].message.content;
+    let generatedText = data.content[0].text;
 
     // Contrôle de contraste automatique
     if (/background:\s*(#0f172a|#000)/i.test(generatedText) && /color:\s*(#000|black)/i.test(generatedText)) {
