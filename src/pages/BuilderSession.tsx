@@ -295,30 +295,34 @@ export default function BuilderSession() {
                   srcDoc={`
                     ${generatedHtml}
                     <script>
-                      // Empêcher la navigation vers Trinity depuis l'iframe
+                      // Bloquer TOUTE navigation dans l'iframe pour isoler de Trinity
                       document.addEventListener('click', function(e) {
-                        const target = e.target.closest('a, button');
+                        const target = e.target.closest('a');
                         if (target) {
                           const href = target.getAttribute('href');
-                          // Bloquer les liens vides, # ou sans href
-                          if (!href || href === '#' || href === '' || href === 'javascript:void(0)') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            return false;
-                          }
-                          // Bloquer les liens qui pointent vers des routes internes de Trinity
-                          if (href && (href.startsWith('/') || href.startsWith('#'))) {
+                          // Autoriser uniquement les liens externes (http/https complets)
+                          if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+                            target.setAttribute('target', '_blank');
+                            target.setAttribute('rel', 'noopener noreferrer');
+                          } else {
+                            // Bloquer tous les autres liens (relatifs, #, vides)
                             e.preventDefault();
                             e.stopPropagation();
                             return false;
                           }
                         }
                       }, true);
+                      
+                      // Bloquer la soumission de formulaires
+                      document.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        return false;
+                      }, true);
                     </script>
                   `}
                   className="w-full h-full border-0"
                   title="Site web généré"
-                  sandbox="allow-same-origin allow-scripts"
+                  sandbox="allow-same-origin allow-scripts allow-popups"
                 />
             ) : (
               <div className="h-full w-full flex flex-col">
