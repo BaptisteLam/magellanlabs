@@ -44,60 +44,53 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
 
   const handleSubmit = async () => {
     if (!inputValue.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez entrer votre message",
-        variant: "destructive",
-      });
+      sonnerToast.error("Veuillez entrer votre message");
       return;
     }
 
-    const userMessage = inputValue;
-    const newMessages = [...messages, { role: 'user' as const, content: userMessage }];
-    setMessages(newMessages);
-    setInputValue('');
     setIsLoading(true);
 
     try {
-      console.log('Envoi des messages à Claude via OpenRouter:', newMessages);
-      
+      // Créer une nouvelle session
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('build_sessions')
+        .insert({
+          user_id: user?.id || null,
+          messages: [{ role: 'user', content: inputValue }],
+          html_content: '',
+        })
+        .select()
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      // Appeler l'IA
+      const messages = [{ role: 'user', content: inputValue }];
       const { data, error } = await supabase.functions.invoke('claude', {
-        body: { messages: newMessages }
+        body: { messages }
       });
 
-      if (error) {
-        console.error('Erreur Edge Function:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('Réponse reçue:', data);
-      
       if (data?.response) {
-        const aiResponse = data.response;
-        setGeneratedHtml(aiResponse);
-        setMessages([...newMessages, { role: 'assistant', content: aiResponse }]);
-        onGeneratedChange?.(true);
-        
-        if (!generatedHtml) {
-          toast({
-            title: "Site généré !",
-            description: "Votre site web a été créé. Vous pouvez maintenant le modifier via le chat.",
-          });
-        } else {
-          toast({
-            title: "Modifications appliquées !",
-            description: "Le site a été mis à jour selon vos demandes.",
-          });
-        }
+        // Mettre à jour la session avec le HTML généré
+        await supabase
+          .from('build_sessions')
+          .update({
+            html_content: data.response,
+            messages: [
+              { role: 'user', content: inputValue },
+              { role: 'assistant', content: data.response }
+            ]
+          })
+          .eq('id', sessionData.id);
+
+        // Rediriger vers la session avec URL unique
+        navigate(`/builder/${sessionData.id}`);
       }
     } catch (error) {
-      console.error('Erreur lors de l\'appel à OpenRouter:', error);
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
-        variant: "destructive",
-      });
-    } finally {
+      console.error('Error:', error);
+      sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
       setIsLoading(false);
     }
   };
