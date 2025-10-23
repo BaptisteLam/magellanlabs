@@ -36,7 +36,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-5",
-        max_tokens: 5000,
+        max_tokens: 10000,
         temperature: 0.7,
         system: `You are Claude Sonnet 4.5 with the "Landing Page Builder" capability.
 
