@@ -71,7 +71,7 @@ const Pricing = () => {
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">Offre Mensuelle</h2>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-bold text-slate-900">9,90€</span>
+                  <span className="text-5xl font-bold text-slate-900">20€</span>
                   <span className="text-slate-600">/ mois</span>
                 </div>
               </div>
@@ -106,10 +106,10 @@ const Pricing = () => {
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">Offre Annuelle</h2>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-bold text-slate-900">99,90€</span>
+                  <span className="text-5xl font-bold text-slate-900">200€</span>
                   <span className="text-slate-600">/ an</span>
                 </div>
-                <p className="text-sm text-slate-500 mt-1">soit 8,32€/mois</p>
+                <p className="text-sm text-slate-500 mt-1">soit 16,67€/mois</p>
               </div>
 
               <ul className="space-y-3 mb-8 flex-grow">
