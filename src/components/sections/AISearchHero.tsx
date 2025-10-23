@@ -59,9 +59,9 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
     setIsLoading(true);
 
     try {
-      console.log('Envoi des messages à OpenRouter:', newMessages);
+      console.log('Envoi des messages à Claude via OpenRouter:', newMessages);
       
-      const { data, error } = await supabase.functions.invoke('mistral-chat', {
+      const { data, error } = await supabase.functions.invoke('claude', {
         body: { messages: newMessages }
       });
 
@@ -275,7 +275,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
           <ResizableHandle withHandle />
           
           <ResizablePanel defaultSize={70}>
-            <div className="h-full w-full bg-white">
+            <div className="h-full w-full bg-white flex flex-col">
               {viewMode === 'preview' ? (
                 <iframe 
                   srcDoc={generatedHtml}
@@ -284,10 +284,29 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
                   sandbox="allow-same-origin allow-scripts"
                 />
               ) : (
-                <div className="h-full w-full overflow-auto bg-slate-900 p-4">
-                  <pre className="text-xs text-slate-100 font-mono">
-                    <code>{generatedHtml}</code>
-                  </pre>
+                <div className="h-full w-full flex flex-col">
+                  {/* Toolbar for code view */}
+                  <div className="bg-slate-800 border-b border-slate-700 px-4 py-2 flex items-center gap-2">
+                    <span className="text-xs text-slate-300 font-mono">index.html</span>
+                    <span className="text-xs text-slate-500">({generatedHtml.length} caractères)</span>
+                  </div>
+                  {/* Code content with line numbers */}
+                  <div className="flex-1 overflow-auto bg-slate-900">
+                    <div className="flex">
+                      {/* Line numbers */}
+                      <div className="bg-slate-800 px-3 py-4 text-right select-none">
+                        {generatedHtml.split('\n').map((_, i) => (
+                          <div key={i} className="text-xs text-slate-500 leading-6 font-mono">
+                            {i + 1}
+                          </div>
+                        ))}
+                      </div>
+                      {/* Code content */}
+                      <pre className="flex-1 p-4 text-xs text-slate-100 font-mono overflow-x-auto">
+                        <code>{generatedHtml}</code>
+                      </pre>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -364,7 +383,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-sm mb-6"
              style={{ borderColor: 'rgba(1, 74, 173, 0.3)', backgroundColor: 'rgba(1, 74, 173, 0.1)' }}>
           <Sparkles className="w-4 h-4" style={{ color: '#014AAD' }} />
-          <span className="text-sm font-light" style={{ color: '#014AAD' }}>Propulsé par Mistral AI</span>
+          <span className="text-sm font-light" style={{ color: '#014AAD' }}>Propulsé par Claude AI</span>
         </div>
 
         {/* Main title */}
