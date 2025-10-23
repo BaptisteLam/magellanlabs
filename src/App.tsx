@@ -16,6 +16,8 @@ import ThankYou from "./pages/ThankYou";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import AIBuilder from "./pages/AIBuilder";
+import BuilderSession from "./pages/BuilderSession";
 import ScrollToTop from "./components/ScrollToTop";
 
 
@@ -32,6 +34,8 @@ const App = () => (
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/builder" element={<AIBuilder />} />
+          <Route path="/builder/:sessionId" element={<BuilderSession />} />
           <Route path="/services" element={<Services />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/about" element={<About />} />

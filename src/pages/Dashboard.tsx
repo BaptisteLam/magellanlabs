@@ -86,7 +86,7 @@ export default function Dashboard() {
               <p className="text-slate-600 mt-2">{userEmail}</p>
             </div>
             <div className="flex gap-3">
-              <Button onClick={() => navigate("/")} variant="outline">
+              <Button onClick={() => navigate("/builder")} variant="outline">
                 <Globe className="w-4 h-4 mr-2" />
                 Créer un site
               </Button>
@@ -105,7 +105,7 @@ export default function Dashboard() {
             <Card>
               <CardContent className="py-12 text-center">
                 <p className="text-slate-600 mb-4">Aucun site enregistré pour le moment</p>
-                <Button onClick={() => navigate("/")}>
+                <Button onClick={() => navigate("/builder")}>
                   Créer votre premier site
                 </Button>
               </CardContent>

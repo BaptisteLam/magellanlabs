@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      build_sessions: {
+        Row: {
+          created_at: string
+          html_content: string | null
+          id: string
+          messages: Json | null
+          title: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          html_content?: string | null
+          id?: string
+          messages?: Json | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          html_content?: string | null
+          id?: string
+          messages?: Json | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
