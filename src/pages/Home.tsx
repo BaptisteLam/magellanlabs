@@ -1,11 +1,11 @@
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import LandingHero from '@/components/sections/LandingHero';
-import ServicesSection from '@/components/sections/ServicesSection';
-import TestimonialsSection from '@/components/sections/TestimonialsSection';
+import AISearchHero from '@/components/sections/AISearchHero';
 import SEOHead from '@/components/SEOHead';
+import { useState } from 'react';
 
 const Home = () => {
+  const [showFooter, setShowFooter] = useState(true);
   
   const structuredData = {
     "@context": "https://schema.org",
@@ -43,12 +43,10 @@ const Home = () => {
       <Header />
       
       <main>
-        <LandingHero />
-        <ServicesSection />
-        <TestimonialsSection />
+        <AISearchHero onGeneratedChange={setShowFooter} />
       </main>
       
-      <Footer />
+      {showFooter && <Footer />}
     </div>
   );
 };
