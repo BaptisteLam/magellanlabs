@@ -194,11 +194,10 @@ export default function BuilderSession() {
         <Button
           onClick={() => navigate('/')}
           variant="ghost"
-          size="sm"
-          className="h-8 text-xs"
+          size="icon"
+          className="h-8 w-8"
         >
-          <Home className="w-4 h-4 mr-2" />
-          Retour
+          <Home className="w-4 h-4" />
         </Button>
 
         <div className="flex items-center gap-3">
