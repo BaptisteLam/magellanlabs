@@ -56,6 +56,10 @@ Important
 - No markdown code fences.
 - No explanations or comments outside of HTML.
 - If user asks for changes, update only what is necessary, keeping structure consistent.
+- You are free to create your own design and styles based on the user's prompt.
+- The CSS example below is provided as a reference baseline, but you can create completely custom styles according to the user's requirements.
+- Feel free to innovate and adapt the design to match the user's specific needs and brand identity.
+
 template exemple : User brief
 [Contexte du client en 2 ou plus en phrases]
 
@@ -75,10 +79,12 @@ Constraints
 1. One-page landing structure: hero, benefits, features, testimonials, pricing or menu, FAQ, contact.
 2. Max 1000 lignes de HTML pour rester lisible.
 3. Use French copywriting, short paragraphs, clear CTAs.
+
+CSS Baseline (exemple optionnel – vous pouvez créer vos propres styles):
 <style>
 /* —––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– */
 /* CSS Baseline générique pour landing pages – adaptable à tout métier */
-/* Ne supprimez/écrasez pas ces classes/variables ; vous pouvez ajouter des styles */
+/* Vous pouvez utiliser ces classes/variables ou créer vos propres styles */
 /* —––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– */
 
 :root {
@@ -282,8 +288,7 @@ input:focus, textarea:focus, select:focus, button:focus {
   }
 }
 
-</style>
-Ce style est celui basic que tu peux utiliser si le prompt qu'on te donne n'est pas beaucoup documenté mais tu peux innové selon la demande du prompt`,
+</style>`,
         messages,
       }),
     });
@@ -308,7 +313,7 @@ Ce style est celui basic que tu peux utiliser si le prompt qu'on te donne n'est 
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Error in mistral-chat function:", error);
+    console.error("Error in claude function:", error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

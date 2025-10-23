@@ -3,7 +3,7 @@ project_id = "mtmroennrczdcaasrilw"
 [functions.send-contact-email]
 verify_jwt = false
 
-[functions.mistral-chat]
+[functions.claude]
 verify_jwt = false
 
 [functions.deploy-to-cloudflare]
