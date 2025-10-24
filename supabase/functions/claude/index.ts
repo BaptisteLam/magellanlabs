@@ -338,6 +338,66 @@ input:focus, textarea:focus, select:focus, button:focus {
       generatedText = generatedText.replace(/color:\s*(#000|black)/gi, 'color: #f8fafc');
     }
 
+    // Detect and generate contextual images with Gemini
+    const imageGenPattern = /<!--\s*GENERATE_IMAGE:\s*([^|]+)\|\s*(\d+)x(\d+)\s*-->/g;
+    const imagesToGenerate = [];
+    let match;
+
+    while ((match = imageGenPattern.exec(generatedText)) !== null) {
+      imagesToGenerate.push({
+        placeholder: match[0],
+        description: match[1].trim(),
+        width: parseInt(match[2]),
+        height: parseInt(match[3])
+      });
+    }
+
+    console.log(`Found ${imagesToGenerate.length} images to generate`);
+
+    // Generate images with Gemini 2.5 Flash Image Preview
+    for (const imageRequest of imagesToGenerate) {
+      try {
+        console.log(`Generating image: ${imageRequest.description} (${imageRequest.width}x${imageRequest.height})`);
+        
+        const imageResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-image-preview",
+            messages: [
+              {
+                role: "user",
+                content: `Generate a professional, high-quality image for a website: ${imageRequest.description}. Aspect ratio should match ${imageRequest.width}x${imageRequest.height}. Ultra high resolution.`
+              }
+            ],
+            modalities: ["image", "text"]
+          })
+        });
+
+        if (imageResponse.ok) {
+          const imageData = await imageResponse.json();
+          const generatedImageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+          
+          if (generatedImageUrl) {
+            // Replace the placeholder with actual img tag
+            const imgTag = `<img src="${generatedImageUrl}" alt="${imageRequest.description}" style="max-width: 100%; height: auto; border-radius: var(--radius, 14px);" loading="lazy" />`;
+            generatedText = generatedText.replace(imageRequest.placeholder, imgTag);
+            console.log(`Successfully generated and inserted image: ${imageRequest.description}`);
+          } else {
+            console.error("No image URL in response for:", imageRequest.description);
+          }
+        } else {
+          const errorText = await imageResponse.text();
+          console.error(`Failed to generate image: ${imageResponse.status}`, errorText);
+        }
+      } catch (error) {
+        console.error(`Error generating image for "${imageRequest.description}":`, error);
+      }
+    }
+
     return new Response(JSON.stringify({ response: generatedText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
