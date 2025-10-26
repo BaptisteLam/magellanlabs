@@ -64,14 +64,10 @@ serve(async (req) => {
 
     const projectData = await createProjectResponse.json();
 
-    // Préparer le manifest des fichiers
-    const manifest = {
-      'index.html': htmlContent
-    };
-
-    // Créer un FormData pour l'upload
+    // Créer un FormData avec le fichier HTML
     const formData = new FormData();
-    formData.append('manifest', JSON.stringify(manifest));
+    const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+    formData.append('index.html', htmlBlob, 'index.html');
     formData.append('branch', 'main');
 
     const deployResponse = await fetch(
