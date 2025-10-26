@@ -120,7 +120,7 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold text-black">
                 Mes projets
               </h1>
               <p className="text-slate-600 mt-2">{userEmail}</p>

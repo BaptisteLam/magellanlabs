@@ -290,8 +290,19 @@ export default function BuilderSession() {
             <Button
               onClick={() => navigate('/dashboard')}
               variant="ghost"
-              size="sm"
-              className="h-8 text-xs"
+              className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
+              style={{ 
+                color: '#014AAD',
+                borderColor: 'transparent'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
+                e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'transparent';
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
             >
               Dashboard
             </Button>
