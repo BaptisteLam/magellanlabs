@@ -34,6 +34,7 @@ export default function BuilderSession() {
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [codeTab, setCodeTab] = useState<'html' | 'css' | 'js'>('html');
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // Extraire CSS et JS du HTML généré (mémorisé pour performance)
   const extractedCode = useMemo(() => ({
@@ -264,6 +265,58 @@ export default function BuilderSession() {
     }
   };
 
+  const handlePublish = async () => {
+    if (!user) {
+      localStorage.setItem('redirectAfterAuth', `/builder/${sessionId}`);
+      navigate('/auth');
+      return;
+    }
+
+    if (!generatedHtml) {
+      sonnerToast.error("Aucun contenu à publier");
+      return;
+    }
+
+    // Si pas de titre, demander d'abord
+    if (!websiteTitle.trim()) {
+      sonnerToast.error("Veuillez d'abord enregistrer votre projet avec un titre");
+      setShowSaveDialog(true);
+      return;
+    }
+
+    setIsPublishing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke('deploy-to-cloudflare', {
+        body: { 
+          htmlContent: generatedHtml,
+          title: websiteTitle
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        sonnerToast.success("Site publié avec succès !");
+        sonnerToast.info(`URL: ${data.url}`, { duration: 10000 });
+        
+        // Rediriger vers le dashboard
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 2000);
+      }
+    } catch (error: any) {
+      console.error('Error publishing:', error);
+      sonnerToast.error(error.message || "Erreur lors de la publication");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   if (sessionLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -346,14 +399,14 @@ export default function BuilderSession() {
             </Button>
 
             <Button
-              onClick={() => sonnerToast.info("Fonction de publication à venir")}
-              disabled={!generatedHtml}
+              onClick={handlePublish}
+              disabled={!generatedHtml || isPublishing}
               variant="ghost"
               size="sm"
               className="h-8 text-xs"
             >
               <Eye className="w-3.5 h-3.5 mr-1.5" />
-              Publier
+              {isPublishing ? "Publication..." : "Publier"}
             </Button>
 
             <div className="h-6 w-px bg-slate-300" />
