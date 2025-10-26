@@ -65,6 +65,48 @@ export type Database = {
         }
         Relationships: []
       }
+      projects: {
+        Row: {
+          ai_response: string | null
+          created_at: string
+          css: string | null
+          html: string | null
+          id: string
+          js: string | null
+          name: string
+          project_url: string | null
+          prompt: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_response?: string | null
+          created_at?: string
+          css?: string | null
+          html?: string | null
+          id?: string
+          js?: string | null
+          name: string
+          project_url?: string | null
+          prompt?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_response?: string | null
+          created_at?: string
+          css?: string | null
+          html?: string | null
+          id?: string
+          js?: string | null
+          name?: string
+          project_url?: string | null
+          prompt?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       websites: {
         Row: {
           cloudflare_project_name: string | null
