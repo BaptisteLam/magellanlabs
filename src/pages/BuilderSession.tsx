@@ -225,6 +225,23 @@ export default function BuilderSession() {
       navigate('/auth');
       return;
     }
+
+    // Si le projet a déjà un titre, enregistrer directement sans dialogue
+    if (websiteTitle.trim()) {
+      setIsSaving(true);
+      try {
+        await saveSession();
+        sonnerToast.success("Projet enregistré !");
+      } catch (error: any) {
+        console.error('Error saving:', error);
+        sonnerToast.error(error.message || "Erreur lors de la sauvegarde");
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    // Sinon, afficher le dialogue pour un nouveau projet
     setShowSaveDialog(true);
   };
 
@@ -237,26 +254,8 @@ export default function BuilderSession() {
     setIsSaving(true);
     try {
       await saveSession();
-
-      const { data, error } = await supabase.functions.invoke('deploy-to-cloudflare', {
-        body: { 
-          htmlContent: generatedHtml,
-          title: websiteTitle 
-        }
-      });
-
-      if (error) throw error;
-
-      sonnerToast.success(`Site enregistré et déployé !`, {
-        description: `URL: ${data.url}`,
-        duration: 5000,
-      });
-
+      sonnerToast.success("Projet enregistré !");
       setShowSaveDialog(false);
-      
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
     } catch (error: any) {
       console.error('Error saving:', error);
       sonnerToast.error(error.message || "Erreur lors de la sauvegarde");
@@ -575,17 +574,17 @@ export default function BuilderSession() {
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Enregistrer votre site</DialogTitle>
+            <DialogTitle>Enregistrer votre projet</DialogTitle>
             <DialogDescription>
-              Votre site sera déployé sur Cloudflare et enregistré dans votre dashboard
+              Donnez un titre à votre projet pour le retrouver facilement
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Titre du site</Label>
+              <Label htmlFor="title">Titre du projet</Label>
               <Input
                 id="title"
-                placeholder="Mon super site web"
+                placeholder="Mon super site"
                 value={websiteTitle}
                 onChange={(e) => setWebsiteTitle(e.target.value)}
                 disabled={isSaving}
@@ -594,18 +593,43 @@ export default function BuilderSession() {
           </div>
           <DialogFooter>
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setShowSaveDialog(false)}
               disabled={isSaving}
+              className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
+              style={{ 
+                color: '#014AAD',
+                borderColor: 'transparent'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
+                e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'transparent';
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
             >
               Annuler
             </Button>
             <Button
               onClick={confirmSave}
               disabled={isSaving}
-              className="bg-gradient-to-r from-blue-600 to-cyan-600"
+              className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
+              style={{ 
+                color: '#014AAD',
+                borderColor: 'transparent'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
+                e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'transparent';
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
             >
-              {isSaving ? 'Déploiement...' : 'Enregistrer et déployer'}
+              {isSaving ? 'Enregistrement...' : 'Enregistrer'}
             </Button>
           </DialogFooter>
         </DialogContent>
