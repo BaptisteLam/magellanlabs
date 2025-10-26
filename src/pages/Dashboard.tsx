@@ -186,21 +186,33 @@ export default function Dashboard() {
                             Modifié le {new Date(session.updated_at).toLocaleDateString('fr-FR')}
                           </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-3">
+                        <CardContent className="flex gap-2 items-center">
                           <Button
-                            variant="outline"
-                            className="w-full"
+                            variant="ghost"
+                            className="flex-1 text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
+                            style={{ 
+                              color: '#014AAD',
+                              borderColor: 'transparent'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
+                              e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = 'transparent';
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
                             onClick={() => navigate(`/builder/${session.id}`)}
                           >
-                            Continuer l'édition
+                            Modifier
                           </Button>
                           <Button
-                            variant="destructive"
-                            className="w-full"
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 hover:bg-red-50"
                             onClick={() => handleDeleteSession(session.id)}
                           >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Supprimer
+                            <Trash2 className="w-4 h-4 text-red-500" />
                           </Button>
                         </CardContent>
                       </Card>
@@ -231,27 +243,42 @@ export default function Dashboard() {
                             Créé le {new Date(website.created_at).toLocaleDateString('fr-FR')}
                           </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-3">
+                        <CardContent className="flex gap-2 items-center">
                           {website.cloudflare_url && (
                             <a
                               href={website.cloudflare_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="block"
+                              className="flex-1"
                             >
-                              <Button variant="outline" className="w-full">
-                                <ExternalLink className="w-4 h-4 mr-2" />
+                              <Button 
+                                variant="ghost" 
+                                className="w-full text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
+                                style={{ 
+                                  color: '#014AAD',
+                                  borderColor: 'transparent'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
+                                  e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.borderColor = 'transparent';
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                <ExternalLink className="w-4 h-4" />
                                 Voir le site
                               </Button>
                             </a>
                           )}
                           <Button
-                            variant="destructive"
-                            className="w-full"
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 hover:bg-red-50"
                             onClick={() => handleDeleteWebsite(website.id)}
                           >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Supprimer
+                            <Trash2 className="w-4 h-4 text-red-500" />
                           </Button>
                         </CardContent>
                       </Card>
