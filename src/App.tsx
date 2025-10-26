@@ -23,38 +23,39 @@ import ScrollToTop from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <ScrollToTop />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/builder" element={<AIBuilder />} />
-          <Route path="/builder/:sessionId" element={<BuilderSession />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/booking" element={<Booking />} />
-          <Route path="/tarifs" element={<Pricing />} />
-          <Route path="/merci" element={<ThankYou />} />
-          <Route path="/politique-de-confidentialite" element={<PrivacyPolicy />} />
-          <Route path="/cgv" element={<TermsOfService />} />
-          <Route path="/home" element={<Navigate to="/" replace />} />
-          <Route path="/careers" element={<Navigate to="/contact" replace />} />
-          <Route path="/nous-rejoindre" element={<Navigate to="/contact" replace />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <ScrollToTop />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/builder" element={<AIBuilder />} />
+            <Route path="/builder/:sessionId" element={<BuilderSession />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/portfolio" element={<Portfolio />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/booking" element={<Booking />} />
+            <Route path="/tarifs" element={<Pricing />} />
+            <Route path="/merci" element={<ThankYou />} />
+            <Route path="/politique-de-confidentialite" element={<PrivacyPolicy />} />
+            <Route path="/cgv" element={<TermsOfService />} />
+            <Route path="/home" element={<Navigate to="/" replace />} />
+            <Route path="/careers" element={<Navigate to="/contact" replace />} />
+            <Route path="/nous-rejoindre" element={<Navigate to="/contact" replace />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
