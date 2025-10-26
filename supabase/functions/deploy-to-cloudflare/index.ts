@@ -64,10 +64,12 @@ serve(async (req) => {
 
     const projectData = await createProjectResponse.json();
 
-    // Déployer le contenu HTML
-    const formData = new FormData();
-    const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
-    formData.append('index.html', htmlBlob, 'index.html');
+    // Déployer le contenu HTML avec le bon format
+    const manifest = {
+      '/index.html': {
+        content: htmlContent
+      }
+    };
 
     const deployResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/pages/projects/${projectName}/deployments`,
@@ -75,8 +77,12 @@ serve(async (req) => {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${cloudflareToken}`,
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify({
+          manifest: manifest,
+          production_branch: 'main'
+        }),
       }
     );
 
