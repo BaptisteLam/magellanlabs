@@ -10,6 +10,7 @@ import { toast as sonnerToast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -32,6 +33,20 @@ export default function BuilderSession() {
   const [sessionLoading, setSessionLoading] = useState(true);
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [codeTab, setCodeTab] = useState<'html' | 'css' | 'js'>('html');
+
+  // Extraire CSS et JS du HTML généré
+  const extractedCode = {
+    html: generatedHtml,
+    css: (() => {
+      const styleMatch = generatedHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+      return styleMatch ? styleMatch.map(s => s.replace(/<\/?style[^>]*>/gi, '')).join('\n\n') : '/* Aucun CSS trouvé */';
+    })(),
+    js: (() => {
+      const scriptMatch = generatedHtml.match(/<script[^>]*>([\s\S]*?)<\/script>/gi);
+      return scriptMatch ? scriptMatch.map(s => s.replace(/<\/?script[^>]*>/gi, '')).join('\n\n') : '// Aucun JavaScript trouvé';
+    })()
+  };
 
   useEffect(() => {
     loadSession();
@@ -484,25 +499,64 @@ export default function BuilderSession() {
                   sandbox="allow-same-origin allow-scripts allow-popups"
                 />
             ) : (
-              <div className="h-full w-full flex flex-col">
-                <div className="bg-slate-800 border-b border-slate-700 px-4 py-2 flex items-center gap-2">
-                  <span className="text-xs text-slate-300 font-mono">index.html</span>
-                  <span className="text-xs text-slate-500">({generatedHtml.length} caractères)</span>
-                </div>
-                <div className="flex-1 overflow-auto bg-slate-900">
-                  <div className="flex">
-                    <div className="bg-slate-800 px-3 py-4 text-right select-none">
-                      {generatedHtml.split('\n').map((_, i) => (
-                        <div key={i} className="text-xs text-slate-500 leading-6 font-mono">
-                          {i + 1}
-                        </div>
-                      ))}
-                    </div>
-                    <pre className="flex-1 p-4 text-xs text-slate-100 font-mono overflow-x-auto">
-                      <code>{generatedHtml}</code>
-                    </pre>
+              <div className="h-full w-full flex flex-col bg-slate-900">
+                <Tabs value={codeTab} onValueChange={(v) => setCodeTab(v as 'html' | 'css' | 'js')} className="flex-1 flex flex-col">
+                  <div className="bg-slate-800 border-b border-slate-700 px-4 py-2 flex items-center gap-3">
+                    <TabsList className="bg-slate-700 h-8">
+                      <TabsTrigger value="html" className="text-xs h-7 data-[state=active]:bg-slate-900">HTML</TabsTrigger>
+                      <TabsTrigger value="css" className="text-xs h-7 data-[state=active]:bg-slate-900">CSS</TabsTrigger>
+                      <TabsTrigger value="js" className="text-xs h-7 data-[state=active]:bg-slate-900">JavaScript</TabsTrigger>
+                    </TabsList>
+                    <span className="text-xs text-slate-500">
+                      ({codeTab === 'html' ? extractedCode.html.length : codeTab === 'css' ? extractedCode.css.length : extractedCode.js.length} caractères)
+                    </span>
                   </div>
-                </div>
+                  
+                  <TabsContent value="html" className="flex-1 overflow-auto m-0">
+                    <div className="flex h-full">
+                      <div className="bg-slate-800 px-3 py-4 text-right select-none">
+                        {extractedCode.html.split('\n').map((_, i) => (
+                          <div key={i} className="text-xs text-slate-500 leading-6 font-mono">
+                            {i + 1}
+                          </div>
+                        ))}
+                      </div>
+                      <pre className="flex-1 p-4 text-xs text-slate-100 font-mono overflow-x-auto">
+                        <code>{extractedCode.html}</code>
+                      </pre>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="css" className="flex-1 overflow-auto m-0">
+                    <div className="flex h-full">
+                      <div className="bg-slate-800 px-3 py-4 text-right select-none">
+                        {extractedCode.css.split('\n').map((_, i) => (
+                          <div key={i} className="text-xs text-slate-500 leading-6 font-mono">
+                            {i + 1}
+                          </div>
+                        ))}
+                      </div>
+                      <pre className="flex-1 p-4 text-xs text-slate-100 font-mono overflow-x-auto">
+                        <code>{extractedCode.css}</code>
+                      </pre>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="js" className="flex-1 overflow-auto m-0">
+                    <div className="flex h-full">
+                      <div className="bg-slate-800 px-3 py-4 text-right select-none">
+                        {extractedCode.js.split('\n').map((_, i) => (
+                          <div key={i} className="text-xs text-slate-500 leading-6 font-mono">
+                            {i + 1}
+                          </div>
+                        ))}
+                      </div>
+                      <pre className="flex-1 p-4 text-xs text-slate-100 font-mono overflow-x-auto">
+                        <code>{extractedCode.js}</code>
+                      </pre>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
           </div>
