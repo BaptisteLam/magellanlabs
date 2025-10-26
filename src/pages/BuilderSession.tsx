@@ -252,14 +252,27 @@ export default function BuilderSession() {
     <div className="h-screen flex flex-col">
       {/* Barre d'action */}
       <div className="h-12 bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 flex items-center justify-between px-4">
-        <Button
-          onClick={() => navigate('/')}
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-        >
-          <Home className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => navigate('/')}
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+          >
+            <Home className="w-4 h-4" />
+          </Button>
+
+          {user && (
+            <Button
+              onClick={() => navigate('/dashboard')}
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+            >
+              Dashboard
+            </Button>
+          )}
+        </div>
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 bg-white rounded-md border border-slate-200 p-0.5">
