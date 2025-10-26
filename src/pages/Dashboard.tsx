@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ExternalLink, Trash2, LogOut, Globe } from "lucide-react";
+import { ExternalLink, Trash2 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 
@@ -121,17 +121,47 @@ export default function Dashboard() {
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                Mes Sites Web
+                Mes projets
               </h1>
               <p className="text-slate-600 mt-2">{userEmail}</p>
             </div>
-            <div className="flex gap-3">
-              <Button onClick={() => navigate("/builder")} variant="outline">
-                <Globe className="w-4 h-4 mr-2" />
-                Créer un site
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => navigate("/builder")} 
+                variant="ghost"
+                className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
+                style={{ 
+                  color: '#014AAD',
+                  borderColor: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
+                  e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'transparent';
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                Créer un projet
               </Button>
-              <Button onClick={handleLogout} variant="outline">
-                <LogOut className="w-4 h-4 mr-2" />
+              <Button 
+                onClick={handleLogout} 
+                variant="ghost"
+                className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
+                style={{ 
+                  color: '#014AAD',
+                  borderColor: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
+                  e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'transparent';
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
                 Déconnexion
               </Button>
             </div>
