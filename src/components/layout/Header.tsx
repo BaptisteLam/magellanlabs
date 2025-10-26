@@ -2,10 +2,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { LogIn, UserPlus } from 'lucide-react';
+import { LogIn, UserPlus, Moon, Sun } from 'lucide-react';
+import { useThemeStore } from '@/stores/themeStore';
 
 const Header = () => {
   const navigate = useNavigate();
+  const { isDark, toggleTheme } = useThemeStore();
   const [user, setUser] = useState<any>(null);
   
   const navigation = [
@@ -64,25 +66,37 @@ const Header = () => {
                 Dashboard
               </Button>
             ) : (
-              <Button
-                onClick={() => navigate('/auth')}
-                variant="ghost"
-                className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
-                style={{ 
-                  color: '#014AAD',
-                  borderColor: 'transparent'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
-                  e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'transparent';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                Connexion
-              </Button>
+              <>
+                <Button
+                  onClick={() => navigate('/auth')}
+                  variant="ghost"
+                  className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
+                  style={{ 
+                    color: '#014AAD',
+                    borderColor: 'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
+                    e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'transparent';
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  Connexion
+                </Button>
+                
+                <Button
+                  onClick={toggleTheme}
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  style={{ color: '#014AAD' }}
+                >
+                  {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </Button>
+              </>
             )}
           </div>
         </div>

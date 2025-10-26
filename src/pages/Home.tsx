@@ -3,9 +3,11 @@ import Footer from '@/components/layout/Footer';
 import AISearchHero from '@/components/sections/AISearchHero';
 import SEOHead from '@/components/SEOHead';
 import { useState } from 'react';
+import { useThemeStore } from '@/stores/themeStore';
 
 const Home = () => {
   const [showFooter, setShowFooter] = useState(true);
+  const { isDark } = useThemeStore();
   
   const structuredData = {
     "@context": "https://schema.org",

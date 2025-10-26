@@ -12,12 +12,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import trinityLogoLoading from '@/assets/trinity-logo-loading.png';
+import { useThemeStore } from '@/stores/themeStore';
 
 interface AISearchHeroProps {
   onGeneratedChange?: (hasGenerated: boolean) => void;
 }
 
 const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
+  const { isDark } = useThemeStore();
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [generatedHtml, setGeneratedHtml] = useState('');
@@ -421,7 +423,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white pt-20">
+    <div className={`relative min-h-screen flex items-center justify-center overflow-hidden pt-20 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
       {/* Grid background - large squares, light gray */}
       <div className="absolute inset-0" 
            style={{ 
@@ -451,12 +453,12 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         </div>
 
         {/* Main title */}
-        <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 leading-tight">
+        <h1 className={`text-4xl md:text-5xl font-bold mb-4 leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
           Crée ton site web en quelques secondes avec l'IA
         </h1>
 
         {/* Subtitle */}
-        <p className="text-lg md:text-xl text-slate-600 font-light mb-10">
+        <p className={`text-lg md:text-xl font-light mb-10 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
           Décris ton activité en une phrase... l'IA s'occupe du reste.
         </p>
 

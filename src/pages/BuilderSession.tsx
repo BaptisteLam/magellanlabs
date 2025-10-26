@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { ArrowUp, Save, Eye, Code2, Home, Paperclip, X } from "lucide-react";
+import { ArrowUp, Save, Eye, Code2, Home, Paperclip, X, Moon, Sun } from "lucide-react";
+import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ interface Message {
 export default function BuilderSession() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
+  const { isDark, toggleTheme } = useThemeStore();
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [generatedHtml, setGeneratedHtml] = useState('');
@@ -249,9 +251,9 @@ export default function BuilderSession() {
   }
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className={`h-screen flex flex-col ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
       {/* Barre d'action */}
-      <div className="h-12 bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 flex items-center justify-between px-4">
+      <div className={`h-12 backdrop-blur-sm border-b flex items-center justify-between px-4 ${isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-50/80 border-slate-200'}`}>
         <div className="flex items-center gap-3">
           <Button
             onClick={() => navigate('/')}
@@ -320,6 +322,17 @@ export default function BuilderSession() {
               <Eye className="w-3.5 h-3.5 mr-1.5" />
               Publier
             </Button>
+
+            <div className="h-6 w-px bg-slate-300" />
+
+            <Button
+              onClick={toggleTheme}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+            >
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
           </div>
         </div>
       </div>
@@ -327,23 +340,27 @@ export default function BuilderSession() {
       {/* Panneau principal */}
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         <ResizablePanel defaultSize={30} minSize={25}>
-          <div className="h-full flex flex-col bg-slate-50">
+          <div className={`h-full flex flex-col ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
             {/* Chat history */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.map((msg, idx) => (
-                <div key={idx} className={`p-4 rounded-lg ${msg.role === 'user' ? 'bg-white border border-slate-200 ml-4' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mr-4'}`}>
-                  <p className="text-xs font-semibold text-slate-500 mb-2">
+                <div key={idx} className={`p-4 rounded-lg ${
+                  msg.role === 'user' 
+                    ? isDark ? 'bg-slate-700 border border-slate-600 ml-4' : 'bg-white border border-slate-200 ml-4'
+                    : isDark ? 'bg-gradient-to-br from-blue-900/50 to-cyan-900/50 border border-blue-800 mr-4' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mr-4'
+                }`}>
+                  <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {msg.role === 'user' ? 'Vous' : 'Trinity'}
                   </p>
                   {msg.role === 'user' ? (
                     <div>
                       {typeof msg.content === 'string' ? (
-                        <p className="text-sm text-slate-700">{msg.content}</p>
+                        <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{msg.content}</p>
                       ) : (
                         <div className="space-y-2">
                           {msg.content.map((item, i) => (
                             item.type === 'text' ? (
-                              <p key={i} className="text-sm text-slate-700">{item.text}</p>
+                              <p key={i} className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{item.text}</p>
                             ) : (
                               <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />
                             )
@@ -352,14 +369,14 @@ export default function BuilderSession() {
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-500 font-mono">HTML généré/modifié</p>
+                    <p className={`text-xs font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>HTML généré/modifié</p>
                   )}
                 </div>
               ))}
             </div>
             
             {/* Chat input */}
-            <div className="border-t border-slate-200 p-4 bg-white">
+            <div className={`border-t p-4 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-200'}`}>
               {/* Fichiers attachés */}
               {attachedFiles.length > 0 && (
                 <div className="mb-3 flex flex-wrap gap-2">

@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useThemeStore } from '@/stores/themeStore';
 
 export default function Auth() {
   const navigate = useNavigate();
+  const { isDark } = useThemeStore();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -77,7 +79,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-white pt-20">
+    <div className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden pt-20 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
       {/* Grid background */}
       <div className="absolute inset-0" 
            style={{ 
