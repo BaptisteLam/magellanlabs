@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -35,8 +35,8 @@ export default function BuilderSession() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [codeTab, setCodeTab] = useState<'html' | 'css' | 'js'>('html');
 
-  // Extraire CSS et JS du HTML généré
-  const extractedCode = {
+  // Extraire CSS et JS du HTML généré (mémorisé pour performance)
+  const extractedCode = useMemo(() => ({
     html: generatedHtml,
     css: (() => {
       const styleMatch = generatedHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
@@ -46,7 +46,7 @@ export default function BuilderSession() {
       const scriptMatch = generatedHtml.match(/<script[^>]*>([\s\S]*?)<\/script>/gi);
       return scriptMatch ? scriptMatch.map(s => s.replace(/<\/?script[^>]*>/gi, '')).join('\n\n') : '// Aucun JavaScript trouvé';
     })()
-  };
+  }), [generatedHtml]);
 
   useEffect(() => {
     loadSession();
