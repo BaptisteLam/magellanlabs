@@ -221,7 +221,7 @@ export default function BuilderSession() {
   const handleSave = async () => {
     if (!user) {
       // Sauvegarder la session actuelle dans localStorage pour y revenir après connexion
-      localStorage.setItem('redirectAfterAuth', `/session/${sessionId}`);
+      localStorage.setItem('redirectAfterAuth', `/builder/${sessionId}`);
       navigate('/auth');
       return;
     }
