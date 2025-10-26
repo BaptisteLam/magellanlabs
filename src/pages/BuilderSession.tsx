@@ -285,16 +285,29 @@ export default function BuilderSession() {
 
           <div className="h-6 w-px bg-slate-300" />
 
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-            variant="ghost"
-            size="sm"
-            className="h-8 text-xs"
-          >
-            <Save className="w-3.5 h-3.5 mr-1.5" />
-            Enregistrer
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+            >
+              <Save className="w-3.5 h-3.5 mr-1.5" />
+              Enregistrer
+            </Button>
+
+            <Button
+              onClick={() => sonnerToast.info("Fonction de publication à venir")}
+              disabled={!generatedHtml}
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+            >
+              <Eye className="w-3.5 h-3.5 mr-1.5" />
+              Publier
+            </Button>
+          </div>
         </div>
       </div>
 
