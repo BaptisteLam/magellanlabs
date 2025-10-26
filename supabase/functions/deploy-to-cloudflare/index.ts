@@ -119,10 +119,31 @@ serve(async (req) => {
     const zipArrayBuffer = await zip.generateAsync({ type: 'arraybuffer' });
     console.log(`ZIP created, size: ${zipArrayBuffer.byteLength} bytes`);
 
-    // Créer un FormData et envoyer le ZIP
+    // Créer le manifest pour Cloudflare
+    const manifest: Record<string, { data: string; encoding: string }> = {
+      "/index.html": {
+        data: html,
+        encoding: "utf-8"
+      }
+    };
+    
+    if (css) {
+      manifest["/style.css"] = {
+        data: css,
+        encoding: "utf-8"
+      };
+    }
+    
+    if (js) {
+      manifest["/script.js"] = {
+        data: js,
+        encoding: "utf-8"
+      };
+    }
+
+    // Créer le FormData avec le manifest
     const formData = new FormData();
-    const blob = new Blob([zipArrayBuffer], { type: 'application/zip' });
-    formData.append('file', blob, 'site.zip');
+    formData.append('manifest', JSON.stringify(manifest));
 
     console.log(`Deploying to Cloudflare Pages project: ${projectName}`);
     const deployResponse = await fetch(
