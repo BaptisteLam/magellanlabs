@@ -185,16 +185,24 @@ export default function BuilderSession() {
       if (error) throw error;
 
       if (data?.response) {
-        const aiResponse = data.response;
-        setGeneratedHtml(aiResponse);
-        const updatedMessages = [...newMessages, { role: 'assistant' as const, content: aiResponse }];
+        const fullResponse = data.response;
+        
+        // Extraire l'explication et le HTML
+        const explanationMatch = fullResponse.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
+        const explanation = explanationMatch ? explanationMatch[1].trim() : "Site généré";
+        
+        // Enlever l'explication du HTML
+        const htmlOnly = fullResponse.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+        
+        setGeneratedHtml(htmlOnly);
+        const updatedMessages = [...newMessages, { role: 'assistant' as const, content: explanation }];
         setMessages(updatedMessages);
 
         // Auto-save session
         await supabase
           .from('build_sessions')
           .update({
-            html_content: aiResponse,
+            html_content: htmlOnly,
             messages: updatedMessages as any,
             updated_at: new Date().toISOString()
           })
@@ -384,7 +392,7 @@ export default function BuilderSession() {
                       )}
                     </div>
                   ) : (
-                    <p className={`text-xs font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>HTML généré/modifié</p>
+                    <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{typeof msg.content === 'string' ? msg.content : 'Contenu généré'}</p>
                   )}
                 </div>
               ))}

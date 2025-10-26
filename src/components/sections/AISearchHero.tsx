@@ -132,14 +132,23 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       if (error) throw error;
 
       if (data?.response) {
+        const fullResponse = data.response;
+        
+        // Extraire l'explication et le HTML
+        const explanationMatch = fullResponse.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
+        const explanation = explanationMatch ? explanationMatch[1].trim() : "Site généré";
+        
+        // Enlever l'explication du HTML
+        const htmlOnly = fullResponse.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+        
         // Mettre à jour la session avec le HTML généré
         await supabase
           .from('build_sessions')
           .update({
-            html_content: data.response,
+            html_content: htmlOnly,
             messages: [
               { role: 'user', content: userMessageContent },
-              { role: 'assistant', content: data.response }
+              { role: 'assistant', content: explanation }
             ]
           })
           .eq('id', sessionData.id);
