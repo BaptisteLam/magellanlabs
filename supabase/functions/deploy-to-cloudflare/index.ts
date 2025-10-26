@@ -1,10 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Fonction pour extraire CSS et JS du HTML
+function extractContent(htmlContent: string) {
+  const styleMatch = htmlContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  const scriptMatch = htmlContent.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+  
+  const css = styleMatch ? styleMatch[1].trim() : '';
+  const js = scriptMatch ? scriptMatch[1].trim() : '';
+  
+  // Nettoyer le HTML en enlevant les balises style et script inline
+  let cleanHtml = htmlContent;
+  if (styleMatch) {
+    cleanHtml = cleanHtml.replace(styleMatch[0], '<link rel="stylesheet" href="style.css">');
+  }
+  if (scriptMatch) {
+    cleanHtml = cleanHtml.replace(scriptMatch[0], '<script src="script.js"></script>');
+  }
+  
+  return { html: cleanHtml, css, js };
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -40,36 +61,70 @@ serve(async (req) => {
     // Créer un nom de projet unique
     const projectName = `site-${Date.now()}`;
     
-    // Créer le projet Cloudflare Pages
-    const createProjectResponse = await fetch(
+    // Vérifier si le projet existe déjà
+    const listProjectsResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/pages/projects`,
       {
-        method: 'POST',
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${cloudflareToken}`,
-          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: projectName,
-          production_branch: 'main',
-        }),
       }
     );
 
-    if (!createProjectResponse.ok) {
-      const errorText = await createProjectResponse.text();
-      console.error('Cloudflare project creation error:', errorText);
-      throw new Error('Failed to create Cloudflare project');
+    let projectExists = false;
+    if (listProjectsResponse.ok) {
+      const projectsList = await listProjectsResponse.json();
+      projectExists = projectsList.result?.some((p: any) => p.name === projectName) || false;
     }
 
-    const projectData = await createProjectResponse.json();
+    // Créer le projet seulement s'il n'existe pas
+    if (!projectExists) {
+      console.log(`Creating new Cloudflare Pages project: ${projectName}`);
+      const createProjectResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/pages/projects`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${cloudflareToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: projectName,
+            production_branch: 'main',
+          }),
+        }
+      );
 
-    // Créer un FormData avec le fichier HTML
+      if (!createProjectResponse.ok) {
+        const errorText = await createProjectResponse.text();
+        console.error('Cloudflare project creation error:', errorText);
+        throw new Error('Failed to create Cloudflare project');
+      }
+    } else {
+      console.log(`Project ${projectName} already exists, creating new deployment`);
+    }
+
+    // Extraire HTML, CSS et JS
+    const { html, css, js } = extractContent(htmlContent);
+    console.log('Extracted content:', { hasHtml: !!html, hasCss: !!css, hasJs: !!js });
+
+    // Créer un fichier ZIP avec JSZip
+    const zip = new JSZip();
+    zip.file('index.html', html);
+    if (css) zip.file('style.css', css);
+    if (js) zip.file('script.js', js);
+
+    // Générer le ZIP en tant qu'ArrayBuffer
+    const zipArrayBuffer = await zip.generateAsync({ type: 'arraybuffer' });
+    console.log(`ZIP created, size: ${zipArrayBuffer.byteLength} bytes`);
+
+    // Créer un FormData et envoyer le ZIP
     const formData = new FormData();
-    const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
-    formData.append('index.html', htmlBlob, 'index.html');
-    formData.append('branch', 'main');
+    const blob = new Blob([zipArrayBuffer], { type: 'application/zip' });
+    formData.append('file', blob, 'site.zip');
 
+    console.log(`Deploying to Cloudflare Pages project: ${projectName}`);
     const deployResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/pages/projects/${projectName}/deployments`,
       {
@@ -84,11 +139,12 @@ serve(async (req) => {
     if (!deployResponse.ok) {
       const errorText = await deployResponse.text();
       console.error('Cloudflare deployment error:', errorText);
-      throw new Error('Failed to deploy to Cloudflare');
+      throw new Error(`Failed to deploy to Cloudflare: ${errorText}`);
     }
 
     const deployData = await deployResponse.json();
     const cloudflareUrl = deployData.result?.url || `https://${projectName}.pages.dev`;
+    console.log(`Deployment successful: ${cloudflareUrl}`);
 
     // Sauvegarder dans la base de données
     const { data: website, error: insertError } = await supabase
