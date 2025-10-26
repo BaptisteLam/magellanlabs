@@ -19,13 +19,25 @@ export default function Auth() {
     // Vérifier si l'utilisateur est déjà connecté
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/");
+        const redirectPath = localStorage.getItem('redirectAfterAuth');
+        if (redirectPath) {
+          localStorage.removeItem('redirectAfterAuth');
+          navigate(redirectPath);
+        } else {
+          navigate("/");
+        }
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        navigate("/");
+        const redirectPath = localStorage.getItem('redirectAfterAuth');
+        if (redirectPath) {
+          localStorage.removeItem('redirectAfterAuth');
+          navigate(redirectPath);
+        } else {
+          navigate("/");
+        }
       }
     });
 
