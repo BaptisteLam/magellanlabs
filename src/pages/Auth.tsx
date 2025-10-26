@@ -77,22 +77,25 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Fond animé avec quadrillage - identique à la page d'accueil */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0A1628] via-[#1B4F8C] to-[#0A1628]"></div>
-        <div 
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: `
-              linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px)
-            `,
-            backgroundSize: '40px 40px'
-          }}
-        ></div>
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#1B4F8C]/30 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#1B4F8C]/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-white pt-20">
+      {/* Grid background */}
+      <div className="absolute inset-0" 
+           style={{ 
+             backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
+             backgroundSize: '80px 80px'
+           }} 
+      />
+      
+      {/* Large cyan and teal glows with animation */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slow" 
+             style={{ backgroundColor: 'rgba(91, 224, 229, 0.3)' }} />
+        <div className="absolute bottom-0 right-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slower" 
+             style={{ backgroundColor: 'rgba(3, 165, 192, 0.3)' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[120px] animate-pulse" 
+             style={{ backgroundColor: 'rgba(91, 224, 229, 0.25)' }} />
+        <div className="absolute top-1/3 right-1/3 w-[700px] h-[700px] rounded-full blur-[140px] animate-pulse-slow" 
+             style={{ backgroundColor: 'rgba(3, 165, 192, 0.25)' }} />
       </div>
 
       <Card className="w-full max-w-md backdrop-blur-sm bg-white/95 border-white/20 shadow-2xl">
