@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { ArrowUp, Save, Eye, Code2, Home, Paperclip, X, Moon, Sun, Pencil, Download } from "lucide-react";
+import { ArrowUp, Save, Eye, Code2, Home, Paperclip, X, Moon, Sun, Pencil } from "lucide-react";
 import TextType from "@/components/ui/TextType";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
 import { VitePreview } from "@/components/VitePreview";
-import JSZip from "jszip";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -404,40 +403,6 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
     setShowSaveDialog(true);
   };
 
-  const handleDownloadProject = async () => {
-    if (!projectFiles || Object.keys(projectFiles).length === 0) {
-      sonnerToast.error("Aucun fichier à télécharger");
-      return;
-    }
-
-    try {
-      const zip = new JSZip();
-      
-      // Ajouter tous les fichiers du projet
-      Object.entries(projectFiles).forEach(([path, content]) => {
-        zip.file(path, content);
-      });
-
-      // Générer le ZIP
-      const blob = await zip.generateAsync({ type: "blob" });
-      
-      // Créer le lien de téléchargement
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `trinity-project-${Date.now()}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      sonnerToast.success("Projet téléchargé !");
-    } catch (error: any) {
-      console.error("Erreur téléchargement:", error);
-      sonnerToast.error("Erreur lors du téléchargement");
-    }
-  };
-
   const confirmSave = async () => {
     if (!websiteTitle.trim()) {
       sonnerToast.error("Veuillez entrer un titre pour votre site");
@@ -579,17 +544,6 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
           <div className="h-6 w-px bg-slate-300" />
 
           <div className="flex items-center gap-2">
-            <Button
-              onClick={handleDownloadProject}
-              disabled={!projectFiles || Object.keys(projectFiles).length === 0}
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs"
-            >
-              <Download className="w-3.5 h-3.5 mr-1.5" />
-              Télécharger
-            </Button>
-
             <Button
               onClick={handleSave}
               disabled={isSaving}
