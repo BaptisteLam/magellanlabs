@@ -56,7 +56,7 @@ serve(async (req) => {
         model: model || 'anthropic/claude-sonnet-4.5',
         messages,
         stream: true,
-        max_tokens: 100000,
+        max_tokens: 10000,
       }),
     });
 
