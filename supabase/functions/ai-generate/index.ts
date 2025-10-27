@@ -53,7 +53,7 @@ serve(async (req) => {
         'HTTP-Referer': Deno.env.get('SUPABASE_URL') || '',
       },
       body: JSON.stringify({
-        model: model || 'anthropic/claude-sonnet-4-20250514',
+        model: model || 'anthropic/claude-sonnet-4.5',
         messages,
         stream: true,
         max_tokens: 4000,
