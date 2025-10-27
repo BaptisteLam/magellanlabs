@@ -60,9 +60,10 @@ serve(async (req) => {
 
 🎨 **DESIGN SYSTEM MODERNE OBLIGATOIRE** :
 
-**1. Tailwind CSS via CDN (OBLIGATOIRE dans chaque HTML)**
+**1. Tailwind CSS + Lucide Icons via CDN (OBLIGATOIRE dans chaque HTML)**
 \`\`\`html
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
 <script>
   tailwind.config = {
     theme: {
@@ -87,7 +88,22 @@ serve(async (req) => {
 <meta name="description" content="Description SEO pertinente">
 <title>Titre optimisé SEO</title>
 
-**4. Animations et transitions fluides**
+**4. Lucide Icons - TOUJOURS utiliser des icônes, JAMAIS d'emojis**
+- Initialiser avec <script>lucide.createIcons();</script> à la fin du body
+- Utiliser <i data-lucide="icon-name" class="w-6 h-6"></i>
+- Exemples: home, user, mail, phone, check, menu, search, shopping-cart, heart, star, arrow-right
+- ❌ INTERDIT: emojis comme 😀🎉❤️🚀
+
+**5. Images Unsplash - UNIQUEMENT des photos libres de droit**
+- TOUJOURS utiliser Unsplash source API avec mots-clés en anglais
+- Format: <img src="https://source.unsplash.com/[WIDTH]x[HEIGHT]/?[KEYWORDS]" alt="..." loading="lazy">
+- Exemples:
+  * Hero: https://source.unsplash.com/1600x900/?business,technology
+  * Team: https://source.unsplash.com/400x400/?portrait,professional
+  * Product: https://source.unsplash.com/800x600/?product,modern
+- ❌ INTERDIT: Générer des images, utiliser des placeholders texte
+
+**6. Animations et transitions fluides**
 - Utiliser Tailwind transitions (transition-all, duration-300)
 - Hover effects élégants
 - Animations d'entrée subtiles
@@ -119,6 +135,12 @@ serve(async (req) => {
 - Espacement cohérent (p-4, m-8, gap-6...)
 - Couleurs du thème configuré
 - style.css pour animations custom uniquement
+
+✅ **Icônes et Images** :
+- ❌ JAMAIS d'emojis (😀🎉❤️) - TOUJOURS Lucide Icons
+- Utiliser <i data-lucide="icon-name"></i> pour toutes les icônes
+- Images UNIQUEMENT depuis Unsplash avec mots-clés pertinents
+- Initialiser Lucide avec <script>lucide.createIcons();</script>
 
 ✅ **JavaScript moderne** :
 - ES6+ (const, let, arrow functions)
@@ -163,7 +185,10 @@ serve(async (req) => {
 
 🚫 **ERREURS À ÉVITER ABSOLUMENT** :
 - ❌ Ne JAMAIS retourner du markdown (\`\`\`json ou \`\`\`)
-- ❌ Ne JAMAIS oublier Tailwind CDN dans les fichiers HTML
+- ❌ Ne JAMAIS oublier Tailwind CDN + Lucide Icons CDN dans les fichiers HTML
+- ❌ Ne JAMAIS oublier <script>lucide.createIcons();</script> à la fin du body
+- ❌ Ne JAMAIS utiliser d'emojis (😀🎉❤️) - TOUJOURS des icônes Lucide
+- ❌ Ne JAMAIS générer des images - TOUJOURS Unsplash URLs
 - ❌ Ne JAMAIS créer de design non-responsive
 - ❌ Ne JAMAIS oublier les meta tags viewport et description
 - ❌ Ne JAMAIS faire de liens cassés entre fichiers
@@ -200,65 +225,8 @@ serve(async (req) => {
       generatedText = generatedText.replace(/color:\s*(#000|black)/gi, 'color: #f8fafc');
     }
 
-    // Detect and generate contextual images with Gemini
-    const imageGenPattern = /<!--\s*GENERATE_IMAGE:\s*([^|]+)\|\s*(\d+)x(\d+)\s*-->/g;
-    const imagesToGenerate = [];
-    let match;
-
-    while ((match = imageGenPattern.exec(generatedText)) !== null) {
-      imagesToGenerate.push({
-        placeholder: match[0],
-        description: match[1].trim(),
-        width: parseInt(match[2]),
-        height: parseInt(match[3])
-      });
-    }
-
-    console.log(`Found ${imagesToGenerate.length} images to generate`);
-
-    // Generate images with Gemini 2.5 Flash Image Preview
-    for (const imageRequest of imagesToGenerate) {
-      try {
-        console.log(`Generating image: ${imageRequest.description} (${imageRequest.width}x${imageRequest.height})`);
-        
-        const imageResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash-image-preview",
-            messages: [
-              {
-                role: "user",
-                content: `Generate a professional, high-quality image for a website: ${imageRequest.description}. Aspect ratio should match ${imageRequest.width}x${imageRequest.height}. Ultra high resolution.`
-              }
-            ],
-            modalities: ["image", "text"]
-          })
-        });
-
-        if (imageResponse.ok) {
-          const imageData = await imageResponse.json();
-          const generatedImageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-          
-          if (generatedImageUrl) {
-            // Replace the placeholder with actual img tag
-            const imgTag = `<img src="${generatedImageUrl}" alt="${imageRequest.description}" style="max-width: 100%; height: auto; border-radius: var(--radius, 14px);" loading="lazy" />`;
-            generatedText = generatedText.replace(imageRequest.placeholder, imgTag);
-            console.log(`Successfully generated and inserted image: ${imageRequest.description}`);
-          } else {
-            console.error("No image URL in response for:", imageRequest.description);
-          }
-        } else {
-          const errorText = await imageResponse.text();
-          console.error(`Failed to generate image: ${imageResponse.status}`, errorText);
-        }
-      } catch (error) {
-        console.error(`Error generating image for "${imageRequest.description}":`, error);
-      }
-    }
+    // Plus de génération d'images - tout est géré via Unsplash dans le prompt
+    console.log("Using Unsplash for all images - no AI generation needed");
 
     return new Response(JSON.stringify({ response: generatedText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
