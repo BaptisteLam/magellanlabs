@@ -12,27 +12,51 @@ interface ProjectFile {
   type: string;
 }
 
-// Parser intelligent pour extraire les fichiers du code généré
+// Parser pour extraire les fichiers au format // FILE: path
 function parseGeneratedCode(code: string): ProjectFile[] {
   const files: ProjectFile[] = [];
   
-  // Détection des blocs de code avec chemins de fichiers
-  // Format: ```filename:path/to/file.ext
-  const fileBlockRegex = /```(?:[\w]+)?:?([\w/.]+)\n([\s\S]*?)```/g;
-  let match;
+  // Détection du format // FILE: path
+  const fileRegex = /\/\/\s*FILE:\s*(.+?)\n/g;
+  const matches = [...code.matchAll(fileRegex)];
   
-  while ((match = fileBlockRegex.exec(code)) !== null) {
-    const [, path, content] = match;
-    const extension = path.split('.').pop() || '';
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i];
+    const filePath = match[1].trim();
+    const startIndex = match.index! + match[0].length;
+    
+    // Trouve le contenu jusqu'au prochain fichier
+    const nextMatch = matches[i + 1];
+    const endIndex = nextMatch ? nextMatch.index! : code.length;
+    const content = code.slice(startIndex, endIndex).trim();
+    
+    const extension = filePath.split('.').pop() || '';
     
     files.push({
-      path: path.trim(),
-      content: content.trim(),
+      path: filePath,
+      content: content,
       type: getFileType(extension)
     });
   }
   
-  // Si aucun fichier trouvé avec le format structuré, chercher du HTML standalone
+  // Fallback: format ```type:path
+  if (files.length === 0) {
+    const codeBlockRegex = /```(?:[\w]+)?:?([\w/.]+)\n([\s\S]*?)```/g;
+    let match;
+    
+    while ((match = codeBlockRegex.exec(code)) !== null) {
+      const [, path, content] = match;
+      const extension = path.split('.').pop() || '';
+      
+      files.push({
+        path: path.trim(),
+        content: content.trim(),
+        type: getFileType(extension)
+      });
+    }
+  }
+  
+  // Fallback: HTML standalone
   if (files.length === 0 && (code.includes('<!DOCTYPE html>') || code.includes('<html'))) {
     const htmlContent = code.replace(/```html\n?|```\n?/g, '').trim();
     files.push({
@@ -121,38 +145,32 @@ serve(async (req) => {
       throw new Error('OPENROUTER_API_KEY not configured');
     }
 
-    // Prompt système optimisé pour la génération de structure de fichiers
-    const systemPrompt = `Tu es un expert en développement web. 
+    // Prompt système optimisé pour React/TypeScript
+    const systemPrompt = `Tu es un expert développeur React/TypeScript.
+Génère un site web complet et fonctionnel.
 
-IMPORTANT: Tu dois générer un projet web complet avec une structure de fichiers claire.
+RÈGLES IMPORTANTES :
+1. Structure le projet avec src/, components/, utils/, styles/
+2. Chaque fichier commence par : // FILE: [chemin/complet.tsx]
+3. Utilise React 18 + TypeScript + Tailwind CSS
+4. Code production-ready avec bonnes pratiques
+5. Responsive design (mobile-first)
+6. Composants réutilisables et bien nommés
+7. Maximum 4 images (utilise Unsplash/Pexels URLs)
 
-Format de réponse OBLIGATOIRE:
-1. Commence par [EXPLANATION]courte description du projet[/EXPLANATION]
-2. Ensuite, génère chaque fichier avec ce format exact:
+FORMAT ATTENDU :
+// FILE: src/App.tsx
+import React from 'react';
+[...code...]
 
-\`\`\`html:index.html
-<!DOCTYPE html>
-<html>
-...
-</html>
-\`\`\`
+// FILE: src/components/Header.tsx
+import React from 'react';
+[...code...]
 
-\`\`\`css:styles/main.css
-body {
-  ...
-}
-\`\`\`
+// FILE: src/styles/globals.css
+[...styles...]
 
-\`\`\`javascript:scripts/app.js
-console.log('Hello');
-\`\`\`
-
-Règles:
-- Structure claire: index.html, styles/, scripts/, assets/
-- Utilise Tailwind CDN si demandé
-- Code moderne et professionnel
-- Responsive design
-- Maximum 4 images (Unsplash/Pexels)`;
+Génère TOUS les fichiers nécessaires pour un site complet.`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -165,7 +183,8 @@ Règles:
       headers: {
         'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': Deno.env.get('SUPABASE_URL') || '',
+        'HTTP-Referer': 'https://trinitystudio.ai',
+        'X-Title': 'Trinity Studio AI',
       },
       body: JSON.stringify({
         model: 'anthropic/claude-sonnet-4.5',
@@ -179,13 +198,23 @@ Règles:
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[generate-site] OpenRouter error:', response.status, errorText);
+      
+      let errorMessage = 'AI API error';
+      if (response.status === 429) {
+        errorMessage = 'Rate limit dépassé. Veuillez réessayer dans quelques instants.';
+      } else if (response.status === 401) {
+        errorMessage = 'Clé API OpenRouter invalide. Veuillez vérifier vos paramètres.';
+      } else if (response.status === 402) {
+        errorMessage = 'Crédits OpenRouter insuffisants. Veuillez recharger votre compte.';
+      }
+      
       return new Response(
-        JSON.stringify({ error: `AI API error: ${response.status}` }),
+        JSON.stringify({ error: errorMessage, status: response.status }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Stream SSE avec parsing en temps réel
+    // Stream SSE avec parsing en temps réel et events structurés
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
@@ -195,9 +224,26 @@ Règles:
           return;
         }
 
+        // Event: start
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          type: 'start',
+          data: { sessionId }
+        })}\n\n`));
+
         const decoder = new TextDecoder();
         let accumulated = '';
         let lastParsedFiles: ProjectFile[] = [];
+        let timeout: number | null = null;
+
+        // Timeout de 60 secondes
+        timeout = setTimeout(() => {
+          console.error('[generate-site] Timeout après 60s');
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'error',
+            data: { message: 'Timeout: La génération a pris trop de temps. Veuillez réessayer.' }
+          })}\n\n`));
+          controller.close();
+        }, 60000);
 
         try {
           while (true) {
@@ -212,6 +258,8 @@ Règles:
               
               const dataStr = line.replace('data:', '').trim();
               if (dataStr === '[DONE]') {
+                if (timeout) clearTimeout(timeout);
+                
                 // Parsing final et sauvegarde
                 const finalFiles = parseGeneratedCode(accumulated);
                 const projectType = detectProjectStructure(finalFiles);
@@ -228,11 +276,10 @@ Règles:
                     .eq('id', sessionId);
                 }
 
-                // Envoyer événement de fin avec les fichiers finaux
+                // Event: complete
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'done',
-                  files: finalFiles,
-                  projectType
+                  type: 'complete',
+                  data: { totalFiles: finalFiles.length, projectType }
                 })}\n\n`));
                 
                 controller.close();
@@ -246,26 +293,28 @@ Règles:
 
                 accumulated += delta;
 
-                // Parser en temps réel pour détecter les fichiers au fur et à mesure
+                // Event: chunk
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'chunk',
+                  data: { content: delta }
+                })}\n\n`));
+
+                // Parser en temps réel pour détecter les fichiers
                 const currentFiles = parseGeneratedCode(accumulated);
                 
-                // Envoyer seulement les nouveaux fichiers ou les mises à jour
-                if (currentFiles.length > lastParsedFiles.length || 
-                    JSON.stringify(currentFiles) !== JSON.stringify(lastParsedFiles)) {
+                // Détecte les nouveaux fichiers
+                if (currentFiles.length > lastParsedFiles.length) {
+                  const newFiles = currentFiles.slice(lastParsedFiles.length);
                   
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'delta',
-                    content: delta,
-                    files: currentFiles
-                  })}\n\n`));
+                  for (const file of newFiles) {
+                    // Event: file_detected
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                      type: 'file_detected',
+                      data: { path: file.path, content: file.content, type: file.type }
+                    })}\n\n`));
+                  }
                   
                   lastParsedFiles = currentFiles;
-                } else {
-                  // Envoyer juste le delta de texte
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'delta',
-                    content: delta
-                  })}\n\n`));
                 }
               } catch (e) {
                 console.error('[generate-site] Parse error:', e);
@@ -273,7 +322,15 @@ Règles:
             }
           }
         } catch (error) {
+          if (timeout) clearTimeout(timeout);
           console.error('[generate-site] Stream error:', error);
+          
+          // Event: error
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'error',
+            data: { message: error instanceof Error ? error.message : 'Erreur inconnue' }
+          })}\n\n`));
+          
           controller.error(error);
         }
       }
