@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Linkedin, Twitter } from 'lucide-react';
-import { DownloadSourceButton } from '@/components/DownloadSourceButton';
 
 const Footer = () => {
   const navigation = [
@@ -89,13 +88,8 @@ const Footer = () => {
           </div>
         </div>
         
-        <div className="mt-8 pt-8 border-t border-border">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-foreground/60">
-              &copy; {new Date().getFullYear()} Trinity Studio. Tous droits réservés.
-            </p>
-            <DownloadSourceButton />
-          </div>
+        <div className="mt-8 pt-8 border-t border-border text-center text-sm text-foreground/60">
+          <p>&copy; {new Date().getFullYear()} Trinity Studio. Tous droits réservés.</p>
         </div>
       </div>
     </footer>
