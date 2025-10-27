@@ -17,27 +17,30 @@ export type Database = {
       build_sessions: {
         Row: {
           created_at: string
-          html_content: string | null
           id: string
           messages: Json | null
+          project_files: Json | null
+          project_type: string | null
           title: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          html_content?: string | null
           id?: string
           messages?: Json | null
+          project_files?: Json | null
+          project_type?: string | null
           title?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
-          html_content?: string | null
           id?: string
           messages?: Json | null
+          project_files?: Json | null
+          project_type?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string

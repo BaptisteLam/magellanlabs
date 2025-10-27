@@ -14,3 +14,9 @@ verify_jwt = true
 
 [functions.ai-generate]
 verify_jwt = true
+
+[functions.generate-site]
+verify_jwt = true
+
+[functions.modify-site]
+verify_jwt = true

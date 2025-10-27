@@ -74,30 +74,36 @@ export default function BuilderSession() {
       }
 
       if (data) {
-        setGeneratedHtml(data.html_content || '');
-        
-        // Parser les fichiers de projet si présents
+        // Parser les fichiers de projet
         try {
-          const parsed = JSON.parse(data.html_content || '{}');
-          if (parsed.files) {
-            setProjectFiles(parsed.files);
-            // Sélectionner le premier fichier par défaut
-            const firstFile = Object.keys(parsed.files)[0];
+          const projectFilesData = data.project_files as any;
+          
+          if (projectFilesData && Array.isArray(projectFilesData) && projectFilesData.length > 0) {
+            // Nouveau format: array de fichiers
+            const filesMap: Record<string, string> = {};
+            projectFilesData.forEach((file: any) => {
+              if (file.path && file.content) {
+                filesMap[file.path] = file.content;
+              }
+            });
+            
+            setProjectFiles(filesMap);
+            setGeneratedHtml(projectFilesData.find((f: any) => f.path === 'index.html')?.content || '');
+            
+            const firstFile = Object.keys(filesMap)[0];
             if (firstFile) {
               setSelectedFile(firstFile);
-              setSelectedFileContent(parsed.files[firstFile]);
+              setSelectedFileContent(filesMap[firstFile]);
             }
           } else {
-            // Ancien format HTML monolithique
-            setProjectFiles({ 'index.html': data.html_content || '' });
-            setSelectedFile('index.html');
-            setSelectedFileContent(data.html_content || '');
+            // Fallback: projet vide
+            setProjectFiles({});
+            setGeneratedHtml('');
           }
         } catch {
           // Fallback si parsing échoue
-          setProjectFiles({ 'index.html': data.html_content || '' });
-          setSelectedFile('index.html');
-          setSelectedFileContent(data.html_content || '');
+          setProjectFiles({});
+          setGeneratedHtml('');
         }
 
         const parsedMessages = Array.isArray(data.messages) ? data.messages as any[] : [];
@@ -115,10 +121,19 @@ export default function BuilderSession() {
     if (!sessionId) return;
 
     try {
+      // Convertir projectFiles en array de ProjectFile
+      const filesArray = Object.entries(projectFiles).map(([path, content]) => ({
+        path,
+        content,
+        type: path.endsWith('.html') ? 'html' : 
+              path.endsWith('.css') ? 'stylesheet' : 
+              path.endsWith('.js') ? 'javascript' : 'text'
+      }));
+
       const { error } = await supabase
         .from('build_sessions')
         .update({
-          html_content: generatedHtml,
+          project_files: filesArray,
           messages: messages as any,
           title: websiteTitle,
           updated_at: new Date().toISOString()

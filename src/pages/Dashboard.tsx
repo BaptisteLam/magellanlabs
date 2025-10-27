@@ -86,7 +86,7 @@ export default function Dashboard() {
           .order("created_at", { ascending: false }),
         supabase
           .from("build_sessions")
-          .select("id, title, created_at, updated_at, html_content")
+          .select("id, title, created_at, updated_at, project_files, project_type")
           .order("updated_at", { ascending: false })
       ]);
 
@@ -102,14 +102,24 @@ export default function Dashboard() {
         type: getProjectType(w.html_content),
       }));
 
-      const draftProjects: Project[] = (sessionsResult.data || []).map(s => ({
-        id: s.id,
-        title: s.title || "Sans titre",
-        created_at: s.created_at,
-        updated_at: s.updated_at,
-        status: 'draft' as const,
-        type: getProjectType(s.html_content),
-      }));
+      const draftProjects: Project[] = (sessionsResult.data || []).map(s => {
+        const projectFilesData = s.project_files as any;
+        let htmlContent = '';
+        
+        if (projectFilesData && Array.isArray(projectFilesData)) {
+          const indexFile = projectFilesData.find((f: any) => f.path === 'index.html');
+          htmlContent = indexFile?.content || '';
+        }
+        
+        return {
+          id: s.id,
+          title: s.title || "Sans titre",
+          created_at: s.created_at,
+          updated_at: s.updated_at,
+          status: 'draft' as const,
+          type: getProjectType(htmlContent),
+        };
+      });
 
       setProjects([...draftProjects, ...publishedProjects]);
     } catch (error: any) {
