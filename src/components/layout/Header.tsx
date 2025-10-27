@@ -2,8 +2,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { LogIn, UserPlus, Moon, Sun } from 'lucide-react';
+import { LogIn, UserPlus, Moon, Sun, Download } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
+import { downloadProjectAsZip } from '@/utils/downloadProject';
+import { toast } from 'sonner';
 
 const Header = () => {
   const navigate = useNavigate();
@@ -56,6 +58,26 @@ const Header = () => {
 
           {/* Auth Buttons - Right Side */}
           <div className="flex items-center gap-2">
+            <Button
+              onClick={async () => {
+                toast.loading('Préparation du téléchargement...');
+                try {
+                  await downloadProjectAsZip();
+                  toast.success('Projet téléchargé avec succès !');
+                } catch (error) {
+                  toast.error('Erreur lors du téléchargement');
+                  console.error(error);
+                }
+              }}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              style={{ color: '#014AAD' }}
+              title="Télécharger le projet"
+            >
+              <Download className="w-4 h-4" />
+            </Button>
+            
             {user ? (
               <Button
                 onClick={() => navigate('/dashboard')}
