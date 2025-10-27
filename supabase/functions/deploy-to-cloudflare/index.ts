@@ -21,10 +21,11 @@ const DEFAULT_HTML = `<!DOCTYPE html>
   </body>
 </html>`;
 
-// Fonction pour extraire CSS et JS du HTML et garantir un HTML valide
+// Fonction pour extraire CSS et JS du HTML et garantir un HTML complet et valide
 function extractContent(htmlContent: string) {
   // Si le HTML est vide ou quasi vide, utiliser le template par défaut
   if (!htmlContent || htmlContent.trim().length < 20) {
+    console.log('HTML vide ou trop court, utilisation du template par défaut');
     return { html: DEFAULT_HTML, css: '', js: '' };
   }
 
@@ -43,13 +44,56 @@ function extractContent(htmlContent: string) {
     cleanHtml = cleanHtml.replace(scriptMatch[0], '');
   }
   
-  // S'assurer que les liens vers CSS et JS sont présents dans le <head> et avant </body>
-  if (!cleanHtml.includes('style.css')) {
-    cleanHtml = cleanHtml.replace('</head>', '  <link rel="stylesheet" href="./style.css">\n  </head>');
+  // Vérifier si le HTML a une structure complète
+  const hasDoctype = cleanHtml.includes('<!DOCTYPE') || cleanHtml.includes('<!doctype');
+  const hasHtml = cleanHtml.includes('<html');
+  const hasHead = cleanHtml.includes('<head');
+  const hasBody = cleanHtml.includes('<body');
+  
+  console.log('Structure HTML détectée:', { hasDoctype, hasHtml, hasHead, hasBody });
+  
+  // Si le HTML n'a pas de structure complète, le wrapper
+  if (!hasHtml || !hasHead || !hasBody) {
+    console.log('HTML incomplet détecté, création d\'une structure complète');
+    cleanHtml = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Site créé avec Trinity 🚀</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    ${cleanHtml}
+    <script src="./script.js"></script>
+  </body>
+</html>`;
+  } else {
+    // S'assurer que les liens vers CSS et JS sont présents
+    if (!cleanHtml.includes('style.css')) {
+      if (cleanHtml.includes('</head>')) {
+        cleanHtml = cleanHtml.replace('</head>', '  <link rel="stylesheet" href="./style.css">\n  </head>');
+      } else if (cleanHtml.includes('<head>')) {
+        cleanHtml = cleanHtml.replace('<head>', '<head>\n  <link rel="stylesheet" href="./style.css">');
+      }
+    }
+    
+    if (!cleanHtml.includes('script.js')) {
+      if (cleanHtml.includes('</body>')) {
+        cleanHtml = cleanHtml.replace('</body>', '  <script src="./script.js"></script>\n  </body>');
+      } else if (cleanHtml.includes('</html>')) {
+        cleanHtml = cleanHtml.replace('</html>', '  <script src="./script.js"></script>\n</html>');
+      } else {
+        cleanHtml += '\n  <script src="./script.js"></script>';
+      }
+    }
+    
+    // Ajouter DOCTYPE si absent
+    if (!hasDoctype) {
+      cleanHtml = '<!DOCTYPE html>\n' + cleanHtml;
+    }
   }
-  if (!cleanHtml.includes('script.js')) {
-    cleanHtml = cleanHtml.replace('</body>', '  <script src="./script.js"></script>\n  </body>');
-  }
+  
+  console.log('HTML final généré (premiers 200 caractères):', cleanHtml.substring(0, 200));
   
   return { html: cleanHtml, css, js };
 }
