@@ -181,7 +181,7 @@ Règles :
         },
         body: JSON.stringify({
           messages: apiMessages,
-          model: 'anthropic/claude-sonnet-4-5',
+          model: 'anthropic/claude-sonnet-4-20250514',
         }),
       });
 
