@@ -152,7 +152,50 @@ serve(async (req) => {
   }
 
   try {
-    const { htmlContent, title } = await req.json();
+    const contentType = req.headers.get('content-type') || '';
+    let htmlContent: string;
+    let title: string;
+    let isReactProject = false;
+    let reactProjectFiles: Record<string, string> = {};
+
+    // Détecter le type de payload
+    if (contentType.includes('application/json')) {
+      // Format JSON classique
+      const json = await req.json();
+      htmlContent = json.htmlContent;
+      title = json.title;
+    } else {
+      // C'est probablement un ZIP de projet React
+      const zipBuffer = await req.arrayBuffer();
+      const zip = await JSZip.loadAsync(zipBuffer);
+      
+      // Extraire tous les fichiers
+      const filePromises = Object.keys(zip.files).map(async (filename) => {
+        const file = zip.files[filename];
+        if (!file.dir) {
+          const content = await file.async('text');
+          reactProjectFiles[filename] = content;
+        }
+      });
+      await Promise.all(filePromises);
+
+      // Vérifier si c'est un projet React
+      if (reactProjectFiles['package.json'] && Object.keys(reactProjectFiles).some(f => f.startsWith('src/'))) {
+        isReactProject = true;
+        // Extraire le titre du package.json
+        try {
+          const pkg = JSON.parse(reactProjectFiles['package.json']);
+          title = pkg.name || 'mon-site';
+        } catch {
+          title = 'mon-site';
+        }
+        htmlContent = JSON.stringify({ files: reactProjectFiles });
+      } else {
+        // HTML simple dans le ZIP
+        htmlContent = reactProjectFiles['index.html'] || Object.values(reactProjectFiles)[0] || '';
+        title = 'mon-site';
+      }
+    }
     
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -179,15 +222,22 @@ serve(async (req) => {
 
     // Parser le projet React
     let projectFiles: Record<string, string> = {};
-    try {
-      const parsed = JSON.parse(htmlContent);
-      projectFiles = parsed.files || parsed;
-    } catch {
-      // Fallback si c'est du HTML brut
-      projectFiles = { 'index.html': htmlContent };
+    
+    if (isReactProject) {
+      // Déjà parsé depuis le ZIP
+      projectFiles = reactProjectFiles;
+    } else {
+      try {
+        const parsed = JSON.parse(htmlContent);
+        projectFiles = parsed.files || parsed;
+      } catch {
+        // Fallback si c'est du HTML brut
+        projectFiles = { 'index.html': htmlContent };
+      }
     }
 
     console.log('📦 Fichiers du projet:', Object.keys(projectFiles));
+    console.log('🔍 Type de projet:', isReactProject ? 'React' : 'HTML');
 
     // Construire le projet
     const builtFiles = await buildReactProject(projectFiles);

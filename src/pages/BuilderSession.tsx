@@ -426,21 +426,46 @@ Règles :
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      const { data, error } = await supabase.functions.invoke('deploy-to-cloudflare', {
-        body: { 
-          htmlContent: generatedHtml,
-          title: websiteTitle
-        },
+      // ÉTAPE A : Conversion HTML → React
+      sonnerToast.info("Conversion du HTML en projet React...");
+      
+      const convertRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/html-to-react`, {
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${session?.access_token}`
-        }
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          htmlContent: generatedHtml,
+          title: websiteTitle,
+        }),
       });
 
-      if (error) throw error;
+      if (!convertRes.ok) {
+        throw new Error('Échec de la conversion du projet');
+      }
 
-      if (data?.url) {
-        sonnerToast.success("Site publié avec succès !");
-        sonnerToast.info(`URL: ${data.url}`, { duration: 10000 });
+      const zipBuffer = await convertRes.arrayBuffer();
+      
+      // ÉTAPE B : Déploiement Cloudflare
+      sonnerToast.info("Déploiement sur Cloudflare...");
+      
+      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-cloudflare`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: zipBuffer,
+      });
+
+      const result = await deployRes.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Erreur de déploiement');
+      }
+
+      if (result.url) {
+        sonnerToast.success("✅ Site publié avec succès !");
+        sonnerToast.info(`URL: ${result.url}`, { duration: 10000 });
         
         // Rediriger vers le dashboard
         setTimeout(() => {
@@ -449,7 +474,7 @@ Règles :
       }
     } catch (error: any) {
       console.error('Error publishing:', error);
-      sonnerToast.error(error.message || "Erreur lors de la publication");
+      sonnerToast.error(error.message || "❌ Erreur lors du déploiement");
     } finally {
       setIsPublishing(false);
     }
@@ -476,6 +501,10 @@ Règles :
           >
             <Home className="w-4 h-4" />
           </Button>
+          
+          <span className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+            Aperçu IA (Claude)
+          </span>
 
           {user && (
             <Button
@@ -525,6 +554,18 @@ Règles :
           <div className="h-6 w-px bg-slate-300" />
 
           <div className="flex items-center gap-2">
+            <Button
+              onClick={() => window.location.reload()}
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              title="Actualiser la preview"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </Button>
+
             <Button
               onClick={handleSave}
               disabled={isSaving}
