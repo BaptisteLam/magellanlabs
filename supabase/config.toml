@@ -9,8 +9,8 @@ verify_jwt = false
 [functions.deploy-to-cloudflare]
 verify_jwt = true
 
-[functions.get-openrouter-key]
-verify_jwt = false
-
 [functions.html-to-react]
-verify_jwt = false
+verify_jwt = true
+
+[functions.ai-generate]
+verify_jwt = true

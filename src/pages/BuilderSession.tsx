@@ -251,28 +251,23 @@ Règles :
         }
       }
 
-      // Récupérer la clé API
-      const { data: secretData } = await supabase.functions.invoke('get-openrouter-key');
-      const OPENROUTER_API_KEY = secretData?.key;
-
-      if (!OPENROUTER_API_KEY) {
-        throw new Error('Clé API OpenRouter non configurée');
+      // Require authentication
+      if (!user) {
+        navigate('/auth');
+        throw new Error('Authentication required');
       }
 
-      // Streaming OpenRouter
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      // Call authenticated AI proxy
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Authorization': `Bearer ${session?.access_token}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': window.location.origin,
         },
         body: JSON.stringify({
-          model: 'anthropic/claude-sonnet-4-5',
           messages: apiMessages,
-          stream: true,
-          max_tokens: 4000,
-          temperature: 0.3,
+          model: 'anthropic/claude-sonnet-4-5',
         }),
       });
 
