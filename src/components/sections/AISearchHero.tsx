@@ -123,38 +123,130 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
 
       if (sessionError) throw sessionError;
 
-      // Appeler l'IA
-      const messages = [{ role: 'user', content: userMessageContent }];
-      const { data, error } = await supabase.functions.invoke('claude', {
-        body: { messages }
+      // Préparer le prompt système
+      const systemPrompt = `Tu es un générateur de sites web professionnels. 
+RÈGLES STRICTES :
+1. Tu dois TOUJOURS répondre avec [EXPLANATION]...[/EXPLANATION] suivi du code HTML complet
+2. Le HTML doit être complet, responsive et moderne
+3. Utilise Tailwind CSS via CDN
+4. Génère un site professionnel et esthétique
+5. Inclus des images via Unsplash si pertinent
+6. Le code HTML doit être prêt à être affiché dans une iframe`;
+
+      // Construire le message pour l'API
+      const apiMessages: any[] = [
+        { role: 'system', content: systemPrompt }
+      ];
+
+      // Ajouter l'ancien HTML si disponible (pour les modifications)
+      if (generatedHtml) {
+        apiMessages.push({
+          role: 'user',
+          content: `Voici le HTML actuel du site :\n\n${generatedHtml}\n\nModification demandée : ${typeof userMessageContent === 'string' ? userMessageContent : userMessageContent.map(c => c.text || '[image]').join(' ')}`
+        });
+      } else {
+        apiMessages.push({
+          role: 'user',
+          content: userMessageContent
+        });
+      }
+
+      // Récupérer la clé API
+      const { data: secretData } = await supabase.functions.invoke('get-openrouter-key');
+      const OPENROUTER_API_KEY = secretData?.key;
+
+      if (!OPENROUTER_API_KEY) {
+        throw new Error('Clé API OpenRouter non configurée');
+      }
+
+      // Appeler OpenRouter en streaming
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': window.location.origin,
+        },
+        body: JSON.stringify({
+          model: 'anthropic/claude-sonnet-4-5',
+          messages: apiMessages,
+          stream: true,
+        }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(`Erreur API: ${response.status}`);
+      }
 
-      if (data?.response) {
-        const fullResponse = data.response;
-        
-        // Extraire l'explication et le HTML
-        const explanationMatch = fullResponse.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
-        const explanation = explanationMatch ? explanationMatch[1].trim() : "Site généré";
-        
-        // Enlever l'explication du HTML
-        const htmlOnly = fullResponse.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
-        
-        // Mettre à jour la session avec le HTML généré
-        await supabase
-          .from('build_sessions')
-          .update({
-            html_content: htmlOnly,
-            messages: [
-              { role: 'user', content: userMessageContent },
-              { role: 'assistant', content: explanation }
-            ]
-          })
-          .eq('id', sessionData.id);
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('Impossible de lire le stream');
 
-        // Rediriger vers la session avec URL unique
-        navigate(`/builder/${sessionData.id}`);
+      const decoder = new TextDecoder();
+      let accumulatedHtml = '';
+      let explanation = '';
+      let inExplanation = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+
+            try {
+              const parsed = JSON.parse(data);
+              const content = parsed.choices?.[0]?.delta?.content || '';
+              
+              if (content) {
+                accumulatedHtml += content;
+                
+                // Extraire l'explication si présente
+                const explanationMatch = accumulatedHtml.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
+                if (explanationMatch) {
+                  explanation = explanationMatch[1].trim();
+                  inExplanation = false;
+                }
+
+                // Enlever l'explication du HTML et mettre à jour en temps réel
+                const htmlOnly = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+                setGeneratedHtml(htmlOnly);
+              }
+            } catch (e) {
+              // Ignorer les erreurs de parsing JSON
+            }
+          }
+        }
+      }
+
+      // Sauvegarder le résultat final
+      const finalHtml = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+      const finalExplanation = explanation || "Site généré";
+
+      await supabase
+        .from('build_sessions')
+        .update({
+          html_content: finalHtml,
+          messages: [
+            { role: 'user', content: userMessageContent },
+            { role: 'assistant', content: finalExplanation }
+          ]
+        })
+        .eq('id', sessionData.id);
+
+      // Rediriger vers la session
+      navigate(`/builder/${sessionData.id}`);
+      
+      setInputValue('');
+      setAttachedFiles([]);
+      setIsLoading(false);
+      
+      if (onGeneratedChange) {
+        onGeneratedChange(true);
       }
     } catch (error) {
       console.error('Error:', error);
