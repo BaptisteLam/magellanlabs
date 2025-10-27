@@ -190,8 +190,7 @@ Génère TOUS les fichiers nécessaires pour un site complet.`;
         model: 'anthropic/claude-sonnet-4.5',
         messages,
         stream: true,
-        max_tokens: 8000,
-        temperature: 0.3,
+        max_tokens: 100000,
       }),
     });
 
