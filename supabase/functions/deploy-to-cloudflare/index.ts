@@ -2,6 +2,35 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
 import JSZip from "https://esm.sh/jszip@3.10.1";
 
+// Minification CSS basique
+function minifyCSS(css: string): string {
+  return css
+    .replace(/\/\*[\s\S]*?\*\//g, '') // Remove comments
+    .replace(/\s+/g, ' ') // Collapse whitespace
+    .replace(/\s*([{}:;,])\s*/g, '$1') // Remove spaces around {}:;,
+    .replace(/;}/g, '}') // Remove last semicolon
+    .trim();
+}
+
+// Minification JS basique
+function minifyJS(js: string): string {
+  return js
+    .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
+    .replace(/\/\/.*/g, '') // Remove single-line comments
+    .replace(/\s+/g, ' ') // Collapse whitespace
+    .replace(/\s*([{}();,=:+\-*/<>!&|])\s*/g, '$1') // Remove spaces around operators
+    .trim();
+}
+
+// Optimisation HTML
+function optimizeHTML(html: string): string {
+  return html
+    .replace(/<!--[\s\S]*?-->/g, '') // Remove HTML comments
+    .replace(/>\s+</g, '><') // Remove whitespace between tags
+    .replace(/\s{2,}/g, ' ') // Collapse multiple spaces
+    .trim();
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -189,6 +218,17 @@ serve(async (req) => {
           body: JSON.stringify({
             name: projectName,
             production_branch: 'main',
+            build_config: {
+              build_command: '',
+              destination_dir: '/',
+              root_dir: '/'
+            },
+            deployment_configs: {
+              production: {
+                compatibility_date: '2024-01-01',
+                compatibility_flags: ['streams_enable_constructors']
+              }
+            }
           }),
         }
       );
@@ -214,21 +254,55 @@ serve(async (req) => {
   console.log('HTML final généré (premiers 200 caractères):', htmlFinal.substring(0, 200));
   console.log('Contenu visible détecté:', hasVisibleContent);
 
-    // Créer un fichier ZIP avec JSZip - TOUJOURS créer les 3 fichiers
+    // Optimiser et minifier les assets pour production
+    const optimizedHTML = optimizeHTML(htmlFinal);
+    const minifiedCSS = css ? minifyCSS(css) : '/* Styles vides */';
+    const minifiedJS = js ? minifyJS(js) : '// Script vide';
+    
+    console.log('Optimisations:', {
+      htmlReduction: `${htmlFinal.length} -> ${optimizedHTML.length} bytes`,
+      cssReduction: css ? `${css.length} -> ${minifiedCSS.length} bytes` : 'empty',
+      jsReduction: js ? `${js.length} -> ${minifiedJS.length} bytes` : 'empty'
+    });
+
+    // Créer un fichier ZIP avec JSZip - TOUJOURS créer les 3 fichiers optimisés
     const zip = new JSZip();
-    zip.file('index.html', htmlFinal);
-    zip.file('style.css', css || '/* Styles vides */');
-    zip.file('script.js', js || '// Script vide');
+    zip.file('index.html', optimizedHTML);
+    zip.file('style.css', minifiedCSS);
+    zip.file('script.js', minifiedJS);
+    
+    // Ajouter _headers pour configuration CDN Cloudflare
+    const headersConfig = `/*
+  Cache-Control: public, max-age=31536000, immutable
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/*.css
+  Content-Type: text/css
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.js
+  Content-Type: application/javascript
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.html
+  Content-Type: text/html; charset=utf-8
+  Cache-Control: public, max-age=3600`;
+    
+    zip.file('_headers', headersConfig);
 
     // Générer le ZIP en tant qu'ArrayBuffer
     const zipArrayBuffer = await zip.generateAsync({ type: 'arraybuffer' });
     console.log(`ZIP created, size: ${zipArrayBuffer.byteLength} bytes`);
 
-    // Créer le manifest pour Cloudflare avec TOUJOURS les 3 fichiers
+    // Créer le manifest pour Cloudflare avec les 4 fichiers (HTML, CSS, JS, headers)
     const manifestEntries: Record<string, { path: string }> = {
       "index.html": { path: "index.html" },
       "style.css": { path: "style.css" },
-      "script.js": { path: "script.js" }
+      "script.js": { path: "script.js" },
+      "_headers": { path: "_headers" }
     };
 
     // Créer le FormData avec le manifest ET le fichier ZIP
