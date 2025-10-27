@@ -4,7 +4,7 @@ import { Facebook, Instagram, Linkedin, Twitter } from 'lucide-react';
 const Footer = () => {
   const navigation = [
     { name: 'Entreprise', href: '/about' },
-    { name: 'Tarif', href: '/services' },
+    { name: 'Tarif', href: '/tarifs' },
     { name: 'Support', href: '/contact' },
   ];
 

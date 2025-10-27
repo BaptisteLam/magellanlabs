@@ -14,20 +14,6 @@
   
   <!-- Pages principales - haute priorité -->
   <url>
-    <loc>https://trinity-studio.fr/services</loc>
-    <lastmod>2025-01-10</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  
-  <url>
-    <loc>https://trinity-studio.fr/portfolio</loc>
-    <lastmod>2025-01-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  
-  <url>
     <loc>https://trinity-studio.fr/contact</loc>
     <lastmod>2025-01-10</lastmod>
     <changefreq>monthly</changefreq>
@@ -37,13 +23,6 @@
   <!-- Pages secondaires -->
   <url>
     <loc>https://trinity-studio.fr/about</loc>
-    <lastmod>2025-01-10</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>https://trinity-studio.fr/booking</loc>
     <lastmod>2025-01-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
