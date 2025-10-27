@@ -721,13 +721,14 @@ Règles :
                   {msg.role === 'user' && idx === messages.length - 1 && isLoading && (
                     <div className={`ml-4 mt-2 flex items-center gap-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                       <Pencil className="w-3.5 h-3.5 animate-pulse" />
-                      <TextType 
-                        text="En modification" 
-                        typingSpeed={80}
-                        showCursor={false}
-                        loop={true}
-                        className="text-xs font-medium"
-                      />
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-medium">AI typing</span>
+                        <span className="inline-flex gap-0.5">
+                          <span className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
+                          <span className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
+                          <span className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>

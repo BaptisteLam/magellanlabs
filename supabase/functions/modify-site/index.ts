@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
 
@@ -12,39 +13,33 @@ interface ProjectFile {
   type: string;
 }
 
-// Parser pour extraire les fichiers modifiés
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+// Parser pour extraire les fichiers avec le marqueur FILE_MODIFIED:
 function parseModifiedFiles(code: string, existingFiles: ProjectFile[]): ProjectFile[] {
   const modifiedFiles: ProjectFile[] = [];
+  const existingFilesMap = new Map(existingFiles.map(f => [f.path, f]));
   
-  // Détection des blocs de code avec chemins de fichiers
-  const fileBlockRegex = /```(?:[\w]+)?:?([\w/.]+)\n([\s\S]*?)```/g;
+  // Parse FILE_MODIFIED: markers
+  const fileModifiedRegex = /FILE_MODIFIED:\s*(.+?)\n([\s\S]*?)(?=FILE_MODIFIED:|$)/g;
   let match;
   
-  while ((match = fileBlockRegex.exec(code)) !== null) {
-    const [, path, content] = match;
-    const extension = path.split('.').pop() || '';
+  while ((match = fileModifiedRegex.exec(code)) !== null) {
+    const filePath = match[1].trim();
+    const content = match[2].trim();
     
-    modifiedFiles.push({
-      path: path.trim(),
-      content: content.trim(),
-      type: getFileType(extension)
-    });
+    if (filePath && content) {
+      const fileType = getFileType(filePath.split('.').pop() || 'txt');
+      modifiedFiles.push({ path: filePath, content, type: fileType });
+      existingFilesMap.delete(filePath); // Remove from existing since it's modified
+    }
   }
   
-  // Fusionner avec les fichiers existants
-  const fileMap = new Map<string, ProjectFile>();
-  
-  // D'abord, ajouter tous les fichiers existants
-  existingFiles.forEach(file => {
-    fileMap.set(file.path, file);
-  });
-  
-  // Ensuite, mettre à jour ou ajouter les fichiers modifiés
-  modifiedFiles.forEach(file => {
-    fileMap.set(file.path, file);
-  });
-  
-  return Array.from(fileMap.values());
+  // Merge: modified files + unmodified existing files
+  return [...modifiedFiles, ...Array.from(existingFilesMap.values())];
 }
 
 function getFileType(extension: string): string {
@@ -70,123 +65,144 @@ serve(async (req) => {
   }
 
   try {
-    // Authentification
+    // Get authorization
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'No authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    });
 
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const { prompt, sessionId, currentFiles } = await req.json();
+    // Parse request - NEW format with relevantFiles and chatHistory
+    const { 
+      message,           // User's modification request
+      sessionId, 
+      relevantFiles,     // Array of { path, content } for context
+      chatHistory        // Last 5 messages for context
+    } = await req.json();
 
-    if (!prompt || !sessionId || !currentFiles) {
-      return new Response(
-        JSON.stringify({ error: 'Prompt, sessionId, and currentFiles are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!message || !sessionId) {
+      return new Response(JSON.stringify({ error: 'message and sessionId are required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log(`[modify-site] User ${user.id} modifying session ${sessionId}`);
 
-    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
-    if (!OPENROUTER_API_KEY) {
+    const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
+    if (!openRouterKey) {
       throw new Error('OPENROUTER_API_KEY not configured');
     }
 
-    // Créer un contexte des fichiers actuels
-    const filesContext = currentFiles.map((f: ProjectFile) => 
-      `\`\`\`${getLanguageFromType(f.type)}:${f.path}\n${f.content}\n\`\`\``
+    const existingFiles: ProjectFile[] = Array.isArray(relevantFiles) ? relevantFiles : [];
+
+    // Build optimized AI prompt with context
+    const systemPrompt = `Tu es un expert développeur. Tu modifies uniquement les fichiers nécessaires pour répondre à la demande.
+
+RÈGLES CRITIQUES :
+1. RETOURNE UNIQUEMENT LES FICHIERS MODIFIÉS
+2. Chaque fichier modifié commence par : FILE_MODIFIED: [chemin/complet.tsx]
+3. Donne le contenu COMPLET mis à jour du fichier
+4. Utilise React 18 + TypeScript + Tailwind CSS
+5. Code production-ready avec bonnes pratiques
+
+FORMAT ATTENDU pour chaque fichier modifié :
+FILE_MODIFIED: src/components/Button.tsx
+[contenu COMPLET mis à jour]
+
+FILE_MODIFIED: src/styles/globals.css
+[contenu COMPLET mis à jour]`;
+
+    // Build context from relevant files
+    const filesContext = existingFiles.map(f => 
+      `FILE_MODIFIED: ${f.path}\n${f.content}`
     ).join('\n\n');
 
-    // Prompt système pour les modifications
-    const systemPrompt = `Tu es un expert en développement web qui modifie des projets existants.
+    // Build chat history context
+    const historyContext = Array.isArray(chatHistory) 
+      ? chatHistory.slice(-5).map((msg: ChatMessage) => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n')
+      : '';
 
-IMPORTANT: Renvoie UNIQUEMENT les fichiers qui ont été modifiés avec ce format exact:
+    const userMessage = `CONTEXTE ACTUEL :
+${filesContext}
 
-\`\`\`html:index.html
-<!DOCTYPE html>
-<html>
-...
-</html>
-\`\`\`
+${historyContext ? `HISTORIQUE :\n${historyContext}\n\n` : ''}DEMANDE ACTUELLE :
+${message}
 
-\`\`\`css:styles/main.css
-body {
-  ...
-}
-\`\`\`
-
-Règles:
-- Renvoie SEULEMENT les fichiers modifiés
-- Garde la même structure de projet
-- Applique exactement les modifications demandées
-- Code professionnel et maintenable`;
+RETOURNE UNIQUEMENT LES FICHIERS MODIFIÉS avec le marqueur FILE_MODIFIED:`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
-      { 
-        role: 'user', 
-        content: `Fichiers actuels du projet:\n\n${filesContext}\n\nModification à appliquer:\n${prompt}`
-      }
+      { role: 'user', content: userMessage }
     ];
 
-    // Appel OpenRouter avec streaming
+    // Stream from OpenRouter
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${openRouterKey}`,
+        'HTTP-Referer': 'https://trinitystudio.ai',
+        'X-Title': 'Trinity Studio AI',
         'Content-Type': 'application/json',
-        'HTTP-Referer': Deno.env.get('SUPABASE_URL') || '',
       },
       body: JSON.stringify({
         model: 'anthropic/claude-sonnet-4.5',
         messages,
         stream: true,
-        max_tokens: 6000,
-        temperature: 0.2,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[modify-site] OpenRouter error:', response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: `AI API error: ${response.status}` }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('OpenRouter error:', response.status, errorText);
+      
+      let errorMessage = 'OpenRouter API error';
+      if (response.status === 429) {
+        errorMessage = 'Rate limit dépassé. Réessayez dans quelques instants.';
+      } else if (response.status === 401) {
+        errorMessage = 'Clé API invalide. Vérifiez vos paramètres.';
+      } else if (response.status === 402) {
+        errorMessage = 'Crédits insuffisants. Rechargez votre compte OpenRouter.';
+      }
+      
+      return new Response(JSON.stringify({ error: errorMessage }), {
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Stream SSE avec parsing en temps réel
-    const encoder = new TextEncoder();
+    // Setup SSE streaming with enhanced events
     const stream = new ReadableStream({
       async start(controller) {
-        const reader = response.body?.getReader();
-        if (!reader) {
-          controller.close();
-          return;
-        }
-
-        const decoder = new TextDecoder();
+        const encoder = new TextEncoder();
         let accumulated = '';
-        let lastModifiedFiles: ProjectFile[] = [];
+        const detectedModifications: string[] = [];
 
         try {
+          // Send start event
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'start', sessionId })}\n\n`));
+
+          const reader = response.body!.getReader();
+          const decoder = new TextDecoder();
+
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -198,29 +214,7 @@ Règles:
               if (!line.startsWith('data:')) continue;
               
               const dataStr = line.replace('data:', '').trim();
-              if (dataStr === '[DONE]') {
-                // Parsing final et fusion avec les fichiers existants
-                const updatedFiles = parseModifiedFiles(accumulated, currentFiles);
-                
-                // Sauvegarder dans Supabase
-                await supabaseClient
-                  .from('build_sessions')
-                  .update({
-                    project_files: updatedFiles,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('id', sessionId);
-
-                // Envoyer événement de fin avec tous les fichiers mis à jour
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'done',
-                  files: updatedFiles,
-                  modifiedPaths: lastModifiedFiles.map(f => f.path)
-                })}\n\n`));
-                
-                controller.close();
-                return;
-              }
+              if (dataStr === '[DONE]') continue;
 
               try {
                 const json = JSON.parse(dataStr);
@@ -228,40 +222,61 @@ Règles:
                 if (!delta) continue;
 
                 accumulated += delta;
-
-                // Parser en temps réel pour détecter les fichiers modifiés
-                const currentModified = parseModifiedFiles(accumulated, currentFiles);
-                const modifiedOnly = currentModified.filter(f => 
-                  !currentFiles.some((cf: ProjectFile) => 
-                    cf.path === f.path && cf.content === f.content
-                  )
-                );
                 
-                if (modifiedOnly.length > lastModifiedFiles.length || 
-                    JSON.stringify(modifiedOnly) !== JSON.stringify(lastModifiedFiles)) {
-                  
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'delta',
-                    content: delta,
-                    modifiedFiles: modifiedOnly,
-                    allFiles: currentModified
-                  })}\n\n`));
-                  
-                  lastModifiedFiles = modifiedOnly;
-                } else {
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'delta',
-                    content: delta
-                  })}\n\n`));
+                // Send chunk event for streaming display
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: delta })}\n\n`));
+
+                // Detect FILE_MODIFIED markers in real-time
+                const fileModifiedMatches = accumulated.matchAll(/FILE_MODIFIED:\s*(.+?)\n/g);
+                for (const match of fileModifiedMatches) {
+                  const filePath = match[1].trim();
+                  if (!detectedModifications.includes(filePath)) {
+                    detectedModifications.push(filePath);
+                    // Send file_detected event
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                      type: 'file_detected', 
+                      data: { path: filePath }
+                    })}\n\n`));
+                  }
                 }
-              } catch (e) {
-                console.error('[modify-site] Parse error:', e);
+              } catch {
+                // Ignore partial JSON
               }
             }
           }
+
+          // Parse all modified files
+          const updatedFiles = parseModifiedFiles(accumulated, existingFiles);
+
+          // Update session in DB
+          const { error: updateError } = await supabase
+            .from('build_sessions')
+            .update({ 
+              project_files: updatedFiles,
+              updated_at: new Date().toISOString() 
+            })
+            .eq('id', sessionId);
+
+          if (updateError) {
+            console.error('Error updating session:', updateError);
+          }
+
+          // Send completion event
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+            type: 'complete', 
+            data: { 
+              totalFiles: updatedFiles.length,
+              modifiedFiles: detectedModifications 
+            }
+          })}\n\n`));
+          controller.close();
         } catch (error) {
-          console.error('[modify-site] Stream error:', error);
-          controller.error(error);
+          console.error('Streaming error:', error);
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+            type: 'error', 
+            data: { message: error.message }
+          })}\n\n`));
+          controller.close();
         }
       }
     });
@@ -283,16 +298,3 @@ Règles:
     );
   }
 });
-
-function getLanguageFromType(type: string): string {
-  const langMap: Record<string, string> = {
-    'html': 'html',
-    'stylesheet': 'css',
-    'javascript': 'javascript',
-    'typescript': 'typescript',
-    'json': 'json',
-    'markdown': 'markdown'
-  };
-  
-  return langMap[type] || 'text';
-}
