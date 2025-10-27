@@ -693,28 +693,28 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
                   srcDoc={`
                     ${generatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/gs, '')}
                     <script>
-                      // Bloquer TOUTE navigation dans l'iframe pour isoler de Trinity
+                      // Intercepter tous les clics sur les liens
                       document.addEventListener('click', function(e) {
                         const target = e.target.closest('a');
                         if (target) {
                           const href = target.getAttribute('href');
-                          // Autoriser uniquement les liens externes (http/https complets)
+                          
+                          // Autoriser UNIQUEMENT les liens externes absolus
                           if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
                             target.setAttribute('target', '_blank');
                             target.setAttribute('rel', 'noopener noreferrer');
-                          } else {
-                            // Bloquer tous les autres liens (relatifs, #, vides)
-                            e.preventDefault();
-                            e.stopPropagation();
-                            return false;
+                            return; // Laisser le lien s'ouvrir dans un nouvel onglet
                           }
+                          
+                          // Bloquer silencieusement tous les autres liens (relatifs, ancres, etc.)
+                          e.preventDefault();
+                          e.stopPropagation();
                         }
                       }, true);
                       
                       // Bloquer la soumission de formulaires
                       document.addEventListener('submit', function(e) {
                         e.preventDefault();
-                        return false;
                       }, true);
                     </script>
                   `}
