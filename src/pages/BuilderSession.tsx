@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { ArrowUp, Save, Eye, Code2, Home, Paperclip, X, Moon, Sun } from "lucide-react";
+import { ArrowUp, Save, Eye, Code2, Home, Paperclip, X, Moon, Sun, Pencil } from "lucide-react";
+import TextType from "@/components/ui/TextType";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -430,37 +431,53 @@ export default function BuilderSession() {
             {/* Chat history */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.map((msg, idx) => (
-                <div key={idx} className={`p-4 rounded-lg ${
-                  msg.role === 'user' 
-                    ? isDark ? 'bg-slate-700 border border-slate-600 ml-4' : 'bg-white border border-slate-200 ml-4'
-                    : isDark ? 'bg-gradient-to-br from-blue-900/50 to-cyan-900/50 border border-blue-800 mr-4' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mr-4'
-                }`}>
-                  <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    {msg.role === 'user' ? 'Vous' : 'Trinity'}
-                  </p>
-                  {msg.role === 'user' ? (
-                    <div>
-                      {typeof msg.content === 'string' ? (
-                        <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{msg.content}</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {msg.content.map((item, i) => (
-                            item.type === 'text' ? (
-                              <p key={i} className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{item.text}</p>
-                            ) : (
-                              <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />
-                            )
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                      {typeof msg.content === 'string' 
-                        ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
-                        : 'Contenu généré'
-                      }
+                <div key={idx}>
+                  <div className={`p-4 rounded-lg ${
+                    msg.role === 'user' 
+                      ? isDark ? 'bg-slate-700 border border-slate-600 ml-4' : 'bg-white border border-slate-200 ml-4'
+                      : isDark ? 'bg-gradient-to-br from-blue-900/50 to-cyan-900/50 border border-blue-800 mr-4' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mr-4'
+                  }`}>
+                    <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {msg.role === 'user' ? 'Vous' : 'Trinity'}
                     </p>
+                    {msg.role === 'user' ? (
+                      <div>
+                        {typeof msg.content === 'string' ? (
+                          <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{msg.content}</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {msg.content.map((item, i) => (
+                              item.type === 'text' ? (
+                                <p key={i} className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{item.text}</p>
+                              ) : (
+                                <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />
+                              )
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                        {typeof msg.content === 'string' 
+                          ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
+                          : 'Contenu généré'
+                        }
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Animation de chargement sous le dernier message utilisateur */}
+                  {msg.role === 'user' && idx === messages.length - 1 && isLoading && (
+                    <div className={`ml-4 mt-2 flex items-center gap-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <Pencil className="w-3.5 h-3.5 animate-pulse" />
+                      <TextType 
+                        text="En modification" 
+                        typingSpeed={80}
+                        showCursor={false}
+                        loop={true}
+                        className="text-xs font-medium"
+                      />
+                    </div>
                   )}
                 </div>
               ))}
