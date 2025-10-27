@@ -13,6 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
 import { VitePreview } from "@/components/VitePreview";
+import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
+import { FileTabs } from "@/components/CodeEditor/FileTabs";
+import { MonacoEditor } from "@/components/CodeEditor/MonacoEditor";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -39,6 +42,7 @@ export default function BuilderSession() {
   const [projectFiles, setProjectFiles] = useState<Record<string, string>>({});
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedFileContent, setSelectedFileContent] = useState<string>('');
+  const [openFiles, setOpenFiles] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [streamingText, setStreamingText] = useState('');
@@ -853,55 +857,71 @@ Règles :
         <ResizableHandle withHandle />
         
           <ResizablePanel defaultSize={70}>
-            <div className="h-full w-full bg-white flex flex-col">
+            <div className="h-full w-full flex flex-col">
               {viewMode === 'preview' ? (
                 <VitePreview projectFiles={projectFiles} isDark={isDark} />
-            ) : (
-              <div className="h-full w-full flex bg-slate-900">
-                {/* Arborescence de fichiers à gauche */}
-                <div className="w-64">
-                  <FileTree 
-                    files={projectFiles}
-                    onFileSelect={(path, content) => {
-                      setSelectedFile(path);
-                      setSelectedFileContent(content);
-                    }}
-                    selectedFile={selectedFile}
-                  />
-                </div>
+              ) : (
+                <div className="h-full flex bg-white">
+                  {/* TreeView - 20% */}
+                  <div className="w-[20%] min-w-[200px]">
+                    <CodeTreeView
+                      files={projectFiles}
+                      selectedFile={selectedFile}
+                      onFileSelect={(path, content) => {
+                        setSelectedFile(path);
+                        setSelectedFileContent(content);
+                        if (!openFiles.includes(path)) {
+                          setOpenFiles([...openFiles, path]);
+                        }
+                      }}
+                    />
+                  </div>
 
-                {/* Éditeur de code à droite */}
-                <div className="flex-1 flex flex-col">
-                  <div className="bg-slate-800 border-b border-slate-700 px-4 py-2">
-                    <span className="text-xs text-slate-300 font-mono">
-                      {selectedFile || 'Sélectionnez un fichier'}
-                    </span>
-                  </div>
-                  <div className="flex-1 overflow-auto">
-                    {selectedFileContent ? (
-                      <div className="flex h-full">
-                        <div className="bg-slate-800 px-3 py-4 text-right select-none">
-                          {selectedFileContent.split('\n').map((_, i) => (
-                            <div key={i} className="text-xs text-slate-500 leading-6 font-mono">
-                              {i + 1}
-                            </div>
-                          ))}
+                  {/* Monaco Editor - 80% */}
+                  <div className="flex-1 flex flex-col">
+                    <FileTabs
+                      openFiles={openFiles}
+                      activeFile={selectedFile}
+                      onTabClick={(path) => {
+                        setSelectedFile(path);
+                        setSelectedFileContent(projectFiles[path]);
+                      }}
+                      onTabClose={(path) => {
+                        const newOpenFiles = openFiles.filter((f) => f !== path);
+                        setOpenFiles(newOpenFiles);
+                        if (selectedFile === path) {
+                          const nextFile = newOpenFiles[newOpenFiles.length - 1] || null;
+                          setSelectedFile(nextFile);
+                          setSelectedFileContent(nextFile ? projectFiles[nextFile] : '');
+                        }
+                      }}
+                    />
+                    <div className="flex-1">
+                      {selectedFileContent ? (
+                        <MonacoEditor
+                          value={selectedFileContent}
+                          language={selectedFile?.split('.').pop() || 'plaintext'}
+                          onChange={(value) => {
+                            if (value !== undefined && selectedFile) {
+                              setSelectedFileContent(value);
+                              setProjectFiles((prev) => ({
+                                ...prev,
+                                [selectedFile]: value,
+                              }));
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full bg-slate-50">
+                          <p className="text-sm text-slate-400">Select a file to start editing</p>
                         </div>
-                        <pre className="flex-1 p-4 text-xs text-slate-100 font-mono overflow-x-auto">
-                          <code>{selectedFileContent}</code>
-                        </pre>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <p className="text-slate-500 text-sm">Sélectionnez un fichier pour voir son contenu</p>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        </ResizablePanel>
+              )}
+            </div>
+          </ResizablePanel>
       </ResizablePanelGroup>
 
       {/* Dialog pour sauvegarder */}

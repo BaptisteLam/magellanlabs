@@ -1,4 +1,3 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
 
@@ -272,9 +271,10 @@ RETOURNE UNIQUEMENT LES FICHIERS MODIFIÉS avec le marqueur FILE_MODIFIED:`;
           controller.close();
         } catch (error) {
           console.error('Streaming error:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
             type: 'error', 
-            data: { message: error.message }
+            data: { message: errorMessage }
           })}\n\n`));
           controller.close();
         }
