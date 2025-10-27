@@ -180,38 +180,116 @@ export default function BuilderSession() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('claude', {
-        body: { messages: newMessages }
+      // Prompt système optimisé
+      const systemPrompt = `Génère un site web HTML complet, responsive avec Tailwind CSS. Format: [EXPLANATION]courte explication[/EXPLANATION]<!DOCTYPE html>...`;
+
+      // OPTIMISATION TOKENS : Envoyer seulement le dernier HTML + nouvelle demande
+      const apiMessages: any[] = [
+        { role: 'system', content: systemPrompt }
+      ];
+
+      if (generatedHtml) {
+        const modificationPrompt = typeof userMessageContent === 'string' 
+          ? userMessageContent 
+          : userMessageContent.map(c => c.text || '[image]').join(' ');
+        
+        apiMessages.push({
+          role: 'user',
+          content: `HTML actuel:\n${generatedHtml}\n\nModification: ${modificationPrompt}`
+        });
+      } else {
+        apiMessages.push({
+          role: 'user',
+          content: userMessageContent
+        });
+      }
+
+      // Récupérer la clé API
+      const { data: secretData } = await supabase.functions.invoke('get-openrouter-key');
+      const OPENROUTER_API_KEY = secretData?.key;
+
+      if (!OPENROUTER_API_KEY) {
+        throw new Error('Clé API OpenRouter non configurée');
+      }
+
+      // Streaming OpenRouter
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': window.location.origin,
+        },
+        body: JSON.stringify({
+          model: 'anthropic/claude-sonnet-4-5',
+          messages: apiMessages,
+          stream: true,
+        }),
       });
 
-      if (error) throw error;
-
-      if (data?.response) {
-        const fullResponse = data.response;
-        
-        // Extraire l'explication et le HTML
-        const explanationMatch = fullResponse.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
-        const explanation = explanationMatch ? explanationMatch[1].trim() : "Site généré";
-        
-        // Enlever l'explication du HTML
-        const htmlOnly = fullResponse.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
-        
-        setGeneratedHtml(htmlOnly);
-        const updatedMessages = [...newMessages, { role: 'assistant' as const, content: explanation }];
-        setMessages(updatedMessages);
-
-        // Auto-save session
-        await supabase
-          .from('build_sessions')
-          .update({
-            html_content: htmlOnly,
-            messages: updatedMessages as any,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', sessionId);
-
-        sonnerToast.success(messages.length > 0 ? "Modifications appliquées !" : "Site généré !");
+      if (!response.ok) {
+        throw new Error(`Erreur API: ${response.status}`);
       }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('Impossible de lire le stream');
+
+      const decoder = new TextDecoder();
+      let accumulatedHtml = '';
+
+      // Streaming en temps réel
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim();
+            if (data === '[DONE]') continue;
+
+            try {
+              const parsed = JSON.parse(data);
+              const content = parsed.choices?.[0]?.delta?.content || '';
+              
+              if (content) {
+                accumulatedHtml += content;
+                
+                // Mise à jour immédiate du HTML
+                const htmlOnly = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+                if (htmlOnly) {
+                  setGeneratedHtml(htmlOnly);
+                }
+              }
+            } catch (e) {
+              // Ignorer les erreurs de parsing JSON partiel
+            }
+          }
+        }
+      }
+
+      // Extraire l'explication finale
+      const explanationMatch = accumulatedHtml.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
+      const explanation = explanationMatch ? explanationMatch[1].trim() : "Site modifié";
+      const finalHtml = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+      
+      setGeneratedHtml(finalHtml);
+      const updatedMessages = [...newMessages, { role: 'assistant' as const, content: explanation }];
+      setMessages(updatedMessages);
+
+      // Auto-save session
+      await supabase
+        .from('build_sessions')
+        .update({
+          html_content: finalHtml,
+          messages: updatedMessages as any,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sessionId);
+
+      sonnerToast.success(messages.length > 0 ? "Modifications appliquées !" : "Site généré !");
     } catch (error) {
       console.error('Error:', error);
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
