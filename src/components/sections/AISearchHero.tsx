@@ -110,41 +110,26 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         userMessageContent = inputValue;
       }
 
-      // Créer une nouvelle session
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('build_sessions')
-        .insert({
-          user_id: user?.id || null,
-          messages: [{ role: 'user', content: userMessageContent }],
-          html_content: '',
-        })
-        .select()
-        .single();
+      // Préparer le prompt système (court et efficace)
+      const systemPrompt = `Génère un site web HTML complet, responsive avec Tailwind CSS. Format: [EXPLANATION]courte explication[/EXPLANATION]<!DOCTYPE html>...`;
 
-      if (sessionError) throw sessionError;
-
-      // Préparer le prompt système
-      const systemPrompt = `Tu es un générateur de sites web professionnels. 
-RÈGLES STRICTES :
-1. Tu dois TOUJOURS répondre avec [EXPLANATION]...[/EXPLANATION] suivi du code HTML complet
-2. Le HTML doit être complet, responsive et moderne
-3. Utilise Tailwind CSS via CDN
-4. Génère un site professionnel et esthétique
-5. Inclus des images via Unsplash si pertinent
-6. Le code HTML doit être prêt à être affiché dans une iframe`;
-
-      // Construire le message pour l'API
+      // OPTIMISATION TOKENS : N'envoyer QUE le dernier état + nouvelle demande
       const apiMessages: any[] = [
         { role: 'system', content: systemPrompt }
       ];
 
-      // Ajouter l'ancien HTML si disponible (pour les modifications)
       if (generatedHtml) {
+        // Mode modification : envoyer seulement le HTML actuel + demande
+        const modificationPrompt = typeof userMessageContent === 'string' 
+          ? userMessageContent 
+          : userMessageContent.map(c => c.text || '[image]').join(' ');
+        
         apiMessages.push({
           role: 'user',
-          content: `Voici le HTML actuel du site :\n\n${generatedHtml}\n\nModification demandée : ${typeof userMessageContent === 'string' ? userMessageContent : userMessageContent.map(c => c.text || '[image]').join(' ')}`
+          content: `HTML actuel:\n${generatedHtml}\n\nModification: ${modificationPrompt}`
         });
       } else {
+        // Première génération
         apiMessages.push({
           role: 'user',
           content: userMessageContent
@@ -183,19 +168,18 @@ RÈGLES STRICTES :
 
       const decoder = new TextDecoder();
       let accumulatedHtml = '';
-      let explanation = '';
-      let inExplanation = false;
 
+      // STREAMING EN TEMPS RÉEL
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
+        const chunk = decoder.decode(value, { stream: true });
         const lines = chunk.split('\n');
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const data = line.slice(6);
+            const data = line.slice(6).trim();
             if (data === '[DONE]') continue;
 
             try {
@@ -205,42 +189,40 @@ RÈGLES STRICTES :
               if (content) {
                 accumulatedHtml += content;
                 
-                // Extraire l'explication si présente
-                const explanationMatch = accumulatedHtml.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
-                if (explanationMatch) {
-                  explanation = explanationMatch[1].trim();
-                  inExplanation = false;
-                }
-
-                // Enlever l'explication du HTML et mettre à jour en temps réel
+                // Mise à jour IMMÉDIATE du HTML (sans attendre la fin)
                 const htmlOnly = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
-                setGeneratedHtml(htmlOnly);
+                if (htmlOnly) {
+                  setGeneratedHtml(htmlOnly);
+                }
               }
             } catch (e) {
-              // Ignorer les erreurs de parsing JSON
+              // Ignorer les erreurs de parsing JSON partiel
             }
           }
         }
       }
 
-      // Sauvegarder le résultat final
+      // Extraire l'explication finale
+      const explanationMatch = accumulatedHtml.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
+      const explanation = explanationMatch ? explanationMatch[1].trim() : "Site généré";
       const finalHtml = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
-      const finalExplanation = explanation || "Site généré";
 
-      await supabase
+      // Créer/Mettre à jour la session uniquement à la fin
+      const { data: sessionData, error: sessionError } = await supabase
         .from('build_sessions')
-        .update({
+        .insert({
+          user_id: user?.id || null,
           html_content: finalHtml,
           messages: [
             { role: 'user', content: userMessageContent },
-            { role: 'assistant', content: finalExplanation }
+            { role: 'assistant', content: explanation }
           ]
         })
-        .eq('id', sessionData.id);
+        .select()
+        .single();
 
-      // Rediriger vers la session
-      navigate(`/builder/${sessionData.id}`);
-      
+      if (sessionError) throw sessionError;
+
       setInputValue('');
       setAttachedFiles([]);
       setIsLoading(false);
@@ -248,6 +230,11 @@ RÈGLES STRICTES :
       if (onGeneratedChange) {
         onGeneratedChange(true);
       }
+
+      sonnerToast.success("Site généré !");
+      
+      // Rediriger uniquement après que tout soit terminé
+      setTimeout(() => navigate(`/builder/${sessionData.id}`), 500);
     } catch (error) {
       console.error('Error:', error);
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
