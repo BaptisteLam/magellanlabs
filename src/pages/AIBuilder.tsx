@@ -41,7 +41,7 @@ const AIBuilder = () => {
         .insert({
           user_id: user?.id || null,
           messages: [{ role: 'user', content: inputValue }],
-          html_content: '',
+          project_files: [],
         })
         .select()
         .single();
@@ -58,10 +58,11 @@ const AIBuilder = () => {
 
       if (data?.response) {
         // Mettre à jour la session avec le HTML généré
+        const filesArray = [{ path: 'index.html', content: data.response, type: 'html' }];
         await supabase
           .from('build_sessions')
           .update({
-            html_content: data.response,
+            project_files: filesArray,
             messages: [
               { role: 'user', content: inputValue },
               { role: 'assistant', content: data.response }
