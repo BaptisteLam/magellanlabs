@@ -115,7 +115,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
 
 RÈGLES STRICTES :
 1. Génère un projet React complet avec structure de fichiers moderne
-2. Format de réponse : [EXPLANATION]explication[/EXPLANATION] suivi de JSON avec structure :
+2. Format de réponse : [EXPLANATION]explication courte[/EXPLANATION] suivi de JSON avec structure :
 {
   "files": {
     "index.html": "contenu HTML",
@@ -139,16 +139,16 @@ RÈGLES STRICTES :
       ];
 
       if (generatedHtml) {
-        // Mode modification : texte uniquement
+        // Mode modification : texte uniquement, limité à 5000 tokens
         const modificationText = typeof userMessageContent === 'string' 
           ? userMessageContent 
           : (Array.isArray(userMessageContent)
-              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image jointe]').join(' ')
+              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image]').join(' ')
               : String(userMessageContent));
         
         apiMessages.push({
           role: 'user',
-          content: `Structure actuelle:\n${generatedHtml}\n\nModification: ${modificationText}`
+          content: `Structure actuelle:\n${generatedHtml.substring(0, 3000)}\n\nModification: ${modificationText}`
         });
       } else {
         // Première génération - format OpenRouter multimodal
@@ -183,7 +183,7 @@ RÈGLES STRICTES :
         throw new Error('Clé API OpenRouter non configurée');
       }
 
-      // Appeler OpenRouter en streaming
+      // Appeler OpenRouter en streaming avec limite de tokens
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -194,6 +194,7 @@ RÈGLES STRICTES :
         body: JSON.stringify({
           model: 'anthropic/claude-sonnet-4-5',
           messages: apiMessages,
+          max_tokens: generatedHtml ? 5000 : 10000, // Limite pour modifications
           stream: true,
         }),
       });
@@ -207,8 +208,9 @@ RÈGLES STRICTES :
 
       const decoder = new TextDecoder();
       let accumulatedHtml = '';
+      let currentExplanation = '';
 
-      // STREAMING EN TEMPS RÉEL
+      // STREAMING EN TEMPS RÉEL avec extraction d'explication
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -228,9 +230,15 @@ RÈGLES STRICTES :
               if (content) {
                 accumulatedHtml += content;
                 
-                // Mise à jour IMMÉDIATE (afficher le JSON progressivement ou HTML si détecté)
+                // Extraire l'explication en temps réel
+                const explanationMatch = accumulatedHtml.match(/\[EXPLANATION\](.*?)(?:\[\/EXPLANATION\]|$)/s);
+                if (explanationMatch) {
+                  currentExplanation = explanationMatch[1].trim();
+                }
+                
+                // Mise à jour IMMÉDIATE du JSON
                 const htmlOnly = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
-                if (htmlOnly) {
+                if (htmlOnly.startsWith('{')) {
                   setGeneratedHtml(htmlOnly);
                 }
               }

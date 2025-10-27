@@ -196,36 +196,35 @@ export default function BuilderSession() {
 
     try {
       // Prompt système pour projet React
-      const systemPrompt = `Génère un projet React/TypeScript complet. Format: [EXPLANATION]explication[/EXPLANATION]{"files":{"index.html":"...","src/App.tsx":"...","src/App.css":"...","src/main.tsx":"...","src/components/[Name].tsx":"...","src/utils/[name].ts":"..."}}
+      const systemPrompt = `Génère un projet React/TypeScript complet. Format: [EXPLANATION]explication courte[/EXPLANATION]{"files":{"index.html":"...","src/App.tsx":"...","src/App.css":"...","src/main.tsx":"...","src/components/[Name].tsx":"...","src/utils/[name].ts":"..."}}
       
 IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratuites (unsplash.com, pexels.com). NE génère PAS d'images avec l'IA.`;
 
-      // OPTIMISATION TOKENS - Format correct pour OpenRouter
+      // Format correct pour OpenRouter
       const apiMessages: any[] = [
         { role: 'system', content: systemPrompt }
       ];
 
       if (generatedHtml) {
-        // Mode modification : message texte uniquement
+        // Mode modification : limité à 5000 tokens
         const modificationText = typeof userMessageContent === 'string' 
           ? userMessageContent 
           : (Array.isArray(userMessageContent) 
-              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image jointe]').join(' ')
+              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image]').join(' ')
               : String(userMessageContent));
         
         apiMessages.push({
           role: 'user',
-          content: `Structure actuelle:\n${JSON.stringify(projectFiles)}\n\nModification: ${modificationText}`
+          content: `Structure actuelle:\n${JSON.stringify(projectFiles).substring(0, 3000)}\n\nModification: ${modificationText}`
         });
       } else {
-        // Première génération - format correct pour multimodal
+        // Première génération - format multimodal
         if (typeof userMessageContent === 'string') {
           apiMessages.push({
             role: 'user',
             content: userMessageContent
           });
         } else if (Array.isArray(userMessageContent)) {
-          // Format OpenRouter pour images
           apiMessages.push({
             role: 'user',
             content: userMessageContent.map(item => {
@@ -251,7 +250,7 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
         throw new Error('Clé API OpenRouter non configurée');
       }
 
-      // Streaming OpenRouter
+      // Streaming OpenRouter avec max_tokens limité pour modifications
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -262,6 +261,7 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
         body: JSON.stringify({
           model: 'anthropic/claude-sonnet-4-5',
           messages: apiMessages,
+          max_tokens: generatedHtml ? 5000 : 10000, // Limite pour modifications
           stream: true,
         }),
       });
@@ -275,8 +275,9 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
 
       const decoder = new TextDecoder();
       let accumulatedContent = '';
+      let currentExplanation = '';
 
-      // Streaming en temps réel
+      // Streaming en temps réel avec extraction d'explication
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -296,28 +297,39 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
               if (content) {
                 accumulatedContent += content;
                 
-                // Essayer de parser le JSON progressivement
-                const contentWithoutExplanation = accumulatedContent.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+                // Extraire l'explication en temps réel
+                const explanationMatch = accumulatedContent.match(/\[EXPLANATION\](.*?)(?:\[\/EXPLANATION\]|$)/s);
+                if (explanationMatch) {
+                  currentExplanation = explanationMatch[1].trim();
+                }
                 
-                try {
-                  const projectData = JSON.parse(contentWithoutExplanation);
-                  if (projectData.files) {
-                    setProjectFiles(projectData.files);
-                    setGeneratedHtml(JSON.stringify(projectData));
-                    
-                    // Auto-select premier fichier
-                    if (!selectedFile && Object.keys(projectData.files).length > 0) {
-                      const firstFile = Object.keys(projectData.files)[0];
-                      setSelectedFile(firstFile);
-                      setSelectedFileContent(projectData.files[firstFile]);
+                // Nettoyer le contenu JSON
+                const contentWithoutExplanation = accumulatedContent
+                  .replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '')
+                  .trim();
+                
+                // Mise à jour progressive du HTML dès que JSON valide
+                if (contentWithoutExplanation.startsWith('{')) {
+                  try {
+                    const projectData = JSON.parse(contentWithoutExplanation);
+                    if (projectData.files) {
+                      setProjectFiles(projectData.files);
+                      setGeneratedHtml(JSON.stringify(projectData));
+                      
+                      // Auto-select premier fichier
+                      if (!selectedFile && Object.keys(projectData.files).length > 0) {
+                        const firstFile = Object.keys(projectData.files)[0];
+                        setSelectedFile(firstFile);
+                        setSelectedFileContent(projectData.files[firstFile]);
+                      }
                     }
+                  } catch {
+                    // JSON incomplet, continuer le streaming
                   }
-                } catch {
-                  // JSON pas encore complet, continuer
                 }
               }
             } catch (e) {
-              // Ignorer les erreurs de parsing JSON partiel
+              // Ignorer erreurs de parsing partiel
             }
           }
         }
