@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { ArrowUp, Save, Eye, Code2, Home, Paperclip, X, Moon, Sun, Pencil } from "lucide-react";
+import { ArrowUp, Save, Eye, Code2, Home, Paperclip, X, Moon, Sun, Pencil, Pause, Play, StopCircle } from "lucide-react";
 import TextType from "@/components/ui/TextType";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
@@ -39,6 +39,11 @@ export default function BuilderSession() {
   const [projectFiles, setProjectFiles] = useState<Record<string, string>>({});
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedFileContent, setSelectedFileContent] = useState<string>('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const streamingRef = useRef<{ abort: () => void } | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
 
   useEffect(() => {
@@ -194,6 +199,8 @@ export default function BuilderSession() {
     setInputValue('');
     setAttachedFiles([]);
     setIsLoading(true);
+    setIsStreaming(true);
+    setStreamingText('');
 
     try {
       // Prompt système pour HTML complet
@@ -259,6 +266,16 @@ Règles :
 
       // Call authenticated AI proxy
       const { data: { session } } = await supabase.auth.getSession();
+      const abortController = new AbortController();
+      
+      streamingRef.current = {
+        abort: () => {
+          abortController.abort();
+          setIsStreaming(false);
+          setIsLoading(false);
+        }
+      };
+
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`, {
         method: 'POST',
         headers: {
@@ -269,6 +286,7 @@ Règles :
           messages: apiMessages,
           model: 'anthropic/claude-sonnet-4.5',
         }),
+        signal: abortController.signal,
       });
 
       if (!response.ok) {
@@ -280,6 +298,32 @@ Règles :
 
       const decoder = new TextDecoder('utf-8');
       let accumulated = '';
+      let displayQueue: string[] = [];
+      let isDisplaying = false;
+
+      // Fonction pour afficher caractère par caractère
+      const displayCharByChar = async () => {
+        if (isDisplaying) return;
+        isDisplaying = true;
+
+        while (displayQueue.length > 0) {
+          // Vérifier si en pause
+          while (isPaused) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+
+          const char = displayQueue.shift()!;
+          setStreamingText(prev => prev + char);
+          
+          // Scroll automatique
+          chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          
+          // Délai pour l'effet typing (ajustable)
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+
+        isDisplaying = false;
+      };
 
       // STREAMING TEMPS RÉEL
       while (true) {
@@ -301,6 +345,16 @@ Règles :
             if (!delta) continue;
 
             accumulated += delta;
+            
+            // Ajouter caractères à la queue d'affichage
+            for (const char of delta) {
+              displayQueue.push(char);
+            }
+            
+            // Démarrer l'affichage si pas déjà en cours
+            if (!isDisplaying) {
+              displayCharByChar();
+            }
 
             // Afficher explication dans le chat
             const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
@@ -325,6 +379,11 @@ Règles :
         }
       }
 
+      // Attendre que tout soit affiché
+      while (displayQueue.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
       // Finaliser
       const finalHtml = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
       
@@ -344,11 +403,18 @@ Règles :
         .eq('id', sessionId);
 
       sonnerToast.success(messages.length > 0 ? "Modifications appliquées !" : "Site généré !");
-    } catch (error) {
-      console.error('Error:', error);
-      sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        sonnerToast.info("Génération arrêtée");
+      } else {
+        console.error('Error:', error);
+        sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
+      }
     } finally {
       setIsLoading(false);
+      setIsStreaming(false);
+      setStreamingText('');
+      streamingRef.current = null;
     }
   };
 
@@ -651,6 +717,51 @@ Règles :
                   )}
                 </div>
               ))}
+
+              {/* Affichage du streaming en temps réel */}
+              {isStreaming && streamingText && (
+                <div className={`p-4 rounded-lg ${isDark ? 'bg-gradient-to-br from-blue-900/50 to-cyan-900/50 border border-blue-800 mr-4' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mr-4'}`}>
+                  <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Code en génération...
+                  </p>
+                  <pre className={`text-xs font-mono ${isDark ? 'text-slate-200' : 'text-slate-700'} whitespace-pre-wrap break-words`}>
+                    {streamingText}<span className="animate-pulse">|</span>
+                  </pre>
+                  
+                  {/* Contrôles de streaming */}
+                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-300/20">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsPaused(!isPaused)}
+                      className="h-7 px-3 text-xs"
+                    >
+                      {isPaused ? (
+                        <>
+                          <Play className="w-3 h-3 mr-1.5" />
+                          Reprendre
+                        </>
+                      ) : (
+                        <>
+                          <Pause className="w-3 h-3 mr-1.5" />
+                          Pause
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => streamingRef.current?.abort()}
+                      className="h-7 px-3 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <StopCircle className="w-3 h-3 mr-1.5" />
+                      Arrêter
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              <div ref={chatEndRef} />
             </div>
             
             {/* Chat input */}
