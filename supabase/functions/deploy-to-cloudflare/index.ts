@@ -119,31 +119,26 @@ serve(async (req) => {
     const zipArrayBuffer = await zip.generateAsync({ type: 'arraybuffer' });
     console.log(`ZIP created, size: ${zipArrayBuffer.byteLength} bytes`);
 
-    // Créer le manifest pour Cloudflare
-    const manifest: Record<string, { data: string; encoding: string }> = {
-      "/index.html": {
-        data: html,
-        encoding: "utf-8"
-      }
+    // Créer le manifest pour Cloudflare avec la liste des fichiers
+    const manifestEntries: Record<string, { path: string }> = {
+      "index.html": { path: "index.html" }
     };
     
     if (css) {
-      manifest["/style.css"] = {
-        data: css,
-        encoding: "utf-8"
-      };
+      manifestEntries["style.css"] = { path: "style.css" };
     }
     
     if (js) {
-      manifest["/script.js"] = {
-        data: js,
-        encoding: "utf-8"
-      };
+      manifestEntries["script.js"] = { path: "script.js" };
     }
 
-    // Créer le FormData avec le manifest
+    // Créer le FormData avec le manifest ET le fichier ZIP
     const formData = new FormData();
-    formData.append('manifest', JSON.stringify(manifest));
+    formData.append('manifest', JSON.stringify({ entries: manifestEntries }));
+    
+    // Ajouter le fichier ZIP
+    const zipBlob = new Blob([zipArrayBuffer], { type: 'application/zip' });
+    formData.append('file', zipBlob, 'build.zip');
 
     console.log(`Deploying to Cloudflare Pages project: ${projectName}`);
     const deployResponse = await fetch(
