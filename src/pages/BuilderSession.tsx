@@ -497,9 +497,6 @@ Règles :
             <Home className="w-4 h-4" />
           </Button>
           
-          <span className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-            Aperçu IA (Claude)
-          </span>
 
           {user && (
             <Button
