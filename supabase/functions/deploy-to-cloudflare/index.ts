@@ -15,12 +15,12 @@ function extractContent(htmlContent: string) {
   const css = styleMatch ? styleMatch[1].trim() : '';
   const js = scriptMatch ? scriptMatch[1].trim() : '';
   
-  // Nettoyer le HTML en enlevant les balises style et script inline
+  // Nettoyer le HTML en enlevant les balises style et script inline seulement si elles contiennent du contenu
   let cleanHtml = htmlContent;
-  if (styleMatch) {
+  if (styleMatch && css) {
     cleanHtml = cleanHtml.replace(styleMatch[0], '<link rel="stylesheet" href="style.css">');
   }
-  if (scriptMatch) {
+  if (scriptMatch && js) {
     cleanHtml = cleanHtml.replace(scriptMatch[0], '<script src="script.js"></script>');
   }
   
