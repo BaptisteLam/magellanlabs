@@ -455,7 +455,12 @@ export default function BuilderSession() {
                       )}
                     </div>
                   ) : (
-                    <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{typeof msg.content === 'string' ? msg.content : 'Contenu généré'}</p>
+                    <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                      {typeof msg.content === 'string' 
+                        ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
+                        : 'Contenu généré'
+                      }
+                    </p>
                   )}
                 </div>
               ))}
