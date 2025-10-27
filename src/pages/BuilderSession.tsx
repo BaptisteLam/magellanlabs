@@ -412,11 +412,12 @@ Règles :
       setSelectedFileContent(finalHtml);
 
       // Auto-save session
+      const filesArray = [{ path: 'index.html', content: finalHtml, type: 'html' }];
       await supabase
         .from('build_sessions')
         .update({
-          html_content: finalHtml,
-          messages: messages as any,
+          project_files: filesArray,
+          messages: newMessages as any,
           updated_at: new Date().toISOString()
         })
         .eq('id', sessionId);
