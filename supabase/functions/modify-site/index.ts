@@ -166,7 +166,7 @@ RETOURNE UNIQUEMENT LES FICHIERS MODIFIÉS avec le marqueur FILE_MODIFIED:`;
         model: 'anthropic/claude-sonnet-4.5',
         messages,
         stream: true,
-        max_tokens: 10000,
+        max_tokens: 16000,
       }),
     });
 
