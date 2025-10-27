@@ -46,15 +46,28 @@ function extractContent(htmlContent: string) {
   const scriptMatch = cleanedContent.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
   
   const css = styleMatch ? styleMatch[1].trim() : '';
-  const js = scriptMatch ? scriptMatch[1].trim() : '';
+  let js = scriptMatch ? scriptMatch[1].trim() : '';
   
   // Nettoyer le HTML en enlevant les balises style et script inline
+  // SAUF si le script contient du code qui écrit dans le DOM
   let cleanHtml = cleanedContent;
   if (styleMatch) {
     cleanHtml = cleanHtml.replace(styleMatch[0], '');
   }
+  
+  // Ne supprimer le script que s'il n'écrit pas dans le DOM
   if (scriptMatch) {
-    cleanHtml = cleanHtml.replace(scriptMatch[0], '');
+    const scriptContent = scriptMatch[1];
+    const writesDom = /document\.(body|getElementById|querySelector|write|innerHTML|createElement)/i.test(scriptContent);
+    
+    if (!writesDom) {
+      // Le script n'écrit pas dans le DOM, on peut le déplacer vers script.js
+      cleanHtml = cleanHtml.replace(scriptMatch[0], '');
+    } else {
+      // Le script écrit dans le DOM, on le garde inline et on vide js externe
+      console.log('Script inline conservé car il écrit dans le DOM');
+      js = '';
+    }
   }
   
   // Vérifier si le HTML a une structure complète
@@ -190,12 +203,20 @@ serve(async (req) => {
     }
 
     // Extraire HTML, CSS et JS
-    const { html, css, js } = extractContent(htmlContent);
-    console.log('Extracted content:', { hasHtml: !!html, hasCss: !!css, hasJs: !!js });
+  const { html, css, js } = extractContent(htmlContent);
+  console.log('Extracted content:', { hasHtml: !!html, hasCss: !!css, hasJs: !!js });
+  
+  // Vérifier que le HTML final contient du contenu visible
+  const htmlFinal = html || DEFAULT_HTML;
+  const hasVisibleContent = /<body[^>]*>[\s\S]*?<\/body>/i.test(htmlFinal) && 
+                            htmlFinal.replace(/<[^>]*>/g, '').trim().length > 0;
+  
+  console.log('HTML final généré (premiers 200 caractères):', htmlFinal.substring(0, 200));
+  console.log('Contenu visible détecté:', hasVisibleContent);
 
     // Créer un fichier ZIP avec JSZip - TOUJOURS créer les 3 fichiers
     const zip = new JSZip();
-    zip.file('index.html', html);
+    zip.file('index.html', htmlFinal);
     zip.file('style.css', css || '/* Styles vides */');
     zip.file('script.js', js || '// Script vide');
 
@@ -246,7 +267,7 @@ serve(async (req) => {
       .insert({
         user_id: user.id,
         title: title || 'Mon site web',
-        html_content: htmlContent,
+        html_content: htmlFinal, // Enregistrer le HTML nettoyé, pas le brut
         cloudflare_url: cloudflareUrl,
         cloudflare_project_name: projectName,
       })
