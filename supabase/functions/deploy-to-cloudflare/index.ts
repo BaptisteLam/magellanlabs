@@ -7,21 +7,48 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Fonction pour extraire CSS et JS du HTML
+// Template HTML par défaut
+const DEFAULT_HTML = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Site créé avec Trinity 🚀</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <h1>Bienvenue sur votre site Trinity 🚀</h1>
+    <script src="./script.js"></script>
+  </body>
+</html>`;
+
+// Fonction pour extraire CSS et JS du HTML et garantir un HTML valide
 function extractContent(htmlContent: string) {
+  // Si le HTML est vide ou quasi vide, utiliser le template par défaut
+  if (!htmlContent || htmlContent.trim().length < 20) {
+    return { html: DEFAULT_HTML, css: '', js: '' };
+  }
+
   const styleMatch = htmlContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
   const scriptMatch = htmlContent.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
   
   const css = styleMatch ? styleMatch[1].trim() : '';
   const js = scriptMatch ? scriptMatch[1].trim() : '';
   
-  // Nettoyer le HTML en enlevant les balises style et script inline seulement si elles contiennent du contenu
+  // Nettoyer le HTML en enlevant les balises style et script inline
   let cleanHtml = htmlContent;
-  if (styleMatch && css) {
-    cleanHtml = cleanHtml.replace(styleMatch[0], '<link rel="stylesheet" href="style.css">');
+  if (styleMatch) {
+    cleanHtml = cleanHtml.replace(styleMatch[0], '');
   }
-  if (scriptMatch && js) {
-    cleanHtml = cleanHtml.replace(scriptMatch[0], '<script src="script.js"></script>');
+  if (scriptMatch) {
+    cleanHtml = cleanHtml.replace(scriptMatch[0], '');
+  }
+  
+  // S'assurer que les liens vers CSS et JS sont présents dans le <head> et avant </body>
+  if (!cleanHtml.includes('style.css')) {
+    cleanHtml = cleanHtml.replace('</head>', '  <link rel="stylesheet" href="./style.css">\n  </head>');
+  }
+  if (!cleanHtml.includes('script.js')) {
+    cleanHtml = cleanHtml.replace('</body>', '  <script src="./script.js"></script>\n  </body>');
   }
   
   return { html: cleanHtml, css, js };
@@ -109,28 +136,22 @@ serve(async (req) => {
     const { html, css, js } = extractContent(htmlContent);
     console.log('Extracted content:', { hasHtml: !!html, hasCss: !!css, hasJs: !!js });
 
-    // Créer un fichier ZIP avec JSZip
+    // Créer un fichier ZIP avec JSZip - TOUJOURS créer les 3 fichiers
     const zip = new JSZip();
     zip.file('index.html', html);
-    if (css) zip.file('style.css', css);
-    if (js) zip.file('script.js', js);
+    zip.file('style.css', css || '/* Styles vides */');
+    zip.file('script.js', js || '// Script vide');
 
     // Générer le ZIP en tant qu'ArrayBuffer
     const zipArrayBuffer = await zip.generateAsync({ type: 'arraybuffer' });
     console.log(`ZIP created, size: ${zipArrayBuffer.byteLength} bytes`);
 
-    // Créer le manifest pour Cloudflare avec la liste des fichiers
+    // Créer le manifest pour Cloudflare avec TOUJOURS les 3 fichiers
     const manifestEntries: Record<string, { path: string }> = {
-      "index.html": { path: "index.html" }
+      "index.html": { path: "index.html" },
+      "style.css": { path: "style.css" },
+      "script.js": { path: "script.js" }
     };
-    
-    if (css) {
-      manifestEntries["style.css"] = { path: "style.css" };
-    }
-    
-    if (js) {
-      manifestEntries["script.js"] = { path: "script.js" };
-    }
 
     // Créer le FormData avec le manifest ET le fichier ZIP
     const formData = new FormData();
