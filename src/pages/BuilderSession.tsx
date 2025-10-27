@@ -543,7 +543,7 @@ export default function BuilderSession() {
               {viewMode === 'preview' ? (
                 <iframe 
                   srcDoc={`
-                    ${generatedHtml}
+                    ${generatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/gs, '')}
                     <script>
                       // Bloquer TOUTE navigation dans l'iframe pour isoler de Trinity
                       document.addEventListener('click', function(e) {
