@@ -35,8 +35,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "anthropic/claude-sonnet-4.5",
-        max_tokens: 10000,
-        temperature: 0.7,
+        max_tokens: 100000,
         messages: [
           {
             role: "system",
