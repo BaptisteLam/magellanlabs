@@ -232,7 +232,7 @@ Règles :
 3. Utilise Tailwind CDN (<script src="https://cdn.tailwindcss.com"></script>)
 4. Icônes Lucide inline (pas d'emojis)
 5. 4 images maximum (Unsplash/Pexels)
-6. Sections : header, hero, features, contact, footer
+6. Sections : header, hero, features, contact (PAS de footer)
 7. Mobile-first, cohérence visuelle, CTA clair.`;
 
       // Format messages pour OpenRouter
