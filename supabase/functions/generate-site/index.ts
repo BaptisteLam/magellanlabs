@@ -234,15 +234,15 @@ Génère TOUS les fichiers nécessaires pour un site complet.`;
         let lastParsedFiles: ProjectFile[] = [];
         let timeout: number | null = null;
 
-        // Timeout de 60 secondes
+        // Timeout de 360 secondes
         timeout = setTimeout(() => {
-          console.error('[generate-site] Timeout après 60s');
+          console.error('[generate-site] Timeout après 360s');
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'error',
             data: { message: 'Timeout: La génération a pris trop de temps. Veuillez réessayer.' }
           })}\n\n`));
           controller.close();
-        }, 60000);
+        }, 360000);
 
         try {
           while (true) {
