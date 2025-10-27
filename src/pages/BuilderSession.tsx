@@ -11,7 +11,7 @@ import { toast as sonnerToast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CodePreview } from "@/components/CodePreview";
+import { FileTree } from "@/components/FileTree";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -68,35 +68,30 @@ export default function BuilderSession() {
       }
 
       if (data) {
-        // Parser les fichiers structurés
+        setGeneratedHtml(data.html_content || '');
+        
+        // Parser les fichiers de projet si présents
         try {
-          const parsedFiles = JSON.parse(data.html_content || '{}');
-          
-          // Si c'est un objet de fichiers
-          if (typeof parsedFiles === 'object' && parsedFiles !== null) {
-            setProjectFiles(parsedFiles);
-            setGeneratedHtml(data.html_content || '');
-            
-            // Auto-select index.html ou premier fichier
-            const indexFile = parsedFiles['index.html'] ? 'index.html' : Object.keys(parsedFiles)[0];
-            if (indexFile) {
-              setSelectedFile(indexFile);
-              setSelectedFileContent(parsedFiles[indexFile]);
+          const parsed = JSON.parse(data.html_content || '{}');
+          if (parsed.files) {
+            setProjectFiles(parsed.files);
+            // Sélectionner le premier fichier par défaut
+            const firstFile = Object.keys(parsed.files)[0];
+            if (firstFile) {
+              setSelectedFile(firstFile);
+              setSelectedFileContent(parsed.files[firstFile]);
             }
           } else {
-            // Fallback ancien format
+            // Ancien format HTML monolithique
             setProjectFiles({ 'index.html': data.html_content || '' });
             setSelectedFile('index.html');
             setSelectedFileContent(data.html_content || '');
-            setGeneratedHtml(data.html_content || '');
           }
         } catch {
           // Fallback si parsing échoue
-          const htmlContent = data.html_content || '';
-          setProjectFiles({ 'index.html': htmlContent });
+          setProjectFiles({ 'index.html': data.html_content || '' });
           setSelectedFile('index.html');
-          setSelectedFileContent(htmlContent);
-          setGeneratedHtml(htmlContent);
+          setSelectedFileContent(data.html_content || '');
         }
 
         const parsedMessages = Array.isArray(data.messages) ? data.messages as any[] : [];
@@ -114,13 +109,10 @@ export default function BuilderSession() {
     if (!sessionId) return;
 
     try {
-      // Stocker les fichiers en JSON structuré
-      const dataToSave = JSON.stringify(projectFiles);
-      
       const { error } = await supabase
         .from('build_sessions')
         .update({
-          html_content: dataToSave,
+          html_content: generatedHtml,
           messages: messages as any,
           title: websiteTitle,
           updated_at: new Date().toISOString()
@@ -203,42 +195,37 @@ export default function BuilderSession() {
     setIsLoading(true);
 
     try {
-      // Construire les messages pour l'API
-      const systemPrompt = `Tu es un expert en création de sites web complets. Format: [EXPLANATION]courte explication[/EXPLANATION] suivi d'un JSON valide:
-{"index.html":"<!DOCTYPE html>...","style.css":"...","script.js":"...","pages/about.html":"..."}
+      // Prompt système pour projet React
+      const systemPrompt = `Génère un projet React/TypeScript complet. Format: [EXPLANATION]explication[/EXPLANATION]{"files":{"index.html":"...","src/App.tsx":"...","src/App.css":"...","src/main.tsx":"...","src/components/[Name].tsx":"...","src/utils/[name].ts":"..."}}
+      
+IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratuites (unsplash.com, pexels.com). NE génère PAS d'images avec l'IA.`;
 
-RÈGLES:
-- JSON valide sans markdown
-- Chaque HTML complet avec <!DOCTYPE>
-- Liens entre fichiers: <link rel="stylesheet" href="/style.css">
-- Pour modifications: retourne SEULEMENT les fichiers modifiés
-- Images: utilise unsplash.com ou SVG inline`;
-
-      // Format correct pour OpenRouter
+      // OPTIMISATION TOKENS - Format correct pour OpenRouter
       const apiMessages: any[] = [
         { role: 'system', content: systemPrompt }
       ];
 
       if (generatedHtml) {
-        // Mode modification : limité à 5000 tokens
+        // Mode modification : message texte uniquement
         const modificationText = typeof userMessageContent === 'string' 
           ? userMessageContent 
           : (Array.isArray(userMessageContent) 
-              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image]').join(' ')
+              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image jointe]').join(' ')
               : String(userMessageContent));
         
         apiMessages.push({
           role: 'user',
-          content: `Fichiers actuels:\n${JSON.stringify(projectFiles).substring(0, 2500)}\n\nModification demandée: ${modificationText}\n\nRetourne SEULEMENT les fichiers modifiés au format JSON.`
+          content: `Structure actuelle:\n${JSON.stringify(projectFiles)}\n\nModification: ${modificationText}`
         });
       } else {
-        // Première génération - format multimodal
+        // Première génération - format correct pour multimodal
         if (typeof userMessageContent === 'string') {
           apiMessages.push({
             role: 'user',
             content: userMessageContent
           });
         } else if (Array.isArray(userMessageContent)) {
+          // Format OpenRouter pour images
           apiMessages.push({
             role: 'user',
             content: userMessageContent.map(item => {
@@ -264,7 +251,7 @@ RÈGLES:
         throw new Error('Clé API OpenRouter non configurée');
       }
 
-      // Streaming OpenRouter avec max_tokens limité pour modifications
+      // Streaming OpenRouter
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -275,7 +262,6 @@ RÈGLES:
         body: JSON.stringify({
           model: 'anthropic/claude-sonnet-4-5',
           messages: apiMessages,
-          max_tokens: generatedHtml ? 5000 : 10000, // Limite pour modifications
           stream: true,
         }),
       });
@@ -289,9 +275,8 @@ RÈGLES:
 
       const decoder = new TextDecoder();
       let accumulatedContent = '';
-      let currentExplanation = '';
 
-      // Streaming en temps réel avec extraction d'explication
+      // Streaming en temps réel
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -311,41 +296,28 @@ RÈGLES:
               if (content) {
                 accumulatedContent += content;
                 
-                // Extraire l'explication en temps réel
-                const explanationMatch = accumulatedContent.match(/\[EXPLANATION\](.*?)(?:\[\/EXPLANATION\]|$)/s);
-                if (explanationMatch) {
-                  currentExplanation = explanationMatch[1].trim();
-                }
+                // Essayer de parser le JSON progressivement
+                const contentWithoutExplanation = accumulatedContent.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
                 
-                // Nettoyer le JSON (retirer explication)
-                const jsonOnly = accumulatedContent
-                  .replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '')
-                  .trim();
-                
-                // Parser et afficher en temps réel
-                if (jsonOnly.startsWith('{')) {
-                  try {
-                    const filesData = JSON.parse(jsonOnly);
-                    // Gérer les deux formats: {"files": {...}} ou {...} direct
-                    const files = filesData.files || filesData;
+                try {
+                  const projectData = JSON.parse(contentWithoutExplanation);
+                  if (projectData.files) {
+                    setProjectFiles(projectData.files);
+                    setGeneratedHtml(JSON.stringify(projectData));
                     
-                    // Merger les fichiers (pour les modifications partielles)
-                    setProjectFiles(prev => ({ ...prev, ...files }));
-                    setGeneratedHtml(JSON.stringify(files));
-                    
-                    // Auto-select index.html ou premier fichier
-                    if (!selectedFile && Object.keys(files).length > 0) {
-                      const indexFile = files['index.html'] ? 'index.html' : Object.keys(files)[0];
-                      setSelectedFile(indexFile);
-                      setSelectedFileContent(files[indexFile]);
+                    // Auto-select premier fichier
+                    if (!selectedFile && Object.keys(projectData.files).length > 0) {
+                      const firstFile = Object.keys(projectData.files)[0];
+                      setSelectedFile(firstFile);
+                      setSelectedFileContent(projectData.files[firstFile]);
                     }
-                  } catch {
-                    // JSON incomplet, continuer streaming
                   }
+                } catch {
+                  // JSON pas encore complet, continuer
                 }
               }
             } catch (e) {
-              // Ignorer erreurs de parsing partiel
+              // Ignorer les erreurs de parsing JSON partiel
             }
           }
         }
@@ -354,27 +326,17 @@ RÈGLES:
       // Extraction finale
       const explanationMatch = accumulatedContent.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
       const explanation = explanationMatch ? explanationMatch[1].trim() : "Projet modifié";
-      const finalJson = accumulatedContent.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+      const finalContent = accumulatedContent.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
       
-      // Parser les fichiers finaux
-      try {
-        const filesData = JSON.parse(finalJson);
-        const finalFiles = filesData.files || filesData;
-        setProjectFiles(prev => ({ ...prev, ...finalFiles }));
-        setGeneratedHtml(JSON.stringify(finalFiles));
-      } catch (e) {
-        console.error('Erreur parsing JSON final:', e);
-      }
-      
+      setGeneratedHtml(finalContent);
       const updatedMessages = [...newMessages, { role: 'assistant' as const, content: explanation }];
       setMessages(updatedMessages);
 
-      // Auto-save session avec les fichiers structurés
-      const dataToSave = JSON.stringify(projectFiles);
+      // Auto-save session
       await supabase
         .from('build_sessions')
         .update({
-          html_content: dataToSave,
+          html_content: finalContent,
           messages: updatedMessages as any,
           updated_at: new Date().toISOString()
         })
@@ -761,10 +723,51 @@ RÈGLES:
                   sandbox="allow-same-origin allow-scripts allow-popups"
                 />
             ) : (
-              <CodePreview files={projectFiles} isDark={isDark} />
+              <div className="h-full w-full flex bg-slate-900">
+                {/* Arborescence de fichiers à gauche */}
+                <div className="w-64">
+                  <FileTree 
+                    files={projectFiles}
+                    onFileSelect={(path, content) => {
+                      setSelectedFile(path);
+                      setSelectedFileContent(content);
+                    }}
+                    selectedFile={selectedFile}
+                  />
+                </div>
+
+                {/* Éditeur de code à droite */}
+                <div className="flex-1 flex flex-col">
+                  <div className="bg-slate-800 border-b border-slate-700 px-4 py-2">
+                    <span className="text-xs text-slate-300 font-mono">
+                      {selectedFile || 'Sélectionnez un fichier'}
+                    </span>
+                  </div>
+                  <div className="flex-1 overflow-auto">
+                    {selectedFileContent ? (
+                      <div className="flex h-full">
+                        <div className="bg-slate-800 px-3 py-4 text-right select-none">
+                          {selectedFileContent.split('\n').map((_, i) => (
+                            <div key={i} className="text-xs text-slate-500 leading-6 font-mono">
+                              {i + 1}
+                            </div>
+                          ))}
+                        </div>
+                        <pre className="flex-1 p-4 text-xs text-slate-100 font-mono overflow-x-auto">
+                          <code>{selectedFileContent}</code>
+                        </pre>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <p className="text-slate-500 text-sm">Sélectionnez un fichier pour voir son contenu</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
-            </div>
-          </ResizablePanel>
+          </div>
+        </ResizablePanel>
       </ResizablePanelGroup>
 
       {/* Dialog pour sauvegarder */}

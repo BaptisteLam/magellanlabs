@@ -21,18 +21,116 @@ const DEFAULT_HTML = `<!DOCTYPE html>
   </body>
 </html>`;
 
+// Fonction pour extraire CSS et JS du HTML et garantir un HTML complet et valide
+function extractContent(htmlContent: string) {
+  // Si le HTML est vide ou quasi vide, utiliser le template par défaut
+  if (!htmlContent || htmlContent.trim().length < 20) {
+    console.log('HTML vide ou trop court, utilisation du template par défaut');
+    return { html: DEFAULT_HTML, css: '', js: '' };
+  }
+  
+  // Nettoyer les balises [EXPLANATION] ou tout texte avant <!DOCTYPE ou <html
+  let cleanedContent = htmlContent;
+  const doctypeIndex = cleanedContent.search(/<!DOCTYPE/i);
+  const htmlIndex = cleanedContent.search(/<html/i);
+  
+  if (doctypeIndex > 0) {
+    cleanedContent = cleanedContent.substring(doctypeIndex);
+    console.log('Texte supprimé avant <!DOCTYPE');
+  } else if (htmlIndex > 0) {
+    cleanedContent = cleanedContent.substring(htmlIndex);
+    console.log('Texte supprimé avant <html>');
+  }
+
+  const styleMatch = cleanedContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  const scriptMatch = cleanedContent.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+  
+  const css = styleMatch ? styleMatch[1].trim() : '';
+  let js = scriptMatch ? scriptMatch[1].trim() : '';
+  
+  // Nettoyer le HTML en enlevant les balises style et script inline
+  // SAUF si le script contient du code qui écrit dans le DOM
+  let cleanHtml = cleanedContent;
+  if (styleMatch) {
+    cleanHtml = cleanHtml.replace(styleMatch[0], '');
+  }
+  
+  // Ne supprimer le script que s'il n'écrit pas dans le DOM
+  if (scriptMatch) {
+    const scriptContent = scriptMatch[1];
+    const writesDom = /document\.(body|getElementById|querySelector|write|innerHTML|createElement)/i.test(scriptContent);
+    
+    if (!writesDom) {
+      // Le script n'écrit pas dans le DOM, on peut le déplacer vers script.js
+      cleanHtml = cleanHtml.replace(scriptMatch[0], '');
+    } else {
+      // Le script écrit dans le DOM, on le garde inline et on vide js externe
+      console.log('Script inline conservé car il écrit dans le DOM');
+      js = '';
+    }
+  }
+  
+  // Vérifier si le HTML a une structure complète
+  const hasDoctype = cleanHtml.includes('<!DOCTYPE') || cleanHtml.includes('<!doctype');
+  const hasHtml = cleanHtml.includes('<html');
+  const hasHead = cleanHtml.includes('<head');
+  const hasBody = cleanHtml.includes('<body');
+  
+  console.log('Structure HTML détectée:', { hasDoctype, hasHtml, hasHead, hasBody });
+  
+  // Si le HTML n'a pas de structure complète, le wrapper
+  if (!hasHtml || !hasHead || !hasBody) {
+    console.log('HTML incomplet détecté, création d\'une structure complète');
+    cleanHtml = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Site créé avec Trinity 🚀</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    ${cleanHtml}
+    <script src="./script.js"></script>
+  </body>
+</html>`;
+  } else {
+    // S'assurer que les liens vers CSS et JS sont présents
+    if (!cleanHtml.includes('style.css')) {
+      if (cleanHtml.includes('</head>')) {
+        cleanHtml = cleanHtml.replace('</head>', '  <link rel="stylesheet" href="./style.css">\n  </head>');
+      } else if (cleanHtml.includes('<head>')) {
+        cleanHtml = cleanHtml.replace('<head>', '<head>\n  <link rel="stylesheet" href="./style.css">');
+      }
+    }
+    
+    if (!cleanHtml.includes('script.js')) {
+      if (cleanHtml.includes('</body>')) {
+        cleanHtml = cleanHtml.replace('</body>', '  <script src="./script.js"></script>\n  </body>');
+      } else if (cleanHtml.includes('</html>')) {
+        cleanHtml = cleanHtml.replace('</html>', '  <script src="./script.js"></script>\n</html>');
+      } else {
+        cleanHtml += '\n  <script src="./script.js"></script>';
+      }
+    }
+    
+    // Ajouter DOCTYPE si absent
+    if (!hasDoctype) {
+      cleanHtml = '<!DOCTYPE html>\n' + cleanHtml;
+    }
+  }
+  
+  console.log('HTML final généré (premiers 200 caractères):', cleanHtml.substring(0, 200));
+  
+  return { html: cleanHtml, css, js };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { projectFiles, title } = await req.json();
-    
-    // Valider que projectFiles est un objet JSON valide
-    if (!projectFiles || typeof projectFiles !== "object") {
-      throw new Error("projectFiles JSON invalide");
-    }
+    const { htmlContent, title } = await req.json();
     
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -104,21 +202,34 @@ serve(async (req) => {
       console.log(`Project ${projectName} already exists, creating new deployment`);
     }
 
-    // Créer un ZIP avec tous les fichiers du projet
+    // Extraire HTML, CSS et JS
+  const { html, css, js } = extractContent(htmlContent);
+  console.log('Extracted content:', { hasHtml: !!html, hasCss: !!css, hasJs: !!js });
+  
+  // Vérifier que le HTML final contient du contenu visible
+  const htmlFinal = html || DEFAULT_HTML;
+  const hasVisibleContent = /<body[^>]*>[\s\S]*?<\/body>/i.test(htmlFinal) && 
+                            htmlFinal.replace(/<[^>]*>/g, '').trim().length > 0;
+  
+  console.log('HTML final généré (premiers 200 caractères):', htmlFinal.substring(0, 200));
+  console.log('Contenu visible détecté:', hasVisibleContent);
+
+    // Créer un fichier ZIP avec JSZip - TOUJOURS créer les 3 fichiers
     const zip = new JSZip();
-    for (const [path, content] of Object.entries(projectFiles)) {
-      zip.file(path, content as string);
-    }
+    zip.file('index.html', htmlFinal);
+    zip.file('style.css', css || '/* Styles vides */');
+    zip.file('script.js', js || '// Script vide');
 
     // Générer le ZIP en tant qu'ArrayBuffer
     const zipArrayBuffer = await zip.generateAsync({ type: 'arraybuffer' });
-    console.log(`ZIP created with ${Object.keys(projectFiles).length} files, size: ${zipArrayBuffer.byteLength} bytes`);
+    console.log(`ZIP created, size: ${zipArrayBuffer.byteLength} bytes`);
 
-    // Créer le manifest automatiquement pour tous les fichiers
-    const manifestEntries: Record<string, { path: string }> = {};
-    for (const path of Object.keys(projectFiles)) {
-      manifestEntries[path] = { path };
-    }
+    // Créer le manifest pour Cloudflare avec TOUJOURS les 3 fichiers
+    const manifestEntries: Record<string, { path: string }> = {
+      "index.html": { path: "index.html" },
+      "style.css": { path: "style.css" },
+      "script.js": { path: "script.js" }
+    };
 
     // Créer le FormData avec le manifest ET le fichier ZIP
     const formData = new FormData();
@@ -150,13 +261,13 @@ serve(async (req) => {
     const cloudflareUrl = deployData.result?.url || `https://${projectName}.pages.dev`;
     console.log(`Deployment successful: ${cloudflareUrl}`);
 
-    // Sauvegarder dans la base de données avec le JSON complet
+    // Sauvegarder dans la base de données
     const { data: website, error: insertError } = await supabase
       .from('websites')
       .insert({
         user_id: user.id,
         title: title || 'Mon site web',
-        html_content: JSON.stringify(projectFiles), // Enregistrer le JSON complet des fichiers
+        html_content: htmlFinal, // Enregistrer le HTML nettoyé, pas le brut
         cloudflare_url: cloudflareUrl,
         cloudflare_project_name: projectName,
       })

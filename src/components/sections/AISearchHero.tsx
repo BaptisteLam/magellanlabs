@@ -110,16 +110,28 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         userMessageContent = inputValue;
       }
 
-      // Prompt système
-      const systemPrompt = `Tu es un expert en création de sites web complets. Format: [EXPLANATION]explication courte[/EXPLANATION] suivi d'un JSON valide:
-{"index.html":"<!DOCTYPE html>...","style.css":"...","script.js":"...","pages/about.html":"..."}
+      // Prompt système pour générer un projet React complet
+      const systemPrompt = `Tu es un générateur de projets web React/TypeScript professionnels.
 
-RÈGLES:
-- JSON valide sans markdown
-- Chaque HTML complet avec <!DOCTYPE>
-- Liens entre fichiers: <link rel="stylesheet" href="/style.css">
-- Images: unsplash.com ou SVG inline
-- Design responsive et moderne`;
+RÈGLES STRICTES :
+1. Génère un projet React complet avec structure de fichiers moderne
+2. Format de réponse : [EXPLANATION]explication[/EXPLANATION] suivi de JSON avec structure :
+{
+  "files": {
+    "index.html": "contenu HTML",
+    "src/App.tsx": "contenu React",
+    "src/App.css": "contenu CSS",
+    "src/main.tsx": "contenu point d'entrée",
+    "src/components/[NomComposant].tsx": "composants",
+    "src/utils/[nomUtil].ts": "utilitaires"
+  }
+}
+3. Utilise React 18, TypeScript, Tailwind CSS
+4. Crée des composants réutilisables
+5. Organise le code de manière professionnelle
+6. L'index.html doit référencer le bundle Vite
+7. Pour les images, utilise des URLs d'images gratuites (unsplash.com, pexels.com) ou des placeholders
+8. NE génère PAS d'images avec l'IA`;
 
       // Format correct pour OpenRouter
       const apiMessages: any[] = [
@@ -127,16 +139,16 @@ RÈGLES:
       ];
 
       if (generatedHtml) {
-        // Mode modification : texte uniquement, limité à 5000 tokens
+        // Mode modification : texte uniquement
         const modificationText = typeof userMessageContent === 'string' 
           ? userMessageContent 
           : (Array.isArray(userMessageContent)
-              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image]').join(' ')
+              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image jointe]').join(' ')
               : String(userMessageContent));
         
         apiMessages.push({
           role: 'user',
-          content: `Structure actuelle:\n${generatedHtml.substring(0, 3000)}\n\nModification: ${modificationText}`
+          content: `Structure actuelle:\n${generatedHtml}\n\nModification: ${modificationText}`
         });
       } else {
         // Première génération - format OpenRouter multimodal
@@ -171,7 +183,7 @@ RÈGLES:
         throw new Error('Clé API OpenRouter non configurée');
       }
 
-      // Appeler OpenRouter en streaming avec limite de tokens
+      // Appeler OpenRouter en streaming
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -182,7 +194,6 @@ RÈGLES:
         body: JSON.stringify({
           model: 'anthropic/claude-sonnet-4-5',
           messages: apiMessages,
-          max_tokens: generatedHtml ? 5000 : 10000, // Limite pour modifications
           stream: true,
         }),
       });
@@ -196,9 +207,8 @@ RÈGLES:
 
       const decoder = new TextDecoder();
       let accumulatedHtml = '';
-      let currentExplanation = '';
 
-      // STREAMING EN TEMPS RÉEL avec extraction d'explication
+      // STREAMING EN TEMPS RÉEL
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -218,21 +228,10 @@ RÈGLES:
               if (content) {
                 accumulatedHtml += content;
                 
-                // Extraire l'explication en temps réel
-                const explanationMatch = accumulatedHtml.match(/\[EXPLANATION\](.*?)(?:\[\/EXPLANATION\]|$)/s);
-                if (explanationMatch) {
-                  currentExplanation = explanationMatch[1].trim();
-                }
-                
-                // Parser et afficher JSON en temps réel
-                const jsonOnly = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
-                if (jsonOnly.startsWith('{')) {
-                  try {
-                    JSON.parse(jsonOnly); // Vérifier validité
-                    setGeneratedHtml(jsonOnly);
-                  } catch {
-                    // JSON incomplet
-                  }
+                // Mise à jour IMMÉDIATE (afficher le JSON progressivement ou HTML si détecté)
+                const htmlOnly = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+                if (htmlOnly) {
+                  setGeneratedHtml(htmlOnly);
                 }
               }
             } catch (e) {
@@ -242,28 +241,17 @@ RÈGLES:
         }
       }
 
-      // Extraire explication et parser JSON final
+      // Extraire l'explication finale
       const explanationMatch = accumulatedHtml.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
       const explanation = explanationMatch ? explanationMatch[1].trim() : "Site généré";
-      const finalJson = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+      const finalHtml = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
 
-      // Parser les fichiers finaux
-      let finalFiles = {};
-      try {
-        const parsedData = JSON.parse(finalJson);
-        finalFiles = parsedData.files || parsedData;
-      } catch (e) {
-        console.error('Erreur parsing JSON:', e);
-        // Fallback: créer un fichier index.html avec le contenu brut
-        finalFiles = { 'index.html': finalJson };
-      }
-
-      // Sauvegarder la session avec structure de fichiers
+      // Créer/Mettre à jour la session uniquement à la fin
       const { data: sessionData, error: sessionError } = await supabase
         .from('build_sessions')
         .insert({
           user_id: user?.id || null,
-          html_content: JSON.stringify(finalFiles),
+          html_content: finalHtml,
           messages: [
             { role: 'user', content: userMessageContent },
             { role: 'assistant', content: explanation }
