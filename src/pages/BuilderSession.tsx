@@ -11,7 +11,7 @@ import { toast as sonnerToast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileTree } from "@/components/FileTree";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -34,21 +34,11 @@ export default function BuilderSession() {
   const [sessionLoading, setSessionLoading] = useState(true);
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [codeTab, setCodeTab] = useState<'html' | 'css' | 'js'>('html');
   const [isPublishing, setIsPublishing] = useState(false);
+  const [projectFiles, setProjectFiles] = useState<Record<string, string>>({});
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedFileContent, setSelectedFileContent] = useState<string>('');
 
-  // Extraire CSS et JS du HTML généré (mémorisé pour performance)
-  const extractedCode = useMemo(() => ({
-    html: generatedHtml,
-    css: (() => {
-      const styleMatch = generatedHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
-      return styleMatch ? styleMatch.map(s => s.replace(/<\/?style[^>]*>/gi, '')).join('\n\n') : '/* Aucun CSS trouvé */';
-    })(),
-    js: (() => {
-      const scriptMatch = generatedHtml.match(/<script[^>]*>([\s\S]*?)<\/script>/gi);
-      return scriptMatch ? scriptMatch.map(s => s.replace(/<\/?script[^>]*>/gi, '')).join('\n\n') : '// Aucun JavaScript trouvé';
-    })()
-  }), [generatedHtml]);
 
   useEffect(() => {
     loadSession();
@@ -79,6 +69,31 @@ export default function BuilderSession() {
 
       if (data) {
         setGeneratedHtml(data.html_content || '');
+        
+        // Parser les fichiers de projet si présents
+        try {
+          const parsed = JSON.parse(data.html_content || '{}');
+          if (parsed.files) {
+            setProjectFiles(parsed.files);
+            // Sélectionner le premier fichier par défaut
+            const firstFile = Object.keys(parsed.files)[0];
+            if (firstFile) {
+              setSelectedFile(firstFile);
+              setSelectedFileContent(parsed.files[firstFile]);
+            }
+          } else {
+            // Ancien format HTML monolithique
+            setProjectFiles({ 'index.html': data.html_content || '' });
+            setSelectedFile('index.html');
+            setSelectedFileContent(data.html_content || '');
+          }
+        } catch {
+          // Fallback si parsing échoue
+          setProjectFiles({ 'index.html': data.html_content || '' });
+          setSelectedFile('index.html');
+          setSelectedFileContent(data.html_content || '');
+        }
+
         const parsedMessages = Array.isArray(data.messages) ? data.messages as any[] : [];
         setMessages(parsedMessages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
         setWebsiteTitle(data.title || '');
@@ -180,10 +195,10 @@ export default function BuilderSession() {
     setIsLoading(true);
 
     try {
-      // Prompt système optimisé
-      const systemPrompt = `Génère un site web HTML complet, responsive avec Tailwind CSS. Format: [EXPLANATION]courte explication[/EXPLANATION]<!DOCTYPE html>...`;
+      // Prompt système pour projet React
+      const systemPrompt = `Génère un projet React/TypeScript complet. Format: [EXPLANATION]explication[/EXPLANATION]{"files":{"index.html":"...","src/App.tsx":"...","src/App.css":"...","src/main.tsx":"...","src/components/[Name].tsx":"...","src/utils/[name].ts":"..."}}`;
 
-      // OPTIMISATION TOKENS : Envoyer seulement le dernier HTML + nouvelle demande
+      // OPTIMISATION TOKENS
       const apiMessages: any[] = [
         { role: 'system', content: systemPrompt }
       ];
@@ -195,7 +210,7 @@ export default function BuilderSession() {
         
         apiMessages.push({
           role: 'user',
-          content: `HTML actuel:\n${generatedHtml}\n\nModification: ${modificationPrompt}`
+          content: `Structure actuelle:\n${generatedHtml}\n\nModification: ${modificationPrompt}`
         });
       } else {
         apiMessages.push({
@@ -235,7 +250,7 @@ export default function BuilderSession() {
       if (!reader) throw new Error('Impossible de lire le stream');
 
       const decoder = new TextDecoder();
-      let accumulatedHtml = '';
+      let accumulatedContent = '';
 
       // Streaming en temps réel
       while (true) {
@@ -255,12 +270,26 @@ export default function BuilderSession() {
               const content = parsed.choices?.[0]?.delta?.content || '';
               
               if (content) {
-                accumulatedHtml += content;
+                accumulatedContent += content;
                 
-                // Mise à jour immédiate du HTML
-                const htmlOnly = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
-                if (htmlOnly) {
-                  setGeneratedHtml(htmlOnly);
+                // Essayer de parser le JSON progressivement
+                const contentWithoutExplanation = accumulatedContent.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+                
+                try {
+                  const projectData = JSON.parse(contentWithoutExplanation);
+                  if (projectData.files) {
+                    setProjectFiles(projectData.files);
+                    setGeneratedHtml(JSON.stringify(projectData));
+                    
+                    // Auto-select premier fichier
+                    if (!selectedFile && Object.keys(projectData.files).length > 0) {
+                      const firstFile = Object.keys(projectData.files)[0];
+                      setSelectedFile(firstFile);
+                      setSelectedFileContent(projectData.files[firstFile]);
+                    }
+                  }
+                } catch {
+                  // JSON pas encore complet, continuer
                 }
               }
             } catch (e) {
@@ -270,12 +299,12 @@ export default function BuilderSession() {
         }
       }
 
-      // Extraire l'explication finale
-      const explanationMatch = accumulatedHtml.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
-      const explanation = explanationMatch ? explanationMatch[1].trim() : "Site modifié";
-      const finalHtml = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+      // Extraction finale
+      const explanationMatch = accumulatedContent.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
+      const explanation = explanationMatch ? explanationMatch[1].trim() : "Projet modifié";
+      const finalContent = accumulatedContent.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
       
-      setGeneratedHtml(finalHtml);
+      setGeneratedHtml(finalContent);
       const updatedMessages = [...newMessages, { role: 'assistant' as const, content: explanation }];
       setMessages(updatedMessages);
 
@@ -283,13 +312,13 @@ export default function BuilderSession() {
       await supabase
         .from('build_sessions')
         .update({
-          html_content: finalHtml,
+          html_content: finalContent,
           messages: updatedMessages as any,
           updated_at: new Date().toISOString()
         })
         .eq('id', sessionId);
 
-      sonnerToast.success(messages.length > 0 ? "Modifications appliquées !" : "Site généré !");
+      sonnerToast.success(messages.length > 0 ? "Modifications appliquées !" : "Projet généré !");
     } catch (error) {
       console.error('Error:', error);
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
@@ -670,64 +699,47 @@ export default function BuilderSession() {
                   sandbox="allow-same-origin allow-scripts allow-popups"
                 />
             ) : (
-              <div className="h-full w-full flex flex-col bg-slate-900">
-                <Tabs value={codeTab} onValueChange={(v) => setCodeTab(v as 'html' | 'css' | 'js')} className="flex-1 flex flex-col">
-                  <div className="bg-slate-800 border-b border-slate-700 px-4 py-2 flex items-center gap-3">
-                    <TabsList className="bg-slate-700 h-8">
-                      <TabsTrigger value="html" className="text-xs h-7 data-[state=active]:bg-slate-900">HTML</TabsTrigger>
-                      <TabsTrigger value="css" className="text-xs h-7 data-[state=active]:bg-slate-900">CSS</TabsTrigger>
-                      <TabsTrigger value="js" className="text-xs h-7 data-[state=active]:bg-slate-900">JavaScript</TabsTrigger>
-                    </TabsList>
-                    <span className="text-xs text-slate-500">
-                      ({codeTab === 'html' ? extractedCode.html.length : codeTab === 'css' ? extractedCode.css.length : extractedCode.js.length} caractères)
+              <div className="h-full w-full flex bg-slate-900">
+                {/* Arborescence de fichiers à gauche */}
+                <div className="w-64">
+                  <FileTree 
+                    files={projectFiles}
+                    onFileSelect={(path, content) => {
+                      setSelectedFile(path);
+                      setSelectedFileContent(content);
+                    }}
+                    selectedFile={selectedFile}
+                  />
+                </div>
+
+                {/* Éditeur de code à droite */}
+                <div className="flex-1 flex flex-col">
+                  <div className="bg-slate-800 border-b border-slate-700 px-4 py-2">
+                    <span className="text-xs text-slate-300 font-mono">
+                      {selectedFile || 'Sélectionnez un fichier'}
                     </span>
                   </div>
-                  
-                  <TabsContent value="html" className="flex-1 overflow-auto m-0">
-                    <div className="flex h-full">
-                      <div className="bg-slate-800 px-3 py-4 text-right select-none">
-                        {extractedCode.html.split('\n').map((_, i) => (
-                          <div key={i} className="text-xs text-slate-500 leading-6 font-mono">
-                            {i + 1}
-                          </div>
-                        ))}
+                  <div className="flex-1 overflow-auto">
+                    {selectedFileContent ? (
+                      <div className="flex h-full">
+                        <div className="bg-slate-800 px-3 py-4 text-right select-none">
+                          {selectedFileContent.split('\n').map((_, i) => (
+                            <div key={i} className="text-xs text-slate-500 leading-6 font-mono">
+                              {i + 1}
+                            </div>
+                          ))}
+                        </div>
+                        <pre className="flex-1 p-4 text-xs text-slate-100 font-mono overflow-x-auto">
+                          <code>{selectedFileContent}</code>
+                        </pre>
                       </div>
-                      <pre className="flex-1 p-4 text-xs text-slate-100 font-mono overflow-x-auto">
-                        <code>{extractedCode.html}</code>
-                      </pre>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="css" className="flex-1 overflow-auto m-0">
-                    <div className="flex h-full">
-                      <div className="bg-slate-800 px-3 py-4 text-right select-none">
-                        {extractedCode.css.split('\n').map((_, i) => (
-                          <div key={i} className="text-xs text-slate-500 leading-6 font-mono">
-                            {i + 1}
-                          </div>
-                        ))}
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <p className="text-slate-500 text-sm">Sélectionnez un fichier pour voir son contenu</p>
                       </div>
-                      <pre className="flex-1 p-4 text-xs text-slate-100 font-mono overflow-x-auto">
-                        <code>{extractedCode.css}</code>
-                      </pre>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="js" className="flex-1 overflow-auto m-0">
-                    <div className="flex h-full">
-                      <div className="bg-slate-800 px-3 py-4 text-right select-none">
-                        {extractedCode.js.split('\n').map((_, i) => (
-                          <div key={i} className="text-xs text-slate-500 leading-6 font-mono">
-                            {i + 1}
-                          </div>
-                        ))}
-                      </div>
-                      <pre className="flex-1 p-4 text-xs text-slate-100 font-mono overflow-x-auto">
-                        <code>{extractedCode.js}</code>
-                      </pre>
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>

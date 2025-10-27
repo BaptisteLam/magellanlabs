@@ -110,8 +110,26 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         userMessageContent = inputValue;
       }
 
-      // Préparer le prompt système (court et efficace)
-      const systemPrompt = `Génère un site web HTML complet, responsive avec Tailwind CSS. Format: [EXPLANATION]courte explication[/EXPLANATION]<!DOCTYPE html>...`;
+      // Prompt système pour générer un projet React complet
+      const systemPrompt = `Tu es un générateur de projets web React/TypeScript professionnels.
+
+RÈGLES STRICTES :
+1. Génère un projet React complet avec structure de fichiers moderne
+2. Format de réponse : [EXPLANATION]explication[/EXPLANATION] suivi de JSON avec structure :
+{
+  "files": {
+    "index.html": "contenu HTML",
+    "src/App.tsx": "contenu React",
+    "src/App.css": "contenu CSS",
+    "src/main.tsx": "contenu point d'entrée",
+    "src/components/[NomComposant].tsx": "composants",
+    "src/utils/[nomUtil].ts": "utilitaires"
+  }
+}
+3. Utilise React 18, TypeScript, Tailwind CSS
+4. Crée des composants réutilisables
+5. Organise le code de manière professionnelle
+6. L'index.html doit référencer le bundle Vite`;
 
       // OPTIMISATION TOKENS : N'envoyer QUE le dernier état + nouvelle demande
       const apiMessages: any[] = [
@@ -119,14 +137,14 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       ];
 
       if (generatedHtml) {
-        // Mode modification : envoyer seulement le HTML actuel + demande
+        // Mode modification : envoyer structure actuelle + demande
         const modificationPrompt = typeof userMessageContent === 'string' 
           ? userMessageContent 
           : userMessageContent.map(c => c.text || '[image]').join(' ');
         
         apiMessages.push({
           role: 'user',
-          content: `HTML actuel:\n${generatedHtml}\n\nModification: ${modificationPrompt}`
+          content: `Structure actuelle:\n${generatedHtml}\n\nModification: ${modificationPrompt}`
         });
       } else {
         // Première génération
@@ -189,7 +207,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
               if (content) {
                 accumulatedHtml += content;
                 
-                // Mise à jour IMMÉDIATE du HTML (sans attendre la fin)
+                // Mise à jour IMMÉDIATE (afficher le JSON progressivement ou HTML si détecté)
                 const htmlOnly = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
                 if (htmlOnly) {
                   setGeneratedHtml(htmlOnly);
