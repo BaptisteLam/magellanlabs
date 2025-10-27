@@ -196,18 +196,26 @@ export default function BuilderSession() {
     setIsLoading(true);
 
     try {
-      // Prompt système pour projet React
-      const systemPrompt = `Génère un projet React/TypeScript complet. Format: [EXPLANATION]explication[/EXPLANATION]{"files":{"index.html":"...","src/App.tsx":"...","src/App.css":"...","src/main.tsx":"...","src/components/[Name].tsx":"...","src/utils/[name].ts":"..."}}
-      
-IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratuites (unsplash.com, pexels.com). NE génère PAS d'images avec l'IA.`;
+      // Prompt système pour HTML complet
+      const systemPrompt = `Tu es Claude Sonnet 4.5, expert en génération de sites web modernes.
+Tu produis un HTML complet, responsive, professionnel.
 
-      // OPTIMISATION TOKENS - Format correct pour OpenRouter
+Règles :
+1. Commence toujours par [EXPLANATION]phrase courte[/EXPLANATION].
+2. Ensuite, le HTML complet sans markdown.
+3. Utilise Tailwind CDN (<script src="https://cdn.tailwindcss.com"></script>)
+4. Icônes Lucide inline (pas d'emojis)
+5. 4 images maximum (Unsplash/Pexels)
+6. Sections : header, hero, features, contact, footer
+7. Mobile-first, cohérence visuelle, CTA clair.`;
+
+      // Format messages pour OpenRouter
       const apiMessages: any[] = [
         { role: 'system', content: systemPrompt }
       ];
 
       if (generatedHtml) {
-        // Mode modification : message texte uniquement
+        // Mode modification
         const modificationText = typeof userMessageContent === 'string' 
           ? userMessageContent 
           : (Array.isArray(userMessageContent) 
@@ -216,17 +224,16 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
         
         apiMessages.push({
           role: 'user',
-          content: `Structure actuelle:\n${JSON.stringify(projectFiles)}\n\nModification: ${modificationText}`
+          content: `HTML actuel:\n${generatedHtml}\n\nApplique exactement cette modification:\n${modificationText}`
         });
       } else {
-        // Première génération - format correct pour multimodal
+        // Première génération
         if (typeof userMessageContent === 'string') {
           apiMessages.push({
             role: 'user',
             content: userMessageContent
           });
         } else if (Array.isArray(userMessageContent)) {
-          // Format OpenRouter pour images
           apiMessages.push({
             role: 'user',
             content: userMessageContent.map(item => {
@@ -264,6 +271,8 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
           model: 'anthropic/claude-sonnet-4-5',
           messages: apiMessages,
           stream: true,
+          max_tokens: 4000,
+          temperature: 0.3,
         }),
       });
 
@@ -275,99 +284,71 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
       if (!reader) throw new Error('Impossible de lire le stream');
 
       const decoder = new TextDecoder('utf-8');
-      let accumulatedText = '';
-      let explanationExtracted = false;
+      let accumulated = '';
 
-      // Lecture du stream en texte brut
+      // STREAMING TEMPS RÉEL
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+        const lines = chunk.split('\n').filter(Boolean);
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim();
-            if (data === '[DONE]') continue;
-
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices?.[0]?.delta?.content || '';
-              
-              if (content) {
-                accumulatedText += content;
-                
-                // Extraire et afficher l'EXPLANATION dès qu'elle est complète
-                if (!explanationExtracted && accumulatedText.includes('[/EXPLANATION]')) {
-                  const explanationMatch = accumulatedText.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
-                  if (explanationMatch) {
-                    const explanation = explanationMatch[1].trim();
-                    const updatedMessages = [...newMessages, { role: 'assistant' as const, content: explanation }];
-                    setMessages(updatedMessages);
-                    explanationExtracted = true;
-                  }
-                }
-              }
-            } catch (e) {
-              // Ignorer erreurs parsing SSE
-            }
-          }
-        }
-      }
-
-      // Traitement final après la fin du stream
-      console.log('Stream terminé, traitement du JSON...');
-
-      // Supprimer l'EXPLANATION
-      let cleanedText = accumulatedText.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
-
-      // Nettoyer les backticks markdown si présents
-      cleanedText = cleanedText.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
-
-      // Parser le JSON final
-      try {
-        const parsedProject = JSON.parse(cleanedText);
-        
-        if (parsedProject && typeof parsedProject === 'object') {
-          setProjectFiles(parsedProject);
-          setGeneratedHtml(JSON.stringify(parsedProject));
+          if (!line.startsWith('data:')) continue;
           
-          // Sélectionner automatiquement src/App.tsx ou le premier fichier
-          const defaultFile = parsedProject['src/App.tsx'] ? 'src/App.tsx' : Object.keys(parsedProject)[0];
-          if (defaultFile) {
-            setSelectedFile(defaultFile);
-            setSelectedFileContent(parsedProject[defaultFile]);
+          const dataStr = line.replace('data:', '').trim();
+          if (dataStr === '[DONE]') continue;
+
+          try {
+            const json = JSON.parse(dataStr);
+            const delta = json?.choices?.[0]?.delta?.content || '';
+            if (!delta) continue;
+
+            accumulated += delta;
+
+            // Afficher explication dans le chat
+            const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+            if (explanation) {
+              setMessages(prev => {
+                const filtered = prev.filter(m => m.role !== 'assistant');
+                return [...newMessages, { role: 'assistant' as const, content: explanation[1].trim() }];
+              });
+            }
+
+            // HTML live (instantané)
+            const htmlPreview = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
+            if (htmlPreview.startsWith('<!DOCTYPE html>') || htmlPreview.startsWith('<html')) {
+              setGeneratedHtml(htmlPreview);
+              setProjectFiles({ 'index.html': htmlPreview });
+              setSelectedFile('index.html');
+              setSelectedFileContent(htmlPreview);
+            }
+          } catch (e) {
+            // Ignorer erreurs parsing partiel
           }
-
-          // Si pas d'EXPLANATION extraite pendant le stream, utiliser un message par défaut
-          if (!explanationExtracted) {
-            const finalMessages = [...newMessages, { 
-              role: 'assistant' as const, 
-              content: messages.length > 0 ? "Modifications appliquées !" : "Projet React généré !" 
-            }];
-            setMessages(finalMessages);
-          }
-
-          // Auto-save session
-          await supabase
-            .from('build_sessions')
-            .update({
-              html_content: JSON.stringify(parsedProject),
-              messages: messages as any,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', sessionId);
-
-          sonnerToast.success(messages.length > 0 ? "Modifications appliquées !" : "Projet généré !");
-        } else {
-          throw new Error('Format de réponse invalide');
         }
-      } catch (parseError) {
-        console.error('Erreur parsing JSON final:', parseError);
-        console.log('Texte reçu:', cleanedText.substring(0, 500));
-        sonnerToast.error("Erreur lors du parsing du projet");
       }
+
+      // Finaliser
+      const finalHtml = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
+      
+      setGeneratedHtml(finalHtml);
+      setProjectFiles({ 'index.html': finalHtml });
+      setSelectedFile('index.html');
+      setSelectedFileContent(finalHtml);
+
+      // Auto-save session
+      await supabase
+        .from('build_sessions')
+        .update({
+          html_content: finalHtml,
+          messages: messages as any,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sessionId);
+
+      sonnerToast.success(messages.length > 0 ? "Modifications appliquées !" : "Site généré !");
     } catch (error) {
       console.error('Error:', error);
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");

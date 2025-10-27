@@ -110,36 +110,26 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         userMessageContent = inputValue;
       }
 
-      // Prompt système pour générer un projet React complet
-      const systemPrompt = `Tu es un générateur de projets web React/TypeScript professionnels.
+      // Prompt système pour HTML complet avec streaming
+      const systemPrompt = `Tu es Claude Sonnet 4.5, expert en génération de sites web modernes.
+Tu produis un HTML complet, responsive, professionnel.
 
-RÈGLES STRICTES :
-1. Génère un projet React complet avec structure de fichiers moderne
-2. Format de réponse : [EXPLANATION]explication[/EXPLANATION] suivi de JSON avec structure :
-{
-  "files": {
-    "index.html": "contenu HTML",
-    "src/App.tsx": "contenu React",
-    "src/App.css": "contenu CSS",
-    "src/main.tsx": "contenu point d'entrée",
-    "src/components/[NomComposant].tsx": "composants",
-    "src/utils/[nomUtil].ts": "utilitaires"
-  }
-}
-3. Utilise React 18, TypeScript, Tailwind CSS
-4. Crée des composants réutilisables
-5. Organise le code de manière professionnelle
-6. L'index.html doit référencer le bundle Vite
-7. Pour les images, utilise des URLs d'images gratuites (unsplash.com, pexels.com) ou des placeholders
-8. NE génère PAS d'images avec l'IA`;
+Règles :
+1. Commence toujours par [EXPLANATION]phrase courte[/EXPLANATION].
+2. Ensuite, le HTML complet sans markdown.
+3. Utilise Tailwind CDN (<script src="https://cdn.tailwindcss.com"></script>)
+4. Icônes Lucide inline (pas d'emojis)
+5. 4 images maximum (Unsplash/Pexels)
+6. Sections : header, hero, features, contact, footer
+7. Mobile-first, cohérence visuelle, CTA clair.`;
 
-      // Format correct pour OpenRouter
+      // Format messages pour OpenRouter
       const apiMessages: any[] = [
         { role: 'system', content: systemPrompt }
       ];
 
       if (generatedHtml) {
-        // Mode modification : texte uniquement
+        // Mode modification
         const modificationText = typeof userMessageContent === 'string' 
           ? userMessageContent 
           : (Array.isArray(userMessageContent)
@@ -148,10 +138,10 @@ RÈGLES STRICTES :
         
         apiMessages.push({
           role: 'user',
-          content: `Structure actuelle:\n${generatedHtml}\n\nModification: ${modificationText}`
+          content: `HTML actuel:\n${generatedHtml}\n\nApplique exactement cette modification:\n${modificationText}`
         });
       } else {
-        // Première génération - format OpenRouter multimodal
+        // Première génération
         if (typeof userMessageContent === 'string') {
           apiMessages.push({
             role: 'user',
@@ -195,6 +185,8 @@ RÈGLES STRICTES :
           model: 'anthropic/claude-sonnet-4-5',
           messages: apiMessages,
           stream: true,
+          max_tokens: 4000,
+          temperature: 0.3,
         }),
       });
 
@@ -205,46 +197,53 @@ RÈGLES STRICTES :
       const reader = response.body?.getReader();
       if (!reader) throw new Error('Impossible de lire le stream');
 
-      const decoder = new TextDecoder();
-      let accumulatedHtml = '';
+      const decoder = new TextDecoder('utf-8');
+      let accumulated = '';
 
-      // STREAMING EN TEMPS RÉEL
+      // STREAMING TEMPS RÉEL
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+        const lines = chunk.split('\n').filter(Boolean);
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim();
-            if (data === '[DONE]') continue;
+          if (!line.startsWith('data:')) continue;
+          
+          const dataStr = line.replace('data:', '').trim();
+          if (dataStr === '[DONE]') continue;
 
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices?.[0]?.delta?.content || '';
-              
-              if (content) {
-                accumulatedHtml += content;
-                
-                // Mise à jour IMMÉDIATE (afficher le JSON progressivement ou HTML si détecté)
-                const htmlOnly = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
-                if (htmlOnly) {
-                  setGeneratedHtml(htmlOnly);
-                }
-              }
-            } catch (e) {
-              // Ignorer les erreurs de parsing JSON partiel
+          try {
+            const json = JSON.parse(dataStr);
+            const delta = json?.choices?.[0]?.delta?.content || '';
+            if (!delta) continue;
+
+            accumulated += delta;
+
+            // Afficher explication dans le chat
+            const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+            if (explanation) {
+              setMessages(prev => {
+                const filtered = prev.filter(m => m.role !== 'assistant');
+                return [...filtered, { role: 'assistant', content: explanation[1].trim() }];
+              });
             }
+
+            // HTML live (instantané)
+            const htmlPreview = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
+            if (htmlPreview.startsWith('<!DOCTYPE html>') || htmlPreview.startsWith('<html')) {
+              setGeneratedHtml(htmlPreview);
+            }
+          } catch (e) {
+            // Ignorer erreurs parsing partiel
           }
         }
       }
 
-      // Extraire l'explication finale
-      const explanationMatch = accumulatedHtml.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
-      const explanation = explanationMatch ? explanationMatch[1].trim() : "Site généré";
-      const finalHtml = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+      // Finaliser
+      const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+      const finalHtml = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
 
       // Créer/Mettre à jour la session uniquement à la fin
       const { data: sessionData, error: sessionError } = await supabase
