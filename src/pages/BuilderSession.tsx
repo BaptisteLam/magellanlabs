@@ -11,7 +11,7 @@ import { toast as sonnerToast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileTree } from "@/components/FileTree";
+import { CodePreview } from "@/components/CodePreview";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -68,30 +68,35 @@ export default function BuilderSession() {
       }
 
       if (data) {
-        setGeneratedHtml(data.html_content || '');
-        
-        // Parser les fichiers de projet si présents
+        // Parser les fichiers structurés
         try {
-          const parsed = JSON.parse(data.html_content || '{}');
-          if (parsed.files) {
-            setProjectFiles(parsed.files);
-            // Sélectionner le premier fichier par défaut
-            const firstFile = Object.keys(parsed.files)[0];
-            if (firstFile) {
-              setSelectedFile(firstFile);
-              setSelectedFileContent(parsed.files[firstFile]);
+          const parsedFiles = JSON.parse(data.html_content || '{}');
+          
+          // Si c'est un objet de fichiers
+          if (typeof parsedFiles === 'object' && parsedFiles !== null) {
+            setProjectFiles(parsedFiles);
+            setGeneratedHtml(data.html_content || '');
+            
+            // Auto-select index.html ou premier fichier
+            const indexFile = parsedFiles['index.html'] ? 'index.html' : Object.keys(parsedFiles)[0];
+            if (indexFile) {
+              setSelectedFile(indexFile);
+              setSelectedFileContent(parsedFiles[indexFile]);
             }
           } else {
-            // Ancien format HTML monolithique
+            // Fallback ancien format
             setProjectFiles({ 'index.html': data.html_content || '' });
             setSelectedFile('index.html');
             setSelectedFileContent(data.html_content || '');
+            setGeneratedHtml(data.html_content || '');
           }
         } catch {
           // Fallback si parsing échoue
-          setProjectFiles({ 'index.html': data.html_content || '' });
+          const htmlContent = data.html_content || '';
+          setProjectFiles({ 'index.html': htmlContent });
           setSelectedFile('index.html');
-          setSelectedFileContent(data.html_content || '');
+          setSelectedFileContent(htmlContent);
+          setGeneratedHtml(htmlContent);
         }
 
         const parsedMessages = Array.isArray(data.messages) ? data.messages as any[] : [];
@@ -109,10 +114,13 @@ export default function BuilderSession() {
     if (!sessionId) return;
 
     try {
+      // Stocker les fichiers en JSON structuré
+      const dataToSave = JSON.stringify(projectFiles);
+      
       const { error } = await supabase
         .from('build_sessions')
         .update({
-          html_content: generatedHtml,
+          html_content: dataToSave,
           messages: messages as any,
           title: websiteTitle,
           updated_at: new Date().toISOString()
@@ -195,10 +203,16 @@ export default function BuilderSession() {
     setIsLoading(true);
 
     try {
-      // Prompt système pour projet React
-      const systemPrompt = `Génère un projet React/TypeScript complet. Format: [EXPLANATION]explication courte[/EXPLANATION]{"files":{"index.html":"...","src/App.tsx":"...","src/App.css":"...","src/main.tsx":"...","src/components/[Name].tsx":"...","src/utils/[name].ts":"..."}}
-      
-IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratuites (unsplash.com, pexels.com). NE génère PAS d'images avec l'IA.`;
+      // Construire les messages pour l'API
+      const systemPrompt = `Tu es un expert en création de sites web complets. Format: [EXPLANATION]courte explication[/EXPLANATION] suivi d'un JSON valide:
+{"index.html":"<!DOCTYPE html>...","style.css":"...","script.js":"...","pages/about.html":"..."}
+
+RÈGLES:
+- JSON valide sans markdown
+- Chaque HTML complet avec <!DOCTYPE>
+- Liens entre fichiers: <link rel="stylesheet" href="/style.css">
+- Pour modifications: retourne SEULEMENT les fichiers modifiés
+- Images: utilise unsplash.com ou SVG inline`;
 
       // Format correct pour OpenRouter
       const apiMessages: any[] = [
@@ -215,7 +229,7 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
         
         apiMessages.push({
           role: 'user',
-          content: `Structure actuelle:\n${JSON.stringify(projectFiles).substring(0, 3000)}\n\nModification: ${modificationText}`
+          content: `Fichiers actuels:\n${JSON.stringify(projectFiles).substring(0, 2500)}\n\nModification demandée: ${modificationText}\n\nRetourne SEULEMENT les fichiers modifiés au format JSON.`
         });
       } else {
         // Première génération - format multimodal
@@ -303,28 +317,30 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
                   currentExplanation = explanationMatch[1].trim();
                 }
                 
-                // Nettoyer le contenu JSON
-                const contentWithoutExplanation = accumulatedContent
+                // Nettoyer le JSON (retirer explication)
+                const jsonOnly = accumulatedContent
                   .replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '')
                   .trim();
                 
-                // Mise à jour progressive du HTML dès que JSON valide
-                if (contentWithoutExplanation.startsWith('{')) {
+                // Parser et afficher en temps réel
+                if (jsonOnly.startsWith('{')) {
                   try {
-                    const projectData = JSON.parse(contentWithoutExplanation);
-                    if (projectData.files) {
-                      setProjectFiles(projectData.files);
-                      setGeneratedHtml(JSON.stringify(projectData));
-                      
-                      // Auto-select premier fichier
-                      if (!selectedFile && Object.keys(projectData.files).length > 0) {
-                        const firstFile = Object.keys(projectData.files)[0];
-                        setSelectedFile(firstFile);
-                        setSelectedFileContent(projectData.files[firstFile]);
-                      }
+                    const filesData = JSON.parse(jsonOnly);
+                    // Gérer les deux formats: {"files": {...}} ou {...} direct
+                    const files = filesData.files || filesData;
+                    
+                    // Merger les fichiers (pour les modifications partielles)
+                    setProjectFiles(prev => ({ ...prev, ...files }));
+                    setGeneratedHtml(JSON.stringify(files));
+                    
+                    // Auto-select index.html ou premier fichier
+                    if (!selectedFile && Object.keys(files).length > 0) {
+                      const indexFile = files['index.html'] ? 'index.html' : Object.keys(files)[0];
+                      setSelectedFile(indexFile);
+                      setSelectedFileContent(files[indexFile]);
                     }
                   } catch {
-                    // JSON incomplet, continuer le streaming
+                    // JSON incomplet, continuer streaming
                   }
                 }
               }
@@ -338,17 +354,27 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
       // Extraction finale
       const explanationMatch = accumulatedContent.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
       const explanation = explanationMatch ? explanationMatch[1].trim() : "Projet modifié";
-      const finalContent = accumulatedContent.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+      const finalJson = accumulatedContent.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
       
-      setGeneratedHtml(finalContent);
+      // Parser les fichiers finaux
+      try {
+        const filesData = JSON.parse(finalJson);
+        const finalFiles = filesData.files || filesData;
+        setProjectFiles(prev => ({ ...prev, ...finalFiles }));
+        setGeneratedHtml(JSON.stringify(finalFiles));
+      } catch (e) {
+        console.error('Erreur parsing JSON final:', e);
+      }
+      
       const updatedMessages = [...newMessages, { role: 'assistant' as const, content: explanation }];
       setMessages(updatedMessages);
 
-      // Auto-save session
+      // Auto-save session avec les fichiers structurés
+      const dataToSave = JSON.stringify(projectFiles);
       await supabase
         .from('build_sessions')
         .update({
-          html_content: finalContent,
+          html_content: dataToSave,
           messages: updatedMessages as any,
           updated_at: new Date().toISOString()
         })
@@ -735,51 +761,10 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
                   sandbox="allow-same-origin allow-scripts allow-popups"
                 />
             ) : (
-              <div className="h-full w-full flex bg-slate-900">
-                {/* Arborescence de fichiers à gauche */}
-                <div className="w-64">
-                  <FileTree 
-                    files={projectFiles}
-                    onFileSelect={(path, content) => {
-                      setSelectedFile(path);
-                      setSelectedFileContent(content);
-                    }}
-                    selectedFile={selectedFile}
-                  />
-                </div>
-
-                {/* Éditeur de code à droite */}
-                <div className="flex-1 flex flex-col">
-                  <div className="bg-slate-800 border-b border-slate-700 px-4 py-2">
-                    <span className="text-xs text-slate-300 font-mono">
-                      {selectedFile || 'Sélectionnez un fichier'}
-                    </span>
-                  </div>
-                  <div className="flex-1 overflow-auto">
-                    {selectedFileContent ? (
-                      <div className="flex h-full">
-                        <div className="bg-slate-800 px-3 py-4 text-right select-none">
-                          {selectedFileContent.split('\n').map((_, i) => (
-                            <div key={i} className="text-xs text-slate-500 leading-6 font-mono">
-                              {i + 1}
-                            </div>
-                          ))}
-                        </div>
-                        <pre className="flex-1 p-4 text-xs text-slate-100 font-mono overflow-x-auto">
-                          <code>{selectedFileContent}</code>
-                        </pre>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <p className="text-slate-500 text-sm">Sélectionnez un fichier pour voir son contenu</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <CodePreview files={projectFiles} isDark={isDark} />
             )}
-          </div>
-        </ResizablePanel>
+            </div>
+          </ResizablePanel>
       </ResizablePanelGroup>
 
       {/* Dialog pour sauvegarder */}

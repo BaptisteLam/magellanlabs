@@ -110,28 +110,16 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         userMessageContent = inputValue;
       }
 
-      // Prompt système pour générer un projet React complet
-      const systemPrompt = `Tu es un générateur de projets web React/TypeScript professionnels.
+      // Prompt système
+      const systemPrompt = `Tu es un expert en création de sites web complets. Format: [EXPLANATION]explication courte[/EXPLANATION] suivi d'un JSON valide:
+{"index.html":"<!DOCTYPE html>...","style.css":"...","script.js":"...","pages/about.html":"..."}
 
-RÈGLES STRICTES :
-1. Génère un projet React complet avec structure de fichiers moderne
-2. Format de réponse : [EXPLANATION]explication courte[/EXPLANATION] suivi de JSON avec structure :
-{
-  "files": {
-    "index.html": "contenu HTML",
-    "src/App.tsx": "contenu React",
-    "src/App.css": "contenu CSS",
-    "src/main.tsx": "contenu point d'entrée",
-    "src/components/[NomComposant].tsx": "composants",
-    "src/utils/[nomUtil].ts": "utilitaires"
-  }
-}
-3. Utilise React 18, TypeScript, Tailwind CSS
-4. Crée des composants réutilisables
-5. Organise le code de manière professionnelle
-6. L'index.html doit référencer le bundle Vite
-7. Pour les images, utilise des URLs d'images gratuites (unsplash.com, pexels.com) ou des placeholders
-8. NE génère PAS d'images avec l'IA`;
+RÈGLES:
+- JSON valide sans markdown
+- Chaque HTML complet avec <!DOCTYPE>
+- Liens entre fichiers: <link rel="stylesheet" href="/style.css">
+- Images: unsplash.com ou SVG inline
+- Design responsive et moderne`;
 
       // Format correct pour OpenRouter
       const apiMessages: any[] = [
@@ -236,10 +224,15 @@ RÈGLES STRICTES :
                   currentExplanation = explanationMatch[1].trim();
                 }
                 
-                // Mise à jour IMMÉDIATE du JSON
-                const htmlOnly = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
-                if (htmlOnly.startsWith('{')) {
-                  setGeneratedHtml(htmlOnly);
+                // Parser et afficher JSON en temps réel
+                const jsonOnly = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+                if (jsonOnly.startsWith('{')) {
+                  try {
+                    JSON.parse(jsonOnly); // Vérifier validité
+                    setGeneratedHtml(jsonOnly);
+                  } catch {
+                    // JSON incomplet
+                  }
                 }
               }
             } catch (e) {
@@ -249,17 +242,28 @@ RÈGLES STRICTES :
         }
       }
 
-      // Extraire l'explication finale
+      // Extraire explication et parser JSON final
       const explanationMatch = accumulatedHtml.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
       const explanation = explanationMatch ? explanationMatch[1].trim() : "Site généré";
-      const finalHtml = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
+      const finalJson = accumulatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
 
-      // Créer/Mettre à jour la session uniquement à la fin
+      // Parser les fichiers finaux
+      let finalFiles = {};
+      try {
+        const parsedData = JSON.parse(finalJson);
+        finalFiles = parsedData.files || parsedData;
+      } catch (e) {
+        console.error('Erreur parsing JSON:', e);
+        // Fallback: créer un fichier index.html avec le contenu brut
+        finalFiles = { 'index.html': finalJson };
+      }
+
+      // Sauvegarder la session avec structure de fichiers
       const { data: sessionData, error: sessionError } = await supabase
         .from('build_sessions')
         .insert({
           user_id: user?.id || null,
-          html_content: finalHtml,
+          html_content: JSON.stringify(finalFiles),
           messages: [
             { role: 'user', content: userMessageContent },
             { role: 'assistant', content: explanation }
