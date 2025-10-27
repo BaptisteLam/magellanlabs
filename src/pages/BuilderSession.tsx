@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
+import { VitePreview } from "@/components/VitePreview";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -273,10 +274,11 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
       const reader = response.body?.getReader();
       if (!reader) throw new Error('Impossible de lire le stream');
 
-      const decoder = new TextDecoder();
-      let accumulatedContent = '';
+      const decoder = new TextDecoder('utf-8');
+      let accumulatedText = '';
+      let explanationExtracted = false;
 
-      // Streaming en temps réel
+      // Lecture du stream en texte brut
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -294,55 +296,78 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
               const content = parsed.choices?.[0]?.delta?.content || '';
               
               if (content) {
-                accumulatedContent += content;
+                accumulatedText += content;
                 
-                // Essayer de parser le JSON progressivement
-                const contentWithoutExplanation = accumulatedContent.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
-                
-                try {
-                  const projectData = JSON.parse(contentWithoutExplanation);
-                  if (projectData.files) {
-                    setProjectFiles(projectData.files);
-                    setGeneratedHtml(JSON.stringify(projectData));
-                    
-                    // Auto-select premier fichier
-                    if (!selectedFile && Object.keys(projectData.files).length > 0) {
-                      const firstFile = Object.keys(projectData.files)[0];
-                      setSelectedFile(firstFile);
-                      setSelectedFileContent(projectData.files[firstFile]);
-                    }
+                // Extraire et afficher l'EXPLANATION dès qu'elle est complète
+                if (!explanationExtracted && accumulatedText.includes('[/EXPLANATION]')) {
+                  const explanationMatch = accumulatedText.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
+                  if (explanationMatch) {
+                    const explanation = explanationMatch[1].trim();
+                    const updatedMessages = [...newMessages, { role: 'assistant' as const, content: explanation }];
+                    setMessages(updatedMessages);
+                    explanationExtracted = true;
                   }
-                } catch {
-                  // JSON pas encore complet, continuer
                 }
               }
             } catch (e) {
-              // Ignorer les erreurs de parsing JSON partiel
+              // Ignorer erreurs parsing SSE
             }
           }
         }
       }
 
-      // Extraction finale
-      const explanationMatch = accumulatedContent.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s);
-      const explanation = explanationMatch ? explanationMatch[1].trim() : "Projet modifié";
-      const finalContent = accumulatedContent.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
-      
-      setGeneratedHtml(finalContent);
-      const updatedMessages = [...newMessages, { role: 'assistant' as const, content: explanation }];
-      setMessages(updatedMessages);
+      // Traitement final après la fin du stream
+      console.log('Stream terminé, traitement du JSON...');
 
-      // Auto-save session
-      await supabase
-        .from('build_sessions')
-        .update({
-          html_content: finalContent,
-          messages: updatedMessages as any,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', sessionId);
+      // Supprimer l'EXPLANATION
+      let cleanedText = accumulatedText.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/s, '').trim();
 
-      sonnerToast.success(messages.length > 0 ? "Modifications appliquées !" : "Projet généré !");
+      // Nettoyer les backticks markdown si présents
+      cleanedText = cleanedText.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+
+      // Parser le JSON final
+      try {
+        const parsedProject = JSON.parse(cleanedText);
+        
+        if (parsedProject && typeof parsedProject === 'object') {
+          setProjectFiles(parsedProject);
+          setGeneratedHtml(JSON.stringify(parsedProject));
+          
+          // Sélectionner automatiquement src/App.tsx ou le premier fichier
+          const defaultFile = parsedProject['src/App.tsx'] ? 'src/App.tsx' : Object.keys(parsedProject)[0];
+          if (defaultFile) {
+            setSelectedFile(defaultFile);
+            setSelectedFileContent(parsedProject[defaultFile]);
+          }
+
+          // Si pas d'EXPLANATION extraite pendant le stream, utiliser un message par défaut
+          if (!explanationExtracted) {
+            const finalMessages = [...newMessages, { 
+              role: 'assistant' as const, 
+              content: messages.length > 0 ? "Modifications appliquées !" : "Projet React généré !" 
+            }];
+            setMessages(finalMessages);
+          }
+
+          // Auto-save session
+          await supabase
+            .from('build_sessions')
+            .update({
+              html_content: JSON.stringify(parsedProject),
+              messages: messages as any,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', sessionId);
+
+          sonnerToast.success(messages.length > 0 ? "Modifications appliquées !" : "Projet généré !");
+        } else {
+          throw new Error('Format de réponse invalide');
+        }
+      } catch (parseError) {
+        console.error('Erreur parsing JSON final:', parseError);
+        console.log('Texte reçu:', cleanedText.substring(0, 500));
+        sonnerToast.error("Erreur lors du parsing du projet");
+      }
     } catch (error) {
       console.error('Error:', error);
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
@@ -689,39 +714,7 @@ IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratui
           <ResizablePanel defaultSize={70}>
             <div className="h-full w-full bg-white flex flex-col">
               {viewMode === 'preview' ? (
-                <iframe 
-                  srcDoc={`
-                    ${generatedHtml.replace(/\[EXPLANATION\].*?\[\/EXPLANATION\]/gs, '')}
-                    <script>
-                      // Intercepter tous les clics sur les liens
-                      document.addEventListener('click', function(e) {
-                        const target = e.target.closest('a');
-                        if (target) {
-                          const href = target.getAttribute('href');
-                          
-                          // Autoriser UNIQUEMENT les liens externes absolus
-                          if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
-                            target.setAttribute('target', '_blank');
-                            target.setAttribute('rel', 'noopener noreferrer');
-                            return; // Laisser le lien s'ouvrir dans un nouvel onglet
-                          }
-                          
-                          // Bloquer silencieusement tous les autres liens (relatifs, ancres, etc.)
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }
-                      }, true);
-                      
-                      // Bloquer la soumission de formulaires
-                      document.addEventListener('submit', function(e) {
-                        e.preventDefault();
-                      }, true);
-                    </script>
-                  `}
-                  className="w-full h-full border-0"
-                  title="Site web généré"
-                  sandbox="allow-same-origin allow-scripts allow-popups"
-                />
+                <VitePreview projectFiles={projectFiles} isDark={isDark} />
             ) : (
               <div className="h-full w-full flex bg-slate-900">
                 {/* Arborescence de fichiers à gauche */}
