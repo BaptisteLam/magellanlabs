@@ -196,27 +196,51 @@ export default function BuilderSession() {
 
     try {
       // Prompt système pour projet React
-      const systemPrompt = `Génère un projet React/TypeScript complet. Format: [EXPLANATION]explication[/EXPLANATION]{"files":{"index.html":"...","src/App.tsx":"...","src/App.css":"...","src/main.tsx":"...","src/components/[Name].tsx":"...","src/utils/[name].ts":"..."}}`;
+      const systemPrompt = `Génère un projet React/TypeScript complet. Format: [EXPLANATION]explication[/EXPLANATION]{"files":{"index.html":"...","src/App.tsx":"...","src/App.css":"...","src/main.tsx":"...","src/components/[Name].tsx":"...","src/utils/[name].ts":"..."}}
+      
+IMPORTANT: Pour les images, utilise des placeholders ou des URLs d'images gratuites (unsplash.com, pexels.com). NE génère PAS d'images avec l'IA.`;
 
-      // OPTIMISATION TOKENS
+      // OPTIMISATION TOKENS - Format correct pour OpenRouter
       const apiMessages: any[] = [
         { role: 'system', content: systemPrompt }
       ];
 
       if (generatedHtml) {
-        const modificationPrompt = typeof userMessageContent === 'string' 
+        // Mode modification : message texte uniquement
+        const modificationText = typeof userMessageContent === 'string' 
           ? userMessageContent 
-          : userMessageContent.map(c => c.text || '[image]').join(' ');
+          : (Array.isArray(userMessageContent) 
+              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image jointe]').join(' ')
+              : String(userMessageContent));
         
         apiMessages.push({
           role: 'user',
-          content: `Structure actuelle:\n${generatedHtml}\n\nModification: ${modificationPrompt}`
+          content: `Structure actuelle:\n${JSON.stringify(projectFiles)}\n\nModification: ${modificationText}`
         });
       } else {
-        apiMessages.push({
-          role: 'user',
-          content: userMessageContent
-        });
+        // Première génération - format correct pour multimodal
+        if (typeof userMessageContent === 'string') {
+          apiMessages.push({
+            role: 'user',
+            content: userMessageContent
+          });
+        } else if (Array.isArray(userMessageContent)) {
+          // Format OpenRouter pour images
+          apiMessages.push({
+            role: 'user',
+            content: userMessageContent.map(item => {
+              if (item.type === 'text') {
+                return { type: 'text', text: item.text };
+              } else if (item.type === 'image_url') {
+                return { 
+                  type: 'image_url', 
+                  image_url: { url: item.image_url?.url || '' }
+                };
+              }
+              return item;
+            })
+          });
+        }
       }
 
       // Récupérer la clé API

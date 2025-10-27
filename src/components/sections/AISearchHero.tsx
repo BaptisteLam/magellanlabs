@@ -129,29 +129,50 @@ RÈGLES STRICTES :
 3. Utilise React 18, TypeScript, Tailwind CSS
 4. Crée des composants réutilisables
 5. Organise le code de manière professionnelle
-6. L'index.html doit référencer le bundle Vite`;
+6. L'index.html doit référencer le bundle Vite
+7. Pour les images, utilise des URLs d'images gratuites (unsplash.com, pexels.com) ou des placeholders
+8. NE génère PAS d'images avec l'IA`;
 
-      // OPTIMISATION TOKENS : N'envoyer QUE le dernier état + nouvelle demande
+      // Format correct pour OpenRouter
       const apiMessages: any[] = [
         { role: 'system', content: systemPrompt }
       ];
 
       if (generatedHtml) {
-        // Mode modification : envoyer structure actuelle + demande
-        const modificationPrompt = typeof userMessageContent === 'string' 
+        // Mode modification : texte uniquement
+        const modificationText = typeof userMessageContent === 'string' 
           ? userMessageContent 
-          : userMessageContent.map(c => c.text || '[image]').join(' ');
+          : (Array.isArray(userMessageContent)
+              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image jointe]').join(' ')
+              : String(userMessageContent));
         
         apiMessages.push({
           role: 'user',
-          content: `Structure actuelle:\n${generatedHtml}\n\nModification: ${modificationPrompt}`
+          content: `Structure actuelle:\n${generatedHtml}\n\nModification: ${modificationText}`
         });
       } else {
-        // Première génération
-        apiMessages.push({
-          role: 'user',
-          content: userMessageContent
-        });
+        // Première génération - format OpenRouter multimodal
+        if (typeof userMessageContent === 'string') {
+          apiMessages.push({
+            role: 'user',
+            content: userMessageContent
+          });
+        } else if (Array.isArray(userMessageContent)) {
+          apiMessages.push({
+            role: 'user',
+            content: userMessageContent.map(item => {
+              if (item.type === 'text') {
+                return { type: 'text', text: item.text };
+              } else if (item.type === 'image_url') {
+                return { 
+                  type: 'image_url', 
+                  image_url: { url: item.image_url?.url || '' }
+                };
+              }
+              return item;
+            })
+          });
+        }
       }
 
       // Récupérer la clé API
