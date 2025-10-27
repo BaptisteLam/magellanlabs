@@ -28,15 +28,28 @@ function extractContent(htmlContent: string) {
     console.log('HTML vide ou trop court, utilisation du template par défaut');
     return { html: DEFAULT_HTML, css: '', js: '' };
   }
+  
+  // Nettoyer les balises [EXPLANATION] ou tout texte avant <!DOCTYPE ou <html
+  let cleanedContent = htmlContent;
+  const doctypeIndex = cleanedContent.search(/<!DOCTYPE/i);
+  const htmlIndex = cleanedContent.search(/<html/i);
+  
+  if (doctypeIndex > 0) {
+    cleanedContent = cleanedContent.substring(doctypeIndex);
+    console.log('Texte supprimé avant <!DOCTYPE');
+  } else if (htmlIndex > 0) {
+    cleanedContent = cleanedContent.substring(htmlIndex);
+    console.log('Texte supprimé avant <html>');
+  }
 
-  const styleMatch = htmlContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-  const scriptMatch = htmlContent.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+  const styleMatch = cleanedContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  const scriptMatch = cleanedContent.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
   
   const css = styleMatch ? styleMatch[1].trim() : '';
   const js = scriptMatch ? scriptMatch[1].trim() : '';
   
   // Nettoyer le HTML en enlevant les balises style et script inline
-  let cleanHtml = htmlContent;
+  let cleanHtml = cleanedContent;
   if (styleMatch) {
     cleanHtml = cleanHtml.replace(styleMatch[0], '');
   }
