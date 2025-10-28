@@ -12,12 +12,12 @@ All colors MUST be HSL for design consistency.
     --background: 0 0% 100%;
     --foreground: 0 0% 0%;
     
-    /* Trinity Brand Colors - Navy Blue Focus (No Cyan/Azur) */
-    --trinity-blue: 210 88% 25%;        /* #1B4F8C - Navy blue from logo */
-    --trinity-blue-light: 210 75% 45%;  /* Lighter navy blue */
-    --trinity-blue-soft: 210 40% 97%;   /* Very light navy blue */
-    --trinity-blue-muted: 210 20% 85%;  /* Muted navy for borders */
-    --trinity-turquoise: 210 75% 45%;   /* Secondary navy accent */
+    /* Magellan Brand Colors */
+    --magellan-cyan: 187 97% 38%;       /* #03A5C0 - Primary cyan */
+    --magellan-cyan-light: 187 97% 48%; /* Lighter cyan for hover */
+    --magellan-cyan-dark: 187 97% 28%;  /* Darker cyan */
+    --magellan-black: 0 0% 0%;          /* Black for text/icons */
+    --magellan-gray: 0 0% 45%;          /* Gray for muted text */
     
     /* Core Design Tokens */
     --primary: 210 88% 25%;              /* Trinity navy blue */

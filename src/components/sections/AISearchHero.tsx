@@ -437,7 +437,30 @@ Règles :
               
               {/* Chat input */}
               <div className="border-t border-slate-200 p-4 bg-white">
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-end">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-10 h-10 rounded-full transition-all shrink-0"
+                    style={{ color: '#03A5C0' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Paperclip className="w-5 h-5" />
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
                   <Textarea
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
@@ -454,10 +477,18 @@ Règles :
                   <Button
                     onClick={handleSubmit}
                     disabled={isLoading}
-                    className="self-end"
-                    style={{ backgroundColor: '#014AAD' }}
+                    className="w-10 h-10 rounded-full p-0 transition-all shrink-0"
+                    style={{ backgroundColor: '#03A5C0' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#028CA3';
+                      e.currentTarget.style.boxShadow = '0 8px 20px -4px rgba(3, 165, 192, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#03A5C0';
+                      e.currentTarget.style.boxShadow = '';
+                    }}
                   >
-                    <ArrowUp className="w-5 h-5" />
+                    <ArrowUp className="w-5 h-5 text-white" />
                   </Button>
                 </div>
               </div>

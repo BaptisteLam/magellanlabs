@@ -60,18 +60,19 @@ const Header = () => {
               <Button
                 onClick={() => navigate('/dashboard')}
                 variant="ghost"
-                className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
+                className="text-sm gap-2 transition-all hover:border rounded-full px-4 py-2 text-foreground/70"
                 style={{ 
-                  color: '#014AAD',
                   borderColor: 'transparent'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
-                  e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
+                  e.currentTarget.style.borderColor = '#03A5C0';
+                  e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+                  e.currentTarget.style.color = '#03A5C0';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = 'transparent';
                   e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '';
                 }}
               >
                 Dashboard
@@ -81,18 +82,19 @@ const Header = () => {
                 <Button
                   onClick={() => navigate('/auth')}
                   variant="ghost"
-                  className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
+                  className="text-sm gap-2 transition-all hover:border rounded-full px-4 py-2 text-foreground/70"
                   style={{ 
-                    color: '#014AAD',
                     borderColor: 'transparent'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
-                    e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
+                    e.currentTarget.style.borderColor = '#03A5C0';
+                    e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+                    e.currentTarget.style.color = '#03A5C0';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = 'transparent';
                     e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '';
                   }}
                 >
                   Connexion
@@ -102,8 +104,13 @@ const Header = () => {
                   onClick={toggleTheme}
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-full"
-                  style={{ color: '#014AAD' }}
+                  className="h-8 w-8 rounded-full text-foreground/70 transition-colors"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#03A5C0';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '';
+                  }}
                 >
                   {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                 </Button>

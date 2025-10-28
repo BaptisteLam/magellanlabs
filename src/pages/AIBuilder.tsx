@@ -182,16 +182,31 @@ const AIBuilder = () => {
             <div className="flex items-center justify-between mt-3">
               <Button 
                 variant="ghost" 
-                className="text-sm text-slate-600 hover:text-white hover:bg-[#014AAD] gap-2 transition-colors [&_svg]:hover:text-white"
+                size="icon"
+                className="w-10 h-10 rounded-full transition-all"
+                style={{ color: '#03A5C0' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
               >
-                <Paperclip className="w-4 h-4" />
-                Joindre un fichier
+                <Paperclip className="w-5 h-5" />
               </Button>
               <Button
                 onClick={handleSubmit}
                 disabled={isLoading}
-                className="w-10 h-10 rounded-full p-0 transition-all hover:shadow-lg hover:shadow-blue-500/30 disabled:opacity-50"
-                style={{ backgroundColor: '#014AAD' }}
+                className="w-10 h-10 rounded-full p-0 transition-all hover:shadow-lg disabled:opacity-50"
+                style={{ backgroundColor: '#03A5C0' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#028CA3';
+                  e.currentTarget.style.boxShadow = '0 8px 20px -4px rgba(3, 165, 192, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#03A5C0';
+                  e.currentTarget.style.boxShadow = '';
+                }}
               >
                 <ArrowUp className="w-5 h-5 text-white" />
               </Button>
