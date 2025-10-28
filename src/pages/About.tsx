@@ -25,7 +25,7 @@ const About = () => {
     "@type": "AboutPage",
     "mainEntity": {
       "@type": "Organization",
-      "name": "Trinity Studio",
+      "name": "Magellan Studio",
       "description": "Agence web innovante spécialisée dans l'accompagnement digital des artisans, restaurateurs et TPE/PME avec des solutions sur-mesure",
       "foundingDate": "2024",
       "founder": [
@@ -117,10 +117,10 @@ const About = () => {
   return (
     <div className="min-h-screen">
       <SEOHead 
-        title="À Propos de Trinity Studio | Agence Web Innovante pour TPE & PME"
-        description="Découvrez Trinity Studio : 3 experts passionnés qui révolutionnent le web pour artisans et TPE. Notre mission : des solutions digitales accessibles et sur-mesure."
+        title="À Propos de Magellan Studio | Agence Web Innovante pour TPE & PME"
+        description="Découvrez Magellan Studio : 3 experts passionnés qui révolutionnent le web pour artisans et TPE. Notre mission : des solutions digitales accessibles et sur-mesure."
         keywords="à propos, agence web, équipe, expertise, artisan, TPE, PME, innovation web, Guillaume, Baptiste, Dylane"
-        canonicalUrl="https://trinity-studio.fr/about"
+        canonicalUrl="https://magellan-studio.fr/about"
         structuredData={structuredData}
       />
       <Header />

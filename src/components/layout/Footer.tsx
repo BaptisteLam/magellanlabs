@@ -31,13 +31,13 @@ const Footer = () => {
           <div className="md:col-span-2">
             <div className="flex items-center space-x-3 mb-4">
               <img 
-                src="/lovable-uploads/trinity-ai-logo.png" 
-                alt="Trinity AI - Agence Web"
+                src="/lovable-uploads/magellan-logo-light.png" 
+                alt="Magellan - Agence Web"
                 className="h-10 w-auto"
               />
             </div>
             <p className="text-foreground/70 max-w-md text-sm">
-              Chez Trinity, notre mission est simple : rendre la création de site web aussi rapide qu'une recherche Google.
+              Chez Magellan, notre mission est simple : rendre la création de site web aussi rapide qu'une recherche Google.
               Plus besoin de coder, de payer une agence ou d'attendre : l'IA vous génère un site professionnel, en temps réel.
             </p>
           </div>
@@ -63,10 +63,10 @@ const Footer = () => {
             <ul className="space-y-2 mb-6">
               <li>
                 <a
-                  href="mailto:contact@trinitystudio.fr"
+                  href="mailto:contact@magellan-studio.fr"
                   className="text-foreground/70 hover:text-foreground transition-colors text-sm"
                 >
-                  contact@trinitystudio.fr
+                  contact@magellan-studio.fr
                 </a>
               </li>
             </ul>
@@ -89,7 +89,7 @@ const Footer = () => {
         </div>
         
         <div className="mt-8 pt-8 border-t border-border text-center text-sm text-foreground/60">
-          <p>&copy; {new Date().getFullYear()} Trinity Studio. Tous droits réservés.</p>
+          <p>&copy; {new Date().getFullYear()} Magellan Studio. Tous droits réservés.</p>
         </div>
       </div>
     </footer>

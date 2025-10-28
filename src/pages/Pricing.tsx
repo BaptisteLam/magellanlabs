@@ -27,10 +27,10 @@ const Pricing = () => {
   return (
     <div className="min-h-screen bg-white">
       <SEOHead 
-        title="Tarifs - Trinity Studio | Abonnement Site Web dès 9,90€/mois"
+        title="Tarifs - Magellan Studio | Abonnement Site Web dès 9,90€/mois"
         description="Créez votre site professionnel avec l'IA dès 9,90€/mois. Sans engagement, hébergement inclus, mises à jour illimitées. Offre annuelle à 99,90€/an avec 2 mois offerts."
         keywords="tarif site web, abonnement site internet, prix création site, hébergement inclus, site web mensuel"
-        canonicalUrl="https://trinitystudio.fr/pricing"
+        canonicalUrl="https://magellan-studio.fr/pricing"
       />
       <Header />
       

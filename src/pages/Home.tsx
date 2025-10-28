@@ -12,10 +12,10 @@ const Home = () => {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "Trinity Studio",
+    "name": "Magellan Studio",
     "description": "Agence web innovante spécialisée dans la création de sites internet sur-mesure pour artisans, restaurateurs et TPE/PME",
-    "url": "https://trinitystudio.fr",
-    "logo": "/lovable-uploads/e3c54182-b806-4948-8c03-e14452931ed7.png",
+    "url": "https://magellan-studio.fr",
+    "logo": "/lovable-uploads/magellan-logo-light.png",
     "contactPoint": {
       "@type": "ContactPoint",
       "telephone": "+33-6-XX-XX-XX-XX",
@@ -23,8 +23,8 @@ const Home = () => {
       "availableLanguage": ["French", "English"]
     },
     "sameAs": [
-      "https://www.linkedin.com/company/trinitystudio",
-      "https://twitter.com/trinitystudio"
+      "https://www.linkedin.com/company/magellan-studio",
+      "https://twitter.com/magellan-studio"
     ],
     "offers": {
       "@type": "Offer",
@@ -36,10 +36,10 @@ const Home = () => {
   return (
     <div className="min-h-screen">
       <SEOHead 
-        title="Trinity Studio - Agence Web Innovante | Sites sur-mesure pour TPE & PME"
-        description="Trinity Studio crée des sites web innovants et sur-mesure pour artisans, restaurateurs et TPE. Vitrine, e-commerce, réservation et CRM personnalisés. Devis gratuit."
+        title="Magellan Studio - Agence Web Innovante | Sites sur-mesure pour TPE & PME"
+        description="Magellan Studio crée des sites web innovants et sur-mesure pour artisans, restaurateurs et TPE. Vitrine, e-commerce, réservation et CRM personnalisés. Devis gratuit."
         keywords="agence web, création site internet, site vitrine, e-commerce, artisan, restaurant, TPE, PME, sur-mesure, réservation en ligne, CRM"
-        canonicalUrl="https://trinitystudio.fr"
+        canonicalUrl="https://magellan-studio.fr"
         structuredData={structuredData}
       />
       <Header />

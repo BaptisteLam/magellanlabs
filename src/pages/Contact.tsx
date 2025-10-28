@@ -31,12 +31,12 @@ const Contact = () => {
     "@type": "ContactPage",
     "mainEntity": {
       "@type": "Organization",
-      "name": "Trinity Studio",
+      "name": "Magellan Studio",
       "contactPoint": {
         "@type": "ContactPoint",
         "telephone": "+33 6 78 01 57 32",
         "contactType": "Customer Service",
-        "email": "contact@trinity-studio.fr",
+        "email": "contact@magellan-studio.fr",
         "availableLanguage": ["French", "English"],
         "hoursAvailable": "Mo-Fr 09:00-18:00"
       },
@@ -48,7 +48,7 @@ const Contact = () => {
     },
     "potentialAction": {
       "@type": "ContactAction",
-      "target": "https://trinity-studio.fr/contact"
+      "target": "https://magellan-studio.fr/contact"
     }
   };
   
@@ -186,10 +186,10 @@ const Contact = () => {
   return (
     <div className="min-h-screen">
       <SEOHead 
-        title="Contact Trinity Studio | Devis Gratuit Site Web sur-mesure"
-        description="Contactez Trinity Studio pour votre projet web. Devis gratuit et personnalisé pour sites vitrine, e-commerce, réservation. Réponse sous 24h garantie."
+        title="Contact Magellan Studio | Devis Gratuit Site Web sur-mesure"
+        description="Contactez Magellan Studio pour votre projet web. Devis gratuit et personnalisé pour sites vitrine, e-commerce, réservation. Réponse sous 24h garantie."
         keywords="contact, devis gratuit, projet web, site internet, consultation, artisan, restaurant, TPE, sur-mesure"
-        canonicalUrl="https://trinity-studio.fr/contact"
+        canonicalUrl="https://magellan-studio.fr/contact"
         structuredData={structuredData}
       />
       <Header />

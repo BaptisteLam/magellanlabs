@@ -12,13 +12,13 @@ interface SEOHeadProps {
 const SEOHead = ({ 
   title, 
   description, 
-  keywords = "agence web, création site internet, développement web, SEO, Trinity Studio",
+  keywords = "agence web, création site internet, développement web, SEO, Magellan Studio",
   canonicalUrl,
-  ogImage = "/lovable-uploads/e3c54182-b806-4948-8c03-e14452931ed7.png",
+  ogImage = "/lovable-uploads/magellan-logo-light.png",
   structuredData 
 }: SEOHeadProps) => {
-  // Put Trinity Studio first for better SEO visibility
-  const fullTitle = title.includes('Trinity Studio') ? title : `Trinity Studio | ${title}`;
+  // Put Magellan Studio first for better SEO visibility
+  const fullTitle = title.includes('Magellan Studio') ? title : `Magellan Studio | ${title}`;
   const currentUrl = canonicalUrl || (typeof window !== 'undefined' ? window.location.href : '');
 
   return (
@@ -27,7 +27,7 @@ const SEOHead = ({
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
       <meta name="keywords" content={keywords} />
-      <meta name="author" content="Trinity Studio" />
+      <meta name="author" content="Magellan Studio" />
       {currentUrl && <link rel="canonical" href={currentUrl} />}
 
       {/* Open Graph */}
@@ -36,7 +36,7 @@ const SEOHead = ({
       <meta property="og:type" content="website" />
       {currentUrl && <meta property="og:url" content={currentUrl} />}
       <meta property="og:image" content={ogImage} />
-      <meta property="og:site_name" content="Trinity Studio" />
+      <meta property="og:site_name" content="Magellan Studio" />
       <meta property="og:locale" content="fr_FR" />
 
       {/* Twitter */}
