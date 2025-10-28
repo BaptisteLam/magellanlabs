@@ -37,7 +37,7 @@ const Header = () => {
             <img 
               src={isDark ? "/lovable-uploads/magellan-logo-dark.png" : "/lovable-uploads/magellan-logo-light.png"}
               alt="Magellan"
-              className="h-14 w-auto"
+              className="h-20 w-auto"
             />
           </Link>
 

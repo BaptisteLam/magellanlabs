@@ -33,7 +33,7 @@ const Footer = () => {
               <img 
                 src="/lovable-uploads/magellan-logo-light.png" 
                 alt="Magellan - Agence Web"
-                className="h-10 w-auto"
+                className="h-16 w-auto"
               />
             </div>
             <p className="text-foreground/70 max-w-md text-sm">
