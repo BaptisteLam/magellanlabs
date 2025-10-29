@@ -1,24 +1,14 @@
-import { Sparkles, ArrowUp, Paperclip, Globe, Monitor, Smartphone, ChevronDown } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import TextType from '@/components/ui/TextType';
-import { useState, useEffect, useRef } from 'react';
+import { Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast as sonnerToast } from 'sonner';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import PromptBar from '@/components/PromptBar';
 
 const AIBuilder = () => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [selectedModel, setSelectedModel] = useState<'sonnet' | 'grok'>('sonnet');
-  const [selectedType, setSelectedType] = useState<'website' | 'webapp' | 'mobile'>('website');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -157,140 +147,13 @@ const AIBuilder = () => {
 
         {/* AI Input Area */}
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-lg shadow-xl p-4" style={{ border: '2px solid #03A5C0' }}>
-            <div className="relative">
-              <Textarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder=""
-                className="w-full min-h-[100px] resize-none border-0 p-0 text-sm text-slate-700 placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
-                style={{ fontSize: '14px' }}
-              />
-              {!inputValue && (
-                <div className="absolute top-0 left-0 pointer-events-none text-slate-400" style={{ fontSize: '14px' }}>
-                <TextType
-                  text={[
-                    "J'ai un foodtruck de burgers artisanaux",
-                    "Je suis naturopathe pour les femmes",
-                    "Consultant RH à Bordeaux",
-                    "Je veux un site pro pour mon activité de drone",
-                    "J'ai un bureau d'études en bâtiment"
-                  ]}
-                  typingSpeed={60}
-                  deletingSpeed={40}
-                  pauseDuration={3000}
-                  showCursor={true}
-                  cursorCharacter="|"
-                  loop={true}
-                  textColors={['#94a3b8']}
-                />
-              </div>
-              )}
-            </div>
-            <div className="flex items-center justify-between mt-3 gap-2">
-              <div className="flex items-center gap-2">
-                {/* Icon trombone - envoi fichier */}
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="w-8 h-8 rounded-full transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                >
-                  <Paperclip className="w-4 h-4" />
-                </Button>
-
-                {/* Dropdown pour moteur IA */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="w-8 h-8 rounded-full transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="bg-white border-slate-200 z-50">
-                    <DropdownMenuItem 
-                      onClick={() => setSelectedModel('sonnet')}
-                      className="cursor-pointer"
-                    >
-                      <span className={selectedModel === 'sonnet' ? 'font-semibold text-slate-900' : 'text-slate-600'}>
-                        Sonnet 4.5
-                      </span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => setSelectedModel('grok')}
-                      className="cursor-pointer"
-                    >
-                      <span className={selectedModel === 'grok' ? 'font-semibold text-slate-900' : 'text-slate-600'}>
-                        Grok Code Fast 1
-                      </span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Boutons type de projet */}
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedType('website')}
-                    className="w-8 h-8 rounded-full transition-all"
-                    style={{
-                      backgroundColor: selectedType === 'website' ? '#03A5C0' : 'transparent',
-                      color: selectedType === 'website' ? 'white' : '#64748b'
-                    }}
-                  >
-                    <Globe className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedType('webapp')}
-                    className="w-8 h-8 rounded-full transition-all"
-                    style={{
-                      backgroundColor: selectedType === 'webapp' ? '#03A5C0' : 'transparent',
-                      color: selectedType === 'webapp' ? 'white' : '#64748b'
-                    }}
-                  >
-                    <Monitor className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedType('mobile')}
-                    className="w-8 h-8 rounded-full transition-all"
-                    style={{
-                      backgroundColor: selectedType === 'mobile' ? '#03A5C0' : 'transparent',
-                      color: selectedType === 'mobile' ? 'white' : '#64748b'
-                    }}
-                  >
-                    <Smartphone className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Bouton d'envoi */}
-              <Button
-                onClick={handleSubmit}
-                disabled={isLoading}
-                className="w-10 h-10 rounded-full p-0 transition-all hover:shadow-lg disabled:opacity-50 border-0"
-                style={{ backgroundColor: '#03A5C0' }}
-                onMouseEnter={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.backgroundColor = '#028CA3';
-                    e.currentTarget.style.boxShadow = '0 8px 20px -4px rgba(3, 165, 192, 0.4)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#03A5C0';
-                  e.currentTarget.style.boxShadow = '';
-                }}
-              >
-                <ArrowUp className="w-5 h-5 text-white" />
-              </Button>
-            </div>
-          </div>
+          <PromptBar
+            inputValue={inputValue}
+            setInputValue={setInputValue}
+            onSubmit={handleSubmit}
+            isLoading={isLoading}
+            showPlaceholderAnimation={true}
+          />
         </div>
       </div>
     </div>
