@@ -189,18 +189,27 @@ const AIBuilder = () => {
             </div>
             <div className="flex items-center justify-between mt-3 gap-2">
               <div className="flex items-center gap-2">
+                {/* Icon trombone - envoi fichier */}
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="w-8 h-8 rounded-full transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+
                 {/* Dropdown pour moteur IA */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="w-10 h-10 rounded-full transition-all text-slate-600 hover:text-slate-900"
+                      className="w-8 h-8 rounded-full transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                     >
-                      <Paperclip className="w-5 h-5" />
+                      <Sparkles className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="bg-white border-slate-200">
+                  <DropdownMenuContent align="start" className="bg-white border-slate-200 z-50">
                     <DropdownMenuItem 
                       onClick={() => setSelectedModel('sonnet')}
                       className="cursor-pointer"
@@ -226,37 +235,37 @@ const AIBuilder = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => setSelectedType('website')}
-                    className="w-10 h-10 rounded-full transition-all"
+                    className="w-8 h-8 rounded-full transition-all"
                     style={{
                       backgroundColor: selectedType === 'website' ? '#03A5C0' : 'transparent',
                       color: selectedType === 'website' ? 'white' : '#64748b'
                     }}
                   >
-                    <Globe className="w-5 h-5" />
+                    <Globe className="w-4 h-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => setSelectedType('webapp')}
-                    className="w-10 h-10 rounded-full transition-all"
+                    className="w-8 h-8 rounded-full transition-all"
                     style={{
                       backgroundColor: selectedType === 'webapp' ? '#03A5C0' : 'transparent',
                       color: selectedType === 'webapp' ? 'white' : '#64748b'
                     }}
                   >
-                    <Monitor className="w-5 h-5" />
+                    <Monitor className="w-4 h-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => setSelectedType('mobile')}
-                    className="w-10 h-10 rounded-full transition-all"
+                    className="w-8 h-8 rounded-full transition-all"
                     style={{
                       backgroundColor: selectedType === 'mobile' ? '#03A5C0' : 'transparent',
                       color: selectedType === 'mobile' ? 'white' : '#64748b'
                     }}
                   >
-                    <Smartphone className="w-5 h-5" />
+                    <Smartphone className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
