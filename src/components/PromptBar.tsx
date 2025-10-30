@@ -51,7 +51,7 @@ const PromptBar = ({
   });
 
   return (
-    <div className="bg-white rounded-lg shadow-xl p-4 border-2 border-slate-300">
+    <div className="bg-white rounded-lg shadow-md p-4 border border-slate-200">
       <input
         ref={fileInputRef}
         type="file"
