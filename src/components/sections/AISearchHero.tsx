@@ -1,7 +1,5 @@
-import { Sparkles, ArrowUp, Paperclip, Save, User, Eye, Code2, X } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
+import { Save, Eye, Code2, X, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import TextType from '@/components/ui/TextType';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -13,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import trinityLogoLoading from '@/assets/trinity-logo-loading.png';
 import { useThemeStore } from '@/stores/themeStore';
+import PromptBar from '@/components/PromptBar';
+import { Textarea } from '@/components/ui/textarea';
 
 interface AISearchHeroProps {
   onGeneratedChange?: (hasGenerated: boolean) => void;
@@ -30,7 +30,6 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   const [websiteTitle, setWebsiteTitle] = useState('');
   const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -46,10 +45,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
+  const handleFileSelect = async (files: File[]) => {
     const newFiles: Array<{ name: string; base64: string; type: string }> = [];
 
     for (let i = 0; i < files.length; i++) {
@@ -73,9 +69,6 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
     }
 
     setAttachedFiles([...attachedFiles, ...newFiles]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
   const removeFile = (index: number) => {
@@ -437,60 +430,14 @@ Règles :
               
               {/* Chat input */}
               <div className="border-t border-slate-200 p-4 bg-white">
-                <div className="flex gap-2 items-end">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-10 h-10 rounded-full transition-all shrink-0"
-                    style={{ color: '#03A5C0' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Paperclip className="w-5 h-5" />
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                  <Textarea
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSubmit();
-                      }
-                    }}
-                    placeholder="Demandez des modifications..."
-                    className="min-h-[60px] resize-none text-sm"
-                    disabled={isLoading}
-                  />
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={isLoading}
-                    className="w-10 h-10 rounded-full p-0 transition-all shrink-0"
-                    style={{ backgroundColor: '#03A5C0' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#028CA3';
-                      e.currentTarget.style.boxShadow = '0 8px 20px -4px rgba(3, 165, 192, 0.4)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#03A5C0';
-                      e.currentTarget.style.boxShadow = '';
-                    }}
-                  >
-                    <ArrowUp className="w-5 h-5 text-white" />
-                  </Button>
-                </div>
+                <PromptBar
+                  inputValue={inputValue}
+                  setInputValue={setInputValue}
+                  onSubmit={handleSubmit}
+                  isLoading={isLoading}
+                  showPlaceholderAnimation={false}
+                  onFileSelect={handleFileSelect}
+                />
               </div>
             </div>
           </ResizablePanel>
@@ -621,89 +568,14 @@ Règles :
 
         {/* AI Input Area */}
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-lg border border-slate-300 shadow-xl p-4">
-            {/* Fichiers attachés */}
-            {attachedFiles.length > 0 && (
-              <div className="mb-3 flex flex-wrap gap-2">
-                {attachedFiles.map((file, idx) => (
-                  <div key={idx} className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5">
-                    <span className="text-xs text-blue-700 truncate max-w-[150px]">{file.name}</span>
-                    <button
-                      onClick={() => removeFile(idx)}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            <div className="relative">
-              <Textarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit();
-                  }
-                }}
-                placeholder=""
-                className="w-full min-h-[100px] resize-none border-0 p-0 text-sm text-slate-700 placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
-                style={{ fontSize: '14px' }}
-                disabled={isLoading}
-              />
-              {!inputValue && attachedFiles.length === 0 && (
-                <div className="absolute top-0 left-0 pointer-events-none text-slate-400" style={{ fontSize: '14px' }}>
-                <TextType
-                  text={[
-                    "J'ai un foodtruck de burgers artisanaux",
-                    "Je suis naturopathe pour les femmes",
-                    "Consultant RH à Bordeaux",
-                    "Je veux un site pro pour mon activité de drone",
-                    "J'ai un bureau d'études en bâtiment"
-                  ]}
-                  typingSpeed={60}
-                  deletingSpeed={40}
-                  pauseDuration={3000}
-                  showCursor={true}
-                  cursorCharacter="|"
-                  loop={true}
-                  textColors={['#94a3b8']}
-                />
-              </div>
-              )}
-            </div>
-            <div className="flex items-center justify-between mt-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFileSelect}
-                className="hidden"
-                disabled={isLoading}
-              />
-              <Button 
-                variant="ghost" 
-                className="text-sm text-slate-600 hover:text-white hover:bg-[#014AAD] gap-2 transition-colors [&_svg]:hover:text-white"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
-              >
-                <Paperclip className="w-4 h-4" />
-                Joindre une image
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={isLoading}
-                className="w-10 h-10 rounded-full p-0 transition-all hover:shadow-lg hover:shadow-blue-500/30 disabled:opacity-50"
-                style={{ backgroundColor: '#014AAD' }}
-              >
-                <ArrowUp className="w-5 h-5 text-white" />
-              </Button>
-            </div>
-          </div>
+          <PromptBar
+            inputValue={inputValue}
+            setInputValue={setInputValue}
+            onSubmit={handleSubmit}
+            isLoading={isLoading}
+            showPlaceholderAnimation={true}
+            onFileSelect={handleFileSelect}
+          />
         </div>
       </div>
     </div>
