@@ -532,7 +532,7 @@ Règles :
       {/* Gradient Blinds Background */}
       <div className="absolute inset-0">
         <GradientBlinds
-          gradientColors={['#03A5C0', '#03A5C0']}
+          gradientColors={isDark ? ['#03A5C0', '#03A5C0'] : ['#03A5C0', '#03A5C0']}
           angle={0}
           noise={0.64}
           blindCount={28}
