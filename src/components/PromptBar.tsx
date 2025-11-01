@@ -83,7 +83,7 @@ const PromptBar = ({
           className="w-full min-h-[100px] resize-none border-0 p-0 text-sm placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
           style={{ 
             fontSize: '14px',
-            backgroundColor: isDark ? '#1A1A1E' : 'transparent',
+            backgroundColor: isDark ? '#1F1F20' : 'transparent',
             color: isDark ? '#ffffff' : '#334155'
           }}
         />
