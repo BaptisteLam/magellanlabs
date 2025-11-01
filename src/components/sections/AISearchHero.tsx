@@ -333,14 +333,6 @@ Règles :
             }} 
           />
           
-          <img 
-            src={trinityLogoLoading} 
-            alt="Loading" 
-            className="w-20 h-20 mb-12 relative z-10 -mt-32"
-            style={{ 
-              animation: 'spin 2s linear infinite'
-            }}
-          />
           <div className="w-64 h-1 bg-slate-200 rounded-full overflow-hidden relative z-10">
             <div 
               className="h-full rounded-full"
