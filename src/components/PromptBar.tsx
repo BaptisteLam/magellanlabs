@@ -3,6 +3,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import TextType from '@/components/ui/TextType';
 import { useState, useRef } from 'react';
+import { useThemeStore } from '@/stores/themeStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +36,7 @@ const PromptBar = ({
   showPlaceholderAnimation = true,
   onFileSelect
 }: PromptBarProps) => {
+  const { isDark } = useThemeStore();
   const [selectedModel, setSelectedModel] = useState<'sonnet' | 'grok'>('sonnet');
   const [selectedType, setSelectedType] = useState<'website' | 'webapp' | 'mobile'>('website');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,7 +59,13 @@ const PromptBar = ({
   });
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 border border-slate-200">
+    <div 
+      className="rounded-lg shadow-md p-4 border"
+      style={{
+        backgroundColor: isDark ? '#0D0D0F' : '#ffffff',
+        borderColor: isDark ? 'hsl(0 0% 20%)' : 'hsl(210 20% 90%)'
+      }}
+    >
       <input
         ref={fileInputRef}
         type="file"
