@@ -62,7 +62,7 @@ const PromptBar = ({
     <div 
       className="rounded-lg shadow-md p-4 border"
       style={{
-        backgroundColor: isDark ? '#0D0D0F' : '#ffffff',
+        backgroundColor: isDark ? '#1A1A1E' : '#ffffff',
         borderColor: isDark ? 'hsl(0 0% 20%)' : 'hsl(210 20% 90%)'
       }}
     >
