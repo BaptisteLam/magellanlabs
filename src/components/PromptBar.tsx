@@ -9,6 +9,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface PromptBarProps {
   inputValue: string;
@@ -92,169 +98,215 @@ const PromptBar = ({
       </div>
       
       <div className="flex items-center justify-between mt-3 gap-2">
-        <div className="flex items-center gap-2">
-          {/* Icône trombone - envoi fichier */}
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={handleFileClick}
-            className="w-8 h-8 rounded-full transition-all border"
-            style={iconButtonStyle(false)}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#03A5C0';
-              e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-              e.currentTarget.style.color = '#03A5C0';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'transparent';
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#64748b';
-            }}
-          >
-            <Paperclip className="w-4 h-4" />
-          </Button>
+        <TooltipProvider>
+          <div className="flex items-center gap-2">
+            {/* Icône trombone - envoi fichier */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={handleFileClick}
+                  className="w-8 h-8 rounded-full transition-all border"
+                  style={iconButtonStyle(false)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#03A5C0';
+                    e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+                    e.currentTarget.style.color = '#03A5C0';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'transparent';
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#64748b';
+                  }}
+                >
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p className="text-xs">Joindre un fichier</p>
+              </TooltipContent>
+            </Tooltip>
 
-          {/* Dropdown pour moteur IA */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="w-8 h-8 rounded-full transition-all border"
-                style={iconButtonStyle(false)}
+            {/* Dropdown pour moteur IA */}
+            <Tooltip>
+              <DropdownMenu>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="w-8 h-8 rounded-full transition-all border"
+                      style={iconButtonStyle(false)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#03A5C0';
+                        e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+                        e.currentTarget.style.color = '#03A5C0';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'transparent';
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = '#64748b';
+                      }}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <DropdownMenuContent align="start" className="bg-white border-slate-200 z-50">
+                  <DropdownMenuItem 
+                    onClick={() => setSelectedModel('sonnet')}
+                    className="cursor-pointer transition-all"
+                    style={{
+                      borderColor: selectedModel === 'sonnet' ? '#03A5C0' : 'transparent',
+                      backgroundColor: selectedModel === 'sonnet' ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
+                      color: selectedModel === 'sonnet' ? '#03A5C0' : '#64748b'
+                    }}
+                  >
+                    Sonnet 4.5
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setSelectedModel('grok')}
+                    className="cursor-pointer transition-all"
+                    style={{
+                      borderColor: selectedModel === 'grok' ? '#03A5C0' : 'transparent',
+                      backgroundColor: selectedModel === 'grok' ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
+                      color: selectedModel === 'grok' ? '#03A5C0' : '#64748b'
+                    }}
+                  >
+                    Grok Code Fast 1
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <TooltipContent side="bottom">
+                <p className="text-xs">Choisir le moteur IA</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Boutons type de projet */}
+            <div className="flex items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedType('website')}
+                    className="w-8 h-8 rounded-full transition-all border"
+                    style={iconButtonStyle(selectedType === 'website')}
+                    onMouseEnter={(e) => {
+                      if (selectedType !== 'website') {
+                        e.currentTarget.style.borderColor = '#03A5C0';
+                        e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+                        e.currentTarget.style.color = '#03A5C0';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedType !== 'website') {
+                        e.currentTarget.style.borderColor = 'transparent';
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = '#64748b';
+                      }
+                    }}
+                  >
+                    <Globe className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-xs">Site web</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedType('webapp')}
+                    className="w-8 h-8 rounded-full transition-all border"
+                    style={iconButtonStyle(selectedType === 'webapp')}
+                    onMouseEnter={(e) => {
+                      if (selectedType !== 'webapp') {
+                        e.currentTarget.style.borderColor = '#03A5C0';
+                        e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+                        e.currentTarget.style.color = '#03A5C0';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedType !== 'webapp') {
+                        e.currentTarget.style.borderColor = 'transparent';
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = '#64748b';
+                      }
+                    }}
+                  >
+                    <Monitor className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-xs">Application web</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedType('mobile')}
+                    className="w-8 h-8 rounded-full transition-all border"
+                    style={iconButtonStyle(selectedType === 'mobile')}
+                    onMouseEnter={(e) => {
+                      if (selectedType !== 'mobile') {
+                        e.currentTarget.style.borderColor = '#03A5C0';
+                        e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+                        e.currentTarget.style.color = '#03A5C0';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedType !== 'mobile') {
+                        e.currentTarget.style.borderColor = 'transparent';
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = '#64748b';
+                      }
+                    }}
+                  >
+                    <Smartphone className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-xs">Application mobile</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+
+          {/* Bouton d'envoi */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={onSubmit}
+                disabled={isLoading}
+                className="w-10 h-10 rounded-full p-0 transition-all hover:shadow-lg disabled:opacity-50 border-0"
+                style={{ backgroundColor: '#03A5C0' }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#03A5C0';
-                  e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                  e.currentTarget.style.color = '#03A5C0';
+                  if (!isLoading) {
+                    e.currentTarget.style.backgroundColor = '#028CA3';
+                    e.currentTarget.style.boxShadow = '0 8px 20px -4px rgba(3, 165, 192, 0.4)';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'transparent';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#64748b';
+                  e.currentTarget.style.backgroundColor = '#03A5C0';
+                  e.currentTarget.style.boxShadow = '';
                 }}
               >
-                <Settings className="w-4 h-4" />
+                <ArrowUp className="w-5 h-5 text-white" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="bg-white border-slate-200 z-50">
-              <DropdownMenuItem 
-                onClick={() => setSelectedModel('sonnet')}
-                className="cursor-pointer transition-all"
-                style={{
-                  borderColor: selectedModel === 'sonnet' ? '#03A5C0' : 'transparent',
-                  backgroundColor: selectedModel === 'sonnet' ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
-                  color: selectedModel === 'sonnet' ? '#03A5C0' : '#64748b'
-                }}
-              >
-                Sonnet 4.5
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => setSelectedModel('grok')}
-                className="cursor-pointer transition-all"
-                style={{
-                  borderColor: selectedModel === 'grok' ? '#03A5C0' : 'transparent',
-                  backgroundColor: selectedModel === 'grok' ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
-                  color: selectedModel === 'grok' ? '#03A5C0' : '#64748b'
-                }}
-              >
-                Grok Code Fast 1
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Boutons type de projet */}
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSelectedType('website')}
-              className="w-8 h-8 rounded-full transition-all border"
-              style={iconButtonStyle(selectedType === 'website')}
-              onMouseEnter={(e) => {
-                if (selectedType !== 'website') {
-                  e.currentTarget.style.borderColor = '#03A5C0';
-                  e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                  e.currentTarget.style.color = '#03A5C0';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (selectedType !== 'website') {
-                  e.currentTarget.style.borderColor = 'transparent';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#64748b';
-                }
-              }}
-            >
-              <Globe className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSelectedType('webapp')}
-              className="w-8 h-8 rounded-full transition-all border"
-              style={iconButtonStyle(selectedType === 'webapp')}
-              onMouseEnter={(e) => {
-                if (selectedType !== 'webapp') {
-                  e.currentTarget.style.borderColor = '#03A5C0';
-                  e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                  e.currentTarget.style.color = '#03A5C0';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (selectedType !== 'webapp') {
-                  e.currentTarget.style.borderColor = 'transparent';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#64748b';
-                }
-              }}
-            >
-              <Monitor className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSelectedType('mobile')}
-              className="w-8 h-8 rounded-full transition-all border"
-              style={iconButtonStyle(selectedType === 'mobile')}
-              onMouseEnter={(e) => {
-                if (selectedType !== 'mobile') {
-                  e.currentTarget.style.borderColor = '#03A5C0';
-                  e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                  e.currentTarget.style.color = '#03A5C0';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (selectedType !== 'mobile') {
-                  e.currentTarget.style.borderColor = 'transparent';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#64748b';
-                }
-              }}
-            >
-              <Smartphone className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Bouton d'envoi */}
-        <Button
-          onClick={onSubmit}
-          disabled={isLoading}
-          className="w-10 h-10 rounded-full p-0 transition-all hover:shadow-lg disabled:opacity-50 border-0"
-          style={{ backgroundColor: '#03A5C0' }}
-          onMouseEnter={(e) => {
-            if (!isLoading) {
-              e.currentTarget.style.backgroundColor = '#028CA3';
-              e.currentTarget.style.boxShadow = '0 8px 20px -4px rgba(3, 165, 192, 0.4)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#03A5C0';
-            e.currentTarget.style.boxShadow = '';
-          }}
-        >
-          <ArrowUp className="w-5 h-5 text-white" />
-        </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">Envoyer</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
   );
