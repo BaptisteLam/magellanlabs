@@ -15,11 +15,22 @@ import Dashboard from "./pages/Dashboard";
 import AIBuilder from "./pages/AIBuilder";
 import BuilderSession from "./pages/BuilderSession";
 import ScrollToTop from "./components/ScrollToTop";
-
+import { useThemeStore } from "./stores/themeStore";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
 function App() {
+  const { isDark } = useThemeStore();
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDark]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

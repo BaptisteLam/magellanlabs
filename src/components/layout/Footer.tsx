@@ -16,7 +16,7 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="relative bg-white/80 backdrop-blur-md overflow-hidden border-t border-slate-200">
+    <footer className="relative bg-card/80 backdrop-blur-md overflow-hidden border-t border-border">
       {/* Cyan glows extending from above */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[400px] left-1/4 w-[800px] h-[800px] rounded-full blur-[150px]"
