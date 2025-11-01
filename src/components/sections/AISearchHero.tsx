@@ -532,15 +532,15 @@ Règles :
       {/* Gradient Blinds Background */}
       <div className="absolute inset-0">
         <GradientBlinds
-          gradientColors={['#E8F4F8', '#FFFFFF']}
+          gradientColors={['#03A5C0', '#03A5C0']}
           angle={0}
-          noise={0.1}
-          blindCount={12}
+          noise={0.64}
+          blindCount={28}
           blindMinWidth={50}
           spotlightRadius={0.5}
           spotlightSoftness={1}
-          spotlightOpacity={0.3}
-          mouseDampening={0.15}
+          spotlightOpacity={1}
+          mouseDampening={0.04}
           distortAmount={0}
           shineDirection="left"
           mixBlendMode="normal"
