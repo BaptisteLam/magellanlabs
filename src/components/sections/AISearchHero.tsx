@@ -527,7 +527,7 @@ Règles :
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20" style={{ backgroundColor: isDark ? '#1A1A1E' : '#ffffff' }}>
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff' }}>
       {/* Grid background - large squares, light gray */}
       <div className="absolute inset-0" 
            style={{ 
