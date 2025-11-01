@@ -115,13 +115,7 @@ const Header = () => {
                     onClick={toggleTheme}
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-full text-foreground/70 transition-colors"
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = '#03A5C0';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '';
-                    }}
+                    className="h-8 w-8 rounded-full text-foreground/70 hover:text-[#03A5C0] transition-colors"
                   >
                     {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                   </Button>
@@ -209,7 +203,7 @@ const Header = () => {
                   <Button
                     onClick={toggleTheme}
                     variant="ghost"
-                    className="justify-start text-sm gap-2 rounded-full px-4 py-2 text-foreground/70"
+                    className="justify-start text-sm gap-2 rounded-full px-4 py-2 text-foreground/70 hover:text-[#03A5C0] transition-colors"
                   >
                     {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                     <span>{isDark ? 'Mode clair' : 'Mode sombre'}</span>

@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Linkedin, Twitter } from 'lucide-react';
+import { useThemeStore } from '@/stores/themeStore';
 
 const Footer = () => {
+  const { isDark } = useThemeStore();
   const navigation = [
     { name: 'Entreprise', href: '/about' },
     { name: 'Tarif', href: '/tarifs' },
@@ -31,7 +33,7 @@ const Footer = () => {
           <div className="md:col-span-2">
             <div className="flex items-center space-x-3 mb-4">
               <img 
-                src="/lovable-uploads/magellan-logo-light.png" 
+                src={isDark ? "/lovable-uploads/magellan-logo-dark.png" : "/lovable-uploads/magellan-logo-light.png"}
                 alt="Magellan - Agence Web"
                 className="h-16 w-auto"
               />
