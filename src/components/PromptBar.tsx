@@ -222,7 +222,7 @@ const PromptBar = ({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top">
-                    <p className="text-xs">Site web vitrine - Pages statiques</p>
+                    <p className="text-xs">site web</p>
                   </TooltipContent>
                 </Tooltip>
 
@@ -240,7 +240,7 @@ const PromptBar = ({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top">
-                    <p className="text-xs">Application web - Dashboard, SaaS</p>
+                    <p className="text-xs">application web</p>
                   </TooltipContent>
                 </Tooltip>
 
@@ -258,7 +258,7 @@ const PromptBar = ({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top">
-                    <p className="text-xs">Vue mobile - Design responsive</p>
+                    <p className="text-xs">application mobile</p>
                   </TooltipContent>
                 </Tooltip>
               </>
