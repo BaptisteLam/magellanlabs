@@ -52,11 +52,16 @@ const PromptBar = ({
     }
   };
 
-  const iconButtonStyle = (isSelected: boolean) => ({
-    borderColor: isSelected ? '#03A5C0' : 'transparent',
-    backgroundColor: isSelected ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
-    color: isSelected ? '#03A5C0' : '#64748b'
-  });
+  const iconButtonStyle = (isSelected: boolean) => {
+    const baseColor = isDark ? 'hsl(var(--foreground))' : '#64748b';
+    return {
+      borderColor: isSelected ? '#03A5C0' : (isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)'),
+      backgroundColor: 'transparent',
+      color: isSelected ? '#03A5C0' : baseColor,
+      borderWidth: '1px',
+      borderStyle: 'solid'
+    };
+  };
 
   return (
     <div 
@@ -126,7 +131,7 @@ const PromptBar = ({
                   variant="ghost" 
                   size="icon"
                   onClick={handleFileClick}
-                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 p-0"
+                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
                   style={iconButtonStyle(false)}
                 >
                   <Paperclip className="w-4 h-4" />
@@ -145,13 +150,13 @@ const PromptBar = ({
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 p-0"
-                      style={iconButtonStyle(selectedModel === 'sonnet')}
+                      className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
+                      style={iconButtonStyle(false)}
                     >
                       <Settings className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent className="bg-popover">
                     <DropdownMenuItem onClick={() => setSelectedModel('sonnet')}>
                       Claude Sonnet (Recommandé)
                     </DropdownMenuItem>
@@ -173,7 +178,7 @@ const PromptBar = ({
                   variant="ghost" 
                   size="icon"
                   onClick={() => setSelectedType('website')}
-                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 p-0"
+                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
                   style={iconButtonStyle(selectedType === 'website')}
                 >
                   <Globe className="w-4 h-4" />
@@ -191,7 +196,7 @@ const PromptBar = ({
                   variant="ghost" 
                   size="icon"
                   onClick={() => setSelectedType('webapp')}
-                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 p-0"
+                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
                   style={iconButtonStyle(selectedType === 'webapp')}
                 >
                   <Monitor className="w-4 h-4" />
@@ -209,7 +214,7 @@ const PromptBar = ({
                   variant="ghost" 
                   size="icon"
                   onClick={() => setSelectedType('mobile')}
-                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 p-0"
+                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
                   style={iconButtonStyle(selectedType === 'mobile')}
                 >
                   <Smartphone className="w-4 h-4" />
