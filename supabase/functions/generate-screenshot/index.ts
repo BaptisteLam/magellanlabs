@@ -20,49 +20,57 @@ serve(async (req) => {
 
     console.log(`Generating screenshot for project ${projectId}`);
 
-    // Use APIFlash to generate real screenshot
-    const apiflashKey = Deno.env.get('APIFLASH_ACCESS_KEY');
+    // Use Lovable AI to generate a screenshot from HTML description
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     
-    if (!apiflashKey) {
-      throw new Error('APIFLASH_ACCESS_KEY environment variable is required');
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY environment variable is required');
     }
 
-    console.log('Generating real screenshot from HTML...');
+    console.log('Generating screenshot using Lovable AI...');
     
-    // Clean HTML content - remove markdown code blocks if present
-    let cleanHtml = htmlContent.trim();
-    if (cleanHtml.startsWith('```html')) {
-      cleanHtml = cleanHtml.replace(/^```html\n/, '').replace(/\n```$/, '');
-    } else if (cleanHtml.startsWith('```')) {
-      cleanHtml = cleanHtml.replace(/^```\n/, '').replace(/\n```$/, '');
-    }
-    
-    // Use POST with form data (APIFlash requirement)
-    const formData = new URLSearchParams({
-      access_key: apiflashKey,
-      html: cleanHtml,
-      wait_until: 'page_loaded',
-      width: '1200',
-      height: '630',
-      format: 'png',
-      response_type: 'image',
-    });
+    // Extract key visual information from HTML
+    const visualPrompt = `Generate a professional website screenshot preview image (1200x630px) for this HTML page. 
+Make it look like a real browser screenshot with modern UI design.
 
-    const screenshotResponse = await fetch('https://api.apiflash.com/v1/urltoimage', {
+HTML content preview:
+${htmlContent.substring(0, 1000)}`;
+
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
       },
-      body: formData.toString()
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-image-preview',
+        messages: [
+          {
+            role: 'user',
+            content: visualPrompt
+          }
+        ],
+        modalities: ['image', 'text']
+      })
     });
 
-    if (!screenshotResponse.ok) {
-      const errorText = await screenshotResponse.text();
-      throw new Error(`Screenshot API failed: ${screenshotResponse.statusText} - ${errorText}`);
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      throw new Error(`Lovable AI API failed: ${aiResponse.statusText} - ${errorText}`);
+    }
+
+    const aiData = await aiResponse.json();
+    const imageUrl = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+    if (!imageUrl) {
+      throw new Error('No image generated from AI');
     }
 
     console.log('Screenshot generated, preparing upload...');
-    const imageBuffer = new Uint8Array(await screenshotResponse.arrayBuffer());
+    
+    // Convert base64 to buffer
+    const base64Data = imageUrl.split(',')[1];
+    const imageBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
     
     console.log('Screenshot generated, uploading to storage...');
 
