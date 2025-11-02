@@ -68,11 +68,6 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
         title="Preview"
         sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
       />
-      
-      {/* Indicateur d'affichage en temps réel */}
-      <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm text-xs text-gray-600">
-        ⚡ Affichage instantané
-      </div>
     </div>
   );
 }
