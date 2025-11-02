@@ -745,43 +745,53 @@ Règles :
 
               {/* Affichage du streaming en temps réel */}
               {isStreaming && streamingText && (
-                <div className={`p-4 rounded-lg ${isDark ? 'bg-gradient-to-br from-blue-900/50 to-cyan-900/50 border border-blue-800 mr-4' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mr-4'}`}>
-                  <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Code en génération...
-                  </p>
-                  <pre className={`text-xs font-mono ${isDark ? 'text-slate-200' : 'text-slate-700'} whitespace-pre-wrap break-words`}>
-                    {streamingText}<span className="animate-pulse">|</span>
-                  </pre>
-                  
-                  {/* Contrôles de streaming */}
-                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-300/20">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsPaused(!isPaused)}
-                      className="h-7 px-3 text-xs"
-                    >
-                      {isPaused ? (
-                        <>
-                          <Play className="w-3 h-3 mr-1.5" />
-                          Reprendre
-                        </>
-                      ) : (
-                        <>
-                          <Pause className="w-3 h-3 mr-1.5" />
-                          Pause
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => streamingRef.current?.abort()}
-                      className="h-7 px-3 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <StopCircle className="w-3 h-3 mr-1.5" />
-                      Arrêter
-                    </Button>
+                <div className="flex gap-3">
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                    <svg className={`w-5 h-5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
+                      <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      Trinity AI • Génération en cours
+                    </div>
+                    <div className={`${isDark ? 'bg-slate-900/50' : 'bg-slate-100'} rounded-lg p-3`}>
+                      <pre className={`text-xs font-mono ${isDark ? 'text-slate-300' : 'text-slate-700'} whitespace-pre-wrap break-words`}>
+                        {streamingText}<span className="animate-pulse">|</span>
+                      </pre>
+                    </div>
+                    
+                    {/* Contrôles de streaming */}
+                    <div className="flex items-center gap-2 mt-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsPaused(!isPaused)}
+                        className="h-7 px-3 text-xs"
+                      >
+                        {isPaused ? (
+                          <>
+                            <Play className="w-3 h-3 mr-1.5" />
+                            Reprendre
+                          </>
+                        ) : (
+                          <>
+                            <Pause className="w-3 h-3 mr-1.5" />
+                            Pause
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => streamingRef.current?.abort()}
+                        className="h-7 px-3 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <StopCircle className="w-3 h-3 mr-1.5" />
+                        Arrêter
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
