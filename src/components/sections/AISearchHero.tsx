@@ -158,18 +158,10 @@ Règles :
         }
       }
 
-      // Require authentication
-      if (!user) {
-        navigate('/auth');
-        throw new Error('Authentication required');
-      }
-
-      // Call authenticated AI proxy
-      const { data: { session } } = await supabase.auth.getSession();
+      // Call AI proxy
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -233,26 +225,28 @@ Règles :
       const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
       const finalHtml = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
 
-      // Require authentication for session creation
-      if (!user) {
-        throw new Error('Authentication required to save session');
+      // Créer la session uniquement si l'utilisateur est connecté
+      let sessionData = null;
+      if (user) {
+        const { data, error: sessionError } = await supabase
+          .from('build_sessions')
+          .insert({
+            user_id: user.id,
+            html_content: finalHtml,
+            messages: [
+              { role: 'user', content: userMessageContent },
+              { role: 'assistant', content: explanation }
+            ]
+          })
+          .select()
+          .single();
+
+        if (sessionError) {
+          console.error('Session creation error:', sessionError);
+        } else {
+          sessionData = data;
+        }
       }
-
-      // Créer/Mettre à jour la session uniquement à la fin
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('build_sessions')
-        .insert({
-          user_id: user.id,
-          html_content: finalHtml,
-          messages: [
-            { role: 'user', content: userMessageContent },
-            { role: 'assistant', content: explanation }
-          ]
-        })
-        .select()
-        .single();
-
-      if (sessionError) throw sessionError;
 
       setInputValue('');
       setAttachedFiles([]);
@@ -264,8 +258,10 @@ Règles :
 
       sonnerToast.success("Site généré !");
       
-      // Rediriger uniquement après que tout soit terminé
-      setTimeout(() => navigate(`/builder/${sessionData.id}`), 500);
+      // Rediriger uniquement si une session a été créée
+      if (sessionData) {
+        setTimeout(() => navigate(`/builder/${sessionData.id}`), 500);
+      }
     } catch (error) {
       console.error('Error:', error);
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
