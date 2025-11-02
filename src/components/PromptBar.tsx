@@ -60,10 +60,10 @@ const PromptBar = ({
 
   return (
     <div 
-      className="w-full rounded-2xl shadow-lg p-4 border-2"
+      className="w-full rounded-xl shadow-sm p-3 border"
       style={{
-        background: 'linear-gradient(135deg, #03A5C0 0%, #028CA3 100%)',
-        borderColor: 'rgba(3, 165, 192, 0.3)'
+        backgroundColor: '#ffffff',
+        borderColor: 'rgba(203, 213, 225, 0.5)'
       }}
     >
       <input
@@ -88,13 +88,13 @@ const PromptBar = ({
             }
           }}
           placeholder=""
-          className="w-full min-h-[120px] resize-none border-0 p-4 text-base placeholder:text-white/60 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-xl bg-white/10 backdrop-blur-sm text-white"
+          className="w-full min-h-[100px] resize-none border-0 p-3 text-sm placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-slate-700"
           style={{ 
-            fontSize: '15px'
+            fontSize: '14px'
           }}
         />
         {!inputValue && showPlaceholderAnimation && (
-          <div className="absolute top-4 left-4 pointer-events-none text-white/70" style={{ fontSize: '15px' }}>
+          <div className="absolute top-3 left-3 pointer-events-none text-slate-400" style={{ fontSize: '14px' }}>
             <TextType
               text={[
                 "J'ai un foodtruck de burgers artisanaux",
@@ -109,24 +109,24 @@ const PromptBar = ({
               showCursor={true}
               cursorCharacter="|"
               loop={true}
-              textColors={['rgba(255, 255, 255, 0.7)']}
+              textColors={['rgba(148, 163, 184, 0.7)']}
             />
           </div>
         )}
       </div>
       
-      <div className="flex items-center justify-end mt-3 gap-2">
+      <div className="flex items-center justify-end mt-2 gap-2">
         <TooltipProvider>
-          {/* Bouton fichier minimaliste */}
+          {/* Bouton fichier bleu minimaliste */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
                 variant="ghost" 
                 size="icon"
                 onClick={handleFileClick}
-                className="w-7 h-7 rounded-full transition-all hover:bg-white/20 p-0"
+                className="w-8 h-8 rounded-full transition-all hover:bg-[#03A5C0]/10 p-0"
               >
-                <Paperclip className="w-3.5 h-3.5 text-white/80" />
+                <Paperclip className="w-4 h-4 text-[#03A5C0]" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">
@@ -134,15 +134,16 @@ const PromptBar = ({
             </TooltipContent>
           </Tooltip>
 
-          {/* Bouton d'envoi minimaliste */}
+          {/* Bouton d'envoi bleu */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 onClick={onSubmit}
                 disabled={isLoading}
-                className="w-8 h-8 rounded-full p-0 transition-all hover:scale-110 disabled:opacity-50 border-0 bg-white hover:bg-white/90"
+                className="w-9 h-9 rounded-full p-0 transition-all hover:scale-105 disabled:opacity-50 border-0"
+                style={{ backgroundColor: '#03A5C0' }}
               >
-                <ArrowUp className="w-4 h-4 text-[#03A5C0]" />
+                <ArrowUp className="w-4 h-4 text-white" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">

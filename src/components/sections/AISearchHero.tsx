@@ -400,25 +400,29 @@ Règles :
               {/* Chat history */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {messages.map((msg, idx) => (
-                  <div key={idx} className={`p-4 rounded-lg ${msg.role === 'user' ? 'bg-white border border-slate-200 ml-4' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mr-4'}`}>
-                    <p className="text-xs font-semibold text-slate-500 mb-2">
-                      {msg.role === 'user' ? 'Vous' : 'Magellan'}
-                    </p>
+                  <div key={idx}>
                     {msg.role === 'user' ? (
-                      <div>
-                        {typeof msg.content === 'string' ? (
-                          <p className="text-sm text-slate-700">{msg.content}</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {msg.content.map((item, i) => (
-                              item.type === 'text' ? (
-                                <p key={i} className="text-sm text-slate-700">{item.text}</p>
-                              ) : (
-                                <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />
-                              )
-                            ))}
-                          </div>
-                        )}
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#03A5C0] flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {typeof msg.content === 'string' ? (
+                            <p className="text-sm text-slate-700">{msg.content}</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {msg.content.map((item, i) => (
+                                item.type === 'text' ? (
+                                  <p key={i} className="text-sm text-slate-700">{item.text}</p>
+                                ) : (
+                                  <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />
+                                )
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <p className="text-xs text-slate-500 font-mono">HTML généré/modifié</p>

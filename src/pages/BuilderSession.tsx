@@ -687,16 +687,20 @@ Règles :
               {messages.map((msg, idx) => (
                 <div key={idx}>
                   {msg.role === 'user' ? (
-                    <div className="ml-4">
-                      <div className="bg-[#03A5C0] text-white p-4 rounded-lg">
-                        <p className="text-xs font-semibold mb-2 opacity-90">Vous</p>
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#03A5C0] flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
                         {typeof msg.content === 'string' ? (
-                          <p className="text-sm">{msg.content}</p>
+                          <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{msg.content}</p>
                         ) : (
                           <div className="space-y-2">
                             {msg.content.map((item, i) => (
                               item.type === 'text' ? (
-                                <p key={i} className="text-sm">{item.text}</p>
+                                <p key={i} className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{item.text}</p>
                               ) : (
                                 <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />
                               )
@@ -706,50 +710,50 @@ Règles :
                       </div>
                     </div>
                   ) : (
-                    <div className="mr-4">
-                      <div className={`p-4 rounded-lg ${isDark ? 'bg-slate-700 border border-slate-600' : 'bg-white border border-slate-200'}`}>
-                        <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Magellan</p>
-                        <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                        <svg className={`w-4 h-4 ${isDark ? 'text-slate-300' : 'text-slate-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
+                          <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                            <Code2 className="w-3 h-3" />
+                            <span>Code généré</span>
+                          </div>
+                        </div>
+                        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                           {typeof msg.content === 'string' 
-                            ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
+                            ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || 'Site généré')
                             : 'Contenu généré'
                           }
                         </p>
                       </div>
                     </div>
                   )}
-                  
-                  {/* Animation de chargement sous le dernier message utilisateur */}
-                  {msg.role === 'user' && idx === messages.length - 1 && isLoading && (
-                    <div className={`ml-4 mt-2 flex items-center gap-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      <Pencil className="w-3.5 h-3.5 animate-pulse" />
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs font-medium">AI typing</span>
-                        <span className="inline-flex gap-0.5">
-                          <span className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
-                          <span className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
-                          <span className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
-                        </span>
-                      </div>
-                    </div>
-                  )}
                 </div>
               ))}
 
+
               {/* Affichage du streaming en temps réel */}
               {isStreaming && streamingText && (
-                <div className="flex gap-3">
-                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                    <svg className={`w-5 h-5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                <div className="flex items-start gap-3">
+                  <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                    <svg className={`w-4 h-4 ${isDark ? 'text-slate-300' : 'text-slate-600'}`} fill="currentColor" viewBox="0 0 20 20">
                       <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
                       <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className={`text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Magellan • Génération en cours
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs animate-pulse ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                        <Pencil className="w-3 h-3" />
+                        <span>Génération en cours</span>
+                      </div>
                     </div>
-                    <div className={`${isDark ? 'bg-slate-900/50' : 'bg-slate-100'} rounded-lg p-3`}>
+                    <div className={`${isDark ? 'bg-slate-900/30' : 'bg-slate-50'} rounded-lg p-3`}>
                       <pre className={`text-xs font-mono ${isDark ? 'text-slate-300' : 'text-slate-700'} whitespace-pre-wrap break-words`}>
                         {streamingText}<span className="animate-pulse">|</span>
                       </pre>
