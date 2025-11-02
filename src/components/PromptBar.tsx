@@ -79,6 +79,14 @@ const PromptBar = ({
         <Textarea
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              if (!isLoading && inputValue.trim()) {
+                onSubmit();
+              }
+            }
+          }}
           placeholder=""
           className="w-full min-h-[100px] resize-none border-0 p-0 text-sm placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
           style={{ 
