@@ -159,7 +159,7 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-4xl font-bold text-black">
+              <h1 className="text-4xl font-bold" style={{ color: '#03A5C0' }}>
                 Mes projets
               </h1>
               <p className="text-slate-600 mt-2">{userEmail}</p>
@@ -170,12 +170,12 @@ export default function Dashboard() {
                 variant="ghost"
                 className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
                 style={{ 
-                  color: '#014AAD',
+                  color: '#03A5C0',
                   borderColor: 'transparent'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
-                  e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(3, 165, 192, 0.3)';
+                  e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = 'transparent';
@@ -189,12 +189,12 @@ export default function Dashboard() {
                 variant="ghost"
                 className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
                 style={{ 
-                  color: '#014AAD',
+                  color: '#03A5C0',
                   borderColor: 'transparent'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
-                  e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(3, 165, 192, 0.3)';
+                  e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = 'transparent';
@@ -250,7 +250,7 @@ export default function Dashboard() {
                       {/* Edit button */}
                       <Button
                         variant="outline"
-                        className="flex-1"
+                        className="flex-1 hover:text-[#03A5C0] transition-colors"
                         size="sm"
                         onClick={() => {
                           if (project.status === 'draft') {
