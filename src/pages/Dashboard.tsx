@@ -243,7 +243,7 @@ export default function Dashboard() {
                       {/* Edit button */}
                       <Button
                         variant="outline"
-                        className="flex-1 hover:text-[#03A5C0] transition-colors"
+                        className="flex-1 transition-colors hover:border-[#03A5C0] hover:text-[#03A5C0]"
                         size="sm"
                         onClick={() => {
                           if (project.status === 'draft') {
