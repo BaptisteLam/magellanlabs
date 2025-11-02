@@ -37,18 +37,22 @@ serve(async (req) => {
       cleanHtml = cleanHtml.replace(/^```\n/, '').replace(/\n```$/, '');
     }
     
-    // Create URL with parameters for APIFlash
-    const params = new URLSearchParams({
-      access_key: apiflashKey,
-      html: cleanHtml,
-      wait_until: 'page_loaded',
-      width: '1200',
-      height: '630',
-      format: 'png',
-      response_type: 'image',
+    // Use POST method to avoid URL length limitations
+    const screenshotResponse = await fetch('https://api.apiflash.com/v1/urltoimage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        access_key: apiflashKey,
+        html: cleanHtml,
+        wait_until: 'page_loaded',
+        width: 1200,
+        height: 630,
+        format: 'png',
+        response_type: 'image',
+      })
     });
-
-    const screenshotResponse = await fetch(`https://api.apiflash.com/v1/urltoimage?${params.toString()}`);
 
     if (!screenshotResponse.ok) {
       const errorText = await screenshotResponse.text();
