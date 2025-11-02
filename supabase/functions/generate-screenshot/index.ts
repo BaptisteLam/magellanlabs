@@ -20,48 +20,35 @@ serve(async (req) => {
 
     console.log(`Generating screenshot for project ${projectId}`);
 
-    // Use HTML to Image API to generate real screenshot
-    const hctiUserId = Deno.env.get('HCTI_USER_ID');
-    const hctiApiKey = Deno.env.get('HCTI_API_KEY');
+    // Use APIFlash to generate real screenshot
+    const apiflashKey = Deno.env.get('APIFLASH_ACCESS_KEY');
     
-    if (!hctiUserId || !hctiApiKey) {
-      throw new Error('HCTI_USER_ID and HCTI_API_KEY environment variables are required');
+    if (!apiflashKey) {
+      throw new Error('APIFLASH_ACCESS_KEY environment variable is required');
     }
 
     console.log('Generating real screenshot from HTML...');
-    const screenshotResponse = await fetch('https://hcti.io/v1/image', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Basic ' + btoa(`${hctiUserId}:${hctiApiKey}`),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        html: htmlContent,
-        viewport_width: 1200,
-        viewport_height: 630,
-        device_scale: 1,
-      })
+    
+    // Create URL with parameters for APIFlash
+    const params = new URLSearchParams({
+      access_key: apiflashKey,
+      html: htmlContent,
+      wait_until: 'page_loaded',
+      width: '1200',
+      height: '630',
+      format: 'png',
+      response_type: 'image',
     });
+
+    const screenshotResponse = await fetch(`https://api.apiflash.com/v1/urltoimage?${params.toString()}`);
 
     if (!screenshotResponse.ok) {
       const errorText = await screenshotResponse.text();
       throw new Error(`Screenshot API failed: ${screenshotResponse.statusText} - ${errorText}`);
     }
 
-    const screenshotData = await screenshotResponse.json();
-    const imageUrl = screenshotData.url;
-    
-    if (!imageUrl) {
-      throw new Error('No screenshot URL returned');
-    }
-
-    console.log('Downloading screenshot image...');
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) {
-      throw new Error('Failed to download screenshot');
-    }
-
-    const imageBuffer = new Uint8Array(await imageResponse.arrayBuffer());
+    console.log('Screenshot generated, preparing upload...');
+    const imageBuffer = new Uint8Array(await screenshotResponse.arrayBuffer());
     
     console.log('Screenshot generated, uploading to storage...');
 
