@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { ArrowUp, Save, Eye, Code2, Home, Paperclip, X, Moon, Sun, Pencil, Pause, Play, StopCircle } from "lucide-react";
+import { ArrowUp, Save, Eye, Code2, Home, Paperclip, X, Moon, Sun, Pencil, Pause, Play, StopCircle, FileEdit, Image as ImageIcon, Type } from "lucide-react";
 import TextType from "@/components/ui/TextType";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
@@ -16,10 +16,12 @@ import { VitePreview } from "@/components/VitePreview";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
 import { FileTabs } from "@/components/CodeEditor/FileTabs";
 import { MonacoEditor } from "@/components/CodeEditor/MonacoEditor";
+import { Task, TaskContent, TaskItem, TaskItemFile } from "@/components/ui/ai/task";
 
 interface Message {
   role: 'user' | 'assistant';
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+  actions?: Array<{ type: 'file' | 'text' | 'image'; file?: string; description?: string }>;
 }
 
 export default function BuilderSession() {
@@ -392,12 +394,23 @@ Règles :
               displayCharByChar();
             }
 
-            // Afficher explication dans le chat
+            // Afficher explication dans le chat avec actions
             const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
             if (explanation) {
+              const actions: Array<{ type: 'file' | 'text' | 'image'; file?: string; description?: string }> = [];
+              
+              // Détecter les actions basées sur le contenu
+              if (accumulated.includes('<!DOCTYPE html>')) {
+                actions.push({ type: 'file', file: 'index.html', description: 'Génération du HTML' });
+              }
+              if (explanation[1].includes('image') || explanation[1].includes('photo')) {
+                actions.push({ type: 'image', description: 'Ajout d\'images' });
+              }
+              actions.push({ type: 'text', description: explanation[1].trim() });
+
               setMessages(prev => {
                 const filtered = prev.filter(m => m.role !== 'assistant');
-                return [...newMessages, { role: 'assistant' as const, content: explanation[1].trim() }];
+                return [...newMessages, { role: 'assistant' as const, content: explanation[1].trim(), actions }];
               });
             }
 
@@ -685,50 +698,80 @@ Règles :
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.map((msg, idx) => (
                 <div key={idx}>
-                  <div className={`p-4 rounded-lg ${
-                    msg.role === 'user' 
-                      ? isDark ? 'bg-slate-700 border border-slate-600 ml-4' : 'bg-white border border-slate-200 ml-4'
-                      : isDark ? 'bg-gradient-to-br from-blue-900/50 to-cyan-900/50 border border-blue-800 mr-4' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mr-4'
-                  }`}>
-                    <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {msg.role === 'user' ? 'Vous' : 'Trinity'}
-                    </p>
-                    {msg.role === 'user' ? (
-                      <div>
-                        {typeof msg.content === 'string' ? (
-                          <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{msg.content}</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {msg.content.map((item, i) => (
-                              item.type === 'text' ? (
-                                <p key={i} className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{item.text}</p>
-                              ) : (
-                                <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />
-                              )
+                  {msg.role === 'user' ? (
+                    /* Message utilisateur - encadré bleu */
+                    <div className={`p-4 rounded-lg border-2 ${
+                      isDark 
+                        ? 'bg-slate-800 border-[#03A5C0]' 
+                        : 'bg-white border-[#03A5C0]'
+                    }`}>
+                      {typeof msg.content === 'string' ? (
+                        <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{msg.content}</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {msg.content.map((item, i) => (
+                            item.type === 'text' ? (
+                              <p key={i} className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{item.text}</p>
+                            ) : (
+                              <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />
+                            )
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Message AI - direct avec icônes */
+                    <div className="space-y-2">
+                      {msg.actions && msg.actions.length > 0 && (
+                        <Task>
+                          <TaskContent>
+                            {msg.actions.map((action, actionIdx) => (
+                              <TaskItem key={actionIdx}>
+                                {action.type === 'file' && (
+                                  <>
+                                    <FileEdit className="h-4 w-4 text-[#03A5C0]" />
+                                    <span>Modification de</span>
+                                    <TaskItemFile>{action.file}</TaskItemFile>
+                                  </>
+                                )}
+                                {action.type === 'text' && (
+                                  <>
+                                    <Type className="h-4 w-4 text-[#03A5C0]" />
+                                    <span>{action.description}</span>
+                                  </>
+                                )}
+                                {action.type === 'image' && (
+                                  <>
+                                    <ImageIcon className="h-4 w-4 text-[#03A5C0]" />
+                                    <span>{action.description}</span>
+                                  </>
+                                )}
+                              </TaskItem>
                             ))}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                        {typeof msg.content === 'string' 
-                          ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
-                          : 'Contenu généré'
-                        }
-                      </p>
-                    )}
-                  </div>
+                          </TaskContent>
+                        </Task>
+                      )}
+                      {!msg.actions && (
+                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                          {typeof msg.content === 'string' 
+                            ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
+                            : 'Contenu généré'
+                          }
+                        </p>
+                      )}
+                    </div>
+                  )}
                   
                   {/* Animation de chargement sous le dernier message utilisateur */}
                   {msg.role === 'user' && idx === messages.length - 1 && isLoading && (
-                    <div className={`ml-4 mt-2 flex items-center gap-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <div className={`mt-2 flex items-center gap-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                       <Pencil className="w-3.5 h-3.5 animate-pulse" />
                       <div className="flex items-center gap-1">
-                        <span className="text-xs font-medium">AI typing</span>
+                        <span className="text-xs font-medium">Trinity travaille...</span>
                         <span className="inline-flex gap-0.5">
-                          <span className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
-                          <span className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
-                          <span className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
+                          <span className="w-1 h-1 bg-[#03A5C0] rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
+                          <span className="w-1 h-1 bg-[#03A5C0] rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
+                          <span className="w-1 h-1 bg-[#03A5C0] rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
                         </span>
                       </div>
                     </div>
@@ -736,18 +779,28 @@ Règles :
                 </div>
               ))}
 
-              {/* Affichage du streaming en temps réel */}
-              {isStreaming && streamingText && (
-                <div className={`p-4 rounded-lg ${isDark ? 'bg-gradient-to-br from-blue-900/50 to-cyan-900/50 border border-blue-800 mr-4' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mr-4'}`}>
-                  <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Code en génération...
-                  </p>
-                  <pre className={`text-xs font-mono ${isDark ? 'text-slate-200' : 'text-slate-700'} whitespace-pre-wrap break-words`}>
-                    {streamingText}<span className="animate-pulse">|</span>
-                  </pre>
+              {/* Affichage du streaming en temps réel - avec icônes d'actions */}
+              {isStreaming && (
+                <div className="space-y-2">
+                  <Task>
+                    <TaskContent>
+                      <TaskItem>
+                        <FileEdit className="h-4 w-4 text-[#03A5C0] animate-pulse" />
+                        <span className="text-sm">Génération du code en cours...</span>
+                      </TaskItem>
+                      {streamingText && (
+                        <TaskItem>
+                          <Type className="h-4 w-4 text-[#03A5C0]" />
+                          <span className="text-xs font-mono text-slate-600 dark:text-slate-400">
+                            {streamingText.slice(0, 100)}{streamingText.length > 100 ? '...' : ''}<span className="animate-pulse">|</span>
+                          </span>
+                        </TaskItem>
+                      )}
+                    </TaskContent>
+                  </Task>
                   
                   {/* Contrôles de streaming */}
-                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-300/20">
+                  <div className="flex items-center gap-2 ml-6">
                     <Button
                       size="sm"
                       variant="ghost"
