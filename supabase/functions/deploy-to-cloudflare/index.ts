@@ -304,8 +304,22 @@ serve(async (req) => {
     // Créer le ZIP avec les fichiers construits
     const zip = new JSZip();
     
+    // Calculer les hashes SHA-256 pour le manifest
+    const manifestEntries: Record<string, string> = {};
+    
     for (const [filename, content] of Object.entries(builtFiles)) {
       zip.file(filename, content);
+      
+      // Calculer le hash SHA-256 du contenu
+      // Créer un nouveau ArrayBuffer pour éviter les problèmes de SharedArrayBuffer
+      const tempBuffer = new ArrayBuffer(content.byteLength);
+      new Uint8Array(tempBuffer).set(content);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', tempBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      // Le manifest doit mapper filename -> hash (pas path)
+      manifestEntries[`/${filename}`] = hashHex;
     }
     
     // Ajouter fichier _headers pour CDN
@@ -329,22 +343,25 @@ serve(async (req) => {
   Content-Type: application/javascript
   Cache-Control: public, max-age=31536000, immutable`;
     
-    zip.file('_headers', headersConfig);
+    const headersBytes = new TextEncoder().encode(headersConfig);
+    zip.file('_headers', headersBytes);
+    
+    // Hash pour _headers
+    const headersTempBuffer = new ArrayBuffer(headersBytes.byteLength);
+    new Uint8Array(headersTempBuffer).set(headersBytes);
+    const headersHash = await crypto.subtle.digest('SHA-256', headersTempBuffer);
+    const headersHashArray = Array.from(new Uint8Array(headersHash));
+    const headersHashHex = headersHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    manifestEntries['/_headers'] = headersHashHex;
 
     // Générer le ZIP
     const zipArrayBuffer = await zip.generateAsync({ type: 'arraybuffer' });
     console.log(`📦 ZIP créé: ${zipArrayBuffer.byteLength} bytes`);
-
-    // Créer le manifest
-    const manifestEntries: Record<string, { path: string }> = {};
-    for (const filename of Object.keys(builtFiles)) {
-      manifestEntries[filename] = { path: filename };
-    }
-    manifestEntries['_headers'] = { path: '_headers' };
+    console.log(`📋 Manifest entries:`, Object.keys(manifestEntries));
 
     // Créer le FormData
     const formData = new FormData();
-    formData.append('manifest', JSON.stringify({ entries: manifestEntries }));
+    formData.append('manifest', JSON.stringify(manifestEntries));
     const zipBlob = new Blob([zipArrayBuffer], { type: 'application/zip' });
     formData.append('file', zipBlob, 'build.zip');
 
@@ -387,9 +404,13 @@ serve(async (req) => {
     }
 
     // Générer le screenshot après le déploiement
-    if (website?.id) {
+    if (website?.id && cloudflareUrl) {
       try {
-        console.log('📸 Génération du screenshot...');
+        console.log('📸 Génération du screenshot (avec délai de 5s pour propagation DNS)...');
+        
+        // Attendre 5 secondes pour que l'URL soit propagée sur le CDN Cloudflare
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
         await supabase.functions.invoke('generate-screenshot', {
           body: {
             projectId: website.id,

@@ -58,9 +58,11 @@ serve(async (req) => {
     let screenshotResponse;
 
     if (pageUrl) {
-      // Use the deployed page URL
+      // Use the deployed page URL with retry logic
       console.log(`Using deployed URL: ${pageUrl}`);
       apiflashUrl.searchParams.set('url', pageUrl);
+      apiflashUrl.searchParams.set('delay', '3'); // Attendre 3s supplémentaires
+      apiflashUrl.searchParams.set('ttl', '86400'); // Cache 24h
       
       screenshotResponse = await fetch(apiflashUrl.toString(), {
         method: 'GET',
