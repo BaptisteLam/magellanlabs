@@ -439,6 +439,9 @@ Règles :
                   onSubmit={handleSubmit}
                   isLoading={isLoading}
                   showPlaceholderAnimation={false}
+                  showConfigButtons={false}
+                  attachedFiles={attachedFiles}
+                  onRemoveFile={removeFile}
                   onFileSelect={handleFileSelect}
                 />
               </div>
@@ -578,6 +581,8 @@ Règles :
             onSubmit={handleSubmit}
             isLoading={isLoading}
             showPlaceholderAnimation={true}
+            attachedFiles={attachedFiles}
+            onRemoveFile={removeFile}
             onFileSelect={handleFileSelect}
           />
         </div>
