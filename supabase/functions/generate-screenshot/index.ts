@@ -65,8 +65,22 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Upload to Supabase Storage
+    // Delete old screenshot if it exists
     const fileName = `${projectId}.png`;
+    console.log('Checking for existing screenshot...');
+    const { data: existingFiles } = await supabase.storage
+      .from('screenshots')
+      .list('', { search: fileName });
+
+    if (existingFiles && existingFiles.length > 0) {
+      console.log('Deleting old screenshot...');
+      await supabase.storage
+        .from('screenshots')
+        .remove([fileName]);
+    }
+
+    // Upload new screenshot to Supabase Storage
+    console.log('Uploading new screenshot...');
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('screenshots')
       .upload(fileName, imageBuffer, {
@@ -81,12 +95,12 @@ serve(async (req) => {
 
     console.log('Screenshot uploaded successfully');
 
-    // Get public URL
+    // Get public URL with cache busting
     const { data: urlData } = supabase.storage
       .from('screenshots')
       .getPublicUrl(fileName);
 
-    const thumbnailUrl = urlData.publicUrl;
+    const thumbnailUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
     // Update the project with thumbnail URL
     const { error: updateError } = await supabase
