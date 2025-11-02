@@ -238,18 +238,40 @@ export default function BuilderSession() {
     setStreamingText('');
 
     try {
-      // Prompt système pour HTML complet
-      const systemPrompt = `Tu es Claude Sonnet 4.5, expert en génération de sites web modernes.
-Tu produis un HTML complet, responsive, professionnel.
+      // Prompt système pour HTML pur
+      const systemPrompt = `Tu es un expert en développement web. Génère un site web complet en HTML, CSS et JavaScript vanilla.
 
-Règles :
-1. Commence toujours par [EXPLANATION]phrase courte[/EXPLANATION].
-2. Ensuite, le HTML complet sans markdown.
-3. Utilise Tailwind CDN (<script src="https://cdn.tailwindcss.com"></script>)
-4. Icônes Lucide inline (pas d'emojis)
-5. 4 images maximum (Unsplash/Pexels)
-6. Sections : header, hero, features, contact (PAS de footer)
-7. Mobile-first, cohérence visuelle, CTA clair.`;
+RÈGLES IMPORTANTES :
+1. Génère UN SEUL fichier HTML autonome et complet
+2. Intègre tout le CSS dans une balise <style> dans le <head>
+3. Intègre tout le JavaScript dans une balise <script> avant </body>
+4. Utilise Tailwind CSS via CDN pour le styling
+5. Design moderne, responsive (mobile-first) et professionnel
+6. Maximum 4 images (utilise des URLs Unsplash ou Pexels)
+7. Sections : header, hero, features, services, contact (pas de footer)
+8. Animations fluides et CTA clairs
+
+FORMAT ATTENDU :
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Titre</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* CSS personnalisé ici */
+  </style>
+</head>
+<body>
+  <!-- Contenu HTML -->
+  <script>
+    // JavaScript ici
+  </script>
+</body>
+</html>
+
+Génère directement le code HTML complet sans markdown.`;
 
       // Format messages pour OpenRouter
       const apiMessages: any[] = [
