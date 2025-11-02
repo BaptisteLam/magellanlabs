@@ -225,27 +225,25 @@ Règles :
       const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
       const finalHtml = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
 
-      // Créer la session uniquement si l'utilisateur est connecté
-      let sessionData = null;
-      if (user) {
-        const { data, error: sessionError } = await supabase
-          .from('build_sessions')
-          .insert({
-            user_id: user.id,
-            html_content: finalHtml,
-            messages: [
-              { role: 'user', content: userMessageContent },
-              { role: 'assistant', content: explanation }
-            ]
-          })
-          .select()
-          .single();
+      // Créer la session (avec ou sans utilisateur connecté)
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('build_sessions')
+        .insert({
+          user_id: user?.id || null,
+          html_content: finalHtml,
+          messages: [
+            { role: 'user', content: userMessageContent },
+            { role: 'assistant', content: explanation }
+          ]
+        })
+        .select()
+        .single();
 
-        if (sessionError) {
-          console.error('Session creation error:', sessionError);
-        } else {
-          sessionData = data;
-        }
+      if (sessionError) {
+        console.error('Session creation error:', sessionError);
+        sonnerToast.error("Erreur lors de la création de la session");
+        setIsLoading(false);
+        return;
       }
 
       setInputValue('');
@@ -258,10 +256,8 @@ Règles :
 
       sonnerToast.success("Site généré !");
       
-      // Rediriger uniquement si une session a été créée
-      if (sessionData) {
-        setTimeout(() => navigate(`/builder/${sessionData.id}`), 500);
-      }
+      // Rediriger vers la page de l'éditeur
+      setTimeout(() => navigate(`/builder/${sessionData.id}`), 500);
     } catch (error) {
       console.error('Error:', error);
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
