@@ -81,6 +81,14 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       return;
     }
 
+    // Vérifier si l'utilisateur est connecté
+    if (!user) {
+      localStorage.setItem('redirectAfterAuth', '/');
+      sonnerToast.info("Connectez-vous pour générer votre site");
+      navigate('/auth');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -158,18 +166,10 @@ Règles :
         }
       }
 
-      // Require authentication
-      if (!user) {
-        navigate('/auth');
-        throw new Error('Authentication required');
-      }
-
-      // Call authenticated AI proxy
-      const { data: { session } } = await supabase.auth.getSession();
+      // Call AI proxy
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -233,16 +233,11 @@ Règles :
       const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
       const finalHtml = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
 
-      // Require authentication for session creation
-      if (!user) {
-        throw new Error('Authentication required to save session');
-      }
-
-      // Créer/Mettre à jour la session uniquement à la fin
+      // Créer la session (avec ou sans utilisateur connecté)
       const { data: sessionData, error: sessionError } = await supabase
         .from('build_sessions')
         .insert({
-          user_id: user.id,
+          user_id: user?.id || null,
           html_content: finalHtml,
           messages: [
             { role: 'user', content: userMessageContent },
@@ -252,7 +247,12 @@ Règles :
         .select()
         .single();
 
-      if (sessionError) throw sessionError;
+      if (sessionError) {
+        console.error('Session creation error:', sessionError);
+        sonnerToast.error("Erreur lors de la création de la session");
+        setIsLoading(false);
+        return;
+      }
 
       setInputValue('');
       setAttachedFiles([]);
@@ -264,7 +264,7 @@ Règles :
 
       sonnerToast.success("Site généré !");
       
-      // Rediriger uniquement après que tout soit terminé
+      // Rediriger vers la page de l'éditeur
       setTimeout(() => navigate(`/builder/${sessionData.id}`), 500);
     } catch (error) {
       console.error('Error:', error);
@@ -333,14 +333,6 @@ Règles :
             }} 
           />
           
-          <img 
-            src={trinityLogoLoading} 
-            alt="Loading" 
-            className="w-20 h-20 mb-12 relative z-10 -mt-32"
-            style={{ 
-              animation: 'spin 2s linear infinite'
-            }}
-          />
           <div className="w-64 h-1 bg-slate-200 rounded-full overflow-hidden relative z-10">
             <div 
               className="h-full rounded-full"
@@ -527,7 +519,7 @@ Règles :
   }
 
   return (
-    <div className={`relative min-h-screen flex items-center justify-center overflow-hidden pt-20 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff' }}>
       {/* Grid background - large squares, light gray */}
       <div className="absolute inset-0" 
            style={{ 
@@ -546,6 +538,7 @@ Règles :
         <div className="absolute top-1/3 right-1/3 w-[700px] h-[700px] rounded-full blur-[140px] animate-pulse-slow" 
              style={{ backgroundColor: 'rgba(3, 165, 192, 0.25)' }} />
       </div>
+
 
       {/* Main content */}
       <div className="relative z-10 w-full max-w-4xl px-4 text-center -mt-64">
