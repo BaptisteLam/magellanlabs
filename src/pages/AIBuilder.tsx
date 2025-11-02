@@ -9,6 +9,7 @@ const AIBuilder = () => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,6 +23,11 @@ const AIBuilder = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const removeFile = (index: number) => {
+    setAttachedFiles(attachedFiles.filter((_, i) => i !== index));
+  };
+
 
   const handleSubmit = async () => {
     if (!inputValue.trim()) {
@@ -153,6 +159,26 @@ const AIBuilder = () => {
             onSubmit={handleSubmit}
             isLoading={isLoading}
             showPlaceholderAnimation={true}
+            attachedFiles={attachedFiles}
+            onRemoveFile={removeFile}
+            onFileSelect={async (files) => {
+              const newFiles: Array<{ name: string; base64: string; type: string }> = [];
+              for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (!file.type.startsWith('image/')) {
+                  sonnerToast.error(`${file.name} n'est pas une image`);
+                  continue;
+                }
+                const reader = new FileReader();
+                const base64Promise = new Promise<string>((resolve) => {
+                  reader.onloadend = () => resolve(reader.result as string);
+                  reader.readAsDataURL(file);
+                });
+                const base64 = await base64Promise;
+                newFiles.push({ name: file.name, base64, type: file.type });
+              }
+              setAttachedFiles([...attachedFiles, ...newFiles]);
+            }}
           />
         </div>
       </div>
