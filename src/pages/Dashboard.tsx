@@ -157,8 +157,16 @@ export default function Dashboard() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 pt-20 pb-12">
-        <div className="container mx-auto px-4 max-w-6xl">
+      <div className="relative min-h-screen pt-20 pb-12" style={{ backgroundColor: '#ffffff' }}>
+        {/* Grid background - same as home page */}
+        <div className="absolute inset-0" 
+             style={{ 
+               backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
+               backgroundSize: '80px 80px'
+             }} 
+        />
+        
+        <div className="container mx-auto px-4 max-w-6xl relative z-10">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-4xl font-bold text-black">
