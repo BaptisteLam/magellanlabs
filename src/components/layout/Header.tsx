@@ -114,7 +114,7 @@ const Header = () => {
                       <DropdownMenuSeparator />
                       
                       <DropdownMenuItem 
-                        className="cursor-pointer hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] transition-colors"
+                        className="cursor-pointer transition-colors hover:bg-[#03A5C0] hover:text-white"
                         onClick={() => navigate('/credits')}
                       >
                         <Plus className="w-4 h-4 mr-2" />
@@ -122,7 +122,7 @@ const Header = () => {
                       </DropdownMenuItem>
                       
                       <DropdownMenuItem 
-                        className="cursor-pointer hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] transition-colors"
+                        className="cursor-pointer transition-colors hover:bg-[#03A5C0] hover:text-white"
                         onClick={() => navigate('/dashboard')}
                       >
                         <FolderOpen className="w-4 h-4 mr-2" />
@@ -130,7 +130,7 @@ const Header = () => {
                       </DropdownMenuItem>
                       
                       <DropdownMenuItem 
-                        className="cursor-pointer hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] transition-colors"
+                        className="cursor-pointer transition-colors hover:bg-[#03A5C0] hover:text-white"
                         onClick={() => navigate('/account')}
                       >
                         <User className="w-4 h-4 mr-2" />
