@@ -162,8 +162,7 @@ export default function Auth() {
 
               <Button
                 type="button"
-                variant="outline"
-                className="w-full"
+                className="w-full bg-gradient-to-r from-[#5BE0E5] to-[#03A5C0] text-white hover:opacity-90"
                 onClick={() => handleOAuthLogin('apple')}
                 disabled={loading}
               >
