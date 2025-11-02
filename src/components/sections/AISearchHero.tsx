@@ -81,6 +81,14 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       return;
     }
 
+    // Vérifier si l'utilisateur est connecté
+    if (!user) {
+      localStorage.setItem('redirectAfterAuth', '/');
+      sonnerToast.info("Connectez-vous pour générer votre site");
+      navigate('/auth');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
