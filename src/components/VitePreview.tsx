@@ -104,9 +104,37 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 );`;
     }
 
-    // Vérifier App.tsx
+    // Convertir le HTML en composant React si c'est du HTML pur
     if (!convertedFiles['/src/App.tsx']) {
-      convertedFiles['/src/App.tsx'] = `import './App.css';
+      // Vérifier si on a du HTML dans index.html
+      const htmlContent = convertedFiles['/index.html'];
+      if (htmlContent && (htmlContent.includes('<body>') || htmlContent.includes('<main>'))) {
+        // Extraire le contenu du body
+        const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/);
+        const bodyContent = bodyMatch ? bodyMatch[1] : '';
+        
+        // Extraire les scripts Tailwind et autres
+        const hasScript = htmlContent.includes('cdn.tailwindcss.com') || htmlContent.includes('tailwindcss');
+        
+        // Nettoyer le HTML pour React (enlever scripts, convertir attributes)
+        let cleanedHtml = bodyContent
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/class=/g, 'className=')
+          .replace(/for=/g, 'htmlFor=')
+          .replace(/<!--[\s\S]*?-->/g, '');
+        
+        convertedFiles['/src/App.tsx'] = `import './App.css';
+
+function App() {
+  return (
+    <div dangerouslySetInnerHTML={{ __html: \`${cleanedHtml.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\` }} />
+  );
+}
+
+export default App;`;
+      } else {
+        // Fallback par défaut
+        convertedFiles['/src/App.tsx'] = `import './App.css';
 
 function App() {
   return (
@@ -124,6 +152,7 @@ function App() {
 }
 
 export default App;`;
+      }
     }
 
     // Vérifier App.css avec Tailwind

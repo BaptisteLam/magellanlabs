@@ -401,9 +401,10 @@ Règles :
               });
             }
 
-            // HTML live (instantané)
+            // HTML live (mise à jour immédiate sans attendre la fin)
             const htmlPreview = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
-            if (htmlPreview.startsWith('<!DOCTYPE html>') || htmlPreview.startsWith('<html')) {
+            // Afficher dès qu'on détecte du HTML valide
+            if (htmlPreview.length > 100 && (htmlPreview.includes('<html') || htmlPreview.includes('<!DOCTYPE'))) {
               setGeneratedHtml(htmlPreview);
               setProjectFiles({ 'index.html': htmlPreview });
               setSelectedFile('index.html');
