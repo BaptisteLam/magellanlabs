@@ -401,16 +401,11 @@ Règles :
               });
             }
 
-            // HTML live - affichage immédiat dès qu'on a du contenu
+            // HTML live - mise à jour IMMÉDIATE en temps réel
             const htmlPreview = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
-            // Détecter rapidement le début du HTML
-            if (htmlPreview.length > 20 && (
-              htmlPreview.includes('<!DOCTYPE') || 
-              htmlPreview.includes('<html') || 
-              htmlPreview.includes('<head>') ||
-              htmlPreview.includes('<body>')
-            )) {
-              // Mise à jour immédiate même avec HTML partiel
+            
+            // Afficher instantanément dès qu'on a du contenu (pas d'attente)
+            if (htmlPreview.length > 0) {
               setGeneratedHtml(htmlPreview);
               setProjectFiles({ 'index.html': htmlPreview });
               setSelectedFile('index.html');
