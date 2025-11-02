@@ -14,35 +14,39 @@ serve(async (req) => {
   try {
     const { projectId, htmlContent, table } = await req.json();
 
-    if (!projectId || !htmlContent || !table) {
-      throw new Error('Missing required fields: projectId, htmlContent, or table');
+    if (!projectId || !table) {
+      throw new Error('Missing required fields: projectId or table');
     }
 
     console.log(`Generating screenshot for project ${projectId}`);
 
-    // Use APIFlash to generate screenshot from HTML
+    // Initialize Supabase client first to get the URL if available
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get the cloudflare_url if it exists (for websites table)
+    let pageUrl = null;
+    if (table === 'websites') {
+      const { data: websiteData } = await supabase
+        .from('websites')
+        .select('cloudflare_url')
+        .eq('id', projectId)
+        .single();
+      
+      pageUrl = websiteData?.cloudflare_url;
+    }
+
+    // Use APIFlash to generate screenshot
     const apiflashKey = Deno.env.get('APIFLASH_ACCESS_KEY');
     
     if (!apiflashKey) {
       throw new Error('APIFLASH_ACCESS_KEY environment variable is required');
     }
 
-    console.log('Generating screenshot from HTML...');
+    console.log('Generating screenshot using APIFlash...');
     
-    // Clean HTML content
-    let cleanHtml = htmlContent.trim();
-    if (cleanHtml.startsWith('```html')) {
-      cleanHtml = cleanHtml.replace(/^```html\n/, '').replace(/\n```$/, '');
-    } else if (cleanHtml.startsWith('```')) {
-      cleanHtml = cleanHtml.replace(/^```\n/, '').replace(/\n```$/, '');
-    }
-
-    // Ensure HTML has proper structure
-    if (!cleanHtml.toLowerCase().includes('<!doctype')) {
-      cleanHtml = `<!DOCTYPE html>\n${cleanHtml}`;
-    }
-    
-    // Use APIFlash HTML parameter
+    // Build APIFlash URL
     const apiflashUrl = new URL('https://api.apiflash.com/v1/urltoimage');
     apiflashUrl.searchParams.set('access_key', apiflashKey);
     apiflashUrl.searchParams.set('wait_until', 'page_loaded');
@@ -51,13 +55,40 @@ serve(async (req) => {
     apiflashUrl.searchParams.set('format', 'png');
     apiflashUrl.searchParams.set('response_type', 'image');
 
-    const screenshotResponse = await fetch(apiflashUrl.toString(), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/html',
-      },
-      body: cleanHtml
-    });
+    let screenshotResponse;
+
+    if (pageUrl) {
+      // Use the deployed page URL
+      console.log(`Using deployed URL: ${pageUrl}`);
+      apiflashUrl.searchParams.set('url', pageUrl);
+      
+      screenshotResponse = await fetch(apiflashUrl.toString(), {
+        method: 'GET',
+      });
+    } else if (htmlContent) {
+      // Fallback to HTML content if no URL available
+      console.log('Using HTML content (no URL available)');
+      let cleanHtml = htmlContent.trim();
+      if (cleanHtml.startsWith('```html')) {
+        cleanHtml = cleanHtml.replace(/^```html\n/, '').replace(/\n```$/, '');
+      } else if (cleanHtml.startsWith('```')) {
+        cleanHtml = cleanHtml.replace(/^```\n/, '').replace(/\n```$/, '');
+      }
+
+      if (!cleanHtml.toLowerCase().includes('<!doctype')) {
+        cleanHtml = `<!DOCTYPE html>\n${cleanHtml}`;
+      }
+
+      screenshotResponse = await fetch(apiflashUrl.toString(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/html',
+        },
+        body: cleanHtml
+      });
+    } else {
+      throw new Error('Neither URL nor HTML content available for screenshot');
+    }
 
     if (!screenshotResponse.ok) {
       const errorText = await screenshotResponse.text();
@@ -69,11 +100,6 @@ serve(async (req) => {
     const imageBuffer = new Uint8Array(await screenshotResponse.arrayBuffer());
     
     console.log('Screenshot generated, uploading to storage...');
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Delete old screenshot if it exists
     const fileName = `${projectId}.png`;
