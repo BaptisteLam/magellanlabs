@@ -596,7 +596,7 @@ Règles :
             onClick={() => navigate('/dashboard')}
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:text-[#03A5C0] transition-colors"
+            className="h-8 w-8 hover:bg-[#03A5C0] hover:text-white transition-colors"
             title="Dashboard"
           >
             <Home className="w-4 h-4" />
@@ -608,7 +608,7 @@ Règles :
             <Button
               variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
               size="sm"
-              className="h-7 px-2 text-xs hover:text-[#03A5C0] transition-colors"
+              className="h-7 px-2 text-xs hover:bg-[#03A5C0] hover:text-white transition-colors"
               onClick={() => setViewMode('preview')}
             >
               <Eye className="w-3 h-3 mr-1" />
@@ -617,7 +617,7 @@ Règles :
             <Button
               variant={viewMode === 'code' ? 'secondary' : 'ghost'}
               size="sm"
-              className="h-7 px-2 text-xs hover:text-[#03A5C0] transition-colors"
+              className="h-7 px-2 text-xs hover:bg-[#03A5C0] hover:text-white transition-colors"
               onClick={() => setViewMode('code')}
             >
               <Code2 className="w-3 h-3 mr-1" />
@@ -632,7 +632,7 @@ Règles :
               onClick={() => window.location.reload()}
               variant="ghost"
               size="sm"
-              className="h-8 text-xs hover:text-[#03A5C0] transition-colors"
+              className="h-8 text-xs hover:bg-[#03A5C0] hover:text-white transition-colors"
               title="Actualiser la preview"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -645,7 +645,7 @@ Règles :
               disabled={isSaving}
               variant="ghost"
               size="sm"
-              className="h-8 text-xs hover:text-[#03A5C0] transition-colors"
+              className="h-8 text-xs hover:bg-[#03A5C0] hover:text-white transition-colors"
             >
               <Save className="w-3.5 h-3.5 mr-1.5" />
               Enregistrer
@@ -659,7 +659,7 @@ Règles :
             disabled={isPublishing}
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:text-[#03A5C0] transition-colors"
+            className="h-8 w-8 hover:bg-[#03A5C0] hover:text-white transition-colors"
             title="Publier"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -671,7 +671,7 @@ Règles :
             onClick={toggleTheme}
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:text-[#03A5C0] transition-colors"
+            className="h-8 w-8 hover:bg-[#03A5C0] hover:text-white transition-colors"
           >
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
