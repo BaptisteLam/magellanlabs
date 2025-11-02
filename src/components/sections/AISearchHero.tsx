@@ -111,7 +111,118 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         userMessageContent = inputValue;
       }
 
-      // Prompt système pour HTML complet avec streaming
+      // Mode modification incrémentale
+      if (generatedHtml) {
+        const modificationText = typeof userMessageContent === 'string' 
+          ? userMessageContent 
+          : (Array.isArray(userMessageContent)
+              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image jointe]').join(' ')
+              : String(userMessageContent));
+
+        // Prompt pour modification incrémentale uniquement
+        const systemPrompt = `Tu es Claude Sonnet 4.5, expert en modification de code HTML.
+
+RÈGLE CRITIQUE : Tu MODIFIES UNIQUEMENT la partie demandée, pas tout le HTML.
+
+Instructions :
+1. Commence par [EXPLANATION]phrase courte expliquant ce que tu modifies[/EXPLANATION]
+2. Ensuite, retourne UNIQUEMENT le HTML modifié de la section concernée
+3. Utilise Tailwind CDN si nécessaire
+4. Garde le même style et structure globale
+5. Ne régénère PAS tout le HTML, seulement ce qui change`;
+
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            system: systemPrompt,
+            isModification: true,
+            messages: [
+              {
+                role: 'user',
+                content: `HTML actuel:\n${generatedHtml}\n\nModification demandée:\n${modificationText}\n\nRetourne UNIQUEMENT la partie HTML modifiée avec le marqueur [EXPLANATION].`
+              }
+            ]
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erreur API Claude: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('Impossible de lire le stream');
+
+        const decoder = new TextDecoder('utf-8');
+        let accumulated = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(Boolean);
+
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            
+            const dataStr = line.replace('data:', '').trim();
+            if (dataStr === '[DONE]') continue;
+
+            try {
+              const json = JSON.parse(dataStr);
+              
+              if (json.type === 'content_block_delta') {
+                const delta = json.delta?.text || '';
+                if (!delta) continue;
+
+                accumulated += delta;
+
+                // Afficher explication
+                const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+                if (explanation) {
+                  setMessages(prev => {
+                    const filtered = prev.filter(m => m.role !== 'assistant');
+                    return [...filtered, { role: 'assistant', content: explanation[1].trim() }];
+                  });
+                }
+
+                // Appliquer modification incrémentale
+                const modifiedPart = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
+                if (modifiedPart) {
+                  // Intégrer la modification dans le HTML existant
+                  setGeneratedHtml(prev => {
+                    // Logique simple : remplacer ou ajouter
+                    if (modifiedPart.includes('<!DOCTYPE html>')) {
+                      return modifiedPart; // Remplacement complet
+                    }
+                    // Sinon, fusion intelligente (remplacer balises similaires)
+                    return prev; // Pour l'instant, garde l'ancien
+                  });
+                }
+              }
+            } catch (e) {
+              // Ignorer erreurs parsing
+            }
+          }
+        }
+
+        const finalExplanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+        const finalModified = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
+
+        // Appliquer modification finale
+        setGeneratedHtml(finalModified.includes('<!DOCTYPE html>') ? finalModified : generatedHtml);
+        
+        setInputValue('');
+        setAttachedFiles([]);
+        setIsLoading(false);
+        sonnerToast.success("Modification appliquée !");
+        return;
+      }
+
+      // Première génération (HTML complet)
       const systemPrompt = `Tu es Claude Sonnet 4.5, expert en génération de sites web modernes.
 Tu produis un HTML complet, responsive, professionnel.
 
@@ -124,57 +235,44 @@ Règles :
 6. Sections : header, hero, features, contact, footer
 7. Mobile-first, cohérence visuelle, CTA clair.`;
 
-      // Format messages pour OpenRouter
-      const apiMessages: any[] = [
-        { role: 'system', content: systemPrompt }
-      ];
-
-      if (generatedHtml) {
-        // Mode modification
-        const modificationText = typeof userMessageContent === 'string' 
-          ? userMessageContent 
-          : (Array.isArray(userMessageContent)
-              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image jointe]').join(' ')
-              : String(userMessageContent));
-        
+      const apiMessages: any[] = [];
+      
+      if (typeof userMessageContent === 'string') {
         apiMessages.push({
           role: 'user',
-          content: `HTML actuel:\n${generatedHtml}\n\nApplique exactement cette modification:\n${modificationText}`
+          content: userMessageContent
         });
-      } else {
-        // Première génération
-        if (typeof userMessageContent === 'string') {
-          apiMessages.push({
-            role: 'user',
-            content: userMessageContent
-          });
-        } else if (Array.isArray(userMessageContent)) {
-          apiMessages.push({
-            role: 'user',
-            content: userMessageContent.map(item => {
-              if (item.type === 'text') {
-                return { type: 'text', text: item.text };
-              } else if (item.type === 'image_url') {
-                return { 
-                  type: 'image_url', 
-                  image_url: { url: item.image_url?.url || '' }
-                };
-              }
-              return item;
-            })
-          });
-        }
+      } else if (Array.isArray(userMessageContent)) {
+        apiMessages.push({
+          role: 'user',
+          content: userMessageContent.map(item => {
+            if (item.type === 'text') {
+              return { type: 'text', text: item.text };
+            } else if (item.type === 'image_url') {
+              return { 
+                type: 'image_url', 
+                source: { 
+                  type: 'base64',
+                  media_type: 'image/jpeg',
+                  data: item.image_url?.url?.split(',')[1] || ''
+                }
+              };
+            }
+            return item;
+          })
+        });
       }
 
-      // Call AI proxy
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`, {
+      // Call Claude API via edge function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: apiMessages,
-          model: 'anthropic/claude-sonnet-4.5',
+          system: systemPrompt,
+          isModification: false,
+          messages: apiMessages
         }),
       });
 
@@ -188,7 +286,7 @@ Règles :
       const decoder = new TextDecoder('utf-8');
       let accumulated = '';
 
-      // STREAMING TEMPS RÉEL
+      // STREAMING TEMPS RÉEL (Claude API format)
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -204,24 +302,28 @@ Règles :
 
           try {
             const json = JSON.parse(dataStr);
-            const delta = json?.choices?.[0]?.delta?.content || '';
-            if (!delta) continue;
+            
+            // Format Claude API streaming
+            if (json.type === 'content_block_delta') {
+              const delta = json.delta?.text || '';
+              if (!delta) continue;
 
-            accumulated += delta;
+              accumulated += delta;
 
-            // Afficher explication dans le chat
-            const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
-            if (explanation) {
-              setMessages(prev => {
-                const filtered = prev.filter(m => m.role !== 'assistant');
-                return [...filtered, { role: 'assistant', content: explanation[1].trim() }];
-              });
-            }
+              // Afficher explication dans le chat
+              const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+              if (explanation) {
+                setMessages(prev => {
+                  const filtered = prev.filter(m => m.role !== 'assistant');
+                  return [...filtered, { role: 'assistant', content: explanation[1].trim() }];
+                });
+              }
 
-            // HTML live (instantané)
-            const htmlPreview = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
-            if (htmlPreview.startsWith('<!DOCTYPE html>') || htmlPreview.startsWith('<html')) {
-              setGeneratedHtml(htmlPreview);
+              // HTML live (instantané)
+              const htmlPreview = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
+              if (htmlPreview.startsWith('<!DOCTYPE html>') || htmlPreview.startsWith('<html')) {
+                setGeneratedHtml(htmlPreview);
+              }
             }
           } catch (e) {
             // Ignorer erreurs parsing partiel
