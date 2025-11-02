@@ -159,7 +159,7 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-4xl font-bold" style={{ color: '#03A5C0' }}>
+              <h1 className="text-4xl font-bold text-black">
                 Mes projets
               </h1>
               <p className="text-slate-600 mt-2">{userEmail}</p>
@@ -174,10 +174,12 @@ export default function Dashboard() {
                   borderColor: 'transparent'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.2)';
-                  e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+                  e.currentTarget.style.color = '#03A5C0';
+                  e.currentTarget.style.borderColor = 'rgba(3, 165, 192, 0.3)';
+                  e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
                 }}
                 onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#000000';
                   e.currentTarget.style.borderColor = 'transparent';
                   e.currentTarget.style.backgroundColor = 'transparent';
                 }}
