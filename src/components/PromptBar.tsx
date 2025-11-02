@@ -60,10 +60,10 @@ const PromptBar = ({
 
   return (
     <div 
-      className="w-full rounded-xl shadow-sm p-3 border"
+      className="w-full rounded-xl shadow-sm p-3 border transition-colors"
       style={{
-        backgroundColor: '#ffffff',
-        borderColor: 'rgba(203, 213, 225, 0.5)'
+        backgroundColor: isDark ? 'hsl(var(--card))' : '#ffffff',
+        borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)'
       }}
     >
       <input
@@ -88,9 +88,10 @@ const PromptBar = ({
             }
           }}
           placeholder=""
-          className="w-full min-h-[100px] resize-none border-0 p-3 text-sm placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-slate-700"
+          className="w-full min-h-[100px] resize-none border-0 p-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
           style={{ 
-            fontSize: '14px'
+            fontSize: '14px',
+            color: isDark ? 'hsl(var(--foreground))' : '#334155'
           }}
         />
         {!inputValue && showPlaceholderAnimation && (
@@ -115,26 +116,112 @@ const PromptBar = ({
         )}
       </div>
       
-      <div className="flex items-center justify-end mt-2 gap-2">
+      <div className="flex items-center justify-between mt-2 gap-2">
         <TooltipProvider>
-          {/* Bouton fichier bleu minimaliste */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={handleFileClick}
-                className="w-8 h-8 rounded-full transition-all hover:bg-[#03A5C0]/10 p-0"
-              >
-                <Paperclip className="w-4 h-4 text-[#03A5C0]" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              <p className="text-xs">Joindre</p>
-            </TooltipContent>
-          </Tooltip>
+          <div className="flex items-center gap-1">
+            {/* Bouton déposer un document */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={handleFileClick}
+                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 p-0"
+                  style={iconButtonStyle(false)}
+                >
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">Déposer un document</p>
+              </TooltipContent>
+            </Tooltip>
 
-          {/* Bouton d'envoi bleu */}
+            {/* Bouton changer le moteur IA */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 p-0"
+                      style={iconButtonStyle(selectedModel === 'sonnet')}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => setSelectedModel('sonnet')}>
+                      Claude Sonnet (Recommandé)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedModel('grok')}>
+                      Grok 2
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">Changer le moteur IA</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Bouton Site Web */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => setSelectedType('website')}
+                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 p-0"
+                  style={iconButtonStyle(selectedType === 'website')}
+                >
+                  <Globe className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">Site web vitrine - Pages statiques</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Bouton Application Web */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => setSelectedType('webapp')}
+                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 p-0"
+                  style={iconButtonStyle(selectedType === 'webapp')}
+                >
+                  <Monitor className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">Application web - Dashboard, SaaS</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Bouton Mobile */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => setSelectedType('mobile')}
+                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 p-0"
+                  style={iconButtonStyle(selectedType === 'mobile')}
+                >
+                  <Smartphone className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">Vue mobile - Design responsive</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+
+          {/* Bouton d'envoi */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
