@@ -45,6 +45,7 @@ export default function BuilderSession() {
   const [isStreaming, setIsStreaming] = useState(false);
   const streamingRef = useRef<{ abort: () => void } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -66,6 +67,19 @@ export default function BuilderSession() {
         .select('*')
         .eq('id', sessionId)
         .single();
+      
+      // Récupérer l'URL Cloudflare si elle existe
+      const { data: websiteData } = await supabase
+        .from('websites')
+        .select('cloudflare_url')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (websiteData?.cloudflare_url) {
+        setDeployedUrl(websiteData.cloudflare_url);
+      }
 
       if (error) {
         console.error('Error loading session:', error);
@@ -526,6 +540,7 @@ Génère directement le code HTML complet sans markdown.`;
       }
 
       if (result.url) {
+        setDeployedUrl(result.url);
         sonnerToast.success("✅ Site publié avec succès !");
         sonnerToast.info(`URL: ${result.url}`, { duration: 10000 });
         
@@ -617,18 +632,32 @@ Génère directement le code HTML complet sans markdown.`;
 
           <div className="h-6 w-px bg-slate-300" />
 
-          <Button
-            onClick={handlePublish}
-            disabled={isPublishing}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 hover:bg-[#03A5C0] hover:text-white transition-colors"
-            title="Publier"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-          </Button>
+          <div className="flex items-center gap-2">
+            {deployedUrl && (
+              <Button
+                onClick={() => window.open(deployedUrl, '_blank')}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 hover:bg-[#03A5C0] hover:text-white transition-colors"
+                title="Voir le site en ligne"
+              >
+                <Eye className="w-4 h-4" />
+              </Button>
+            )}
+            
+            <Button
+              onClick={handlePublish}
+              disabled={isPublishing}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 hover:bg-[#03A5C0] hover:text-white transition-colors"
+              title="Publier"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            </Button>
+          </div>
 
           <Button
             onClick={toggleTheme}
