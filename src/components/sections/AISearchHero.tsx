@@ -238,11 +238,18 @@ Règles :
         .from('build_sessions')
         .insert({
           user_id: user?.id || null,
-          html_content: finalHtml,
+          project_files: [
+            {
+              path: 'index.html',
+              content: finalHtml,
+              type: 'html'
+            }
+          ],
           messages: [
             { role: 'user', content: userMessageContent },
             { role: 'assistant', content: explanation }
-          ]
+          ],
+          title: 'Nouveau projet'
         })
         .select()
         .single();
