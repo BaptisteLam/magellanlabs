@@ -687,23 +687,17 @@ Règles :
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.map((msg, idx) => (
                 <div key={idx}>
-                  <div className={`p-4 rounded-lg ${
-                    msg.role === 'user' 
-                      ? isDark ? 'bg-slate-700 border border-slate-600 ml-4' : 'bg-white border border-slate-200 ml-4'
-                      : isDark ? 'bg-gradient-to-br from-blue-900/50 to-cyan-900/50 border border-blue-800 mr-4' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mr-4'
-                  }`}>
-                    <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {msg.role === 'user' ? 'Vous' : 'Trinity'}
-                    </p>
-                    {msg.role === 'user' ? (
-                      <div>
+                  {msg.role === 'user' ? (
+                    <div className="ml-4">
+                      <div className="bg-[#03A5C0] text-white p-4 rounded-lg">
+                        <p className="text-xs font-semibold mb-2 opacity-90">Vous</p>
                         {typeof msg.content === 'string' ? (
-                          <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{msg.content}</p>
+                          <p className="text-sm">{msg.content}</p>
                         ) : (
                           <div className="space-y-2">
                             {msg.content.map((item, i) => (
                               item.type === 'text' ? (
-                                <p key={i} className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{item.text}</p>
+                                <p key={i} className="text-sm">{item.text}</p>
                               ) : (
                                 <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />
                               )
@@ -711,15 +705,20 @@ Règles :
                           </div>
                         )}
                       </div>
-                    ) : (
-                      <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                        {typeof msg.content === 'string' 
-                          ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
-                          : 'Contenu généré'
-                        }
-                      </p>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="mr-4">
+                      <div className={`p-4 rounded-lg ${isDark ? 'bg-slate-700 border border-slate-600' : 'bg-white border border-slate-200'}`}>
+                        <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Trinity AI</p>
+                        <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                          {typeof msg.content === 'string' 
+                            ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
+                            : 'Contenu généré'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Animation de chargement sous le dernier message utilisateur */}
                   {msg.role === 'user' && idx === messages.length - 1 && isLoading && (
@@ -914,16 +913,13 @@ Règles :
                           onChange={(value) => {
                             if (value !== undefined && selectedFile) {
                               setSelectedFileContent(value);
-                              setProjectFiles((prev) => ({
-                                ...prev,
-                                [selectedFile]: value,
-                              }));
+                              setProjectFiles((prev) => ({ ...prev, [selectedFile]: value }));
                             }
                           }}
                         />
                       ) : (
-                        <div className="flex items-center justify-center h-full bg-slate-50">
-                          <p className="text-sm text-slate-400">Select a file to start editing</p>
+                        <div className="h-full flex items-center justify-center text-gray-500">
+                          Sélectionnez un fichier pour le modifier
                         </div>
                       )}
                     </div>
@@ -938,62 +934,28 @@ Règles :
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Enregistrer votre projet</DialogTitle>
+            <DialogTitle>Enregistrer le projet</DialogTitle>
             <DialogDescription>
-              Donnez un titre à votre projet pour le retrouver facilement
+              Donnez un titre à votre site web pour le retrouver facilement.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Titre du projet</Label>
+              <Label htmlFor="title">Titre du site</Label>
               <Input
                 id="title"
-                placeholder="Mon super site"
                 value={websiteTitle}
                 onChange={(e) => setWebsiteTitle(e.target.value)}
-                disabled={isSaving}
+                placeholder="Mon site web"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setShowSaveDialog(false)}
-              disabled={isSaving}
-              className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
-              style={{ 
-                color: '#014AAD',
-                borderColor: 'transparent'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
-                e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'transparent';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
+            <Button variant="ghost" onClick={() => setShowSaveDialog(false)}>
               Annuler
             </Button>
-            <Button
-              onClick={confirmSave}
-              disabled={isSaving}
-              className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
-              style={{ 
-                color: '#014AAD',
-                borderColor: 'transparent'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
-                e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'transparent';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+            <Button onClick={confirmSave} disabled={isSaving}>
+              Enregistrer
             </Button>
           </DialogFooter>
         </DialogContent>
