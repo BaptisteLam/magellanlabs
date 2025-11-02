@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Pause, Play, StopCircle } from "lucide-react";
+import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -43,8 +43,6 @@ export default function BuilderSession() {
   const [selectedFileContent, setSelectedFileContent] = useState<string>('');
   const [openFiles, setOpenFiles] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [streamingText, setStreamingText] = useState('');
   const streamingRef = useRef<{ abort: () => void } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -235,7 +233,6 @@ export default function BuilderSession() {
     setAttachedFiles([]);
     setIsLoading(true);
     setIsStreaming(true);
-    setStreamingText('');
 
     try {
       // Prompt système pour HTML pur
@@ -355,34 +352,8 @@ Génère directement le code HTML complet sans markdown.`;
 
       const decoder = new TextDecoder('utf-8');
       let accumulated = '';
-      let displayQueue: string[] = [];
-      let isDisplaying = false;
 
-      // Fonction pour afficher caractère par caractère
-      const displayCharByChar = async () => {
-        if (isDisplaying) return;
-        isDisplaying = true;
-
-        while (displayQueue.length > 0) {
-          // Vérifier si en pause
-          while (isPaused) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-
-          const char = displayQueue.shift()!;
-          setStreamingText(prev => prev + char);
-          
-          // Scroll automatique
-          chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-          
-          // Délai pour l'effet typing (ajustable)
-          await new Promise(resolve => setTimeout(resolve, 10));
-        }
-
-        isDisplaying = false;
-      };
-
-      // STREAMING TEMPS RÉEL
+      // STREAMING INSTANTANÉ - pas de délai artificiel
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -402,35 +373,13 @@ Génère directement le code HTML complet sans markdown.`;
             if (!delta) continue;
 
             accumulated += delta;
-            
-            // Ajouter caractères à la queue d'affichage
-            for (const char of delta) {
-              displayQueue.push(char);
-            }
-            
-            // Démarrer l'affichage si pas déjà en cours
-            if (!isDisplaying) {
-              displayCharByChar();
-            }
 
-            // Afficher explication dans le chat
-            const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
-            if (explanation) {
-              setMessages(prev => {
-                const filtered = prev.filter(m => m.role !== 'assistant');
-                return [...newMessages, { role: 'assistant' as const, content: explanation[1].trim() }];
-              });
-            }
-
-            // HTML live - mise à jour IMMÉDIATE en temps réel
-            const htmlPreview = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
-            
-            // Afficher instantanément dès qu'on a du contenu (pas d'attente)
-            if (htmlPreview.length > 0) {
-              setGeneratedHtml(htmlPreview);
-              setProjectFiles({ 'index.html': htmlPreview });
+            // Mise à jour INSTANTANÉE du HTML - pas de queue d'affichage
+            if (accumulated.length > 50) { // Attendre un minimum de contenu pour éviter les flashs
+              setGeneratedHtml(accumulated);
+              setProjectFiles({ 'index.html': accumulated });
               setSelectedFile('index.html');
-              setSelectedFileContent(htmlPreview);
+              setSelectedFileContent(accumulated);
             }
           } catch (e) {
             // Ignorer erreurs parsing partiel
@@ -438,21 +387,14 @@ Génère directement le code HTML complet sans markdown.`;
         }
       }
 
-      // Attendre que tout soit affiché
-      while (displayQueue.length > 0) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-      // Finaliser
-      const finalHtml = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
-      
-      setGeneratedHtml(finalHtml);
-      setProjectFiles({ 'index.html': finalHtml });
+      // Finaliser avec le HTML complet
+      setGeneratedHtml(accumulated);
+      setProjectFiles({ 'index.html': accumulated });
       setSelectedFile('index.html');
-      setSelectedFileContent(finalHtml);
+      setSelectedFileContent(accumulated);
 
       // Auto-save session
-      const filesArray = [{ path: 'index.html', content: finalHtml, type: 'html' }];
+      const filesArray = [{ path: 'index.html', content: accumulated, type: 'html' }];
       await supabase
         .from('build_sessions')
         .update({
@@ -473,7 +415,6 @@ Génère directement le code HTML complet sans markdown.`;
     } finally {
       setIsLoading(false);
       setIsStreaming(false);
-      setStreamingText('');
       streamingRef.current = null;
     }
   };
@@ -760,7 +701,7 @@ Génère directement le code HTML complet sans markdown.`;
 
 
               {/* Affichage du streaming en temps réel */}
-              {isStreaming && streamingText && (
+              {isStreaming && (
                 <div className="flex items-start gap-3">
                   <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
                     <svg className={`w-4 h-4 ${isDark ? 'text-slate-300' : 'text-slate-600'}`} fill="currentColor" viewBox="0 0 20 20">
@@ -772,44 +713,8 @@ Génère directement le code HTML complet sans markdown.`;
                     <div className="flex items-center gap-2 mb-2">
                       <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs animate-pulse ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
                         <Pencil className="w-3 h-3" />
-                        <span>Génération en cours</span>
+                        <span>Génération en cours...</span>
                       </div>
-                    </div>
-                    <div className={`${isDark ? 'bg-slate-900/30' : 'bg-slate-50'} rounded-lg p-3`}>
-                      <pre className={`text-xs font-mono ${isDark ? 'text-slate-300' : 'text-slate-700'} whitespace-pre-wrap break-words`}>
-                        {streamingText}<span className="animate-pulse">|</span>
-                      </pre>
-                    </div>
-                    
-                    {/* Contrôles de streaming */}
-                    <div className="flex items-center gap-2 mt-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setIsPaused(!isPaused)}
-                        className="h-7 px-3 text-xs"
-                      >
-                        {isPaused ? (
-                          <>
-                            <Play className="w-3 h-3 mr-1.5" />
-                            Reprendre
-                          </>
-                        ) : (
-                          <>
-                            <Pause className="w-3 h-3 mr-1.5" />
-                            Pause
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => streamingRef.current?.abort()}
-                        className="h-7 px-3 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <StopCircle className="w-3 h-3 mr-1.5" />
-                        Arrêter
-                      </Button>
                     </div>
                   </div>
                 </div>
