@@ -2,10 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { ArrowUp, Save, Eye, Code2, Home, Paperclip, X, Moon, Sun, Pencil, Pause, Play, StopCircle } from "lucide-react";
-import TextType from "@/components/ui/TextType";
+import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Pause, Play, StopCircle } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +14,7 @@ import { VitePreview } from "@/components/VitePreview";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
 import { FileTabs } from "@/components/CodeEditor/FileTabs";
 import { MonacoEditor } from "@/components/CodeEditor/MonacoEditor";
+import PromptBar from "@/components/PromptBar";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -709,7 +708,7 @@ Règles :
                   ) : (
                     <div className="mr-4">
                       <div className={`p-4 rounded-lg ${isDark ? 'bg-slate-700 border border-slate-600' : 'bg-white border border-slate-200'}`}>
-                        <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Trinity AI</p>
+                        <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Magellan</p>
                         <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                           {typeof msg.content === 'string' 
                             ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
@@ -748,7 +747,7 @@ Règles :
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className={`text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Trinity AI • Génération en cours
+                      Magellan • Génération en cours
                     </div>
                     <div className={`${isDark ? 'bg-slate-900/50' : 'bg-slate-100'} rounded-lg p-3`}>
                       <pre className={`text-xs font-mono ${isDark ? 'text-slate-300' : 'text-slate-700'} whitespace-pre-wrap break-words`}>
@@ -812,53 +811,31 @@ Règles :
                 </div>
               )}
               
-              <div className="flex gap-2">
-                <div className="flex flex-col gap-2 flex-1">
-                  <Textarea
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSubmit();
-                      }
-                    }}
-                    placeholder="Demandez des modifications..."
-                    className="min-h-[60px] resize-none text-sm"
-                    disabled={isLoading}
-                  />
-                  <div className="flex items-center gap-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      disabled={isLoading}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isLoading}
-                      className="text-xs"
-                    >
-                      <Paperclip className="w-3.5 h-3.5 mr-1" />
-                      Joindre une image
-                    </Button>
-                  </div>
-                </div>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isLoading}
-                  className="self-end"
-                  style={{ backgroundColor: '#014AAD' }}
-                >
-                  <ArrowUp className="w-5 h-5" />
-                </Button>
-              </div>
+              <PromptBar
+                inputValue={inputValue}
+                setInputValue={setInputValue}
+                onSubmit={handleSubmit}
+                isLoading={isLoading}
+                showPlaceholderAnimation={false}
+                onFileSelect={async (files) => {
+                  const newFiles: Array<{ name: string; base64: string; type: string }> = [];
+                  for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    if (!file.type.startsWith('image/')) {
+                      sonnerToast.error(`${file.name} n'est pas une image`);
+                      continue;
+                    }
+                    const reader = new FileReader();
+                    const base64Promise = new Promise<string>((resolve) => {
+                      reader.onloadend = () => resolve(reader.result as string);
+                      reader.readAsDataURL(file);
+                    });
+                    const base64 = await base64Promise;
+                    newFiles.push({ name: file.name, base64, type: file.type });
+                  }
+                  setAttachedFiles([...attachedFiles, ...newFiles]);
+                }}
+              />
             </div>
           </div>
         </ResizablePanel>
