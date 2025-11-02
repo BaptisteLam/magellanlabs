@@ -170,12 +170,12 @@ export default function Dashboard() {
                 variant="ghost"
                 className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
                 style={{ 
-                  color: '#03A5C0',
+                  color: '#000000',
                   borderColor: 'transparent'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(3, 165, 192, 0.3)';
-                  e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                  e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = 'transparent';
@@ -183,25 +183,6 @@ export default function Dashboard() {
                 }}
               >
                 Créer un projet
-              </Button>
-              <Button 
-                onClick={handleLogout} 
-                variant="ghost"
-                className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
-                style={{ 
-                  color: '#03A5C0',
-                  borderColor: 'transparent'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(3, 165, 192, 0.3)';
-                  e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'transparent';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                Déconnexion
               </Button>
             </div>
           </div>
