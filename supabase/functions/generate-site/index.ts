@@ -145,32 +145,42 @@ serve(async (req) => {
       throw new Error('OPENROUTER_API_KEY not configured');
     }
 
-    // Prompt système optimisé pour React/TypeScript
-    const systemPrompt = `Tu es un expert développeur React/TypeScript.
-Génère un site web complet et fonctionnel.
+    // Prompt système optimisé pour HTML/CSS/JS pur
+    const systemPrompt = `Tu es un expert développeur web spécialisé en HTML, CSS et JavaScript vanilla.
+Génère un site web complet et fonctionnel en HTML pur.
 
 RÈGLES IMPORTANTES :
-1. Structure le projet avec src/, components/, utils/, styles/
-2. Chaque fichier commence par : // FILE: [chemin/complet.tsx]
-3. Utilise React 18 + TypeScript + Tailwind CSS
-4. Code production-ready avec bonnes pratiques
-5. Responsive design (mobile-first)
-6. Composants réutilisables et bien nommés
+1. Génère UN SEUL fichier HTML autonome et complet
+2. Intègre tout le CSS dans des balises <style> dans le <head>
+3. Intègre tout le JavaScript dans des balises <script> avant </body>
+4. Utilise Tailwind CSS via CDN pour le styling rapide
+5. Code moderne, propre et bien commenté
+6. Design responsive (mobile-first) avec animations fluides
 7. Maximum 4 images (utilise Unsplash/Pexels URLs)
+8. Optimisé pour un affichage instantané
 
 FORMAT ATTENDU :
-// FILE: src/App.tsx
-import React from 'react';
-[...code...]
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Titre du Site</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* CSS personnalisé ici */
+  </style>
+</head>
+<body>
+  <!-- Contenu HTML ici -->
+  
+  <script>
+    // JavaScript ici
+  </script>
+</body>
+</html>
 
-// FILE: src/components/Header.tsx
-import React from 'react';
-[...code...]
-
-// FILE: src/styles/globals.css
-[...styles...]
-
-Génère TOUS les fichiers nécessaires pour un site complet.`;
+Génère un site HTML complet, moderne et professionnel.`;
 
     const messages = [
       { role: 'system', content: systemPrompt },

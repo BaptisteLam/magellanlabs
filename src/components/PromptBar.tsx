@@ -60,10 +60,10 @@ const PromptBar = ({
 
   return (
     <div 
-      className="rounded-lg shadow-md p-4 border"
+      className="w-full rounded-2xl shadow-lg p-4 border-2"
       style={{
-        backgroundColor: isDark ? '#1F1F20' : '#ffffff',
-        borderColor: isDark ? 'hsl(0 0% 20%)' : 'hsl(210 20% 90%)'
+        background: 'linear-gradient(135deg, #03A5C0 0%, #028CA3 100%)',
+        borderColor: 'rgba(3, 165, 192, 0.3)'
       }}
     >
       <input
@@ -88,15 +88,13 @@ const PromptBar = ({
             }
           }}
           placeholder=""
-          className="w-full min-h-[100px] resize-none border-0 p-0 text-sm placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="w-full min-h-[120px] resize-none border-0 p-4 text-base placeholder:text-white/60 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-xl bg-white/10 backdrop-blur-sm text-white"
           style={{ 
-            fontSize: '14px',
-            backgroundColor: isDark ? '#1F1F20' : 'transparent',
-            color: isDark ? '#ffffff' : '#334155'
+            fontSize: '15px'
           }}
         />
         {!inputValue && showPlaceholderAnimation && (
-          <div className="absolute top-0 left-0 pointer-events-none text-slate-400" style={{ fontSize: '14px' }}>
+          <div className="absolute top-4 left-4 pointer-events-none text-white/70" style={{ fontSize: '15px' }}>
             <TextType
               text={[
                 "J'ai un foodtruck de burgers artisanaux",
@@ -111,218 +109,43 @@ const PromptBar = ({
               showCursor={true}
               cursorCharacter="|"
               loop={true}
-              textColors={['#94a3b8']}
+              textColors={['rgba(255, 255, 255, 0.7)']}
             />
           </div>
         )}
       </div>
       
-      <div className="flex items-center justify-between mt-3 gap-2">
+      <div className="flex items-center justify-end mt-3 gap-2">
         <TooltipProvider>
-          <div className="flex items-center gap-2">
-            {/* Icône trombone - envoi fichier */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={handleFileClick}
-                  className="w-8 h-8 rounded-full transition-all border"
-                  style={iconButtonStyle(false)}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#03A5C0';
-                    e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                    e.currentTarget.style.color = '#03A5C0';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'transparent';
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = '#64748b';
-                  }}
-                >
-                  <Paperclip className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p className="text-xs">Joindre un fichier</p>
-              </TooltipContent>
-            </Tooltip>
+          {/* Bouton fichier minimaliste */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={handleFileClick}
+                className="w-7 h-7 rounded-full transition-all hover:bg-white/20 p-0"
+              >
+                <Paperclip className="w-3.5 h-3.5 text-white/80" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p className="text-xs">Joindre</p>
+            </TooltipContent>
+          </Tooltip>
 
-            {/* Dropdown pour moteur IA */}
-            <Tooltip>
-              <DropdownMenu>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="w-8 h-8 rounded-full transition-all border"
-                      style={iconButtonStyle(false)}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#03A5C0';
-                        e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                        e.currentTarget.style.color = '#03A5C0';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'transparent';
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = '#64748b';
-                      }}
-                    >
-                      <Settings className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <DropdownMenuContent align="start" className="bg-white border-slate-200 z-50">
-                  <DropdownMenuItem 
-                    onClick={() => setSelectedModel('sonnet')}
-                    className="cursor-pointer transition-all"
-                    style={{
-                      borderColor: selectedModel === 'sonnet' ? '#03A5C0' : 'transparent',
-                      backgroundColor: selectedModel === 'sonnet' ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
-                      color: selectedModel === 'sonnet' ? '#03A5C0' : '#64748b'
-                    }}
-                  >
-                    Sonnet 4.5
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setSelectedModel('grok')}
-                    className="cursor-pointer transition-all"
-                    style={{
-                      borderColor: selectedModel === 'grok' ? '#03A5C0' : 'transparent',
-                      backgroundColor: selectedModel === 'grok' ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
-                      color: selectedModel === 'grok' ? '#03A5C0' : '#64748b'
-                    }}
-                  >
-                    Grok Code Fast 1
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <TooltipContent side="bottom">
-                <p className="text-xs">Choisir le moteur IA</p>
-              </TooltipContent>
-            </Tooltip>
-
-            {/* Boutons type de projet */}
-            <div className="flex items-center gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedType('website')}
-                    className="w-8 h-8 rounded-full transition-all border"
-                    style={iconButtonStyle(selectedType === 'website')}
-                    onMouseEnter={(e) => {
-                      if (selectedType !== 'website') {
-                        e.currentTarget.style.borderColor = '#03A5C0';
-                        e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                        e.currentTarget.style.color = '#03A5C0';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (selectedType !== 'website') {
-                        e.currentTarget.style.borderColor = 'transparent';
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = '#64748b';
-                      }
-                    }}
-                  >
-                    <Globe className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p className="text-xs">Site web</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedType('webapp')}
-                    className="w-8 h-8 rounded-full transition-all border"
-                    style={iconButtonStyle(selectedType === 'webapp')}
-                    onMouseEnter={(e) => {
-                      if (selectedType !== 'webapp') {
-                        e.currentTarget.style.borderColor = '#03A5C0';
-                        e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                        e.currentTarget.style.color = '#03A5C0';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (selectedType !== 'webapp') {
-                        e.currentTarget.style.borderColor = 'transparent';
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = '#64748b';
-                      }
-                    }}
-                  >
-                    <Monitor className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p className="text-xs">Application web</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedType('mobile')}
-                    className="w-8 h-8 rounded-full transition-all border"
-                    style={iconButtonStyle(selectedType === 'mobile')}
-                    onMouseEnter={(e) => {
-                      if (selectedType !== 'mobile') {
-                        e.currentTarget.style.borderColor = '#03A5C0';
-                        e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                        e.currentTarget.style.color = '#03A5C0';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (selectedType !== 'mobile') {
-                        e.currentTarget.style.borderColor = 'transparent';
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = '#64748b';
-                      }
-                    }}
-                  >
-                    <Smartphone className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p className="text-xs">Application mobile</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
-
-          {/* Bouton d'envoi */}
+          {/* Bouton d'envoi minimaliste */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 onClick={onSubmit}
                 disabled={isLoading}
-                className="w-10 h-10 rounded-full p-0 transition-all hover:shadow-lg disabled:opacity-50 border-0"
-                style={{ backgroundColor: '#03A5C0' }}
-                onMouseEnter={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.backgroundColor = '#028CA3';
-                    e.currentTarget.style.boxShadow = '0 8px 20px -4px rgba(3, 165, 192, 0.4)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#03A5C0';
-                  e.currentTarget.style.boxShadow = '';
-                }}
+                className="w-8 h-8 rounded-full p-0 transition-all hover:scale-110 disabled:opacity-50 border-0 bg-white hover:bg-white/90"
               >
-                <ArrowUp className="w-5 h-5 text-white" />
+                <ArrowUp className="w-4 h-4 text-[#03A5C0]" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
+            <TooltipContent side="top">
               <p className="text-xs">Envoyer</p>
             </TooltipContent>
           </Tooltip>
