@@ -90,6 +90,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
     }
 
     setIsLoading(true);
+    let currentSessionId: string | null = null;
 
     try {
       // Construire le message avec texte et images
@@ -124,25 +125,93 @@ Règles :
 6. Sections : header, hero, features, contact, footer
 7. Mobile-first, cohérence visuelle, CTA clair.`;
 
-      // Format messages pour OpenRouter
-      const apiMessages: any[] = [
-        { role: 'system', content: systemPrompt }
-      ];
-
       if (generatedHtml) {
-        // Mode modification
+        // MODE MODIFICATION : utiliser modify-html-stream
         const modificationText = typeof userMessageContent === 'string' 
           ? userMessageContent 
           : (Array.isArray(userMessageContent)
               ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image jointe]').join(' ')
               : String(userMessageContent));
         
-        apiMessages.push({
-          role: 'user',
-          content: `HTML actuel:\n${generatedHtml}\n\nApplique exactement cette modification:\n${modificationText}`
+        // Appeler la fonction de modification streaming
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/modify-html-stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            currentHtml: generatedHtml,
+            modificationRequest: modificationText,
+          }),
         });
+
+        if (!response.ok) {
+          throw new Error(`Erreur de modification: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('Impossible de lire le stream');
+
+        const decoder = new TextDecoder('utf-8');
+        let modifiedHtml = '';
+
+        // Streamer les modifications en temps réel
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(Boolean);
+
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            
+            const dataStr = line.replace('data:', '').trim();
+            if (dataStr === '[DONE]') continue;
+
+            try {
+              const json = JSON.parse(dataStr);
+              const delta = json?.content || '';
+              if (!delta) continue;
+
+              modifiedHtml += delta;
+
+              // Mettre à jour le HTML en temps réel
+              if (modifiedHtml.includes('<!DOCTYPE html>') || modifiedHtml.includes('<html')) {
+                setGeneratedHtml(modifiedHtml);
+              }
+            } catch {
+              // Ignorer erreurs parsing partiel
+            }
+          }
+        }
+
+        // Finaliser le HTML modifié
+        const cleanHtml = modifiedHtml
+          .replace(/^```html\n?/i, '')
+          .replace(/\n?```$/i, '')
+          .trim();
+
+        setGeneratedHtml(cleanHtml);
+        setMessages(prev => [...prev, 
+          { role: 'user', content: modificationText },
+          { role: 'assistant', content: 'Modification appliquée ✓' }
+        ]);
+
+        setInputValue('');
+        setAttachedFiles([]);
+        setIsLoading(false);
+        sonnerToast.success("Modification appliquée !");
+
       } else {
-        // Première génération
+        // MODE GÉNÉRATION INITIALE (première fois)
+        // Format messages pour OpenRouter
+        const apiMessages: any[] = [
+          { role: 'system', content: systemPrompt }
+        ];
+
         if (typeof userMessageContent === 'string') {
           apiMessages.push({
             role: 'user',
@@ -164,132 +233,136 @@ Règles :
             })
           });
         }
-      }
 
-      // Call AI proxy
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: apiMessages,
-          model: 'anthropic/claude-sonnet-4.5',
-        }),
-      });
+        // Call AI proxy pour génération initiale
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: apiMessages,
+            model: 'anthropic/claude-sonnet-4.5',
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error(`Erreur API: ${response.status}`);
-      }
+        if (!response.ok) {
+          throw new Error(`Erreur API: ${response.status}`);
+        }
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('Impossible de lire le stream');
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('Impossible de lire le stream');
 
-      const decoder = new TextDecoder('utf-8');
-      let accumulated = '';
+        const decoder = new TextDecoder('utf-8');
+        let accumulated = '';
 
-      // STREAMING TEMPS RÉEL
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        // STREAMING TEMPS RÉEL
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter(Boolean);
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(Boolean);
 
-        for (const line of lines) {
-          if (!line.startsWith('data:')) continue;
-          
-          const dataStr = line.replace('data:', '').trim();
-          if (dataStr === '[DONE]') continue;
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            
+            const dataStr = line.replace('data:', '').trim();
+            if (dataStr === '[DONE]') continue;
 
-          try {
-            const json = JSON.parse(dataStr);
-            const delta = json?.choices?.[0]?.delta?.content || '';
-            if (!delta) continue;
+            try {
+              const json = JSON.parse(dataStr);
+              const delta = json?.choices?.[0]?.delta?.content || '';
+              if (!delta) continue;
 
-            accumulated += delta;
+              accumulated += delta;
 
-            // Afficher explication dans le chat
-            const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
-            if (explanation) {
-              setMessages(prev => {
-                const filtered = prev.filter(m => m.role !== 'assistant');
-                return [...filtered, { role: 'assistant', content: explanation[1].trim() }];
-              });
+              // Afficher explication dans le chat
+              const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+              if (explanation) {
+                setMessages(prev => {
+                  const filtered = prev.filter(m => m.role !== 'assistant');
+                  return [...filtered, { role: 'assistant', content: explanation[1].trim() }];
+                });
+              }
+
+              // HTML live (instantané)
+              const htmlPreview = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
+              if (htmlPreview.startsWith('<!DOCTYPE html>') || htmlPreview.startsWith('<html')) {
+                setGeneratedHtml(htmlPreview);
+              }
+            } catch (e) {
+              // Ignorer erreurs parsing partiel
             }
-
-            // HTML live (instantané)
-            const htmlPreview = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
-            if (htmlPreview.startsWith('<!DOCTYPE html>') || htmlPreview.startsWith('<html')) {
-              setGeneratedHtml(htmlPreview);
-            }
-          } catch (e) {
-            // Ignorer erreurs parsing partiel
           }
         }
-      }
 
-      // Finaliser
-      const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
-      const finalHtml = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
+        // Finaliser
+        const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+        const finalHtml = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
 
-      // Créer la session (avec ou sans utilisateur connecté)
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('build_sessions')
-        .insert({
-          user_id: user?.id || null,
-          project_files: [
-            {
-              path: 'index.html',
-              content: finalHtml,
-              type: 'html'
-            }
-          ],
-          messages: [
-            { role: 'user', content: userMessageContent },
-            { role: 'assistant', content: explanation }
-          ],
-          title: 'Nouveau projet'
-        })
-        .select()
-        .single();
+        // Créer la session (avec ou sans utilisateur connecté)
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('build_sessions')
+          .insert({
+            user_id: user?.id || null,
+            project_files: [
+              {
+                path: 'index.html',
+                content: finalHtml,
+                type: 'html'
+              }
+            ],
+            messages: [
+              { role: 'user', content: userMessageContent },
+              { role: 'assistant', content: explanation }
+            ],
+            title: 'Nouveau projet'
+          })
+          .select()
+          .single();
 
-      if (sessionError) {
-        console.error('Session creation error:', sessionError);
-        sonnerToast.error("Erreur lors de la création de la session");
+        if (sessionError) {
+          console.error('Session creation error:', sessionError);
+          sonnerToast.error("Erreur lors de la création de la session");
+          setIsLoading(false);
+          return;
+        }
+
+        currentSessionId = sessionData?.id || null;
+
+        // Générer automatiquement le screenshot
+        if (finalHtml && currentSessionId) {
+          try {
+            await supabase.functions.invoke('generate-screenshot', {
+              body: {
+                projectId: currentSessionId,
+                htmlContent: finalHtml,
+                table: 'build_sessions'
+              }
+            });
+            console.log('Screenshot generation started');
+          } catch (screenshotError) {
+            console.error('Error generating screenshot:', screenshotError);
+            // Ne pas bloquer la création du site si le screenshot échoue
+          }
+        }
+
+        setInputValue('');
+        setAttachedFiles([]);
         setIsLoading(false);
-        return;
-      }
+        
+        if (onGeneratedChange) {
+          onGeneratedChange(true);
+        }
 
-      // Générer automatiquement le screenshot
-      if (finalHtml && sessionData?.id) {
-        try {
-          await supabase.functions.invoke('generate-screenshot', {
-            body: {
-              projectId: sessionData.id,
-              htmlContent: finalHtml,
-              table: 'build_sessions'
-            }
-          });
-          console.log('Screenshot generation started');
-        } catch (screenshotError) {
-          console.error('Error generating screenshot:', screenshotError);
-          // Ne pas bloquer la création du site si le screenshot échoue
+        sonnerToast.success("Site généré !");
+        
+        // Rediriger vers la page de l'éditeur
+        if (currentSessionId) {
+          setTimeout(() => navigate(`/builder/${currentSessionId}`), 500);
         }
       }
-
-      setInputValue('');
-      setAttachedFiles([]);
-      setIsLoading(false);
-      
-      if (onGeneratedChange) {
-        onGeneratedChange(true);
-      }
-
-      sonnerToast.success("Site généré !");
-      
-      // Rediriger vers la page de l'éditeur
-      setTimeout(() => navigate(`/builder/${sessionData.id}`), 500);
     } catch (error) {
       console.error('Error:', error);
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
