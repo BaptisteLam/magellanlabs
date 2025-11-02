@@ -108,21 +108,21 @@ const Header = () => {
                           <span className="text-sm font-medium">50 Crédit</span>
                           <Coins className="w-4 h-4 text-[#03A5C0]" />
                         </div>
-                        <Progress value={50} className="h-2" />
+                        <Progress value={50} className="h-2 [&>div]:bg-[#03A5C0]" />
                       </div>
                       
                       <DropdownMenuSeparator />
                       
                       <DropdownMenuItem 
-                        className="cursor-pointer hover:bg-accent"
+                        className="cursor-pointer hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] transition-colors"
                         onClick={() => navigate('/credits')}
                       >
-                        <Plus className="w-4 h-4 mr-2 text-[#03A5C0]" />
+                        <Plus className="w-4 h-4 mr-2" />
                         Ajouter des crédits
                       </DropdownMenuItem>
                       
                       <DropdownMenuItem 
-                        className="cursor-pointer hover:bg-accent"
+                        className="cursor-pointer hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] transition-colors"
                         onClick={() => navigate('/dashboard')}
                       >
                         <FolderOpen className="w-4 h-4 mr-2" />
@@ -130,7 +130,7 @@ const Header = () => {
                       </DropdownMenuItem>
                       
                       <DropdownMenuItem 
-                        className="cursor-pointer hover:bg-accent"
+                        className="cursor-pointer hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] transition-colors"
                         onClick={() => navigate('/account')}
                       >
                         <User className="w-4 h-4 mr-2" />
