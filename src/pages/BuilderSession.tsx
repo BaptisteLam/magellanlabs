@@ -145,6 +145,23 @@ export default function BuilderSession() {
         .eq('id', sessionId);
 
       if (error) throw error;
+
+      // Générer automatiquement le screenshot
+      if (generatedHtml) {
+        try {
+          await supabase.functions.invoke('generate-screenshot', {
+            body: {
+              projectId: sessionId,
+              htmlContent: generatedHtml,
+              table: 'build_sessions'
+            }
+          });
+          console.log('Screenshot generation started');
+        } catch (screenshotError) {
+          console.error('Error generating screenshot:', screenshotError);
+          // Ne pas bloquer la sauvegarde si le screenshot échoue
+        }
+      }
     } catch (error) {
       console.error('Error saving session:', error);
     }
