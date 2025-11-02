@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Menu, Moon, Sun } from 'lucide-react';
+import { Menu, Moon, Sun, Coins, Plus, User, LogOut, FolderOpen } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -10,13 +10,33 @@ import {
   SheetContent,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
 
 const Header = () => {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useThemeStore();
   const [user, setUser] = useState<any>(null);
+  const [userEmail, setUserEmail] = useState<string>("");
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const getUserInitial = () => {
+    if (!userEmail) return 'U';
+    return userEmail.charAt(0).toUpperCase();
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
   
   const navigation = [
     { name: 'Entreprise', href: '/about' },
@@ -27,10 +47,12 @@ const Header = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      setUserEmail(session?.user?.email ?? "");
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
+      setUserEmail(session?.user?.email ?? "");
     });
 
     return () => subscription.unsubscribe();
@@ -68,26 +90,72 @@ const Header = () => {
           {!isMobile && (
             <div className="flex items-center gap-2">
               {user ? (
-                <Button
-                  onClick={() => navigate('/dashboard')}
-                  variant="ghost"
-                  className="text-sm gap-2 transition-all hover:border rounded-full px-4 py-2 text-foreground/70"
-                  style={{ 
-                    borderColor: 'transparent'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#03A5C0';
-                    e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                    e.currentTarget.style.color = '#03A5C0';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'transparent';
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = '';
-                  }}
-                >
-                  Dashboard
-                </Button>
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-accent">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src="" alt={userEmail} />
+                          <AvatarFallback className="bg-[#03A5C0] text-white">
+                            {getUserInitial()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-64 z-[100] bg-background" align="end">
+                      <div className="p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium">50 Crédit</span>
+                          <Coins className="w-4 h-4 text-[#03A5C0]" />
+                        </div>
+                        <Progress value={50} className="h-2" />
+                      </div>
+                      
+                      <DropdownMenuSeparator />
+                      
+                      <DropdownMenuItem 
+                        className="cursor-pointer hover:bg-accent"
+                        onClick={() => navigate('/credits')}
+                      >
+                        <Plus className="w-4 h-4 mr-2 text-[#03A5C0]" />
+                        Ajouter des crédits
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuItem 
+                        className="cursor-pointer hover:bg-accent"
+                        onClick={() => navigate('/dashboard')}
+                      >
+                        <FolderOpen className="w-4 h-4 mr-2" />
+                        Mes projets
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuItem 
+                        className="cursor-pointer hover:bg-accent"
+                        onClick={() => navigate('/account')}
+                      >
+                        <User className="w-4 h-4 mr-2" />
+                        Mon compte
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuSeparator />
+                      
+                      <DropdownMenuItem 
+                        className="cursor-pointer text-red-500 hover:bg-red-50 hover:text-red-600"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Déconnexion
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
+                  <button
+                    onClick={toggleTheme}
+                    className="text-foreground/70 hover:text-[#03A5C0] transition-colors p-0 border-0 bg-transparent ml-2"
+                  >
+                    {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  </button>
+                </>
               ) : (
                 <>
                   <Button
