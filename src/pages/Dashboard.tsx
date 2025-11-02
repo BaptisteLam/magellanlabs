@@ -82,11 +82,11 @@ export default function Dashboard() {
       const [websitesResult, sessionsResult] = await Promise.all([
         supabase
           .from("websites")
-          .select("id, title, cloudflare_url, created_at, html_content")
+          .select("id, title, cloudflare_url, created_at, html_content, thumbnail_url")
           .order("created_at", { ascending: false }),
         supabase
           .from("build_sessions")
-          .select("id, title, created_at, updated_at, project_files, project_type")
+          .select("id, title, created_at, updated_at, project_files, project_type, thumbnail_url")
           .order("updated_at", { ascending: false })
       ]);
 
@@ -100,6 +100,7 @@ export default function Dashboard() {
         status: 'published' as const,
         url: w.cloudflare_url,
         type: getProjectType(w.html_content),
+        thumbnail: w.thumbnail_url,
       }));
 
       const draftProjects: Project[] = (sessionsResult.data || []).map(s => {
@@ -118,6 +119,7 @@ export default function Dashboard() {
           updated_at: s.updated_at,
           status: 'draft' as const,
           type: getProjectType(htmlContent),
+          thumbnail: s.thumbnail_url,
         };
       });
 
@@ -211,9 +213,17 @@ export default function Dashboard() {
                     {getProjectIcon(project.type)}
                   </div>
 
-                  {/* Thumbnail placeholder */}
-                  <div className="w-full h-40 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-                    <Globe className="w-12 h-12 text-slate-400" />
+                  {/* Thumbnail */}
+                  <div className="w-full h-40 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden">
+                    {project.thumbnail ? (
+                      <img 
+                        src={project.thumbnail} 
+                        alt={project.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Globe className="w-12 h-12 text-slate-400" />
+                    )}
                   </div>
 
                   <CardHeader>
