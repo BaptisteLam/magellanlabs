@@ -381,6 +381,24 @@ serve(async (req) => {
       throw insertError;
     }
 
+    // Générer le screenshot après le déploiement
+    if (website?.id) {
+      try {
+        console.log('📸 Génération du screenshot...');
+        await supabase.functions.invoke('generate-screenshot', {
+          body: {
+            projectId: website.id,
+            htmlContent: htmlContent,
+            table: 'websites'
+          }
+        });
+        console.log('✅ Screenshot généré');
+      } catch (screenshotError) {
+        console.error('⚠️ Erreur screenshot:', screenshotError);
+        // Ne pas bloquer le déploiement si le screenshot échoue
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
