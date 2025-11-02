@@ -725,29 +725,15 @@ Génère directement le code HTML complet sans markdown.`;
             
             {/* Chat input */}
             <div className={`border-t p-4 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-200'}`}>
-              {/* Fichiers attachés */}
-              {attachedFiles.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {attachedFiles.map((file, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5">
-                      <span className="text-xs text-blue-700 truncate max-w-[150px]">{file.name}</span>
-                      <button
-                        onClick={() => removeFile(idx)}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
               <PromptBar
                 inputValue={inputValue}
                 setInputValue={setInputValue}
                 onSubmit={handleSubmit}
                 isLoading={isLoading}
                 showPlaceholderAnimation={false}
+                showConfigButtons={false}
+                attachedFiles={attachedFiles}
+                onRemoveFile={removeFile}
                 onFileSelect={async (files) => {
                   const newFiles: Array<{ name: string; base64: string; type: string }> = [];
                   for (let i = 0; i < files.length; i++) {

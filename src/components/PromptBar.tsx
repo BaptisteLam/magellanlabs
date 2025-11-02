@@ -1,4 +1,4 @@
-import { ArrowUp, Paperclip, Settings, Globe, Monitor, Smartphone } from 'lucide-react';
+import { ArrowUp, Paperclip, Settings, Globe, Monitor, Smartphone, X } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import TextType from '@/components/ui/TextType';
@@ -25,6 +25,9 @@ interface PromptBarProps {
   placeholder?: string;
   showPlaceholderAnimation?: boolean;
   onFileSelect?: (files: File[]) => void;
+  attachedFiles?: Array<{ name: string; base64: string; type: string }>;
+  onRemoveFile?: (index: number) => void;
+  showConfigButtons?: boolean; // Nouveau: afficher les boutons de config (paramètres, type de projet)
 }
 
 const PromptBar = ({ 
@@ -34,7 +37,10 @@ const PromptBar = ({
   isLoading,
   placeholder = "",
   showPlaceholderAnimation = true,
-  onFileSelect
+  onFileSelect,
+  attachedFiles = [],
+  onRemoveFile,
+  showConfigButtons = true // Par défaut on affiche les boutons (accueil/build)
 }: PromptBarProps) => {
   const { isDark } = useThemeStore();
   const [selectedModel, setSelectedModel] = useState<'sonnet' | 'grok'>('sonnet');
@@ -79,6 +85,34 @@ const PromptBar = ({
         onChange={handleFileChange}
         className="hidden"
       />
+      
+      {/* Affichage des fichiers attachés */}
+      {attachedFiles.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {attachedFiles.map((file, index) => (
+            <div 
+              key={index}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm"
+              style={{
+                backgroundColor: isDark ? 'hsl(var(--card))' : '#f8fafc',
+                borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
+                color: isDark ? 'hsl(var(--foreground))' : '#334155'
+              }}
+            >
+              <Paperclip className="w-3 h-3" />
+              <span className="max-w-[200px] truncate">{file.name}</span>
+              {onRemoveFile && (
+                <button
+                  onClick={() => onRemoveFile(index)}
+                  className="ml-1 hover:text-red-500 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       
       <div className="relative">
         <Textarea
@@ -142,88 +176,93 @@ const PromptBar = ({
               </TooltipContent>
             </Tooltip>
 
-            {/* Bouton changer le moteur IA */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+            {/* Boutons de configuration - uniquement pour accueil/build */}
+            {showConfigButtons && (
+              <>
+                {/* Bouton changer le moteur IA */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
+                          style={iconButtonStyle(false)}
+                        >
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-popover">
+                        <DropdownMenuItem onClick={() => setSelectedModel('sonnet')}>
+                          Claude Sonnet (Recommandé)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSelectedModel('grok')}>
+                          Grok 2
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs">Changer le moteur IA</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Bouton Site Web */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
                     <Button 
                       variant="ghost" 
                       size="icon"
+                      onClick={() => setSelectedType('website')}
                       className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
-                      style={iconButtonStyle(false)}
+                      style={iconButtonStyle(selectedType === 'website')}
                     >
-                      <Settings className="w-4 h-4" />
+                      <Globe className="w-4 h-4" />
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-popover">
-                    <DropdownMenuItem onClick={() => setSelectedModel('sonnet')}>
-                      Claude Sonnet (Recommandé)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSelectedModel('grok')}>
-                      Grok 2
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="text-xs">Changer le moteur IA</p>
-              </TooltipContent>
-            </Tooltip>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs">Site web vitrine - Pages statiques</p>
+                  </TooltipContent>
+                </Tooltip>
 
-            {/* Bouton Site Web */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => setSelectedType('website')}
-                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
-                  style={iconButtonStyle(selectedType === 'website')}
-                >
-                  <Globe className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="text-xs">Site web vitrine - Pages statiques</p>
-              </TooltipContent>
-            </Tooltip>
+                {/* Bouton Application Web */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => setSelectedType('webapp')}
+                      className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
+                      style={iconButtonStyle(selectedType === 'webapp')}
+                    >
+                      <Monitor className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs">Application web - Dashboard, SaaS</p>
+                  </TooltipContent>
+                </Tooltip>
 
-            {/* Bouton Application Web */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => setSelectedType('webapp')}
-                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
-                  style={iconButtonStyle(selectedType === 'webapp')}
-                >
-                  <Monitor className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="text-xs">Application web - Dashboard, SaaS</p>
-              </TooltipContent>
-            </Tooltip>
-
-            {/* Bouton Mobile */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => setSelectedType('mobile')}
-                  className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
-                  style={iconButtonStyle(selectedType === 'mobile')}
-                >
-                  <Smartphone className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="text-xs">Vue mobile - Design responsive</p>
-              </TooltipContent>
-            </Tooltip>
+                {/* Bouton Mobile */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => setSelectedType('mobile')}
+                      className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
+                      style={iconButtonStyle(selectedType === 'mobile')}
+                    >
+                      <Smartphone className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs">Vue mobile - Design responsive</p>
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            )}
           </div>
 
           {/* Bouton d'envoi */}
