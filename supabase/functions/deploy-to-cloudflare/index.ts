@@ -220,13 +220,18 @@ serve(async (req) => {
       throw new Error('Cloudflare credentials not configured');
     }
 
-    // Parser le projet React
+    // Parser le projet
     let projectFiles: Record<string, string> = {};
+    let builtFiles: Record<string, Uint8Array> = {};
+    const encoder = new TextEncoder();
     
     if (isReactProject) {
-      // Déjà parsé depuis le ZIP
+      // Projet React - utiliser le builder
       projectFiles = reactProjectFiles;
+      console.log('📦 Fichiers du projet React:', Object.keys(projectFiles));
+      builtFiles = await buildReactProject(projectFiles);
     } else {
+      // HTML simple - publier directement sans transformation
       try {
         const parsed = JSON.parse(htmlContent);
         projectFiles = parsed.files || parsed;
@@ -234,13 +239,13 @@ serve(async (req) => {
         // Fallback si c'est du HTML brut
         projectFiles = { 'index.html': htmlContent };
       }
+      
+      console.log('📦 HTML simple détecté');
+      
+      // Publier le HTML tel quel, sans conversion React
+      const html = projectFiles['index.html'] || htmlContent;
+      builtFiles['index.html'] = encoder.encode(html);
     }
-
-    console.log('📦 Fichiers du projet:', Object.keys(projectFiles));
-    console.log('🔍 Type de projet:', isReactProject ? 'React' : 'HTML');
-
-    // Construire le projet
-    const builtFiles = await buildReactProject(projectFiles);
 
     // Créer un nom de projet unique
     const projectName = `trinity-${Date.now()}`;

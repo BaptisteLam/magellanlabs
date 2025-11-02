@@ -502,35 +502,19 @@ Génère directement le code HTML complet sans markdown.`;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // ÉTAPE A : Conversion HTML → React
-      sonnerToast.info("Conversion du HTML en projet React...");
-      
-      const convertRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/html-to-react`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          htmlContent: generatedHtml,
-          title: websiteTitle,
-        }),
-      });
-
-      if (!convertRes.ok) {
-        throw new Error('Échec de la conversion du projet');
-      }
-
-      const zipBuffer = await convertRes.arrayBuffer();
-      
-      // ÉTAPE B : Déploiement Cloudflare
+      // Publier directement le HTML sur Cloudflare (sans conversion React)
       sonnerToast.info("Déploiement sur Cloudflare...");
       
       const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-cloudflare`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
         },
-        body: zipBuffer,
+        body: JSON.stringify({
+          htmlContent: generatedHtml,
+          title: websiteTitle,
+        }),
       });
 
       const result = await deployRes.json();
