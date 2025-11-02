@@ -575,36 +575,14 @@ Règles :
       <div className={`h-12 backdrop-blur-sm border-b flex items-center justify-between px-4 ${isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-50/80 border-slate-200'}`}>
         <div className="flex items-center gap-3">
           <Button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/dashboard')}
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 hover:text-[#03A5C0] transition-colors"
+            title="Dashboard"
           >
             <Home className="w-4 h-4" />
           </Button>
-          
-
-          {user && (
-            <Button
-              onClick={() => navigate('/dashboard')}
-              variant="ghost"
-              className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
-              style={{ 
-                color: '#014AAD',
-                borderColor: 'transparent'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(1, 74, 173, 0.3)';
-                e.currentTarget.style.backgroundColor = 'rgba(1, 74, 173, 0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'transparent';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              Dashboard
-            </Button>
-          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -612,7 +590,7 @@ Règles :
             <Button
               variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
               size="sm"
-              className="h-7 px-2 text-xs"
+              className="h-7 px-2 text-xs hover:text-[#03A5C0] transition-colors"
               onClick={() => setViewMode('preview')}
             >
               <Eye className="w-3 h-3 mr-1" />
@@ -621,7 +599,7 @@ Règles :
             <Button
               variant={viewMode === 'code' ? 'secondary' : 'ghost'}
               size="sm"
-              className="h-7 px-2 text-xs"
+              className="h-7 px-2 text-xs hover:text-[#03A5C0] transition-colors"
               onClick={() => setViewMode('code')}
             >
               <Code2 className="w-3 h-3 mr-1" />
@@ -636,7 +614,7 @@ Règles :
               onClick={() => window.location.reload()}
               variant="ghost"
               size="sm"
-              className="h-8 text-xs"
+              className="h-8 text-xs hover:text-[#03A5C0] transition-colors"
               title="Actualiser la preview"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -649,34 +627,36 @@ Règles :
               disabled={isSaving}
               variant="ghost"
               size="sm"
-              className="h-8 text-xs"
+              className="h-8 text-xs hover:text-[#03A5C0] transition-colors"
             >
               <Save className="w-3.5 h-3.5 mr-1.5" />
               Enregistrer
             </Button>
-
-            <Button
-              onClick={handlePublish}
-              disabled={!generatedHtml || isPublishing}
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs"
-            >
-              <Eye className="w-3.5 h-3.5 mr-1.5" />
-              {isPublishing ? "Publication..." : "Publier"}
-            </Button>
-
-            <div className="h-6 w-px bg-slate-300" />
-
-            <Button
-              onClick={toggleTheme}
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-full"
-            >
-              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </Button>
           </div>
+
+          <div className="h-6 w-px bg-slate-300" />
+
+          <Button
+            onClick={handlePublish}
+            disabled={isPublishing}
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:text-[#03A5C0] transition-colors"
+            title="Publier"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+          </Button>
+
+          <Button
+            onClick={toggleTheme}
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:text-[#03A5C0] transition-colors"
+          >
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </Button>
         </div>
       </div>
 
