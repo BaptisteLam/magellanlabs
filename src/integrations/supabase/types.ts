@@ -21,6 +21,7 @@ export type Database = {
           messages: Json | null
           project_files: Json | null
           project_type: string | null
+          thumbnail_url: string | null
           title: string | null
           updated_at: string
           user_id: string
@@ -31,6 +32,7 @@ export type Database = {
           messages?: Json | null
           project_files?: Json | null
           project_type?: string | null
+          thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
           user_id: string
@@ -41,6 +43,7 @@ export type Database = {
           messages?: Json | null
           project_files?: Json | null
           project_type?: string | null
+          thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string
@@ -117,6 +120,7 @@ export type Database = {
           created_at: string | null
           html_content: string
           id: string
+          thumbnail_url: string | null
           title: string
           updated_at: string | null
           user_id: string
@@ -127,6 +131,7 @@ export type Database = {
           created_at?: string | null
           html_content: string
           id?: string
+          thumbnail_url?: string | null
           title: string
           updated_at?: string | null
           user_id: string
@@ -137,6 +142,7 @@ export type Database = {
           created_at?: string | null
           html_content?: string
           id?: string
+          thumbnail_url?: string | null
           title?: string
           updated_at?: string | null
           user_id?: string
