@@ -261,6 +261,23 @@ Règles :
         return;
       }
 
+      // Générer automatiquement le screenshot
+      if (finalHtml && sessionData?.id) {
+        try {
+          await supabase.functions.invoke('generate-screenshot', {
+            body: {
+              projectId: sessionData.id,
+              htmlContent: finalHtml,
+              table: 'build_sessions'
+            }
+          });
+          console.log('Screenshot generation started');
+        } catch (screenshotError) {
+          console.error('Error generating screenshot:', screenshotError);
+          // Ne pas bloquer la création du site si le screenshot échoue
+        }
+      }
+
       setInputValue('');
       setAttachedFiles([]);
       setIsLoading(false);
