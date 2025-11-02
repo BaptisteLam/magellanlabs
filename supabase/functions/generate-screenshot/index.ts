@@ -29,10 +29,18 @@ serve(async (req) => {
 
     console.log('Generating real screenshot from HTML...');
     
+    // Clean HTML content - remove markdown code blocks if present
+    let cleanHtml = htmlContent.trim();
+    if (cleanHtml.startsWith('```html')) {
+      cleanHtml = cleanHtml.replace(/^```html\n/, '').replace(/\n```$/, '');
+    } else if (cleanHtml.startsWith('```')) {
+      cleanHtml = cleanHtml.replace(/^```\n/, '').replace(/\n```$/, '');
+    }
+    
     // Create URL with parameters for APIFlash
     const params = new URLSearchParams({
       access_key: apiflashKey,
-      html: htmlContent,
+      html: cleanHtml,
       wait_until: 'page_loaded',
       width: '1200',
       height: '630',
