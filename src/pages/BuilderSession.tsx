@@ -401,10 +401,16 @@ Règles :
               });
             }
 
-            // HTML live (mise à jour immédiate sans attendre la fin)
+            // HTML live - affichage immédiat dès qu'on a du contenu
             const htmlPreview = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
-            // Afficher dès qu'on détecte du HTML valide
-            if (htmlPreview.length > 100 && (htmlPreview.includes('<html') || htmlPreview.includes('<!DOCTYPE'))) {
+            // Détecter rapidement le début du HTML
+            if (htmlPreview.length > 20 && (
+              htmlPreview.includes('<!DOCTYPE') || 
+              htmlPreview.includes('<html') || 
+              htmlPreview.includes('<head>') ||
+              htmlPreview.includes('<body>')
+            )) {
+              // Mise à jour immédiate même avec HTML partiel
               setGeneratedHtml(htmlPreview);
               setProjectFiles({ 'index.html': htmlPreview });
               setSelectedFile('index.html');
