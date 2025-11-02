@@ -135,7 +135,7 @@ export default function Auth() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full hover:bg-[#03A5C0] hover:text-white hover:border-[#03A5C0] transition-colors"
                 onClick={() => handleOAuthLogin('google')}
                 disabled={loading}
               >
@@ -163,7 +163,7 @@ export default function Auth() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full hover:bg-[#03A5C0] hover:text-white hover:border-[#03A5C0] transition-colors"
                 onClick={() => handleOAuthLogin('apple')}
                 disabled={loading}
               >
@@ -212,7 +212,7 @@ export default function Auth() {
                   disabled={loading}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full bg-[#03A5C0] hover:bg-[#03A5C0]/90 text-white" disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
