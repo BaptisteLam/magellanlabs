@@ -62,7 +62,7 @@ const PromptBar = ({
     <div 
       className="rounded-lg shadow-md p-4 border"
       style={{
-        backgroundColor: isDark ? '#1F1F20' : '#ffffff',
+        backgroundColor: isDark ? '#1A1A1E' : '#ffffff',
         borderColor: isDark ? 'hsl(0 0% 20%)' : 'hsl(210 20% 90%)'
       }}
     >
@@ -80,12 +80,8 @@ const PromptBar = ({
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           placeholder=""
-          className="w-full min-h-[100px] resize-none border-0 p-0 text-sm placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
-          style={{ 
-            fontSize: '14px',
-            backgroundColor: isDark ? '#1F1F20' : 'transparent',
-            color: isDark ? '#ffffff' : '#334155'
-          }}
+          className="w-full min-h-[100px] resize-none border-0 p-0 text-sm text-slate-700 placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+          style={{ fontSize: '14px' }}
         />
         {!inputValue && showPlaceholderAnimation && (
           <div className="absolute top-0 left-0 pointer-events-none text-slate-400" style={{ fontSize: '14px' }}>

@@ -111,12 +111,14 @@ const Header = () => {
                     Connexion
                   </Button>
                   
-                  <button
+                  <Button
                     onClick={toggleTheme}
-                    className="text-foreground/70 hover:text-[#03A5C0] transition-colors p-0 border-0 bg-transparent"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full text-foreground/70 hover:text-[#03A5C0] transition-colors"
                   >
                     {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
