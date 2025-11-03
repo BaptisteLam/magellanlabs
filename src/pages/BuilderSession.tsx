@@ -747,7 +747,7 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
       return;
     }
 
-    if (!generatedHtml) {
+    if (!projectFiles || Object.keys(projectFiles).length === 0) {
       sonnerToast.error("Aucun contenu à publier");
       return;
     }
@@ -763,30 +763,44 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Publier directement le HTML sur Cloudflare (sans conversion React)
-      sonnerToast.info("Déploiement sur Cloudflare...");
-      
-      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-cloudflare`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          htmlContent: generatedHtml,
-          title: websiteTitle,
-        }),
+      // Préparer tous les fichiers du projet pour le déploiement
+      const files = Object.entries(projectFiles).map(([name, content]) => {
+        const extension = name.split('.').pop() || '';
+        const type = extension === 'html' ? 'html' : 
+                    extension === 'css' ? 'stylesheet' : 
+                    extension === 'js' ? 'javascript' :
+                    extension === 'tsx' || extension === 'ts' ? 'typescript' :
+                    extension === 'jsx' ? 'javascript' : 'text';
+        
+        return {
+          name,
+          content,
+          type
+        };
       });
 
-      const result = await deployRes.json();
+      sonnerToast.info("Déploiement sur Cloudflare Pages...");
       
-      if (!result.success) {
-        throw new Error(result.error || 'Erreur de déploiement');
+      const deployRes = await supabase.functions.invoke('deploy-to-cloudflare', {
+        body: {
+          sessionId,
+          projectFiles: files,
+        }
+      });
+
+      if (deployRes.error) {
+        throw new Error(deployRes.error.message || 'Erreur de déploiement');
+      }
+
+      const result = deployRes.data;
+      
+      if (!result?.success) {
+        throw new Error(result?.error || 'Erreur de déploiement');
       }
 
       if (result.url) {
         setDeployedUrl(result.url);
-        sonnerToast.success("✅ Site publié avec succès !");
+        sonnerToast.success("✅ Site publié sur Cloudflare Pages !");
         sonnerToast.info(`URL: ${result.url}`, { duration: 10000 });
         
         // Rediriger vers le dashboard

@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       build_sessions: {
         Row: {
+          cloudflare_deployment_url: string | null
+          cloudflare_project_name: string | null
           created_at: string
           id: string
           messages: Json | null
@@ -27,6 +29,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cloudflare_deployment_url?: string | null
+          cloudflare_project_name?: string | null
           created_at?: string
           id?: string
           messages?: Json | null
@@ -38,6 +42,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cloudflare_deployment_url?: string | null
+          cloudflare_project_name?: string | null
           created_at?: string
           id?: string
           messages?: Json | null
