@@ -417,19 +417,20 @@ export default function BuilderSession() {
         }
 
       } else {
-        // ✅ MODE GÉNÉRATION STREAMING
-        const systemPrompt = `Tu es un expert en développement web. Génère un site web complet en HTML, CSS et JavaScript vanilla.
+        // ✅ MODE GÉNÉRATION STREAMING (3 FICHIERS SÉPARÉS)
+        const systemPrompt = `Tu es un expert développeur web. Génère un site web complet, moderne et professionnel en 3 fichiers séparés.
 
 RÈGLES CRITIQUES :
-1. UN SEUL fichier HTML autonome
-2. CSS dans <style> (head)
-3. JavaScript dans <script> (avant </body>)
-4. Tailwind CSS via CDN
+1. EXACTEMENT 3 fichiers : index.html, style.css, script.js
+2. HTML épuré sans CSS ni JS inline
+3. Tout le CSS dans style.css (classes Tailwind + CSS custom)
+4. Tout le JavaScript dans script.js
 5. Design moderne, responsive, animations fluides
 6. Max 4 images (Unsplash/Pexels)
 7. Structure : header, hero, features/services, contact (NO footer)
 
-FORMAT EXACT :
+FORMAT OBLIGATOIRE (utilise // FILE: exactement) :
+// FILE: index.html
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -437,15 +438,21 @@ FORMAT EXACT :
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>...</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>/* CSS ici */</style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- HTML ici -->
-  <script>// JS ici</script>
+  <!-- HTML ici (classes Tailwind uniquement) -->
+  <script src="script.js"></script>
 </body>
 </html>
 
-Génère DIRECTEMENT le HTML sans markdown.`;
+// FILE: style.css
+/* Styles CSS custom ici (animations, gradients, etc.) */
+
+// FILE: script.js
+// JavaScript ici (interactivité, animations GSAP, etc.)
+
+Génère DIRECTEMENT les 3 fichiers au format ci-dessus sans markdown ni explication.`;
 
         const apiMessages: any[] = [{ role: 'system', content: systemPrompt }];
         
@@ -524,13 +531,47 @@ Génère DIRECTEMENT le HTML sans markdown.`;
           }
         }
 
-        // Mise à jour finale
-        setGeneratedHtml(accumulated);
-        setProjectFiles({ 'index.html': accumulated });
+        // Parser les 3 fichiers du format // FILE:
+        const fileRegex = /\/\/\s*FILE:\s*(.+?)\n/g;
+        const matches = [...accumulated.matchAll(fileRegex)];
+        
+        let parsedFiles: Record<string, string> = {};
+        let filesArray: Array<{ path: string; content: string; type: string }> = [];
+        
+        if (matches.length > 0) {
+          // Format multi-fichiers détecté
+          for (let i = 0; i < matches.length; i++) {
+            const match = matches[i];
+            const filePath = match[1].trim();
+            const startIndex = match.index! + match[0].length;
+            const nextMatch = matches[i + 1];
+            const endIndex = nextMatch ? nextMatch.index! : accumulated.length;
+            const content = accumulated.slice(startIndex, endIndex).trim();
+            
+            parsedFiles[filePath] = content;
+            
+            const extension = filePath.split('.').pop() || '';
+            const type = extension === 'html' ? 'html' : 
+                        extension === 'css' ? 'stylesheet' : 
+                        extension === 'js' ? 'javascript' : 'text';
+            
+            filesArray.push({ path: filePath, content, type });
+            
+            if (filePath === 'index.html') {
+              setGeneratedHtml(content);
+            }
+          }
+        } else {
+          // Fallback: fichier HTML unique
+          parsedFiles = { 'index.html': accumulated };
+          filesArray = [{ path: 'index.html', content: accumulated, type: 'html' }];
+          setGeneratedHtml(accumulated);
+        }
+        
+        setProjectFiles(parsedFiles);
         setSelectedFile('index.html');
-        setSelectedFileContent(accumulated);
+        setSelectedFileContent(parsedFiles['index.html'] || accumulated);
 
-        const filesArray = [{ path: 'index.html', content: accumulated, type: 'html' }];
         await supabase
           .from('build_sessions')
           .update({
@@ -540,7 +581,8 @@ Génère DIRECTEMENT le HTML sans markdown.`;
           })
           .eq('id', sessionId);
 
-        sonnerToast.success("✨ Site généré avec succès !");
+        const fileCount = filesArray.length;
+        sonnerToast.success(`✨ ${fileCount} fichier${fileCount > 1 ? 's généré' : ' généré'}${fileCount > 1 ? 's' : ''} !`);
       }
     } catch (error: any) {
       if (error.name === 'AbortError') {
