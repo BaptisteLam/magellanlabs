@@ -86,6 +86,12 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   };
 
   const handleSubmit = async () => {
+    console.log('🔥 handleSubmit appelé');
+    console.log('📝 Input value:', inputValue);
+    console.log('👤 User:', user);
+    console.log('📁 Project files count:', Object.keys(projectFiles).length);
+    console.log('📂 Selected file:', selectedFile);
+    
     if (!inputValue.trim()) {
       sonnerToast.error("Veuillez entrer votre message");
       return;
@@ -93,12 +99,14 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
 
     // Vérifier si l'utilisateur est connecté
     if (!user) {
+      console.log('❌ Utilisateur non connecté, redirection vers /auth');
       localStorage.setItem('redirectAfterAuth', '/');
       sonnerToast.info("Connectez-vous pour générer votre site");
       navigate('/auth');
       return;
     }
 
+    console.log('✅ Validation OK, début du processus...');
     setIsLoading(true);
 
     try {
@@ -194,8 +202,17 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       setMessages([{ role: 'user', content: prompt }]);
 
       // Appeler l'edge function generate-site avec streaming
+      console.log('🌐 Appel de l\'edge function generate-site');
+      console.log('🔑 Session ID:', session.id);
+      console.log('📝 Prompt:', prompt);
+      
       const { data: authData } = await supabase.auth.getSession();
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-site`, {
+      console.log('🔐 Auth token:', authData.session?.access_token ? 'OK' : 'MISSING');
+      
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-site`;
+      console.log('🌐 URL:', url);
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -207,8 +224,13 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         }),
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        throw new Error(`Erreur API: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ Erreur API:', response.status, errorText);
+        throw new Error(`Erreur API: ${response.status} - ${errorText}`);
       }
 
       const reader = response.body?.getReader();
@@ -281,7 +303,11 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       setInputValue('');
       setAttachedFiles([]);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('💥 Erreur complète:', error);
+      console.error('💥 Type d\'erreur:', error instanceof Error ? 'Error' : typeof error);
+      console.error('💥 Message:', error instanceof Error ? error.message : String(error));
+      console.error('💥 Stack:', error instanceof Error ? error.stack : 'N/A');
+      
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
       setIsLoading(false);
     }
