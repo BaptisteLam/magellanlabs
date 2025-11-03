@@ -18,16 +18,27 @@ serve(async (req) => {
   }
 
   try {
+    // Créer le client Supabase avec l'en-tête d'autorisation
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('❌ No authorization header');
+      return new Response(
+        JSON.stringify({ error: 'No authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
       }
     );
 
+    // Vérifier l'authentification
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     
     if (authError || !user) {
@@ -43,7 +54,11 @@ serve(async (req) => {
     const { sessionId, projectFiles } = await req.json();
     
     if (!sessionId || !projectFiles) {
-      throw new Error('Session ID and project files are required');
+      console.error('❌ Missing sessionId or projectFiles');
+      return new Response(
+        JSON.stringify({ error: 'Session ID and project files are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('📦 Deploying project to Cloudflare Pages...');
