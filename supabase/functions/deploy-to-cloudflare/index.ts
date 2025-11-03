@@ -89,19 +89,71 @@ serve(async (req) => {
 
     console.log('Project name:', projectName);
 
-    // Prepare files for deployment
-    const formData = new FormData();
+    // Cloudflare Pages Direct Upload API nécessite un format spécifique
+    // 1. D'abord, créer ou obtenir le projet
+    const projectUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}`;
     
-    // Add all project files
-    projectFiles.forEach((file: ProjectFile) => {
-      const blob = new Blob([file.content], { type: 'text/plain' });
-      formData.append(file.name, blob, file.name);
+    console.log('🔍 Checking if project exists...');
+    
+    const checkProjectResponse = await fetch(projectUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+      },
     });
 
-    // Deploy to Cloudflare Pages
+    let projectExists = checkProjectResponse.ok;
+
+    if (!projectExists) {
+      console.log('📝 Creating new Cloudflare Pages project...');
+      
+      const createProjectUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects`;
+      const createResponse = await fetch(createProjectUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: projectName,
+          production_branch: 'main',
+        }),
+      });
+
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        console.error('❌ Failed to create project:', errorText);
+        throw new Error(`Failed to create Cloudflare project: ${errorText}`);
+      }
+
+      const createResult = await createResponse.json();
+      console.log('✅ Project created:', createResult);
+      projectExists = true;
+    }
+
+    // 2. Préparer les fichiers au format attendu par Cloudflare
+    const manifest: Record<string, string> = {};
+    projectFiles.forEach((file: ProjectFile, index: number) => {
+      // Cloudflare attend les chemins de fichiers sans slash initial
+      const filePath = file.name.startsWith('/') ? file.name.slice(1) : file.name;
+      manifest[filePath] = file.content;
+    });
+
+    // 3. Déployer via Cloudflare Workers KV ou utiliser l'API Direct Upload
+    // Pour simplifier, on va créer un déploiement avec les fichiers
+    console.log('🚀 Creating deployment...');
+    
     const deployUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`;
     
-    console.log('🚀 Deploying to Cloudflare...');
+    // Créer un FormData avec les fichiers
+    const formData = new FormData();
+    
+    // Ajouter chaque fichier au FormData
+    for (const file of projectFiles) {
+      const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
+      const fileBlob = new Blob([file.content], { type: 'text/plain' });
+      formData.append(fileName, fileBlob, fileName);
+    }
     
     const deployResponse = await fetch(deployUrl, {
       method: 'POST',
@@ -112,89 +164,28 @@ serve(async (req) => {
     });
 
     if (!deployResponse.ok) {
-      // If project doesn't exist, create it first
-      if (deployResponse.status === 404) {
-        console.log('📝 Creating new Cloudflare Pages project...');
-        
-        const createProjectUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects`;
-        const createResponse = await fetch(createProjectUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: projectName,
-            production_branch: 'main',
-            build_config: {
-              build_command: '',
-              destination_dir: '',
-              root_dir: '',
-            },
-          }),
-        });
-
-        if (!createResponse.ok) {
-          const errorText = await createResponse.text();
-          throw new Error(`Failed to create Cloudflare project: ${errorText}`);
-        }
-
-        const createResult = await createResponse.json();
-        console.log('✅ Project created:', createResult);
-
-        // Now deploy to the newly created project
-        const retryDeployResponse = await fetch(deployUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
-          },
-          body: formData,
-        });
-
-        if (!retryDeployResponse.ok) {
-          const errorText = await retryDeployResponse.text();
-          throw new Error(`Failed to deploy after project creation: ${errorText}`);
-        }
-
-        const retryResult = await retryDeployResponse.json();
-        const deploymentUrl = retryResult.result?.url || `https://${projectName}.pages.dev`;
-
-        // Update session with Cloudflare info
-        await supabaseClient
-          .from('build_sessions')
-          .update({
-            cloudflare_project_name: projectName,
-            cloudflare_deployment_url: deploymentUrl,
-          })
-          .eq('id', sessionId);
-
-        console.log('✅ Deployment successful:', deploymentUrl);
-
-        return new Response(
-          JSON.stringify({
-            success: true,
-            url: deploymentUrl,
-            projectName: projectName,
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
       const errorText = await deployResponse.text();
+      console.error('❌ Deployment failed:', errorText);
       throw new Error(`Deployment failed: ${errorText}`);
     }
 
-    const result = await deployResponse.json();
-    const deploymentUrl = result.result?.url || session.cloudflare_deployment_url || `https://${projectName}.pages.dev`;
+    const deployResult = await deployResponse.json();
+    console.log('✅ Deployment result:', deployResult);
+    
+    const deploymentUrl = deployResult.result?.url || `https://${projectName}.pages.dev`;
 
-    // Update session with deployment URL
-    await supabaseClient
+    // Update session with Cloudflare info
+    const { error: updateError } = await supabaseClient
       .from('build_sessions')
       .update({
         cloudflare_project_name: projectName,
         cloudflare_deployment_url: deploymentUrl,
       })
       .eq('id', sessionId);
+
+    if (updateError) {
+      console.error('⚠️ Failed to update session:', updateError);
+    }
 
     console.log('✅ Deployment successful:', deploymentUrl);
 
