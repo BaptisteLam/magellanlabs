@@ -253,7 +253,7 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 3000,
+        max_tokens: 10000,
         stream: true,
         system: systemPrompt,
         messages: [
