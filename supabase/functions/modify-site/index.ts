@@ -123,18 +123,13 @@ RÈGLES :
 
 Retourne directement les fichiers modifiés sans explication.`;
 
-    // Envoyer UNIQUEMENT les fichiers pertinents (max 2-3 fichiers)
-    const relevantFilesForContext = existingFiles.slice(0, 3);
-    const filesContext = relevantFilesForContext.map(f => 
-      `FILE_MODIFIED: ${f.path}\n${f.content.substring(0, 500)}...`
-    ).join('\n\n');
-
-    // MINIMAL chat history
-    const historyContext = Array.isArray(chatHistory) 
-      ? chatHistory.slice(-2).map((msg: ChatMessage) => `${msg.role}: ${msg.content}`).join('\n')
+    // ULTRA MINIMAL - Seulement index.html
+    const mainFile = existingFiles.find(f => f.path === 'index.html') || existingFiles[0];
+    const filesContext = mainFile 
+      ? `FILE_MODIFIED: ${mainFile.path}\n${mainFile.content.substring(0, 800)}`
       : '';
 
-    const userMessage = `${historyContext ? `Contexte:\n${historyContext}\n\n` : ''}Demande: ${message}\n\nRetourne les fichiers modifiés.`;
+    const userMessage = `${filesContext}\n\nDemande: ${message}\n\nRetourne SEULEMENT le fichier index.html complet modifié.`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -154,7 +149,7 @@ Retourne directement les fichiers modifiés sans explication.`;
         model: 'anthropic/claude-sonnet-4.5',
         messages,
         stream: true,
-        max_tokens: 16000,
+        max_tokens: 8000,
       }),
     });
 
