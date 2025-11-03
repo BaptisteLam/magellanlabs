@@ -220,7 +220,7 @@ serve(async (req) => {
       throw new Error('Cloudflare credentials not configured');
     }
 
-    // Parser le projet
+    // Parser le projet et extraire HTML, CSS, JS
     let projectFiles: Record<string, string> = {};
     let builtFiles: Record<string, Uint8Array> = {};
     const encoder = new TextEncoder();
@@ -231,7 +231,7 @@ serve(async (req) => {
       console.log('📦 Fichiers du projet React:', Object.keys(projectFiles));
       builtFiles = await buildReactProject(projectFiles);
     } else {
-      // HTML simple - publier directement sans transformation
+      // HTML simple - extraire HTML, CSS, JS
       try {
         const parsed = JSON.parse(htmlContent);
         projectFiles = parsed.files || parsed;
@@ -242,19 +242,18 @@ serve(async (req) => {
       
       console.log('📦 HTML simple détecté');
       
-      // Publier le HTML tel quel, sans conversion React
+      // Extraire le HTML principal
       const html = projectFiles['index.html'] || htmlContent;
       
-      // ✅ VALIDATION COMPLÈTE DU HTML
+      // ✅ VALIDATION DU HTML (minimum 100 caractères comme demandé)
       console.log(`📏 HTML size: ${html?.length || 0} caractères`);
       
-      // Vérifier que le HTML n'est pas vide (minimum 50 caractères)
       if (!html || html.trim().length === 0) {
         throw new Error('❌ HTML vide — génération échouée');
       }
       
-      if (html.length < 50) {
-        throw new Error(`❌ HTML trop court (${html.length} caractères) — génération échouée`);
+      if (html.length < 100) {
+        throw new Error(`❌ HTML trop court (${html.length} caractères, minimum 100 requis) — génération échouée`);
       }
       
       // Valider les balises essentielles
@@ -270,15 +269,51 @@ serve(async (req) => {
         );
       }
       
-      const htmlBytes = encoder.encode(html);
+      // 📌 EXTRACTION DU CSS ET JS DEPUIS LE HTML
+      let extractedCss = '';
+      let extractedJs = '';
       
-      // Vérifier que l'encodage a réussi
-      if (htmlBytes.byteLength === 0) {
-        throw new Error('❌ Erreur d\'encodage HTML — fichier vide après encodage');
+      // Extraire tous les <style> tags
+      const styleMatches = html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+      for (const match of styleMatches) {
+        extractedCss += match[1] + '\n';
       }
       
-      builtFiles['index.html'] = htmlBytes;
-      console.log(`✅ index.html validé (${(htmlBytes.byteLength / 1024).toFixed(2)} Ko, ${html.length} caractères)`);
+      // Extraire tous les <script> tags (non-module)
+      const scriptMatches = html.matchAll(/<script(?![^>]*type=["']module["'])[^>]*>([\s\S]*?)<\/script>/gi);
+      for (const match of scriptMatches) {
+        extractedJs += match[1] + '\n';
+      }
+      
+      console.log(`📄 CSS extrait: ${extractedCss.length} caractères`);
+      console.log(`📄 JS extrait: ${extractedJs.length} caractères`);
+      
+      // 📦 CRÉER LES FICHIERS À LA RACINE DU ZIP
+      // index.html - retirer les styles et scripts inline pour les externaliser
+      let cleanHtml = html
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<script(?![^>]*type=["']module["'])[^>]*>[\s\S]*?<\/script>/gi, '');
+      
+      // Ajouter les liens vers les fichiers CSS et JS externes
+      cleanHtml = cleanHtml.replace(
+        '</head>',
+        '  <link rel="stylesheet" href="style.css">\n</head>'
+      );
+      cleanHtml = cleanHtml.replace(
+        '</body>',
+        '  <script src="script.js"></script>\n</body>'
+      );
+      
+      builtFiles['index.html'] = encoder.encode(cleanHtml);
+      console.log(`✅ index.html créé (${(builtFiles['index.html'].byteLength / 1024).toFixed(2)} Ko)`);
+      
+      // style.css - créer le fichier (même vide)
+      builtFiles['style.css'] = encoder.encode(extractedCss || '/* Styles générés par Trinity AI */\n');
+      console.log(`✅ style.css créé (${(builtFiles['style.css'].byteLength / 1024).toFixed(2)} Ko)`);
+      
+      // script.js - créer le fichier (même vide)
+      builtFiles['script.js'] = encoder.encode(extractedJs || '// Scripts générés par Trinity AI\n');
+      console.log(`✅ script.js créé (${(builtFiles['script.js'].byteLength / 1024).toFixed(2)} Ko)`);
     }
 
     // 📌 Vérifier si un projet Cloudflare existe déjà pour cette session ou ce titre
