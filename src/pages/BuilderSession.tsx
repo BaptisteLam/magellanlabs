@@ -3,9 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil } from "lucide-react";
+import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Download } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
+import JSZip from "jszip";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -601,6 +602,69 @@ Génère DIRECTEMENT le HTML sans markdown.`;
     }
   };
 
+  const handleDownloadZip = async () => {
+    if (!generatedHtml) {
+      sonnerToast.error("Aucun contenu à télécharger");
+      return;
+    }
+
+    try {
+      // Extraire CSS et JS du HTML
+      let extractedCss = '';
+      let extractedJs = '';
+      
+      // Extraire tous les <style> tags
+      const styleMatches = generatedHtml.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+      for (const match of styleMatches) {
+        extractedCss += match[1] + '\n';
+      }
+      
+      // Extraire tous les <script> tags (non-module)
+      const scriptMatches = generatedHtml.matchAll(/<script(?![^>]*type=["']module["'])[^>]*>([\s\S]*?)<\/script>/gi);
+      for (const match of scriptMatches) {
+        extractedJs += match[1] + '\n';
+      }
+      
+      // Créer le HTML nettoyé avec liens externes
+      let cleanHtml = generatedHtml
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<script(?![^>]*type=["']module["'])[^>]*>[\s\S]*?<\/script>/gi, '');
+      
+      cleanHtml = cleanHtml.replace(
+        '</head>',
+        '  <link rel="stylesheet" href="style.css">\n</head>'
+      );
+      cleanHtml = cleanHtml.replace(
+        '</body>',
+        '  <script src="script.js"></script>\n</body>'
+      );
+      
+      // Créer le ZIP
+      const zip = new JSZip();
+      
+      zip.file('index.html', cleanHtml);
+      zip.file('style.css', extractedCss || '/* Styles générés par Trinity AI */\n');
+      zip.file('script.js', extractedJs || '// Scripts générés par Trinity AI\n');
+      
+      const blob = await zip.generateAsync({ type: 'blob' });
+      
+      // Télécharger le ZIP
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${websiteTitle || 'mon-site'}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      sonnerToast.success("✅ ZIP téléchargé avec succès !");
+    } catch (error: any) {
+      console.error('Error downloading ZIP:', error);
+      sonnerToast.error(error.message || "❌ Erreur lors du téléchargement");
+    }
+  };
+
   const handlePublish = async () => {
     if (!user) {
       localStorage.setItem('redirectAfterAuth', `/builder/${sessionId}`);
@@ -750,6 +814,16 @@ Génère DIRECTEMENT le HTML sans markdown.`;
                 <Eye className="w-4 h-4" />
               </Button>
             )}
+            
+            <Button
+              onClick={handleDownloadZip}
+              variant="iconOnly"
+              size="icon"
+              className="h-8 w-8"
+              title="Télécharger ZIP"
+            >
+              <Download className="w-4 h-4" />
+            </Button>
             
             <Button
               onClick={handlePublish}
