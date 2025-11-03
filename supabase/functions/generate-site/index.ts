@@ -12,58 +12,82 @@ interface ProjectFile {
   type: string;
 }
 
-// Parser pour extraire les fichiers au format // FILE: path
+// Parser pour extraire les fichiers - format amélioré
 function parseGeneratedCode(code: string): ProjectFile[] {
   const files: ProjectFile[] = [];
   
-  // Détection du format // FILE: path
-  const fileRegex = /\/\/\s*FILE:\s*(.+?)\n/g;
-  const matches = [...code.matchAll(fileRegex)];
+  // Format 1: // FILE: path
+  const fileRegex = /\/\/\s*FILE:\s*(.+?)\n([\s\S]*?)(?=\/\/\s*FILE:|$)/g;
+  let match;
   
-  for (let i = 0; i < matches.length; i++) {
-    const match = matches[i];
+  while ((match = fileRegex.exec(code)) !== null) {
     const filePath = match[1].trim();
-    const startIndex = match.index! + match[0].length;
+    const content = match[2].trim();
     
-    // Trouve le contenu jusqu'au prochain fichier
-    const nextMatch = matches[i + 1];
-    const endIndex = nextMatch ? nextMatch.index! : code.length;
-    const content = code.slice(startIndex, endIndex).trim();
-    
-    const extension = filePath.split('.').pop() || '';
-    
-    files.push({
-      path: filePath,
-      content: content,
-      type: getFileType(extension)
-    });
-  }
-  
-  // Fallback: format ```type:path
-  if (files.length === 0) {
-    const codeBlockRegex = /```(?:[\w]+)?:?([\w/.]+)\n([\s\S]*?)```/g;
-    let match;
-    
-    while ((match = codeBlockRegex.exec(code)) !== null) {
-      const [, path, content] = match;
-      const extension = path.split('.').pop() || '';
-      
+    if (content && content.length > 0) {
+      const extension = filePath.split('.').pop() || '';
       files.push({
-        path: path.trim(),
-        content: content.trim(),
+        path: filePath,
+        content: content,
         type: getFileType(extension)
       });
+    }
+  }
+  
+  // Format 2: ```language // filepath
+  if (files.length === 0) {
+    const codeBlockRegex = /```(\w+)?\s*(?:\/\/|#)?\s*(.+?)\n([\s\S]*?)```/g;
+    
+    while ((match = codeBlockRegex.exec(code)) !== null) {
+      const [, language, filepath, content] = match;
+      const cleanPath = filepath.trim();
+      const cleanContent = content.trim();
+      
+      if (cleanContent && cleanContent.length > 0) {
+        const extension = cleanPath.split('.').pop() || language || '';
+        files.push({
+          path: cleanPath,
+          content: cleanContent,
+          type: getFileType(extension)
+        });
+      }
+    }
+  }
+  
+  // Format 3: JSON structure { "files": { "path": "content" } }
+  if (files.length === 0) {
+    try {
+      const jsonMatch = code.match(/\{[\s\S]*"files"[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.files && typeof parsed.files === 'object') {
+          for (const [path, content] of Object.entries(parsed.files)) {
+            if (typeof content === 'string' && content.length > 0) {
+              const extension = path.split('.').pop() || '';
+              files.push({
+                path,
+                content: content.trim(),
+                type: getFileType(extension)
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Pas de JSON valide
     }
   }
   
   // Fallback: HTML standalone
   if (files.length === 0 && (code.includes('<!DOCTYPE html>') || code.includes('<html'))) {
     const htmlContent = code.replace(/```html\n?|```\n?/g, '').trim();
-    files.push({
-      path: 'index.html',
-      content: htmlContent,
-      type: 'html'
-    });
+    if (htmlContent.length > 0) {
+      files.push({
+        path: 'index.html',
+        content: htmlContent,
+        type: 'html'
+      });
+    }
   }
   
   return files;
@@ -145,74 +169,133 @@ serve(async (req) => {
       throw new Error('OPENROUTER_API_KEY not configured');
     }
 
-    // Prompt système optimisé pour génération multi-fichiers
-    const systemPrompt = `Tu es un expert développeur web. Génère un site web complet, moderne et professionnel avec TOUS les fichiers nécessaires.
+    // Prompt système optimisé pour génération multi-fichiers structurée
+    const systemPrompt = `Tu es un expert développeur web fullstack. Génère un projet web complet, moderne et professionnel.
 
-RÈGLES DE GÉNÉRATION :
-1. Génère une structure de projet complète avec AUTANT de fichiers que nécessaire
-2. Structure moderne avec composants séparés, styles modulaires, configuration complète
-3. Design professionnel, responsive, animations fluides
-4. Code propre, commenté, maintenable
-5. Images optimisées (Unsplash/Pexels si nécessaire)
+📋 RÈGLES DE GÉNÉRATION :
 
-FICHIERS À GÉNÉRER (minimum) :
-- package.json (avec toutes les dépendances nécessaires)
-- index.html ou src/App.tsx (selon le type de projet)
-- Configuration (vite.config.ts, tailwind.config.ts, etc.)
-- Composants séparés dans src/components/
-- Styles modulaires (CSS modules ou fichiers séparés)
-- Scripts/utilitaires dans src/utils/ ou src/lib/
-- Types TypeScript si applicable dans src/types/
+1. **Structure Multi-Fichiers** : Génère TOUS les fichiers nécessaires pour un projet fonctionnel
+2. **Format de Sortie** : Utilise le format // FILE: chemin/fichier pour CHAQUE fichier
+3. **Qualité Professionnelle** : Code propre, commenté, maintenable, moderne
+4. **Technologies** : React + TypeScript + Vite + Tailwind CSS (ou HTML/CSS/JS selon le contexte)
+5. **Design** : Interface moderne, responsive, animations fluides
 
-STRUCTURE RECOMMANDÉE :
-Pour un site React/Vite moderne :
-- package.json
-- vite.config.ts
-- tailwind.config.ts
-- src/App.tsx
-- src/main.tsx
-- src/index.css
-- src/components/Header.tsx
-- src/components/Hero.tsx
-- src/components/Features.tsx
-- src/components/Contact.tsx
-- etc.
+📦 FICHIERS OBLIGATOIRES (selon type de projet) :
 
-Pour un site HTML/CSS/JS :
-- index.html
-- style.css
-- script.js
-- assets/ (si images locales)
-
-QUALITÉ DU CODE :
-- TypeScript pour les projets React
-- Composants réutilisables et modulaires
-- Styles avec Tailwind CSS + CSS custom pour animations
-- JavaScript moderne (ES6+)
-- Accessibilité (aria-labels, semantic HTML)
-- SEO optimisé (meta tags, structure sémantique)
-
-FORMAT OBLIGATOIRE (utilise // FILE: exactement) :
+**Pour React/Vite :**
 // FILE: package.json
 {
-  "name": "...",
-  "dependencies": { ... }
+  "name": "project-name",
+  "type": "module",
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.1.0",
+    "typescript": "^5.3.3",
+    "tailwindcss": "^3.4.1"
+  }
 }
 
 // FILE: vite.config.ts
 import { defineConfig } from 'vite'
-...
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()]
+})
+
+// FILE: tailwind.config.ts
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: { extend: {} }
+}
+
+// FILE: index.html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App</title>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
+
+// FILE: src/main.tsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)
 
 // FILE: src/App.tsx
 import React from 'react'
-...
+import Header from './components/Header'
+import Hero from './components/Hero'
 
-// FILE: src/components/Header.tsx
-export const Header = () => {
-  ...
+export default function App() {
+  return (
+    <div className="min-h-screen">
+      <Header />
+      <Hero />
+    </div>
+  )
 }
 
-Génère DIRECTEMENT tous les fichiers avec du contenu COMPLET. Ne limite pas ta créativité - génère autant de fichiers que nécessaire pour un projet professionnel de qualité.`;
+// FILE: src/index.css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+// FILE: src/components/Header.tsx
+export default function Header() { ... }
+
+// FILE: src/components/Hero.tsx
+export default function Hero() { ... }
+
+**Pour HTML/CSS/JS :**
+// FILE: index.html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <script src="script.js"></script>
+</body>
+</html>
+
+// FILE: style.css
+/* Animations et styles custom */
+@keyframes fadeIn { ... }
+
+// FILE: script.js
+// Interactivité JavaScript
+
+✨ IMPORTANT :
+- Génère du contenu COMPLET dans chaque fichier (pas de placeholders)
+- Sépare les composants/sections en fichiers distincts
+- Inclus animations, interactions, responsive design
+- Code TypeScript typé si React
+- Utilise Tailwind CSS + CSS custom pour animations
+- Minimum 5 fichiers pour un projet professionnel
+
+Réponds UNIQUEMENT avec les fichiers au format // FILE: sans explication avant ou après.`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
