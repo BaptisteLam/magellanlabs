@@ -51,31 +51,8 @@ const AIBuilder = () => {
 
       if (sessionError) throw sessionError;
 
-      // Appeler l'IA
-      const messages = [{ role: 'user', content: inputValue }];
-      const { data, error } = await supabase.functions.invoke('claude', {
-        body: { messages }
-      });
-
-      if (error) throw error;
-
-      if (data?.response) {
-        // Mettre à jour la session avec le HTML généré
-        const filesArray = [{ path: 'index.html', content: data.response, type: 'html' }];
-        await supabase
-          .from('build_sessions')
-          .update({
-            project_files: filesArray,
-            messages: [
-              { role: 'user', content: inputValue },
-              { role: 'assistant', content: data.response }
-            ]
-          })
-          .eq('id', sessionData.id);
-
-        // Rediriger vers la session
-        navigate(`/builder/${sessionData.id}`);
-      }
+      // Rediriger immédiatement vers la session pour le streaming
+      navigate(`/builder/${sessionData.id}`);
     } catch (error) {
       console.error('Error:', error);
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");

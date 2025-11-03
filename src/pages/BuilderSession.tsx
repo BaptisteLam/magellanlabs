@@ -53,6 +53,28 @@ export default function BuilderSession() {
     checkAuth();
   }, [sessionId]);
 
+  // Traiter le prompt initial si la session vient d'être créée
+  useEffect(() => {
+    const processInitialPrompt = async () => {
+      if (!sessionId || !user || isLoading || generatedHtml) return;
+      
+      // Vérifier si la session a un message mais pas de fichiers générés
+      if (messages.length === 1 && messages[0].role === 'user' && Object.keys(projectFiles).length === 0) {
+        const userPrompt = typeof messages[0].content === 'string' ? messages[0].content : '';
+        if (userPrompt.trim()) {
+          // Déclencher la génération automatiquement
+          setInputValue(userPrompt);
+          setTimeout(() => handleSubmit(), 500);
+        }
+      }
+    };
+    
+    if (!sessionLoading) {
+      processInitialPrompt();
+    }
+  }, [sessionId, sessionLoading, messages, generatedHtml, user]);
+
+
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     setUser(session?.user ?? null);
@@ -249,8 +271,155 @@ export default function BuilderSession() {
     setIsStreaming(true);
 
     try {
-      // Prompt système pour HTML pur
-      const systemPrompt = `Tu es un expert en développement web. Génère un site web complet en HTML, CSS et JavaScript vanilla.
+      // Require authentication
+      if (!user) {
+        navigate('/auth');
+        throw new Error('Authentication required');
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const abortController = new AbortController();
+      
+      streamingRef.current = {
+        abort: () => {
+          abortController.abort();
+          setIsStreaming(false);
+          setIsLoading(false);
+        }
+      };
+
+      // 🔥 DÉTECTION INTELLIGENTE : Modification ou Génération ?
+      const isModification = generatedHtml.length > 100;
+      
+      if (isModification) {
+        // ✅ MODE MODIFICATION INCRÉMENTALE - Comme Lovable
+        const userPrompt = typeof userMessageContent === 'string' 
+          ? userMessageContent 
+          : (Array.isArray(userMessageContent) 
+              ? userMessageContent.find(c => c.type === 'text')?.text || ''
+              : String(userMessageContent));
+
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/modify-site`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sessionId,
+            message: userPrompt,
+            relevantFiles: Object.entries(projectFiles).map(([path, content]) => ({
+              path,
+              content,
+              type: path.endsWith('.html') ? 'html' : 
+                    path.endsWith('.css') ? 'stylesheet' : 
+                    path.endsWith('.js') ? 'javascript' : 'text'
+            })),
+            chatHistory: messages.slice(-4).map(m => ({
+              role: m.role,
+              content: typeof m.content === 'string' ? m.content : '[message multimédia]'
+            }))
+          }),
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erreur API: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('Impossible de lire le stream');
+
+        const decoder = new TextDecoder('utf-8');
+        let accumulated = '';
+        const modifiedFiles: Set<string> = new Set();
+
+        // STREAMING INCRÉMENTAL - Affiche les modifications en temps réel
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(Boolean);
+
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            
+            const dataStr = line.replace('data:', '').trim();
+            if (dataStr === '[DONE]') continue;
+
+            try {
+              const event = JSON.parse(dataStr);
+              
+              if (event.type === 'chunk') {
+                accumulated += event.content;
+                
+                // Mise à jour visuelle en temps réel
+                if (accumulated.includes('<!DOCTYPE html>') || accumulated.includes('<html')) {
+                  setGeneratedHtml(accumulated);
+                  if (!modifiedFiles.has('index.html')) {
+                    modifiedFiles.add('index.html');
+                  }
+                }
+              } else if (event.type === 'file_detected') {
+                const filePath = event.data.path;
+                modifiedFiles.add(filePath);
+                console.log(`📝 Fichier modifié détecté: ${filePath}`);
+              }
+            } catch (e) {
+              // Ignorer erreurs parsing partiel
+            }
+          }
+        }
+
+        // Finaliser les modifications
+        const updatedFiles = { ...projectFiles };
+        
+        // Parser les fichiers modifiés depuis accumulated
+        if (accumulated.includes('FILE_MODIFIED:')) {
+          const fileMatches = accumulated.matchAll(/FILE_MODIFIED:\s*(.+?)\n([\s\S]*?)(?=FILE_MODIFIED:|$)/g);
+          for (const match of fileMatches) {
+            const filePath = match[1].trim();
+            const fileContent = match[2].trim();
+            updatedFiles[filePath] = fileContent;
+            
+            if (filePath === 'index.html') {
+              setGeneratedHtml(fileContent);
+            }
+          }
+        } else if (accumulated.includes('<!DOCTYPE html>') || accumulated.includes('<html')) {
+          // Fallback: tout le contenu est du HTML
+          updatedFiles['index.html'] = accumulated;
+          setGeneratedHtml(accumulated);
+        }
+
+        setProjectFiles(updatedFiles);
+        setSelectedFileContent(updatedFiles[selectedFile || 'index.html'] || '');
+
+        // Auto-save avec fichiers modifiés uniquement
+        const filesArray = Object.entries(updatedFiles).map(([path, content]) => ({
+          path,
+          content,
+          type: path.endsWith('.html') ? 'html' : 
+                path.endsWith('.css') ? 'stylesheet' : 
+                path.endsWith('.js') ? 'javascript' : 'text'
+        }));
+
+        await supabase
+          .from('build_sessions')
+          .update({
+            project_files: filesArray,
+            messages: newMessages as any,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', sessionId);
+
+        const modifiedCount = modifiedFiles.size;
+        sonnerToast.success(`✨ ${modifiedCount} fichier${modifiedCount > 1 ? 's modifié' : ' modifié'}${modifiedCount > 1 ? 's' : ''} !`);
+
+      } else {
+        // ✅ MODE GÉNÉRATION COMPLÈTE - Première fois uniquement
+        const systemPrompt = `Tu es un expert en développement web. Génère un site web complet en HTML, CSS et JavaScript vanilla.
 
 RÈGLES IMPORTANTES :
 1. Génère UN SEUL fichier HTML autonome et complet
@@ -284,30 +453,10 @@ FORMAT ATTENDU :
 
 Génère directement le code HTML complet sans markdown.`;
 
-      // Format messages pour OpenRouter
-      const apiMessages: any[] = [
-        { role: 'system', content: systemPrompt }
-      ];
-
-      if (generatedHtml) {
-        // Mode modification
-        const modificationText = typeof userMessageContent === 'string' 
-          ? userMessageContent 
-          : (Array.isArray(userMessageContent) 
-              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image jointe]').join(' ')
-              : String(userMessageContent));
+        const apiMessages: any[] = [{ role: 'system', content: systemPrompt }];
         
-        apiMessages.push({
-          role: 'user',
-          content: `HTML actuel:\n${generatedHtml}\n\nApplique exactement cette modification:\n${modificationText}`
-        });
-      } else {
-        // Première génération
         if (typeof userMessageContent === 'string') {
-          apiMessages.push({
-            role: 'user',
-            content: userMessageContent
-          });
+          apiMessages.push({ role: 'user', content: userMessageContent });
         } else if (Array.isArray(userMessageContent)) {
           apiMessages.push({
             role: 'user',
@@ -315,110 +464,86 @@ Génère directement le code HTML complet sans markdown.`;
               if (item.type === 'text') {
                 return { type: 'text', text: item.text };
               } else if (item.type === 'image_url') {
-                return { 
-                  type: 'image_url', 
-                  image_url: { url: item.image_url?.url || '' }
-                };
+                return { type: 'image_url', image_url: { url: item.image_url?.url || '' } };
               }
               return item;
             })
           });
         }
-      }
 
-      // Require authentication
-      if (!user) {
-        navigate('/auth');
-        throw new Error('Authentication required');
-      }
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: apiMessages,
+            model: 'anthropic/claude-sonnet-4.5',
+          }),
+          signal: abortController.signal,
+        });
 
-      // Call authenticated AI proxy
-      const { data: { session } } = await supabase.auth.getSession();
-      const abortController = new AbortController();
-      
-      streamingRef.current = {
-        abort: () => {
-          abortController.abort();
-          setIsStreaming(false);
-          setIsLoading(false);
+        if (!response.ok) {
+          throw new Error(`Erreur API: ${response.status}`);
         }
-      };
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: apiMessages,
-          model: 'anthropic/claude-sonnet-4.5',
-        }),
-        signal: abortController.signal,
-      });
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('Impossible de lire le stream');
 
-      if (!response.ok) {
-        throw new Error(`Erreur API: ${response.status}`);
-      }
+        const decoder = new TextDecoder('utf-8');
+        let accumulated = '';
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('Impossible de lire le stream');
+        // STREAMING INSTANTANÉ
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-      const decoder = new TextDecoder('utf-8');
-      let accumulated = '';
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(Boolean);
 
-      // STREAMING INSTANTANÉ - pas de délai artificiel
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            
+            const dataStr = line.replace('data:', '').trim();
+            if (dataStr === '[DONE]') continue;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter(Boolean);
+            try {
+              const json = JSON.parse(dataStr);
+              const delta = json?.choices?.[0]?.delta?.content || '';
+              if (!delta) continue;
 
-        for (const line of lines) {
-          if (!line.startsWith('data:')) continue;
-          
-          const dataStr = line.replace('data:', '').trim();
-          if (dataStr === '[DONE]') continue;
+              accumulated += delta;
 
-          try {
-            const json = JSON.parse(dataStr);
-            const delta = json?.choices?.[0]?.delta?.content || '';
-            if (!delta) continue;
-
-            accumulated += delta;
-
-            // Mise à jour INSTANTANÉE du HTML - pas de queue d'affichage
-            if (accumulated.length > 50) { // Attendre un minimum de contenu pour éviter les flashs
-              setGeneratedHtml(accumulated);
-              setProjectFiles({ 'index.html': accumulated });
-              setSelectedFile('index.html');
-              setSelectedFileContent(accumulated);
+              if (accumulated.length > 50) {
+                setGeneratedHtml(accumulated);
+                setProjectFiles({ 'index.html': accumulated });
+                setSelectedFile('index.html');
+                setSelectedFileContent(accumulated);
+              }
+            } catch (e) {
+              // Ignorer erreurs parsing partiel
             }
-          } catch (e) {
-            // Ignorer erreurs parsing partiel
           }
         }
+
+        setGeneratedHtml(accumulated);
+        setProjectFiles({ 'index.html': accumulated });
+        setSelectedFile('index.html');
+        setSelectedFileContent(accumulated);
+
+        const filesArray = [{ path: 'index.html', content: accumulated, type: 'html' }];
+        await supabase
+          .from('build_sessions')
+          .update({
+            project_files: filesArray,
+            messages: newMessages as any,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', sessionId);
+
+        sonnerToast.success("✨ Site généré avec succès !");
       }
-
-      // Finaliser avec le HTML complet
-      setGeneratedHtml(accumulated);
-      setProjectFiles({ 'index.html': accumulated });
-      setSelectedFile('index.html');
-      setSelectedFileContent(accumulated);
-
-      // Auto-save session
-      const filesArray = [{ path: 'index.html', content: accumulated, type: 'html' }];
-      await supabase
-        .from('build_sessions')
-        .update({
-          project_files: filesArray,
-          messages: newMessages as any,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', sessionId);
-
-      sonnerToast.success(messages.length > 0 ? "Modifications appliquées !" : "Site généré !");
     } catch (error: any) {
       if (error.name === 'AbortError') {
         sonnerToast.info("Génération arrêtée");
