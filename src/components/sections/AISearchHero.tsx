@@ -507,16 +507,6 @@ Règles :
         {/* Barre d'outils discrète */}
         <div className="h-10 bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 flex items-center justify-end px-4 gap-3">
           <Button
-            onClick={handleDownload}
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs"
-          >
-            <Download className="w-3.5 h-3.5 mr-1.5" />
-            Télécharger
-          </Button>
-          
-          <Button
             onClick={handleSave}
             disabled={isSaving}
             variant="ghost"

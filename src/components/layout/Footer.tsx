@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Linkedin, Twitter } from 'lucide-react';
+import { Facebook, Instagram, Linkedin, Twitter, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { useThemeStore } from '@/stores/themeStore';
 
 const Footer = () => {
@@ -16,6 +18,45 @@ const Footer = () => {
     { name: 'LinkedIn', href: '#', icon: Linkedin },
     { name: 'Twitter', href: '#', icon: Twitter },
   ];
+
+  const handleDownloadMagellan = async () => {
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      // Créer un fichier HTML de base pour Magellan
+      const htmlContent = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magellan Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <h1 class="text-4xl font-bold text-center mt-10">Magellan Studio</h1>
+  <p class="text-center mt-4">Votre site web généré par l'IA</p>
+</body>
+</html>`;
+
+      zip.file('index.html', htmlContent);
+
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'magellan-site.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('Fichiers Magellan téléchargés !');
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Erreur lors du téléchargement');
+    }
+  };
 
   return (
     <footer className="relative bg-card/80 backdrop-blur-md overflow-hidden border-t border-border">
@@ -90,8 +131,21 @@ const Footer = () => {
           </div>
         </div>
         
-        <div className="mt-8 pt-8 border-t border-border text-center text-sm text-foreground/60">
-          <p>&copy; {new Date().getFullYear()} Magellan Studio. Tous droits réservés.</p>
+        <div className="mt-8 pt-8 border-t border-border">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-foreground/60">
+              &copy; {new Date().getFullYear()} Magellan Studio. Tous droits réservés.
+            </p>
+            <Button
+              onClick={handleDownloadMagellan}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Télécharger le site Magellan
+            </Button>
+          </div>
         </div>
       </div>
     </footer>
