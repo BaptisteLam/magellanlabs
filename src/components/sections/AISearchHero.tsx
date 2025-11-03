@@ -1,4 +1,4 @@
-import { Save, Eye, Code2, X, Sparkles } from 'lucide-react';
+import { Save, Eye, Code2, X, Sparkles, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -408,6 +408,34 @@ Règles :
     setShowSaveDialog(true);
   };
 
+  const handleDownload = async () => {
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      // Ajouter le fichier HTML
+      zip.file('index.html', generatedHtml);
+
+      // Générer le ZIP
+      const blob = await zip.generateAsync({ type: 'blob' });
+
+      // Créer un lien de téléchargement
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'magellan-site.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      sonnerToast.success('Site téléchargé avec succès !');
+    } catch (error) {
+      console.error('Erreur lors du téléchargement:', error);
+      sonnerToast.error('Erreur lors du téléchargement');
+    }
+  };
+
   const confirmSave = async () => {
     if (!websiteTitle.trim()) {
       sonnerToast.error("Veuillez entrer un titre pour votre site");
@@ -478,6 +506,16 @@ Règles :
       <div className="h-screen">
         {/* Barre d'outils discrète */}
         <div className="h-10 bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 flex items-center justify-end px-4 gap-3">
+          <Button
+            onClick={handleDownload}
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+          >
+            <Download className="w-3.5 h-3.5 mr-1.5" />
+            Télécharger
+          </Button>
+          
           <Button
             onClick={handleSave}
             disabled={isSaving}
