@@ -1,5 +1,5 @@
 import { Sandpack } from '@codesandbox/sandpack-react';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 
 interface VitePreviewProps {
   projectFiles: Record<string, string>;
@@ -13,7 +13,8 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
       path.includes('App.tsx') || 
       path.includes('App.jsx') || 
       path.includes('main.tsx') || 
-      path.includes('main.jsx')
+      path.includes('main.jsx') ||
+      path.includes('package.json')
     );
   }, [projectFiles]);
 
@@ -23,6 +24,8 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
       return {};
     }
 
+    console.log('📦 VitePreview - Fichiers reçus:', Object.keys(projectFiles));
+
     const files: Record<string, string> = {};
     
     // Convertir les chemins et contenus
@@ -31,6 +34,8 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
       let normalizedPath = path.startsWith('/') ? path : `/${path}`;
       files[normalizedPath] = content;
     });
+
+    console.log('📦 VitePreview - Fichiers normalisés:', Object.keys(files));
 
     // Si pas de fichier d'entrée, créer un index.html basique
     if (!files['/index.html'] && !isReactProject) {
@@ -60,6 +65,9 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
     );
   }
 
+  console.log('🎨 VitePreview - Rendu Sandpack avec', Object.keys(sandpackFiles).length, 'fichiers');
+  console.log('🎨 VitePreview - Type de projet:', isReactProject ? 'React' : 'HTML');
+
   return (
     <div className="w-full h-full">
       <Sandpack
@@ -78,12 +86,12 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
           activeFile: Object.keys(sandpackFiles)[0],
           visibleFiles: [],
         }}
-        customSetup={{
+        customSetup={isReactProject ? {
           dependencies: {
             "react": "^18.3.1",
             "react-dom": "^18.3.1",
           }
-        }}
+        } : undefined}
       />
     </div>
   );

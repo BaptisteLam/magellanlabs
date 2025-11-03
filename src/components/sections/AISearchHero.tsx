@@ -216,6 +216,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
 
       const decoder = new TextDecoder('utf-8');
       const filesMap: Record<string, string> = {};
+      let hasReceivedFiles = false;
       
       while (true) {
         const { done, value } = await reader.read();
@@ -233,25 +234,42 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
           try {
             const event = JSON.parse(dataStr);
             
-            if (event.type === 'file_detected') {
+            if (event.type === 'start') {
+              console.log('🚀 Début de la génération...');
+            } else if (event.type === 'chunk') {
+              // On log juste les chunks pour le debug
+              console.log('📝 Chunk reçu');
+            } else if (event.type === 'file_detected') {
               // Fichier détecté - l'ajouter à la map
+              console.log(`📄 Fichier détecté: ${event.data.path}`);
               filesMap[event.data.path] = event.data.content;
+              hasReceivedFiles = true;
+              
+              // Mettre à jour l'état avec la copie complète
               setProjectFiles({ ...filesMap });
               
               // Sélectionner automatiquement le premier fichier
-              if (!selectedFile && Object.keys(filesMap).length === 1) {
+              if (!selectedFile) {
                 setSelectedFile(event.data.path);
                 setSelectedFileContent(event.data.content);
               }
             } else if (event.type === 'complete') {
               console.log(`✅ Génération complète: ${event.data.totalFiles} fichiers`);
-              setIsLoading(false);
-              sonnerToast.success(`Projet généré avec ${event.data.totalFiles} fichiers !`);
               
-              if (onGeneratedChange) {
-                onGeneratedChange(true);
+              // S'assurer qu'on a bien reçu les fichiers
+              if (hasReceivedFiles && Object.keys(filesMap).length > 0) {
+                setProjectFiles({ ...filesMap });
+                setIsLoading(false);
+                sonnerToast.success(`Projet généré avec ${event.data.totalFiles} fichiers !`);
+                
+                if (onGeneratedChange) {
+                  onGeneratedChange(true);
+                }
+              } else {
+                throw new Error('Aucun fichier n\'a été généré');
               }
             } else if (event.type === 'error') {
+              console.error('❌ Erreur reçue:', event.data.message);
               throw new Error(event.data.message);
             }
           } catch (e) {
