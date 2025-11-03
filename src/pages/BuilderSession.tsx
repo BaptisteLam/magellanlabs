@@ -422,12 +422,33 @@ export default function BuilderSession() {
 
 RÈGLES CRITIQUES :
 1. EXACTEMENT 3 fichiers : index.html, style.css, script.js
-2. HTML épuré sans CSS ni JS inline
-3. Tout le CSS dans style.css (classes Tailwind + CSS custom)
-4. Tout le JavaScript dans script.js
+2. HTML épuré SANS aucun CSS ni JS inline (uniquement classes Tailwind)
+3. style.css DOIT contenir du CSS custom RÉEL : animations, transitions, gradients, effets hover, keyframes
+4. script.js DOIT contenir du JavaScript RÉEL : menu mobile, scroll smooth, animations au scroll, interactions
 5. Design moderne, responsive, animations fluides
 6. Max 4 images (Unsplash/Pexels)
 7. Structure : header, hero, features/services, contact (NO footer)
+
+CONTENU OBLIGATOIRE PAR FICHIER :
+
+index.html:
+- Uniquement HTML sémantique avec classes Tailwind
+- Liens vers style.css et script.js
+- Pas de <style> ni <script> inline
+
+style.css:
+- Minimum 100 lignes de CSS custom
+- @keyframes pour animations (fadeIn, slideUp, etc.)
+- Gradients personnalisés
+- Transitions et effets hover
+- Variables CSS custom si nécessaire
+
+script.js:
+- Minimum 50 lignes de JavaScript
+- Menu mobile toggle
+- Smooth scroll
+- Animations au scroll (Intersection Observer)
+- Form validation si formulaire présent
 
 FORMAT OBLIGATOIRE (utilise // FILE: exactement) :
 // FILE: index.html
@@ -447,12 +468,24 @@ FORMAT OBLIGATOIRE (utilise // FILE: exactement) :
 </html>
 
 // FILE: style.css
-/* Styles CSS custom ici (animations, gradients, etc.) */
+/* Animations */
+@keyframes fadeIn { ... }
+@keyframes slideUp { ... }
+
+/* Styles custom */
+...
 
 // FILE: script.js
-// JavaScript ici (interactivité, animations GSAP, etc.)
+// Menu mobile
+const menuToggle = ...
 
-Génère DIRECTEMENT les 3 fichiers au format ci-dessus sans markdown ni explication.`;
+// Smooth scroll
+...
+
+// Animations au scroll
+...
+
+Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier. Ne génère JAMAIS de fichiers vides.`;
 
         const apiMessages: any[] = [{ role: 'system', content: systemPrompt }];
         
