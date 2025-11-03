@@ -376,14 +376,14 @@ serve(async (req) => {
       }
     }
 
-    // Créer le ZIP avec les fichiers construits
-    const zip = new JSZip();
-    
-    // Calculer les hashes SHA-256 pour le manifest
+    // Préparer les fichiers pour Cloudflare Pages Direct Upload
+    // IMPORTANT: Cloudflare attend les fichiers INDIVIDUELS, pas un ZIP
     const manifestEntries: Record<string, string> = {};
     
+    console.log(`📦 Préparation des fichiers pour Cloudflare...`);
+    
     for (const [filename, content] of Object.entries(builtFiles)) {
-      console.log(`📦 Préparation du fichier ${filename}...`);
+      console.log(`📄 Fichier ${filename}:`);
       console.log(`   └─ Taille: ${content.byteLength} bytes (${(content.byteLength / 1024).toFixed(2)} Ko)`);
       
       // IMPORTANT: Vérifier que le contenu n'est pas vide
@@ -395,16 +395,10 @@ serve(async (req) => {
       // Afficher un extrait du contenu pour debug (premiers 100 caractères)
       const decoder = new TextDecoder();
       const contentPreview = decoder.decode(content.slice(0, 100));
-      console.log(`   └─ Extrait du contenu: ${contentPreview.substring(0, 80)}...`);
-      
-      // Ajouter le fichier au ZIP - DIRECTEMENT avec Uint8Array
-      zip.file(filename, content, { binary: true });
-      console.log(`   ✓ Fichier ajouté au ZIP`);
+      console.log(`   └─ Extrait: ${contentPreview.substring(0, 80)}...`);
       
       // Calculer le hash SHA-256 du contenu
-      const tempBuffer = new ArrayBuffer(content.byteLength);
-      new Uint8Array(tempBuffer).set(content);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', tempBuffer);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', content);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
       
@@ -438,33 +432,33 @@ serve(async (req) => {
   Cache-Control: public, max-age=31536000, immutable`;
     
     const headersBytes = new TextEncoder().encode(headersConfig);
-    zip.file('_headers', headersBytes);
     
     // Hash pour _headers
-    const headersTempBuffer = new ArrayBuffer(headersBytes.byteLength);
-    new Uint8Array(headersTempBuffer).set(headersBytes);
-    const headersHash = await crypto.subtle.digest('SHA-256', headersTempBuffer);
+    const headersHash = await crypto.subtle.digest('SHA-256', headersBytes);
     const headersHashArray = Array.from(new Uint8Array(headersHash));
     const headersHashHex = headersHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     manifestEntries['/_headers'] = headersHashHex;
-
-    // Générer le ZIP
-    console.log(`🔧 Génération du ZIP...`);
-    const zipArrayBuffer = await zip.generateAsync({ 
-      type: 'arraybuffer',
-      compression: 'DEFLATE',
-      compressionOptions: { level: 9 }
-    });
-    const zipSizeKb = (zipArrayBuffer.byteLength / 1024).toFixed(2);
-    console.log(`✅ ZIP créé avec succès: ${zipSizeKb} Ko`);
+    
     console.log(`📋 Manifest avec ${Object.keys(manifestEntries).length} fichiers:`, Object.keys(manifestEntries));
     console.log(`📋 Manifest complet:`, JSON.stringify(manifestEntries, null, 2));
 
-    // Créer le FormData
+    // ✅ CRÉER LE FORMDATA AVEC LES FICHIERS INDIVIDUELS (pas de ZIP!)
+    // Cloudflare Pages Direct Upload attend chaque fichier séparément
     const formData = new FormData();
     formData.append('manifest', JSON.stringify(manifestEntries));
-    const zipBlob = new Blob([zipArrayBuffer], { type: 'application/zip' });
-    formData.append('file', zipBlob, 'build.zip');
+    
+    // Ajouter chaque fichier individuellement au FormData
+    for (const [filename, content] of Object.entries(builtFiles)) {
+      const blob = new Blob([content], { type: 'application/octet-stream' });
+      const manifestKey = `/${filename}`;
+      formData.append(manifestKey, blob, filename);
+      console.log(`✅ Ajouté au FormData: ${manifestKey} (${filename})`);
+    }
+    
+    // Ajouter le fichier _headers
+    const headersBlob = new Blob([headersBytes], { type: 'text/plain' });
+    formData.append('/_headers', headersBlob, '_headers');
+    console.log(`✅ Ajouté au FormData: /_headers`);
 
     console.log(`🚀 Déploiement sur Cloudflare: ${projectName}`);
     const deployResponse = await fetch(
