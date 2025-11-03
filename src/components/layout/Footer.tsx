@@ -3,9 +3,11 @@ import { Facebook, Instagram, Linkedin, Twitter, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useThemeStore } from '@/stores/themeStore';
+import { useProjectStore } from '@/stores/projectStore';
 
 const Footer = () => {
   const { isDark } = useThemeStore();
+  const { projectFiles, generatedHtml } = useProjectStore();
   const navigation = [
     { name: 'Entreprise', href: '/about' },
     { name: 'Tarif', href: '/tarifs' },
@@ -24,8 +26,17 @@ const Footer = () => {
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
 
-      // Créer un fichier HTML de base pour Magellan
-      const htmlContent = `<!DOCTYPE html>
+      // Si on a des fichiers générés, on les utilise
+      if (projectFiles.length > 0) {
+        projectFiles.forEach(file => {
+          zip.file(file.path, file.content);
+        });
+      } else if (generatedHtml) {
+        // Sinon on utilise le HTML généré
+        zip.file('index.html', generatedHtml);
+      } else {
+        // Par défaut, un template de base
+        const htmlContent = `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
@@ -38,8 +49,8 @@ const Footer = () => {
   <p class="text-center mt-4">Votre site web généré par l'IA</p>
 </body>
 </html>`;
-
-      zip.file('index.html', htmlContent);
+        zip.file('index.html', htmlContent);
+      }
 
       const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);

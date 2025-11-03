@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import trinityLogoLoading from '@/assets/trinity-logo-loading.png';
 import { useThemeStore } from '@/stores/themeStore';
+import { useProjectStore } from '@/stores/projectStore';
 import PromptBar from '@/components/PromptBar';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -20,6 +21,7 @@ interface AISearchHeroProps {
 
 const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   const { isDark } = useThemeStore();
+  const { setProjectFiles, setGeneratedHtml: setStoreGeneratedHtml } = useProjectStore();
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [generatedHtml, setGeneratedHtml] = useState('');
@@ -32,6 +34,11 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Sync local state with store
+  useEffect(() => {
+    setStoreGeneratedHtml(generatedHtml);
+  }, [generatedHtml, setStoreGeneratedHtml]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -336,17 +343,22 @@ Règles :
       const finalHtml = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
 
       // Créer la session (avec ou sans utilisateur connecté)
+      const projectFiles = [
+        {
+          path: 'index.html',
+          content: finalHtml,
+          type: 'html'
+        }
+      ];
+
+      // Update store with generated files
+      setProjectFiles(projectFiles);
+
       const { data: sessionData, error: sessionError } = await supabase
         .from('build_sessions')
         .insert({
           user_id: user?.id || null,
-          project_files: [
-            {
-              path: 'index.html',
-              content: finalHtml,
-              type: 'html'
-            }
-          ],
+          project_files: projectFiles,
           messages: [
             { role: 'user', content: userMessageContent },
             { role: 'assistant', content: explanation }
