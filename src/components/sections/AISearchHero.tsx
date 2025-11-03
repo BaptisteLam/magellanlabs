@@ -1,4 +1,4 @@
-import { Save, Eye, Code2, X, Sparkles, FileText } from 'lucide-react';
+import { Save, Eye, Code2, X, Sparkles, FileText, Home, Upload, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -229,6 +229,23 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
     setTimeout(() => navigate('/dashboard'), 1000);
   };
 
+  const handlePublish = () => {
+    sonnerToast.info("Fonctionnalité de publication à venir !");
+  };
+
+  const handleDownload = () => {
+    sonnerToast.info("Téléchargement du projet à venir !");
+  };
+
+  const handleBackHome = () => {
+    if (window.confirm("Quitter le builder ? Les modifications non sauvegardées seront perdues.")) {
+      setProjectFiles([]);
+      if (onGeneratedChange) {
+        onGeneratedChange(false);
+      }
+    }
+  };
+
   const handleFileClick = (path: string) => {
     if (!openFiles.includes(path)) {
       setOpenFiles([...openFiles, path]);
@@ -300,10 +317,24 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
     return (
       <div className="h-screen">
         {/* Barre d'outils */}
-        <div className="h-10 bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 flex items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-slate-500" />
-            <span className="text-xs text-slate-600 font-medium">{projectFiles.length} fichiers</span>
+        <div className="h-12 bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 flex items-center justify-between px-4">
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleBackHome}
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+            >
+              <Home className="w-4 h-4 mr-1.5" />
+              Accueil
+            </Button>
+            
+            <div className="h-6 w-px bg-slate-300" />
+            
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-slate-500" />
+              <span className="text-xs text-slate-600 font-medium">{projectFiles.length} fichiers</span>
+            </div>
           </div>
           
           <div className="flex items-center gap-3">
@@ -312,38 +343,58 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
               disabled={isSaving}
               variant="ghost"
               size="sm"
-              className="h-7 text-xs"
+              className="h-8 text-xs"
             >
-              <Save className="w-3.5 h-3.5 mr-1.5" />
+              <Save className="w-4 h-4 mr-1.5" />
               Enregistrer
             </Button>
             
-            <div className="h-5 w-px bg-slate-300" />
+            <Button
+              onClick={handleDownload}
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+            >
+              <Download className="w-4 h-4 mr-1.5" />
+              Télécharger
+            </Button>
+            
+            <Button
+              onClick={handlePublish}
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+            >
+              <Upload className="w-4 h-4 mr-1.5" />
+              Publier
+            </Button>
+            
+            <div className="h-6 w-px bg-slate-300" />
             
             <div className="flex items-center gap-1 bg-white rounded-md border border-slate-200 p-0.5">
               <Button
                 variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
                 size="sm"
-                className="h-6 px-2 text-xs"
+                className="h-7 px-2 text-xs"
                 onClick={() => setViewMode('preview')}
               >
-                <Eye className="w-3 h-3 mr-1" />
+                <Eye className="w-3.5 h-3.5 mr-1" />
                 Preview
               </Button>
               <Button
                 variant={viewMode === 'code' ? 'secondary' : 'ghost'}
                 size="sm"
-                className="h-6 px-2 text-xs"
+                className="h-7 px-2 text-xs"
                 onClick={() => setViewMode('code')}
               >
-                <Code2 className="w-3 h-3 mr-1" />
+                <Code2 className="w-3.5 h-3.5 mr-1" />
                 Code
               </Button>
             </div>
           </div>
         </div>
 
-        <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-2.5rem)]">
+        <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-3rem)]">
           <ResizablePanel defaultSize={30} minSize={25}>
             <div className="h-full flex flex-col bg-slate-50">
               {/* Chat history */}
