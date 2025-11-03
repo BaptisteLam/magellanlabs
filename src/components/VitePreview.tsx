@@ -61,10 +61,10 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
   }
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative overflow-hidden rounded-lg">
       <iframe
         ref={iframeRef}
-        className="w-full h-full border-0"
+        className="w-full h-full border-0 rounded-lg"
         title="Preview"
         sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
       />
