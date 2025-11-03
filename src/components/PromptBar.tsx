@@ -27,7 +27,8 @@ interface PromptBarProps {
   onFileSelect?: (files: File[]) => void;
   attachedFiles?: Array<{ name: string; base64: string; type: string }>;
   onRemoveFile?: (index: number) => void;
-  showConfigButtons?: boolean; // Nouveau: afficher les boutons de config (paramètres, type de projet)
+  showConfigButtons?: boolean;
+  modificationMode?: boolean; // Nouveau: indique si on est en mode modification
 }
 
 const PromptBar = ({ 
@@ -40,7 +41,8 @@ const PromptBar = ({
   onFileSelect,
   attachedFiles = [],
   onRemoveFile,
-  showConfigButtons = true // Par défaut on affiche les boutons (accueil/build)
+  showConfigButtons = true,
+  modificationMode = false
 }: PromptBarProps) => {
   const { isDark } = useThemeStore();
   const [selectedModel, setSelectedModel] = useState<'sonnet' | 'grok'>('sonnet');
@@ -127,14 +129,14 @@ const PromptBar = ({
               }
             }
           }}
-          placeholder=""
+          placeholder={modificationMode ? "Décris les modifications à apporter..." : ""}
           className="w-full min-h-[100px] resize-none border-0 p-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
           style={{ 
             fontSize: '14px',
             color: isDark ? 'hsl(var(--foreground))' : '#334155'
           }}
         />
-        {!inputValue && showPlaceholderAnimation && (
+        {!inputValue && showPlaceholderAnimation && !modificationMode && (
           <div className="absolute top-3 left-3 pointer-events-none text-slate-400" style={{ fontSize: '14px' }}>
             <TextType
               text={[

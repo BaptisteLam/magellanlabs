@@ -103,6 +103,76 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
 
     try {
       const prompt = inputValue.trim();
+
+      // 🔥 MODE MODIFICATION : Si un fichier est sélectionné, on modifie juste ce fichier
+      if (selectedFile && Object.keys(projectFiles).length > 0) {
+        console.log(`🔧 Modification incrémentale du fichier: ${selectedFile}`);
+        
+        const { data: authData } = await supabase.auth.getSession();
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/modify-site`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            modification: prompt,
+            filePath: selectedFile,
+            fileContent: selectedFileContent,
+            sessionId: sessionId
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erreur API: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('Impossible de lire le stream');
+
+        const decoder = new TextDecoder('utf-8');
+        let modifiedContent = '';
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(Boolean);
+
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            
+            const dataStr = line.replace('data:', '').trim();
+            if (!dataStr) continue;
+
+            try {
+              const event = JSON.parse(dataStr);
+              
+              if (event.type === 'delta') {
+                // Streaming du contenu modifié
+                modifiedContent += event.data.content;
+                setSelectedFileContent(modifiedContent);
+                setProjectFiles({ ...projectFiles, [selectedFile]: modifiedContent });
+              } else if (event.type === 'complete') {
+                console.log(`✅ Modification complète`);
+                setIsLoading(false);
+                sonnerToast.success(`Fichier ${selectedFile} modifié !`);
+              } else if (event.type === 'error') {
+                throw new Error(event.data.message);
+              }
+            } catch (e) {
+              console.error('Erreur parsing SSE:', e);
+            }
+          }
+        }
+
+        setInputValue('');
+        return;
+      }
+
+      // 🆕 MODE CRÉATION : Génération complète d'un nouveau projet
+      console.log('🆕 Génération complète d\'un nouveau projet');
       
       // Créer une session builder
       const { data: session, error: sessionError } = await supabase
@@ -274,7 +344,14 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       <div className="h-screen flex flex-col">
         {/* Barre d'outils */}
         <div className="h-12 bg-slate-50 border-b border-slate-200 flex items-center justify-between px-4">
-          <h2 className="text-sm font-semibold text-slate-700">Projet</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-slate-700">Projet</h2>
+            {selectedFile && (
+              <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">
+                Mode modification • {selectedFile}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 bg-white rounded-md border border-slate-200 p-0.5">
               <Button
