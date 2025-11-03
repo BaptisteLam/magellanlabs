@@ -80,7 +80,19 @@ function getFileType(extension: string): string {
     'tsx': 'typescript',
     'json': 'json',
     'md': 'markdown',
-    'txt': 'text'
+    'txt': 'text',
+    'svg': 'image',
+    'png': 'image',
+    'jpg': 'image',
+    'jpeg': 'image',
+    'gif': 'image',
+    'webp': 'image',
+    'ico': 'image',
+    'xml': 'xml',
+    'yaml': 'yaml',
+    'yml': 'yaml',
+    'toml': 'toml',
+    'env': 'text'
   };
   
   return typeMap[extension.toLowerCase()] || 'text';
@@ -140,113 +152,89 @@ serve(async (req) => {
 
     console.log(`[generate-site] User ${user.id} generating site for session ${sessionId}`);
 
-    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
-    if (!OPENROUTER_API_KEY) {
-      throw new Error('OPENROUTER_API_KEY not configured');
+    const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error('ANTHROPIC_API_KEY not configured');
     }
 
-    // Prompt système optimisé pour génération en 3 fichiers séparés
-    const systemPrompt = `Tu es un expert développeur web. Génère un site web complet, moderne et professionnel en 3 fichiers séparés.
+    // Prompt système optimisé pour génération de projets web modernes
+    const systemPrompt = `Tu es un expert développeur web fullstack. Tu génères des projets web complets et modernes selon les besoins de l'utilisateur.
 
-RÈGLES CRITIQUES :
-1. EXACTEMENT 3 fichiers : index.html, style.css, script.js
-2. HTML épuré SANS aucun CSS ni JS inline (uniquement classes Tailwind)
-3. style.css DOIT contenir du CSS custom RÉEL : animations, transitions, gradients, effets hover, keyframes
-4. script.js DOIT contenir du JavaScript RÉEL : menu mobile, scroll smooth, animations au scroll, interactions
-5. Design moderne, responsive, animations fluides
-6. Max 4 images (Unsplash/Pexels)
-7. Structure : header, hero, features/services, contact (NO footer)
+FORMATS SUPPORTÉS :
+- Projets React/Vite avec TypeScript/JavaScript
+- Sites HTML/CSS/JS statiques
+- Applications avec JSON de configuration
+- Tout autre format pertinent selon le besoin
 
-CONTENU OBLIGATOIRE PAR FICHIER :
+RÈGLES DE GÉNÉRATION :
+1. Choisis l'architecture la plus adaptée à la demande (React/Vite pour apps complexes, HTML simple pour sites basiques)
+2. Génère TOUS les fichiers nécessaires au projet
+3. Code propre, moderne, responsive
+4. Utilise les meilleures pratiques (TypeScript, composants modulaires, etc.)
+5. Inclus uniquement ce qui est demandé, pas de fonctionnalités superflues
 
-index.html:
-- Uniquement HTML sémantique avec classes Tailwind
-- Liens vers style.css et script.js
-- Pas de <style> ni <script> inline
+FORMAT DE SORTIE (OBLIGATOIRE) :
+Utilise exactement ce format pour chaque fichier :
+// FILE: chemin/vers/fichier.ext
+[contenu du fichier]
 
-style.css:
-- Minimum 100 lignes de CSS custom
-- @keyframes pour animations (fadeIn, slideUp, etc.)
-- Gradients personnalisés
-- Transitions et effets hover
-- Variables CSS custom si nécessaire
-
-script.js:
-- Minimum 50 lignes de JavaScript
-- Menu mobile toggle
-- Smooth scroll
-- Animations au scroll (Intersection Observer)
-- Form validation si formulaire présent
-
-FORMAT OBLIGATOIRE (utilise // FILE: exactement) :
+Exemples :
+// FILE: src/App.tsx
 // FILE: index.html
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>...</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <!-- HTML ici (classes Tailwind uniquement) -->
-  <script src="script.js"></script>
-</body>
-</html>
-
+// FILE: package.json
 // FILE: style.css
-/* Animations */
-@keyframes fadeIn { ... }
-@keyframes slideUp { ... }
 
-/* Styles custom */
-...
+TYPES DE PROJETS :
 
-// FILE: script.js
-// Menu mobile
-const menuToggle = ...
+Pour une application React/Vite moderne :
+- package.json avec dépendances
+- index.html
+- src/main.tsx ou src/main.jsx
+- src/App.tsx ou src/App.jsx
+- src/components/*.tsx
+- src/index.css
+- vite.config.ts si nécessaire
 
-// Smooth scroll
-...
+Pour un site HTML simple :
+- index.html
+- style.css
+- script.js
 
-// Animations au scroll
-...
+IMPORTANT :
+- Génère du code COMPLET et FONCTIONNEL
+- Pas de placeholders ou de commentaires "// TODO"
+- Chaque fichier doit être prêt à l'emploi
+- Adapte la complexité à la demande de l'utilisateur
 
-Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier. Ne génère JAMAIS de fichiers vides.`;
+Génère maintenant le projet demandé avec TOUS les fichiers nécessaires.`;
 
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: prompt }
-    ];
-
-    // Appel OpenRouter avec streaming
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    // Appel Anthropic API directe avec streaming
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://trinitystudio.ai',
-        'X-Title': 'Trinity Studio AI',
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4.5',
-        messages,
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 8000,
         stream: true,
-        max_tokens: 16000,
-        temperature: 0.8,
+        system: systemPrompt,
+        messages: [
+          { role: 'user', content: prompt }
+        ],
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[generate-site] OpenRouter error:', response.status, errorText);
+      console.error('[generate-site] Anthropic API error:', response.status, errorText);
       
       // Return generic error message to user
       const statusMessages: Record<number, string> = {
         400: 'Invalid request. Please check your input.',
         401: 'Authentication failed. Please try again.',
-        402: 'Insufficient credits. Please try again later.',
         429: 'Too many requests. Please try again in a few moments.',
         500: 'An unexpected error occurred. Please try again later.'
       };
@@ -297,6 +285,8 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
             const lines = chunk.split('\n').filter(Boolean);
 
             for (const line of lines) {
+              if (!line.trim() || line.startsWith(':') || line === '') continue;
+              
               if (!line.startsWith('data:')) continue;
               
               const dataStr = line.replace('data:', '').trim();
@@ -403,7 +393,8 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
 
               try {
                 const json = JSON.parse(dataStr);
-                const delta = json?.choices?.[0]?.delta?.content || '';
+                // Support Anthropic streaming format
+                const delta = json?.delta?.text || json?.choices?.[0]?.delta?.content || '';
                 if (!delta) continue;
 
                 accumulated += delta;

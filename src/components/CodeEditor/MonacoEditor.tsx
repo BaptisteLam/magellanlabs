@@ -19,9 +19,21 @@ export function MonacoEditor({ value, language, onChange, readOnly = false }: Mo
       js: 'javascript',
       css: 'css',
       scss: 'scss',
+      sass: 'scss',
+      less: 'less',
       html: 'html',
+      htm: 'html',
       json: 'json',
       md: 'markdown',
+      markdown: 'markdown',
+      xml: 'xml',
+      svg: 'xml',
+      yaml: 'yaml',
+      yml: 'yaml',
+      toml: 'toml',
+      sh: 'shell',
+      bash: 'shell',
+      txt: 'plaintext',
     };
     return langMap[lang] || 'plaintext';
   };
