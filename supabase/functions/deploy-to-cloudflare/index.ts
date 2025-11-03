@@ -446,35 +446,6 @@ serve(async (req) => {
       console.log(`   ✓ Manifest key: ${manifestKey}`);
     }
     
-    // Ajouter fichier _headers pour CDN
-    const headersConfig = `/*
-  Cache-Control: public, max-age=31536000, immutable
-  X-Content-Type-Options: nosniff
-  X-Frame-Options: SAMEORIGIN
-  X-XSS-Protection: 1; mode=block
-  Referrer-Policy: strict-origin-when-cross-origin
-  Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:
-
-/*.html
-  Content-Type: text/html; charset=utf-8
-  Cache-Control: public, max-age=3600
-
-/*.css
-  Content-Type: text/css
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.js
-  Content-Type: application/javascript
-  Cache-Control: public, max-age=31536000, immutable`;
-    
-    const headersBytes = new TextEncoder().encode(headersConfig);
-    
-    // Hash pour _headers
-    const headersHash = await crypto.subtle.digest('SHA-256', headersBytes);
-    const headersHashArray = Array.from(new Uint8Array(headersHash));
-    const headersHashHex = headersHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    manifestEntries['/_headers'] = headersHashHex;
-    
     console.log(`📋 Manifest avec ${Object.keys(manifestEntries).length} fichiers:`, Object.keys(manifestEntries));
     console.log(`📋 Manifest complet:`, JSON.stringify(manifestEntries, null, 2));
 
@@ -491,11 +462,6 @@ serve(async (req) => {
       formData.append(manifestKey, blob, filename);
       console.log(`✅ Ajouté au FormData: ${manifestKey} (${filename})`);
     }
-    
-    // Ajouter le fichier _headers
-    const headersBlob = new Blob([headersBytes], { type: 'text/plain' });
-    formData.append('/_headers', headersBlob, '_headers');
-    console.log(`✅ Ajouté au FormData: /_headers`);
 
     console.log(`🚀 Déploiement sur Cloudflare: ${projectName}`);
     const deployResponse = await fetch(
