@@ -312,7 +312,7 @@ Réponds UNIQUEMENT avec les fichiers au format // FILE: sans explication avant 
         'X-Title': 'Trinity Studio AI',
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4-20250514',
+        model: 'anthropic/claude-sonnet-4.5',
         messages,
         stream: true,
         max_tokens: 32000,
