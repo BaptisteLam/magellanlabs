@@ -73,7 +73,7 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
   console.log('🎨 VitePreview - Type de projet:', isReactProject ? 'React' : 'HTML');
 
   return (
-    <div className="w-full h-full overflow-hidden sandpack-wrapper">
+    <div className="w-full h-full overflow-hidden sandpack-wrapper rounded-xl">
       <Sandpack
         files={sandpackFiles}
         template={isReactProject ? "react-ts" : "static"}

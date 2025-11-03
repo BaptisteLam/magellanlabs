@@ -292,6 +292,8 @@ All colors MUST be HSL for design consistency.
   .sandpack-wrapper {
     width: 100% !important;
     height: 100% !important;
+    border-radius: 0.75rem !important;
+    overflow: hidden !important;
   }
 
   .sandpack-wrapper > div,
@@ -299,6 +301,7 @@ All colors MUST be HSL for design consistency.
   .sandpack-wrapper .sp-layout {
     width: 100% !important;
     height: 100% !important;
+    border-radius: 0.75rem !important;
   }
 
   .sandpack-wrapper .sp-stack,
@@ -306,6 +309,7 @@ All colors MUST be HSL for design consistency.
   .sandpack-wrapper .sp-preview-iframe {
     width: 100% !important;
     height: 100% !important;
+    border-radius: 0.75rem !important;
   }
 
   /* Hide Sandpack buttons */
