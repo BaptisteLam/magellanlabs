@@ -287,4 +287,24 @@ All colors MUST be HSL for design consistency.
   .animate-scroll-down {
     animation: scroll-down 2s linear infinite;
   }
+
+  /* Sandpack customizations */
+  .sandpack-wrapper .sp-layout {
+    height: 100% !important;
+  }
+
+  .sandpack-wrapper .sp-preview-container {
+    height: 100% !important;
+  }
+
+  .sandpack-wrapper .sp-preview-iframe {
+    height: 100% !important;
+  }
+
+  /* Hide Sandpack buttons */
+  .sandpack-wrapper button[title="Open in CodeSandbox"],
+  .sandpack-wrapper button[aria-label="Open in CodeSandbox"],
+  .sandpack-wrapper button[title="Refresh Sandpack"] {
+    display: none !important;
+  }
 }

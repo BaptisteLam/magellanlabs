@@ -73,7 +73,7 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
   console.log('🎨 VitePreview - Type de projet:', isReactProject ? 'React' : 'HTML');
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full overflow-hidden sandpack-wrapper">
       <Sandpack
         files={sandpackFiles}
         template={isReactProject ? "react-ts" : "static"}
@@ -89,6 +89,7 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
           closableTabs: false,
           activeFile: Object.keys(sandpackFiles)[0],
           visibleFiles: [],
+          showRefreshButton: false,
         }}
         customSetup={isReactProject ? {
           dependencies: {
