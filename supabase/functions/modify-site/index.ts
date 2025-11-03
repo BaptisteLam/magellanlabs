@@ -112,29 +112,49 @@ serve(async (req) => {
     }
 
     const existingFiles: ProjectFile[] = Array.isArray(relevantFiles) ? relevantFiles : [];
+    const chatHistoryArray: ChatMessage[] = Array.isArray(chatHistory) ? chatHistory : [];
 
-    // Build optimized AI prompt with MINIMAL context
+    // Build conversation with streaming context
     const systemPrompt = `Tu es un expert développeur. Tu modifies uniquement les fichiers nécessaires.
 
 RÈGLES :
 1. RETOURNE UNIQUEMENT LES FICHIERS MODIFIÉS
 2. Format : FILE_MODIFIED: [chemin]\n[contenu complet]
 3. Code production-ready
+4. Retourne directement les fichiers sans explication`;
 
-Retourne directement les fichiers modifiés sans explication.`;
-
-    // ULTRA MINIMAL - Seulement index.html
-    const mainFile = existingFiles.find(f => f.path === 'index.html') || existingFiles[0];
-    const filesContext = mainFile 
-      ? `FILE_MODIFIED: ${mainFile.path}\n${mainFile.content.substring(0, 800)}`
-      : '';
-
-    const userMessage = `${filesContext}\n\nDemande: ${message}\n\nRetourne SEULEMENT le fichier index.html complet modifié.`;
-
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage }
+    const messages: any[] = [
+      { role: 'system', content: systemPrompt }
     ];
+
+    // OPTIMISATION: Ne pas renvoyer le contexte si l'historique existe déjà
+    const isFirstMessage = chatHistoryArray.length <= 1;
+
+    if (isFirstMessage && existingFiles.length > 0) {
+      // Premier message: inclure le contexte des fichiers principaux
+      const mainFile = existingFiles.find(f => f.path === 'index.html') || existingFiles[0];
+      const filesContext = `Fichier actuel:\nFILE_MODIFIED: ${mainFile.path}\n${mainFile.content.substring(0, 1500)}`;
+      
+      messages.push({
+        role: 'user',
+        content: `${filesContext}\n\nModification demandée: ${message}`
+      });
+    } else {
+      // Messages suivants: utiliser l'historique de conversation
+      // L'API "garde le contexte" via l'historique des messages
+      chatHistoryArray.forEach(msg => {
+        messages.push({
+          role: msg.role,
+          content: msg.content
+        });
+      });
+      
+      // Ajouter la nouvelle demande
+      messages.push({
+        role: 'user',
+        content: message
+      });
+    }
 
     // Stream from OpenRouter
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
