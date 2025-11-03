@@ -270,50 +270,112 @@ serve(async (req) => {
       }
       
       // 📌 EXTRACTION DU CSS ET JS DEPUIS LE HTML
-      let extractedCss = '';
-      let extractedJs = '';
+      console.log('🔍 Début extraction CSS/JS depuis HTML...');
       
-      // Extraire tous les <style> tags
-      const styleMatches = html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi);
-      for (const match of styleMatches) {
-        extractedCss += match[1] + '\n';
+      const cssBlocks: string[] = [];
+      const jsBlocks: string[] = [];
+      
+      // Extraire tous les <style> tags (même avec attributs)
+      const styleRegex = /<style(\s+[^>]*)?>(([\s\S]*?))<\/style>/gi;
+      let styleMatch;
+      let styleCount = 0;
+      
+      while ((styleMatch = styleRegex.exec(html)) !== null) {
+        styleCount++;
+        const cssContent = styleMatch[2]?.trim() || '';
+        if (cssContent && !cssBlocks.includes(cssContent)) {
+          cssBlocks.push(cssContent);
+          console.log(`   ✓ <style> #${styleCount}: ${cssContent.length} caractères`);
+        }
       }
       
-      // Extraire tous les <script> tags (non-module)
-      const scriptMatches = html.matchAll(/<script(?![^>]*type=["']module["'])[^>]*>([\s\S]*?)<\/script>/gi);
-      for (const match of scriptMatches) {
-        extractedJs += match[1] + '\n';
+      // Extraire tous les <script> tags contenant du JavaScript pur (ignorer src="...")
+      const scriptRegex = /<script(?![^>]*\ssrc=["'])(\s+[^>]*)?>(([\s\S]*?))<\/script>/gi;
+      let scriptMatch;
+      let scriptCount = 0;
+      
+      while ((scriptMatch = scriptRegex.exec(html)) !== null) {
+        scriptCount++;
+        const jsContent = scriptMatch[2]?.trim() || '';
+        // Ignorer les scripts module (type="module")
+        const attrs = scriptMatch[1] || '';
+        const isModule = /type=["']module["']/i.test(attrs);
+        
+        if (jsContent && !isModule && !jsBlocks.includes(jsContent)) {
+          jsBlocks.push(jsContent);
+          console.log(`   ✓ <script> #${scriptCount}: ${jsContent.length} caractères`);
+        }
       }
       
-      console.log(`📄 CSS extrait: ${extractedCss.length} caractères`);
-      console.log(`📄 JS extrait: ${extractedJs.length} caractères`);
+      // Concaténer tous les blocs dans l'ordre d'apparition
+      const extractedCss = cssBlocks.join('\n\n');
+      const extractedJs = jsBlocks.join('\n\n');
       
-      // 📦 CRÉER LES FICHIERS À LA RACINE DU ZIP
-      // index.html - retirer les styles et scripts inline pour les externaliser
+      console.log(`📄 CSS total extrait: ${extractedCss.length} caractères depuis ${cssBlocks.length} blocs`);
+      console.log(`📄 JS total extrait: ${extractedJs.length} caractères depuis ${jsBlocks.length} blocs`);
+      
+      // Validation du CSS extrait
+      if (cssBlocks.length > 0 && !extractedCss.includes('{')) {
+        console.warn('⚠️ CSS détecté mais aucune accolade { trouvée - CSS potentiellement invalide');
+      }
+      
+      // 📦 CRÉER index.html - retirer les styles et scripts inline
+      console.log('🧹 Nettoyage HTML (suppression des <style> et <script>)...');
+      
       let cleanHtml = html
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-        .replace(/<script(?![^>]*type=["']module["'])[^>]*>[\s\S]*?<\/script>/gi, '');
+        .replace(/<style(\s+[^>]*)?>[\s\S]*?<\/style>/gi, '')
+        .replace(/<script(?![^>]*\ssrc=["'])(\s+[^>]*)?>[\s\S]*?<\/script>/gi, '');
+      
+      // Vérifier si index.html est incomplet après nettoyage
+      if (!cleanHtml.includes('<html') || !cleanHtml.includes('<head') || !cleanHtml.includes('<body')) {
+        throw new Error('❌ HTML incomplet après extraction CSS/JS - impossible de déployer');
+      }
       
       // Ajouter les liens vers les fichiers CSS et JS externes
-      cleanHtml = cleanHtml.replace(
-        '</head>',
-        '  <link rel="stylesheet" href="style.css">\n</head>'
-      );
-      cleanHtml = cleanHtml.replace(
-        '</body>',
-        '  <script src="script.js"></script>\n</body>'
-      );
+      if (!cleanHtml.includes('href="style.css"')) {
+        cleanHtml = cleanHtml.replace(
+          '</head>',
+          '  <link rel="stylesheet" href="style.css">\n</head>'
+        );
+        console.log('   ✓ Référence <link> ajoutée dans <head>');
+      }
+      
+      if (!cleanHtml.includes('src="script.js"')) {
+        cleanHtml = cleanHtml.replace(
+          '</body>',
+          '  <script src="script.js"></script>\n</body>'
+        );
+        console.log('   ✓ Référence <script> ajoutée dans <body>');
+      }
+      
+      // Validation finale
+      if (!cleanHtml.includes('href="style.css"')) {
+        console.error('❌ Référence style.css manquante dans index.html');
+      }
+      if (!cleanHtml.includes('src="script.js"')) {
+        console.error('❌ Référence script.js manquante dans index.html');
+      }
       
       builtFiles['index.html'] = encoder.encode(cleanHtml);
       console.log(`✅ index.html créé (${(builtFiles['index.html'].byteLength / 1024).toFixed(2)} Ko)`);
       
-      // style.css - créer le fichier (même vide)
-      builtFiles['style.css'] = encoder.encode(extractedCss || '/* Styles générés par Trinity AI */\n');
+      // Créer style.css (avec fallback si vide)
+      const finalCss = extractedCss || '/* Styles générés par Trinity AI */\n';
+      builtFiles['style.css'] = encoder.encode(finalCss);
       console.log(`✅ style.css créé (${(builtFiles['style.css'].byteLength / 1024).toFixed(2)} Ko)`);
       
-      // script.js - créer le fichier (même vide)
-      builtFiles['script.js'] = encoder.encode(extractedJs || '// Scripts générés par Trinity AI\n');
+      if (!extractedCss) {
+        console.warn('⚠️ style.css est vide - aucun <style> détecté dans le HTML');
+      }
+      
+      // Créer script.js (avec fallback si vide)
+      const finalJs = extractedJs || '// Scripts générés par Trinity AI\nconsole.log("Trinity AI - Aucun script détecté");\n';
+      builtFiles['script.js'] = encoder.encode(finalJs);
       console.log(`✅ script.js créé (${(builtFiles['script.js'].byteLength / 1024).toFixed(2)} Ko)`);
+      
+      if (!extractedJs) {
+        console.warn('⚠️ script.js est vide - aucun <script> détecté dans le HTML');
+      }
     }
 
     // 📌 Vérifier si un projet Cloudflare existe déjà pour cette session ou ce titre
