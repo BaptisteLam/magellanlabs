@@ -163,7 +163,7 @@ RETOURNE UNIQUEMENT LES FICHIERS MODIFIÉS avec le marqueur FILE_MODIFIED:`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet', // Latest Claude model on OpenRouter
+        model: 'anthropic/claude-sonnet-4.5',
         messages,
         stream: true,
         max_tokens: 16000,
