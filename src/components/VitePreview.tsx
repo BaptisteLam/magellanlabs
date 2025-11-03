@@ -21,10 +21,12 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
   // Transformer les fichiers pour Sandpack
   const sandpackFiles = useMemo(() => {
     if (!projectFiles || Object.keys(projectFiles).length === 0) {
+      console.log('📦 VitePreview - Aucun fichier');
       return {};
     }
 
     console.log('📦 VitePreview - Fichiers reçus:', Object.keys(projectFiles));
+    console.log('📦 VitePreview - Total:', Object.keys(projectFiles).length, 'fichiers');
 
     const files: Record<string, string> = {};
     
@@ -33,12 +35,14 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
       // Normaliser les chemins pour Sandpack
       let normalizedPath = path.startsWith('/') ? path : `/${path}`;
       files[normalizedPath] = content;
+      console.log(`📄 Ajout fichier: ${normalizedPath} (${content.length} chars)`);
     });
 
     console.log('📦 VitePreview - Fichiers normalisés:', Object.keys(files));
 
-    // Si pas de fichier d'entrée, créer un index.html basique
+    // Si pas de fichier d'entrée ET pas de projet React, créer un index.html basique
     if (!files['/index.html'] && !isReactProject) {
+      console.log('⚠️ Aucun index.html trouvé, création d\'un fallback');
       const content = Object.values(projectFiles).join('\n');
       files['/index.html'] = `<!DOCTYPE html>
 <html lang="fr">

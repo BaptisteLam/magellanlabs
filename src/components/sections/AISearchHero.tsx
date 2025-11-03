@@ -239,10 +239,14 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       const decoder = new TextDecoder('utf-8');
       const filesMap: Record<string, string> = {};
       let hasReceivedFiles = false;
+      let isStreamComplete = false;
       
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log('📡 Stream terminé naturellement');
+          break;
+        }
 
         const chunk = decoder.decode(value, { stream: true });
         const lines = chunk.split('\n').filter(Boolean);
@@ -255,31 +259,35 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
 
           try {
             const event = JSON.parse(dataStr);
+            console.log('📨 Event reçu:', event.type);
             
             if (event.type === 'start') {
-              console.log('🚀 Début de la génération...');
+              console.log('🚀 Début de la génération...', event.data);
             } else if (event.type === 'chunk') {
-              // On log juste les chunks pour le debug
-              console.log('📝 Chunk reçu');
+              // Chunk de texte reçu - juste pour info
             } else if (event.type === 'file_detected') {
               // Fichier détecté - l'ajouter à la map
-              console.log(`📄 Fichier détecté: ${event.data.path}`);
+              console.log(`📄 Fichier détecté: ${event.data.path} (${event.data.content.length} chars)`);
               filesMap[event.data.path] = event.data.content;
               hasReceivedFiles = true;
               
-              // Mettre à jour l'état avec la copie complète
-              setProjectFiles({ ...filesMap });
+              // ⚠️ NE PAS mettre à jour l'état ici pour éviter trop de re-renders
+              // On attend le 'complete' pour tout mettre à jour d'un coup
               
               // Sélectionner automatiquement le premier fichier
-              if (!selectedFile) {
+              if (!selectedFile && Object.keys(filesMap).length === 1) {
                 setSelectedFile(event.data.path);
                 setSelectedFileContent(event.data.content);
               }
             } else if (event.type === 'complete') {
               console.log(`✅ Génération complète: ${event.data.totalFiles} fichiers`);
+              console.log('📦 Fichiers générés:', Object.keys(filesMap));
+              isStreamComplete = true;
               
               // S'assurer qu'on a bien reçu les fichiers
               if (hasReceivedFiles && Object.keys(filesMap).length > 0) {
+                // ✅ Mise à jour UNIQUE de l'état avec TOUS les fichiers
+                console.log('💾 Mise à jour du state avec', Object.keys(filesMap).length, 'fichiers');
                 setProjectFiles({ ...filesMap });
                 setIsLoading(false);
                 sonnerToast.success(`Projet généré avec ${event.data.totalFiles} fichiers !`);
@@ -288,6 +296,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
                   onGeneratedChange(true);
                 }
               } else {
+                console.error('❌ Aucun fichier reçu malgré complete');
                 throw new Error('Aucun fichier n\'a été généré');
               }
             } else if (event.type === 'error') {
@@ -295,8 +304,14 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
               throw new Error(event.data.message);
             }
           } catch (e) {
-            console.error('Erreur parsing SSE:', e);
+            console.error('❌ Erreur parsing SSE:', e, 'Line:', line);
           }
+        }
+        
+        // Si complete reçu, on sort de la boucle
+        if (isStreamComplete) {
+          console.log('🏁 Stream complete détecté, sortie de la boucle');
+          break;
         }
       }
 
