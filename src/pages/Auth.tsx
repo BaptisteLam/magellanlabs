@@ -96,12 +96,15 @@ export default function Auth() {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden pt-20 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
-      {/* Grid background */}
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden pt-20">
+      {/* Grid background - adapté au thème */}
       <div className="absolute inset-0" 
            style={{ 
-             backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
-             backgroundSize: '80px 80px'
+             backgroundImage: isDark 
+               ? 'linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px)'
+               : 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
+             backgroundSize: '80px 80px',
+             backgroundColor: isDark ? '#0f172a' : '#ffffff'
            }} 
       />
       
