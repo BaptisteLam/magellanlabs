@@ -252,7 +252,7 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 8000,
         stream: true,
         system: systemPrompt,
