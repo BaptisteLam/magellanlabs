@@ -290,8 +290,37 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
           return;
         }
 
+        let streamClosed = false; // Flag pour éviter d'enqueuer après fermeture
+
+        const safeEnqueue = (data: Uint8Array) => {
+          if (!streamClosed) {
+            try {
+              controller.enqueue(data);
+            } catch (e) {
+              console.error('[generate-site] Enqueue error:', e);
+              streamClosed = true;
+            }
+          }
+        };
+
+        const closeStream = () => {
+          if (!streamClosed) {
+            streamClosed = true;
+            try {
+              reader.cancel();
+            } catch (e) {
+              console.error('[generate-site] Reader cancel error:', e);
+            }
+            try {
+              controller.close();
+            } catch (e) {
+              console.error('[generate-site] Controller close error:', e);
+            }
+          }
+        };
+
         // Event: start
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+        safeEnqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'start',
           data: { sessionId }
         })}\n\n`));
@@ -304,15 +333,15 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
         // Timeout de 360 secondes
         timeout = setTimeout(() => {
           console.error('[generate-site] Timeout après 360s');
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          safeEnqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'error',
             data: { message: 'Timeout: La génération a pris trop de temps. Veuillez réessayer.' }
           })}\n\n`));
-          controller.close();
+          closeStream();
         }, 360000);
 
         try {
-          while (true) {
+          while (!streamClosed) {
             const { done, value } = await reader.read();
             if (done) break;
 
@@ -320,6 +349,8 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
             const lines = chunk.split('\n').filter(Boolean);
 
             for (const line of lines) {
+              if (streamClosed) break;
+              
               if (!line.trim() || line.startsWith(':') || line === '') continue;
               
               if (!line.startsWith('data:')) continue;
@@ -333,21 +364,21 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
                 
                 if (!accumulated || accumulated.trim().length === 0) {
                   console.error("[generate-site] ❌ ERROR: Accumulated content is empty!");
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                     type: 'error',
                     data: { message: 'Le contenu généré est vide — génération échouée' }
                   })}\n\n`));
-                  controller.close();
+                  closeStream();
                   return;
                 }
 
                 if (accumulated.length < 100) {
                   console.error(`[generate-site] ❌ ERROR: Content too short (${accumulated.length} chars)`);
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                     type: 'error',
                     data: { message: `Contenu trop court (${accumulated.length} caractères) — génération échouée` }
                   })}\n\n`));
-                  controller.close();
+                  closeStream();
                   return;
                 }
 
@@ -368,11 +399,11 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
                   
                   if (htmlContent.length < 50) {
                     console.error(`[generate-site] ❌ ERROR: index.html too short (${htmlContent.length} chars)`);
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                       type: 'error',
                       data: { message: `HTML trop court (${htmlContent.length} caractères) — génération échouée` }
                     })}\n\n`));
-                    controller.close();
+                    closeStream();
                     return;
                   }
 
@@ -385,22 +416,22 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
                   
                   if (!hasHtml || !hasHead || !hasBody) {
                     console.error("[generate-site] ❌ ERROR: Missing essential HTML tags");
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                       type: 'error',
                       data: { message: 'HTML invalide - balises essentielles manquantes (<html>, <head>, ou <body>)' }
                     })}\n\n`));
-                    controller.close();
+                    closeStream();
                     return;
                   }
 
                   console.log(`[generate-site] ✅ index.html validated successfully (${htmlContent.length} chars)`);
                 } else {
                   console.error("[generate-site] ❌ ERROR: No index.html file found in parsed files");
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                     type: 'error',
                     data: { message: 'Aucun fichier index.html trouvé — génération échouée' }
                   })}\n\n`));
-                  controller.close();
+                  closeStream();
                   return;
                 }
                 
@@ -417,12 +448,12 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
                 }
 
                 // Event: complete
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'complete',
                   data: { totalFiles: finalFiles.length, projectType }
                 })}\n\n`));
                 
-                controller.close();
+                closeStream();
                 return;
               }
 
@@ -440,7 +471,7 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
                 }
 
                 // Event: chunk
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'chunk',
                   data: { content: delta }
                 })}\n\n`));
@@ -454,7 +485,7 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
                   
                   for (const file of newFiles) {
                     // Event: file_detected
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                       type: 'file_detected',
                       data: { path: file.path, content: file.content, type: file.type }
                     })}\n\n`));
@@ -467,17 +498,23 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
               }
             }
           }
+          
+          // Si on sort de la boucle sans avoir reçu [DONE]
+          if (!streamClosed) {
+            if (timeout) clearTimeout(timeout);
+            closeStream();
+          }
         } catch (error) {
           if (timeout) clearTimeout(timeout);
           console.error('[generate-site] Stream error:', error);
           
           // Event: error
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          safeEnqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'error',
             data: { message: error instanceof Error ? error.message : 'Erreur inconnue' }
           })}\n\n`));
           
-          controller.error(error);
+          closeStream();
         }
       }
     });
