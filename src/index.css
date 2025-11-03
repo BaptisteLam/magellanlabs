@@ -288,23 +288,31 @@ All colors MUST be HSL for design consistency.
     animation: scroll-down 2s linear infinite;
   }
 
-  /* Sandpack customizations */
+  /* Sandpack customizations - Force full height */
+  .sandpack-wrapper {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .sandpack-wrapper > div,
+  .sandpack-wrapper .sp-wrapper,
   .sandpack-wrapper .sp-layout {
+    width: 100% !important;
     height: 100% !important;
   }
 
-  .sandpack-wrapper .sp-preview-container {
-    height: 100% !important;
-  }
-
+  .sandpack-wrapper .sp-stack,
+  .sandpack-wrapper .sp-preview-container,
   .sandpack-wrapper .sp-preview-iframe {
+    width: 100% !important;
     height: 100% !important;
   }
 
   /* Hide Sandpack buttons */
   .sandpack-wrapper button[title="Open in CodeSandbox"],
   .sandpack-wrapper button[aria-label="Open in CodeSandbox"],
-  .sandpack-wrapper button[title="Refresh Sandpack"] {
+  .sandpack-wrapper button[title="Refresh Sandpack"],
+  .sandpack-wrapper .sp-button[title="Open Sandbox"] {
     display: none !important;
   }
 }
