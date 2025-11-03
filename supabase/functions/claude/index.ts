@@ -360,17 +360,89 @@ export default defineConfig({
     }
 
     const data = await response.json();
-    console.log("OpenRouter API response received");
+    console.log("[claude] OpenRouter API response received");
 
     let generatedText = data.choices?.[0]?.message?.content || "";
+
+    // ✅ VALIDATION DU CONTENU GÉNÉRÉ
+    console.log(`[claude] 📏 Generated content length: ${generatedText.length} characters`);
+    
+    if (!generatedText || generatedText.trim().length === 0) {
+      console.error("[claude] ❌ ERROR: Generated content is empty!");
+      throw new Error("Le contenu généré est vide — génération échouée");
+    }
+
+    if (generatedText.length < 100) {
+      console.error(`[claude] ❌ ERROR: Generated content too short (${generatedText.length} chars)`);
+      throw new Error(`Contenu généré trop court (${generatedText.length} caractères) — génération échouée`);
+    }
+
+    // Afficher un extrait du contenu généré
+    console.log(`[claude] 🧠 Content preview: ${generatedText.substring(0, 200)}...`);
+
+    // Vérifier si c'est du JSON (projet React)
+    const isJson = generatedText.trim().startsWith('{');
+    if (isJson) {
+      try {
+        const parsed = JSON.parse(generatedText);
+        const fileCount = Object.keys(parsed).length;
+        console.log(`[claude] 📦 JSON project detected with ${fileCount} files`);
+        
+        // Vérifier que index.html existe et n'est pas vide
+        if (parsed['index.html']) {
+          const htmlContent = parsed['index.html'];
+          console.log(`[claude] 📄 index.html size: ${htmlContent.length} characters`);
+          
+          if (htmlContent.length < 50) {
+            console.error(`[claude] ❌ ERROR: index.html too short (${htmlContent.length} chars)`);
+            throw new Error("HTML généré trop court — génération échouée");
+          }
+
+          // Vérifier les balises essentielles
+          const hasHtml = htmlContent.includes('<html');
+          const hasHead = htmlContent.includes('<head');
+          const hasBody = htmlContent.includes('<body');
+          
+          console.log(`[claude] 🔍 HTML validation: <html>=${hasHtml}, <head>=${hasHead}, <body>=${hasBody}`);
+          
+          if (!hasHtml || !hasHead || !hasBody) {
+            console.error("[claude] ❌ ERROR: Missing essential HTML tags");
+            throw new Error("HTML invalide - balises essentielles manquantes (<html>, <head>, ou <body>)");
+          }
+
+          console.log(`[claude] ✅ index.html validated successfully`);
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message.includes("HTML")) {
+          throw e; // Re-throw validation errors
+        }
+        console.error("[claude] ⚠️ JSON parsing failed, assuming raw HTML");
+      }
+    } else {
+      // C'est du HTML brut
+      console.log("[claude] 📄 Raw HTML detected");
+      
+      const hasHtml = generatedText.includes('<html');
+      const hasHead = generatedText.includes('<head');
+      const hasBody = generatedText.includes('<body');
+      
+      console.log(`[claude] 🔍 HTML validation: <html>=${hasHtml}, <head>=${hasHead}, <body>=${hasBody}`);
+      
+      if (!hasHtml || !hasHead || !hasBody) {
+        console.error("[claude] ❌ ERROR: Missing essential HTML tags in raw content");
+        throw new Error("HTML invalide - balises essentielles manquantes (<html>, <head>, ou <body>)");
+      }
+    }
 
     // Contrôle de contraste automatique
     if (/background:\s*(#0f172a|#000)/i.test(generatedText) && /color:\s*(#000|black)/i.test(generatedText)) {
       generatedText = generatedText.replace(/color:\s*(#000|black)/gi, 'color: #f8fafc');
+      console.log("[claude] 🎨 Contrast adjusted automatically");
     }
 
     // Plus de génération d'images - tout est géré via Unsplash dans le prompt
-    console.log("Using Unsplash for all images - no AI generation needed");
+    console.log("[claude] 🖼️ Using Unsplash for all images - no AI generation needed");
+    console.log(`[claude] ✅ Generation complete - ${generatedText.length} characters validated`);
 
     return new Response(JSON.stringify({ response: generatedText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

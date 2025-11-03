@@ -269,9 +269,81 @@ Génère un site HTML complet, moderne et professionnel.`;
               if (dataStr === '[DONE]') {
                 if (timeout) clearTimeout(timeout);
                 
+                // ✅ VALIDATION DU CONTENU FINAL
+                console.log(`[generate-site] 📏 Final accumulated content: ${accumulated.length} characters`);
+                
+                if (!accumulated || accumulated.trim().length === 0) {
+                  console.error("[generate-site] ❌ ERROR: Accumulated content is empty!");
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'error',
+                    data: { message: 'Le contenu généré est vide — génération échouée' }
+                  })}\n\n`));
+                  controller.close();
+                  return;
+                }
+
+                if (accumulated.length < 100) {
+                  console.error(`[generate-site] ❌ ERROR: Content too short (${accumulated.length} chars)`);
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'error',
+                    data: { message: `Contenu trop court (${accumulated.length} caractères) — génération échouée` }
+                  })}\n\n`));
+                  controller.close();
+                  return;
+                }
+
+                console.log(`[generate-site] 🧠 Content preview (first 200 chars): ${accumulated.substring(0, 200)}...`);
+                
                 // Parsing final et sauvegarde
                 const finalFiles = parseGeneratedCode(accumulated);
                 const projectType = detectProjectStructure(finalFiles);
+                
+                console.log(`[generate-site] 📦 Parsed ${finalFiles.length} files, type: ${projectType}`);
+                
+                // ✅ VALIDATION STRICTE DU HTML
+                const htmlFile = finalFiles.find(f => f.path === 'index.html' || f.path.endsWith('/index.html'));
+                if (htmlFile) {
+                  const htmlContent = htmlFile.content;
+                  console.log(`[generate-site] 📄 index.html size: ${htmlContent.length} characters`);
+                  console.log(`[generate-site] 🧠 HTML preview (first 200 chars): ${htmlContent.substring(0, 200)}...`);
+                  
+                  if (htmlContent.length < 50) {
+                    console.error(`[generate-site] ❌ ERROR: index.html too short (${htmlContent.length} chars)`);
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                      type: 'error',
+                      data: { message: `HTML trop court (${htmlContent.length} caractères) — génération échouée` }
+                    })}\n\n`));
+                    controller.close();
+                    return;
+                  }
+
+                  // Vérifier les balises essentielles
+                  const hasHtml = htmlContent.includes('<html');
+                  const hasHead = htmlContent.includes('<head');
+                  const hasBody = htmlContent.includes('<body');
+                  
+                  console.log(`[generate-site] 🔍 HTML validation: <html>=${hasHtml}, <head>=${hasHead}, <body>=${hasBody}`);
+                  
+                  if (!hasHtml || !hasHead || !hasBody) {
+                    console.error("[generate-site] ❌ ERROR: Missing essential HTML tags");
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                      type: 'error',
+                      data: { message: 'HTML invalide - balises essentielles manquantes (<html>, <head>, ou <body>)' }
+                    })}\n\n`));
+                    controller.close();
+                    return;
+                  }
+
+                  console.log(`[generate-site] ✅ index.html validated successfully (${htmlContent.length} chars)`);
+                } else {
+                  console.error("[generate-site] ❌ ERROR: No index.html file found in parsed files");
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'error',
+                    data: { message: 'Aucun fichier index.html trouvé — génération échouée' }
+                  })}\n\n`));
+                  controller.close();
+                  return;
+                }
                 
                 // Sauvegarder dans Supabase
                 if (sessionId) {
@@ -301,6 +373,11 @@ Génère un site HTML complet, moderne et professionnel.`;
                 if (!delta) continue;
 
                 accumulated += delta;
+                
+                // Log périodique de la taille accumulée (tous les 1000 caractères)
+                if (accumulated.length % 1000 < delta.length) {
+                  console.log(`[generate-site] 📊 Accumulated: ${accumulated.length} characters`);
+                }
 
                 // Event: chunk
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({

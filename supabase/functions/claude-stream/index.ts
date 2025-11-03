@@ -20,6 +20,7 @@ serve(async (req) => {
     }
 
     console.log(`[claude-stream] ${isModification ? 'Modification' : 'Génération'} with ${messages.length} messages`);
+    console.log(`[claude-stream] Request received at ${new Date().toISOString()}`);
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -39,12 +40,47 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Anthropic API error:", response.status, errorText);
+      console.error("[claude-stream] Anthropic API error:", response.status, errorText);
       throw new Error(`Anthropic API error: ${response.status}`);
     }
 
-    // Stream directement la réponse
-    return new Response(response.body, {
+    console.log("[claude-stream] ✅ Streaming response started");
+
+    if (!response.body) {
+      throw new Error("Response body is null");
+    }
+
+    // Wrapper pour logger le contenu streamé
+    const transformStream = new TransformStream({
+      transform(chunk, controller) {
+        const decoder = new TextDecoder();
+        const text = decoder.decode(chunk);
+        
+        // Log un échantillon du contenu streamé (pas tout pour éviter de surcharger les logs)
+        if (text.includes("data: ") && !text.includes("[DONE]")) {
+          try {
+            const lines = text.split('\n').filter(l => l.startsWith('data: '));
+            for (const line of lines) {
+              const jsonStr = line.replace('data: ', '').trim();
+              if (jsonStr && jsonStr !== '[DONE]') {
+                const parsed = JSON.parse(jsonStr);
+                const content = parsed?.delta?.text || parsed?.content_block?.text || '';
+                if (content) {
+                  console.log(`[claude-stream] 📝 Content chunk: ${content.substring(0, 100)}...`);
+                }
+              }
+            }
+          } catch (e) {
+            // Ignore parse errors in logging
+          }
+        }
+        
+        controller.enqueue(chunk);
+      }
+    });
+
+    // Stream directement la réponse avec logging
+    return new Response(response.body.pipeThrough(transformStream), {
       headers: {
         ...corsHeaders,
         "Content-Type": "text/event-stream",
