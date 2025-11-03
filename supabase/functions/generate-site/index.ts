@@ -152,9 +152,9 @@ serve(async (req) => {
 
     console.log(`[generate-site] User ${user.id} generating site for session ${sessionId}`);
 
-    const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
-    if (!ANTHROPIC_API_KEY) {
-      throw new Error('ANTHROPIC_API_KEY not configured');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY not configured');
     }
 
     // Prompt système optimisé pour génération de projets web modernes multi-fichiers
@@ -243,20 +243,19 @@ FICHIERS SUPPORTÉS :
 
 Génère maintenant le projet complet avec TOUS les fichiers nécessaires en structure React/Vite.`;
 
-    // Appel Anthropic API directe avec streaming
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Appel Lovable AI Gateway avec Gemini Flash (plus rapide)
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 10000,
+        model: 'google/gemini-2.5-flash',
+        max_tokens: 8000,
         stream: true,
-        system: systemPrompt,
         messages: [
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
       }),
@@ -264,13 +263,14 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[generate-site] Anthropic API error:', response.status, errorText);
+      console.error('[generate-site] Lovable AI error:', response.status, errorText);
       
       // Return generic error message to user
       const statusMessages: Record<number, string> = {
         400: 'Invalid request. Please check your input.',
         401: 'Authentication failed. Please try again.',
-        429: 'Too many requests. Please try again in a few moments.',
+        402: 'Credits required. Please add credits to your Lovable AI workspace.',
+        429: 'Rate limit exceeded. Please try again in a few moments.',
         500: 'An unexpected error occurred. Please try again later.'
       };
       
@@ -459,8 +459,8 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
 
               try {
                 const json = JSON.parse(dataStr);
-                // Support Anthropic streaming format
-                const delta = json?.delta?.text || json?.choices?.[0]?.delta?.content || '';
+                // Support OpenAI-compatible streaming format (Lovable AI)
+                const delta = json?.choices?.[0]?.delta?.content || '';
                 if (!delta) continue;
 
                 accumulated += delta;
