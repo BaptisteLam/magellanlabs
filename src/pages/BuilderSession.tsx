@@ -53,18 +53,17 @@ export default function BuilderSession() {
     checkAuth();
   }, [sessionId]);
 
-  // Traiter le prompt initial si la session vient d'être créée
+  // Traiter le prompt initial IMMÉDIATEMENT après chargement session
   useEffect(() => {
     const processInitialPrompt = async () => {
-      if (!sessionId || !user || isLoading || generatedHtml) return;
+      if (!sessionId || isLoading || generatedHtml) return;
       
       // Vérifier si la session a un message mais pas de fichiers générés
       if (messages.length === 1 && messages[0].role === 'user' && Object.keys(projectFiles).length === 0) {
         const userPrompt = typeof messages[0].content === 'string' ? messages[0].content : '';
         if (userPrompt.trim()) {
-          // Déclencher la génération automatiquement
-          setInputValue(userPrompt);
-          setTimeout(() => handleSubmit(), 500);
+          // Déclencher la génération AUTOMATIQUEMENT
+          handleSubmit();
         }
       }
     };
@@ -72,7 +71,7 @@ export default function BuilderSession() {
     if (!sessionLoading) {
       processInitialPrompt();
     }
-  }, [sessionId, sessionLoading, messages, generatedHtml, user]);
+  }, [sessionId, sessionLoading, messages, projectFiles]);
 
 
   const checkAuth = async () => {
@@ -239,7 +238,10 @@ export default function BuilderSession() {
   };
 
   const handleSubmit = async () => {
-    if (!inputValue.trim() && attachedFiles.length === 0) {
+    // Utiliser le premier message si inputValue est vide (génération initiale)
+    const prompt = inputValue.trim() || (messages.length === 1 && typeof messages[0].content === 'string' ? messages[0].content : '');
+    
+    if (!prompt && attachedFiles.length === 0) {
       sonnerToast.error("Veuillez entrer votre message ou joindre un fichier");
       return;
     }
@@ -249,8 +251,8 @@ export default function BuilderSession() {
     
     if (attachedFiles.length > 0) {
       const contentArray: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
-      if (inputValue.trim()) {
-        contentArray.push({ type: 'text', text: inputValue });
+      if (prompt) {
+        contentArray.push({ type: 'text', text: prompt });
       }
       attachedFiles.forEach(file => {
         contentArray.push({ 
@@ -260,11 +262,17 @@ export default function BuilderSession() {
       });
       userMessageContent = contentArray;
     } else {
-      userMessageContent = inputValue;
+      userMessageContent = prompt;
     }
 
-    const newMessages = [...messages, { role: 'user' as const, content: userMessageContent }];
-    setMessages(newMessages);
+    // Ne pas dupliquer le message s'il existe déjà (génération initiale)
+    const shouldAddMessage = inputValue.trim() || messages.length === 0 || messages[messages.length - 1]?.content !== userMessageContent;
+    const newMessages = shouldAddMessage ? [...messages, { role: 'user' as const, content: userMessageContent }] : messages;
+    
+    if (shouldAddMessage) {
+      setMessages(newMessages);
+    }
+    
     setInputValue('');
     setAttachedFiles([]);
     setIsLoading(true);

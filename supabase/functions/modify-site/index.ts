@@ -113,40 +113,28 @@ serve(async (req) => {
 
     const existingFiles: ProjectFile[] = Array.isArray(relevantFiles) ? relevantFiles : [];
 
-    // Build optimized AI prompt with context
-    const systemPrompt = `Tu es un expert développeur. Tu modifies uniquement les fichiers nécessaires pour répondre à la demande.
+    // Build optimized AI prompt with MINIMAL context
+    const systemPrompt = `Tu es un expert développeur. Tu modifies uniquement les fichiers nécessaires.
 
-RÈGLES CRITIQUES :
+RÈGLES :
 1. RETOURNE UNIQUEMENT LES FICHIERS MODIFIÉS
-2. Chaque fichier modifié commence par : FILE_MODIFIED: [chemin/complet.tsx]
-3. Donne le contenu COMPLET mis à jour du fichier
-4. Utilise React 18 + TypeScript + Tailwind CSS
-5. Code production-ready avec bonnes pratiques
+2. Format : FILE_MODIFIED: [chemin]\n[contenu complet]
+3. Code production-ready
 
-FORMAT ATTENDU pour chaque fichier modifié :
-FILE_MODIFIED: src/components/Button.tsx
-[contenu COMPLET mis à jour]
+Retourne directement les fichiers modifiés sans explication.`;
 
-FILE_MODIFIED: src/styles/globals.css
-[contenu COMPLET mis à jour]`;
-
-    // Build context from relevant files
-    const filesContext = existingFiles.map(f => 
-      `FILE_MODIFIED: ${f.path}\n${f.content}`
+    // Envoyer UNIQUEMENT les fichiers pertinents (max 2-3 fichiers)
+    const relevantFilesForContext = existingFiles.slice(0, 3);
+    const filesContext = relevantFilesForContext.map(f => 
+      `FILE_MODIFIED: ${f.path}\n${f.content.substring(0, 500)}...`
     ).join('\n\n');
 
-    // Build chat history context
+    // MINIMAL chat history
     const historyContext = Array.isArray(chatHistory) 
-      ? chatHistory.slice(-5).map((msg: ChatMessage) => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n')
+      ? chatHistory.slice(-2).map((msg: ChatMessage) => `${msg.role}: ${msg.content}`).join('\n')
       : '';
 
-    const userMessage = `CONTEXTE ACTUEL :
-${filesContext}
-
-${historyContext ? `HISTORIQUE :\n${historyContext}\n\n` : ''}DEMANDE ACTUELLE :
-${message}
-
-RETOURNE UNIQUEMENT LES FICHIERS MODIFIÉS avec le marqueur FILE_MODIFIED:`;
+    const userMessage = `${historyContext ? `Contexte:\n${historyContext}\n\n` : ''}Demande: ${message}\n\nRetourne les fichiers modifiés.`;
 
     const messages = [
       { role: 'system', content: systemPrompt },

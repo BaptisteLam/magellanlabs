@@ -35,8 +35,6 @@ const AIBuilder = () => {
       return;
     }
 
-    setIsLoading(true);
-
     try {
       // Créer une nouvelle session
       const { data: sessionData, error: sessionError } = await supabase
@@ -51,41 +49,14 @@ const AIBuilder = () => {
 
       if (sessionError) throw sessionError;
 
-      // Rediriger immédiatement vers la session pour le streaming
-      navigate(`/builder/${sessionData.id}`);
+      // Rediriger IMMÉDIATEMENT vers la session (génération en arrière-plan)
+      navigate(`/builder/${sessionData.id}`, { state: { initialPrompt: inputValue } });
     } catch (error) {
       console.error('Error:', error);
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
-      setIsLoading(false);
     }
   };
 
-  // État de chargement
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <div className="flex-1 flex flex-col items-center justify-center bg-white relative overflow-hidden">
-          <div 
-            className="absolute inset-0 animate-scroll-down" 
-            style={{ 
-              backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
-              backgroundSize: '80px 80px'
-            }} 
-          />
-          
-          <div className="w-64 h-1 bg-slate-200 rounded-full overflow-hidden relative z-10">
-            <div 
-              className="h-full rounded-full"
-              style={{ 
-                backgroundColor: '#5BE0E5',
-                animation: 'loadProgress 20s linear forwards'
-              }}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white">
