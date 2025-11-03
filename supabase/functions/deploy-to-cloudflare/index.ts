@@ -383,8 +383,23 @@ serve(async (req) => {
     const manifestEntries: Record<string, string> = {};
     
     for (const [filename, content] of Object.entries(builtFiles)) {
-      // Ajouter le fichier au ZIP (sans "/" au début pour le ZIP)
-      zip.file(filename, content);
+      console.log(`📦 Préparation du fichier ${filename}...`);
+      console.log(`   └─ Taille: ${content.byteLength} bytes (${(content.byteLength / 1024).toFixed(2)} Ko)`);
+      
+      // IMPORTANT: Vérifier que le contenu n'est pas vide
+      if (content.byteLength === 0) {
+        console.error(`❌ ERREUR: Le fichier ${filename} est VIDE!`);
+        throw new Error(`Le fichier ${filename} est vide - impossible de déployer`);
+      }
+      
+      // Afficher un extrait du contenu pour debug (premiers 100 caractères)
+      const decoder = new TextDecoder();
+      const contentPreview = decoder.decode(content.slice(0, 100));
+      console.log(`   └─ Extrait du contenu: ${contentPreview.substring(0, 80)}...`);
+      
+      // Ajouter le fichier au ZIP - DIRECTEMENT avec Uint8Array
+      zip.file(filename, content, { binary: true });
+      console.log(`   ✓ Fichier ajouté au ZIP`);
       
       // Calculer le hash SHA-256 du contenu
       const tempBuffer = new ArrayBuffer(content.byteLength);
@@ -397,7 +412,8 @@ serve(async (req) => {
       const manifestKey = `/${filename}`;
       manifestEntries[manifestKey] = hashHex;
       
-      console.log(`📄 ${filename} → ${manifestKey} (${(content.byteLength / 1024).toFixed(2)} Ko, hash: ${hashHex.substring(0, 8)}...)`);
+      console.log(`   ✓ Hash SHA-256: ${hashHex.substring(0, 16)}...`);
+      console.log(`   ✓ Manifest key: ${manifestKey}`);
     }
     
     // Ajouter fichier _headers pour CDN
@@ -433,10 +449,16 @@ serve(async (req) => {
     manifestEntries['/_headers'] = headersHashHex;
 
     // Générer le ZIP
-    const zipArrayBuffer = await zip.generateAsync({ type: 'arraybuffer' });
+    console.log(`🔧 Génération du ZIP...`);
+    const zipArrayBuffer = await zip.generateAsync({ 
+      type: 'arraybuffer',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 }
+    });
     const zipSizeKb = (zipArrayBuffer.byteLength / 1024).toFixed(2);
-    console.log(`📦 ZIP créé: ${zipSizeKb} Ko`);
-    console.log(`📋 Manifest envoyé avec ${Object.keys(manifestEntries).length} fichiers:`, Object.keys(manifestEntries));
+    console.log(`✅ ZIP créé avec succès: ${zipSizeKb} Ko`);
+    console.log(`📋 Manifest avec ${Object.keys(manifestEntries).length} fichiers:`, Object.keys(manifestEntries));
+    console.log(`📋 Manifest complet:`, JSON.stringify(manifestEntries, null, 2));
 
     // Créer le FormData
     const formData = new FormData();
