@@ -70,7 +70,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!resendResponse.ok) {
       console.error('Resend API error:', emailResponse);
-      throw new Error(`Resend API error: ${emailResponse.message || resendResponse.statusText}`);
+      throw new Error('Failed to send email. Please try again later.');
     }
 
     console.log("Email sent successfully:", emailResponse);
@@ -93,8 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.error("Error in send-contact-email function:", error);
     return new Response(
       JSON.stringify({ 
-        error: "Erreur lors de l'envoi de l'email",
-        details: error.message 
+        error: "Failed to send message. Please try again later."
       }),
       {
         status: 500,

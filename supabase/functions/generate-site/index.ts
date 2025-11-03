@@ -208,17 +208,17 @@ Génère un site HTML complet, moderne et professionnel.`;
       const errorText = await response.text();
       console.error('[generate-site] OpenRouter error:', response.status, errorText);
       
-      let errorMessage = 'AI API error';
-      if (response.status === 429) {
-        errorMessage = 'Rate limit dépassé. Veuillez réessayer dans quelques instants.';
-      } else if (response.status === 401) {
-        errorMessage = 'Clé API OpenRouter invalide. Veuillez vérifier vos paramètres.';
-      } else if (response.status === 402) {
-        errorMessage = 'Crédits OpenRouter insuffisants. Veuillez recharger votre compte.';
-      }
+      // Return generic error message to user
+      const statusMessages: Record<number, string> = {
+        400: 'Invalid request. Please check your input.',
+        401: 'Authentication failed. Please try again.',
+        402: 'Insufficient credits. Please try again later.',
+        429: 'Too many requests. Please try again in a few moments.',
+        500: 'An unexpected error occurred. Please try again later.'
+      };
       
       return new Response(
-        JSON.stringify({ error: errorMessage, status: response.status }),
+        JSON.stringify({ error: statusMessages[response.status] || 'Request failed. Please try again later.' }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -434,7 +434,7 @@ Génère un site HTML complet, moderne et professionnel.`;
   } catch (error) {
     console.error('[generate-site] Error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Request failed. Please try again later.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

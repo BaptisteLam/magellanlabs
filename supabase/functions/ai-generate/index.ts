@@ -40,8 +40,17 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenRouter API error:', response.status, errorText);
+      
+      // Return generic error message to user
+      const statusMessages: Record<number, string> = {
+        400: 'Invalid request. Please check your input.',
+        401: 'Authentication failed. Please try again.',
+        429: 'Too many requests. Please try again in a few moments.',
+        500: 'An unexpected error occurred. Please try again later.'
+      };
+      
       return new Response(
-        JSON.stringify({ error: `AI API error: ${response.status}` }),
+        JSON.stringify({ error: statusMessages[response.status] || 'Request failed. Please try again later.' }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -56,7 +65,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in ai-generate function:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Request failed. Please try again later.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

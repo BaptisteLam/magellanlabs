@@ -174,16 +174,16 @@ RETOURNE UNIQUEMENT LES FICHIERS MODIFIÉS avec le marqueur FILE_MODIFIED:`;
       const errorText = await response.text();
       console.error('OpenRouter error:', response.status, errorText);
       
-      let errorMessage = 'OpenRouter API error';
-      if (response.status === 429) {
-        errorMessage = 'Rate limit dépassé. Réessayez dans quelques instants.';
-      } else if (response.status === 401) {
-        errorMessage = 'Clé API invalide. Vérifiez vos paramètres.';
-      } else if (response.status === 402) {
-        errorMessage = 'Crédits insuffisants. Rechargez votre compte OpenRouter.';
-      }
+      // Return generic error message to user
+      const statusMessages: Record<number, string> = {
+        400: 'Invalid request. Please check your input.',
+        401: 'Authentication failed. Please try again.',
+        402: 'Insufficient credits. Please try again later.',
+        429: 'Too many requests. Please try again in a few moments.',
+        500: 'An unexpected error occurred. Please try again later.'
+      };
       
-      return new Response(JSON.stringify({ error: errorMessage }), {
+      return new Response(JSON.stringify({ error: statusMessages[response.status] || 'Request failed. Please try again later.' }), {
         status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -294,7 +294,7 @@ RETOURNE UNIQUEMENT LES FICHIERS MODIFIÉS avec le marqueur FILE_MODIFIED:`;
   } catch (error) {
     console.error('[modify-site] Error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Request failed. Please try again later.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

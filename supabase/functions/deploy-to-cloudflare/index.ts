@@ -398,7 +398,8 @@ serve(async (req) => {
       console.log(`   └─ Extrait: ${contentPreview.substring(0, 80)}...`);
       
       // Calculer le hash SHA-256 du contenu
-      const hashBuffer = await crypto.subtle.digest('SHA-256', content);
+      const arrayBuffer = content.buffer.slice(0) as ArrayBuffer;
+      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
       
@@ -449,7 +450,8 @@ serve(async (req) => {
     
     // Ajouter chaque fichier individuellement au FormData
     for (const [filename, content] of Object.entries(builtFiles)) {
-      const blob = new Blob([content], { type: 'application/octet-stream' });
+      const arrayBuffer = content.buffer.slice(0) as ArrayBuffer;
+      const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' });
       const manifestKey = `/${filename}`;
       formData.append(manifestKey, blob, filename);
       console.log(`✅ Ajouté au FormData: ${manifestKey} (${filename})`);

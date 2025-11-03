@@ -41,7 +41,16 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("[claude-stream] Anthropic API error:", response.status, errorText);
-      throw new Error(`Anthropic API error: ${response.status}`);
+      
+      // Return generic error message to user
+      const statusMessages: Record<number, string> = {
+        400: 'Invalid request. Please check your input.',
+        401: 'Authentication failed. Please try again.',
+        429: 'Too many requests. Please try again in a few moments.',
+        500: 'An unexpected error occurred. Please try again later.'
+      };
+      
+      throw new Error(statusMessages[response.status] || 'Request failed. Please try again later.');
     }
 
     console.log("[claude-stream] ✅ Streaming response started");
@@ -91,7 +100,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in claude-stream:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Request failed. Please try again later." }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
