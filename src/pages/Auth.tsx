@@ -104,7 +104,7 @@ export default function Auth() {
                ? 'linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px)'
                : 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
              backgroundSize: '80px 80px',
-             backgroundColor: isDark ? '#0f172a' : '#ffffff'
+             backgroundColor: isDark ? '#1F1F20' : '#ffffff'
            }} 
       />
       
@@ -120,7 +120,7 @@ export default function Auth() {
              style={{ backgroundColor: 'rgba(3, 165, 192, 0.25)' }} />
       </div>
 
-      <Card className="w-full max-w-md backdrop-blur-sm bg-white/95 border-white/20 shadow-2xl">
+      <Card className={`w-full max-w-md backdrop-blur-sm border-white/20 shadow-2xl ${isDark ? 'bg-[#1F1F20]/95' : 'bg-white/95'}`}>
         <CardHeader>
           <CardTitle className="text-2xl">
             {isLogin ? "Connexion" : "Inscription"}
@@ -182,7 +182,7 @@ export default function Auth() {
                 <Separator />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-muted-foreground">
+                <span className={`px-2 text-muted-foreground ${isDark ? 'bg-[#1F1F20]' : 'bg-white'}`}>
                   Ou continuer avec
                 </span>
               </div>
