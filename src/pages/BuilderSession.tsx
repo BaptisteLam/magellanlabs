@@ -296,11 +296,11 @@ export default function BuilderSession() {
         }
       };
 
-      // 🔥 DÉTECTION INTELLIGENTE : Modification ou Génération ?
+      // 🔥 DÉTECTION : Modification ou Génération
       const isModification = generatedHtml.length > 100;
       
       if (isModification) {
-        // ✅ MODE MODIFICATION INCRÉMENTALE - Comme Lovable
+        // ✅ MODE MODIFICATION avec DIFFS
         const userPrompt = typeof userMessageContent === 'string' 
           ? userMessageContent 
           : (Array.isArray(userMessageContent) 
@@ -339,10 +339,10 @@ export default function BuilderSession() {
         if (!reader) throw new Error('Impossible de lire le stream');
 
         const decoder = new TextDecoder('utf-8');
-        let accumulated = '';
+        let streamBuffer = '';
         const modifiedFiles: Set<string> = new Set();
 
-        // STREAMING INCRÉMENTAL - Affiche les modifications en temps réel
+        // STREAMING TOKEN-BY-TOKEN
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -359,20 +359,55 @@ export default function BuilderSession() {
             try {
               const event = JSON.parse(dataStr);
               
-              if (event.type === 'chunk') {
-                accumulated += event.content;
-                
-                // Mise à jour visuelle en temps réel
-                if (accumulated.includes('<!DOCTYPE html>') || accumulated.includes('<html')) {
-                  setGeneratedHtml(accumulated);
-                  if (!modifiedFiles.has('index.html')) {
-                    modifiedFiles.add('index.html');
-                  }
-                }
+              if (event.type === 'token') {
+                // Affichage token par token dans le chat
+                streamBuffer += event.content;
               } else if (event.type === 'file_detected') {
                 const filePath = event.data.path;
                 modifiedFiles.add(filePath);
-                console.log(`📝 Fichier modifié détecté: ${filePath}`);
+              } else if (event.type === 'complete') {
+                // Appliquer les diffs côté client
+                const diffs = event.data.diffs || [];
+                const updatedFiles = { ...projectFiles };
+
+                for (const diff of diffs) {
+                  if (diff.change_type === 'full' && diff.full_content) {
+                    updatedFiles[diff.file] = diff.full_content;
+                    if (diff.file === 'index.html') {
+                      setGeneratedHtml(diff.full_content);
+                    }
+                  } else if (diff.change_type === 'replace' && diff.old_text && diff.new_text) {
+                    const currentContent = updatedFiles[diff.file] || '';
+                    updatedFiles[diff.file] = currentContent.replace(diff.old_text, diff.new_text);
+                    if (diff.file === 'index.html') {
+                      setGeneratedHtml(updatedFiles[diff.file]);
+                    }
+                  }
+                }
+
+                setProjectFiles(updatedFiles);
+                setSelectedFileContent(updatedFiles[selectedFile || 'index.html'] || '');
+
+                // Auto-save
+                const filesArray = Object.entries(updatedFiles).map(([path, content]) => ({
+                  path,
+                  content,
+                  type: path.endsWith('.html') ? 'html' : 
+                        path.endsWith('.css') ? 'stylesheet' : 
+                        path.endsWith('.js') ? 'javascript' : 'text'
+                }));
+
+                await supabase
+                  .from('build_sessions')
+                  .update({
+                    project_files: filesArray,
+                    messages: newMessages as any,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', sessionId);
+
+                const modifiedCount = modifiedFiles.size;
+                sonnerToast.success(`✨ ${modifiedCount} fichier${modifiedCount > 1 ? 's modifié' : ' modifié'}${modifiedCount > 1 ? 's' : ''} !`);
               }
             } catch (e) {
               // Ignorer erreurs parsing partiel
@@ -380,86 +415,36 @@ export default function BuilderSession() {
           }
         }
 
-        // Finaliser les modifications
-        const updatedFiles = { ...projectFiles };
-        
-        // Parser les fichiers modifiés depuis accumulated
-        if (accumulated.includes('FILE_MODIFIED:')) {
-          const fileMatches = accumulated.matchAll(/FILE_MODIFIED:\s*(.+?)\n([\s\S]*?)(?=FILE_MODIFIED:|$)/g);
-          for (const match of fileMatches) {
-            const filePath = match[1].trim();
-            const fileContent = match[2].trim();
-            updatedFiles[filePath] = fileContent;
-            
-            if (filePath === 'index.html') {
-              setGeneratedHtml(fileContent);
-            }
-          }
-        } else if (accumulated.includes('<!DOCTYPE html>') || accumulated.includes('<html')) {
-          // Fallback: tout le contenu est du HTML
-          updatedFiles['index.html'] = accumulated;
-          setGeneratedHtml(accumulated);
-        }
-
-        setProjectFiles(updatedFiles);
-        setSelectedFileContent(updatedFiles[selectedFile || 'index.html'] || '');
-
-        // Auto-save avec fichiers modifiés uniquement
-        const filesArray = Object.entries(updatedFiles).map(([path, content]) => ({
-          path,
-          content,
-          type: path.endsWith('.html') ? 'html' : 
-                path.endsWith('.css') ? 'stylesheet' : 
-                path.endsWith('.js') ? 'javascript' : 'text'
-        }));
-
-        await supabase
-          .from('build_sessions')
-          .update({
-            project_files: filesArray,
-            messages: newMessages as any,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', sessionId);
-
-        const modifiedCount = modifiedFiles.size;
-        sonnerToast.success(`✨ ${modifiedCount} fichier${modifiedCount > 1 ? 's modifié' : ' modifié'}${modifiedCount > 1 ? 's' : ''} !`);
-
       } else {
-        // ✅ MODE GÉNÉRATION COMPLÈTE - Première fois uniquement
+        // ✅ MODE GÉNÉRATION STREAMING
         const systemPrompt = `Tu es un expert en développement web. Génère un site web complet en HTML, CSS et JavaScript vanilla.
 
-RÈGLES IMPORTANTES :
-1. Génère UN SEUL fichier HTML autonome et complet
-2. Intègre tout le CSS dans une balise <style> dans le <head>
-3. Intègre tout le JavaScript dans une balise <script> avant </body>
-4. Utilise Tailwind CSS via CDN pour le styling
-5. Design moderne, responsive (mobile-first) et professionnel
-6. Maximum 4 images (utilise des URLs Unsplash ou Pexels)
-7. Sections : header, hero, features, services, contact (pas de footer)
-8. Animations fluides et CTA clairs
+RÈGLES CRITIQUES :
+1. UN SEUL fichier HTML autonome
+2. CSS dans <style> (head)
+3. JavaScript dans <script> (avant </body>)
+4. Tailwind CSS via CDN
+5. Design moderne, responsive, animations fluides
+6. Max 4 images (Unsplash/Pexels)
+7. Structure : header, hero, features/services, contact (NO footer)
 
-FORMAT ATTENDU :
+FORMAT EXACT :
 <!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Titre</title>
+  <title>...</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    /* CSS personnalisé ici */
-  </style>
+  <style>/* CSS ici */</style>
 </head>
 <body>
-  <!-- Contenu HTML -->
-  <script>
-    // JavaScript ici
-  </script>
+  <!-- HTML ici -->
+  <script>// JS ici</script>
 </body>
 </html>
 
-Génère directement le code HTML complet sans markdown.`;
+Génère DIRECTEMENT le HTML sans markdown.`;
 
         const apiMessages: any[] = [{ role: 'system', content: systemPrompt }];
         
@@ -501,8 +486,9 @@ Génère directement le code HTML complet sans markdown.`;
 
         const decoder = new TextDecoder('utf-8');
         let accumulated = '';
+        let updateCounter = 0;
 
-        // STREAMING INSTANTANÉ
+        // STREAMING TEMPS RÉEL - Mise à jour progressive token-by-token
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -522,8 +508,10 @@ Génère directement le code HTML complet sans markdown.`;
               if (!delta) continue;
 
               accumulated += delta;
+              updateCounter++;
 
-              if (accumulated.length > 50) {
+              // Mise à jour visuelle tous les 5 tokens pour fluidité
+              if (updateCounter % 5 === 0 && accumulated.length > 100) {
                 setGeneratedHtml(accumulated);
                 setProjectFiles({ 'index.html': accumulated });
                 setSelectedFile('index.html');
@@ -535,6 +523,7 @@ Génère directement le code HTML complet sans markdown.`;
           }
         }
 
+        // Mise à jour finale
         setGeneratedHtml(accumulated);
         setProjectFiles({ 'index.html': accumulated });
         setSelectedFile('index.html');

@@ -145,42 +145,35 @@ serve(async (req) => {
       throw new Error('OPENROUTER_API_KEY not configured');
     }
 
-    // Prompt système optimisé pour HTML/CSS/JS pur
-    const systemPrompt = `Tu es un expert développeur web spécialisé en HTML, CSS et JavaScript vanilla.
-Génère un site web complet et fonctionnel en HTML pur.
+    // Prompt système optimisé pour génération en streaming
+    const systemPrompt = `Tu es un expert développeur web. Génère un site HTML complet, moderne et professionnel.
 
-RÈGLES IMPORTANTES :
-1. Génère UN SEUL fichier HTML autonome et complet
-2. Intègre tout le CSS dans des balises <style> dans le <head>
-3. Intègre tout le JavaScript dans des balises <script> avant </body>
-4. Utilise Tailwind CSS via CDN pour le styling rapide
-5. Code moderne, propre et bien commenté
-6. Design responsive (mobile-first) avec animations fluides
-7. Maximum 4 images (utilise Unsplash/Pexels URLs)
-8. Optimisé pour un affichage instantané
+RÈGLES CRITIQUES :
+1. UN SEUL fichier HTML autonome
+2. CSS dans <style> (head)
+3. JavaScript dans <script> (avant </body>)
+4. Tailwind CSS via CDN obligatoire
+5. Design moderne, responsive, animations fluides
+6. Max 4 images (Unsplash/Pexels)
+7. Structure : header, hero, features/services, contact (NO footer)
 
-FORMAT ATTENDU :
+FORMAT EXACT :
 <!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Titre du Site</title>
+  <title>...</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    /* CSS personnalisé ici */
-  </style>
+  <style>/* CSS ici */</style>
 </head>
 <body>
-  <!-- Contenu HTML ici -->
-  
-  <script>
-    // JavaScript ici
-  </script>
+  <!-- HTML ici -->
+  <script>// JS ici</script>
 </body>
 </html>
 
-Génère un site HTML complet, moderne et professionnel.`;
+Génère DIRECTEMENT le HTML sans markdown ni explication.`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -201,6 +194,7 @@ Génère un site HTML complet, moderne et professionnel.`;
         messages,
         stream: true,
         max_tokens: 16000,
+        temperature: 0.8,
       }),
     });
 

@@ -17,28 +17,38 @@ interface ChatMessage {
   content: string;
 }
 
-// Parser pour extraire les fichiers avec le marqueur FILE_MODIFIED:
-function parseModifiedFiles(code: string, existingFiles: ProjectFile[]): ProjectFile[] {
-  const modifiedFiles: ProjectFile[] = [];
-  const existingFilesMap = new Map(existingFiles.map(f => [f.path, f]));
+interface FileDiff {
+  file: string;
+  change_type: 'replace' | 'insert' | 'delete' | 'full';
+  old_text?: string;
+  new_text?: string;
+  full_content?: string;
+}
+
+// Applique les diffs sur les fichiers existants
+function applyDiffs(existingFiles: ProjectFile[], diffs: FileDiff[]): ProjectFile[] {
+  const filesMap = new Map(existingFiles.map(f => [f.path, f]));
   
-  // Parse FILE_MODIFIED: markers
-  const fileModifiedRegex = /FILE_MODIFIED:\s*(.+?)\n([\s\S]*?)(?=FILE_MODIFIED:|$)/g;
-  let match;
-  
-  while ((match = fileModifiedRegex.exec(code)) !== null) {
-    const filePath = match[1].trim();
-    const content = match[2].trim();
+  for (const diff of diffs) {
+    const existingFile = filesMap.get(diff.file);
     
-    if (filePath && content) {
-      const fileType = getFileType(filePath.split('.').pop() || 'txt');
-      modifiedFiles.push({ path: filePath, content, type: fileType });
-      existingFilesMap.delete(filePath); // Remove from existing since it's modified
+    if (diff.change_type === 'full' && diff.full_content) {
+      // Remplacement complet du fichier
+      filesMap.set(diff.file, {
+        path: diff.file,
+        content: diff.full_content,
+        type: getFileType(diff.file.split('.').pop() || 'txt')
+      });
+    } else if (diff.change_type === 'replace' && diff.old_text && diff.new_text) {
+      // Remplacement d'une portion
+      if (existingFile) {
+        const newContent = existingFile.content.replace(diff.old_text, diff.new_text);
+        filesMap.set(diff.file, { ...existingFile, content: newContent });
+      }
     }
   }
   
-  // Merge: modified files + unmodified existing files
-  return [...modifiedFiles, ...Array.from(existingFilesMap.values())];
+  return Array.from(filesMap.values());
 }
 
 function getFileType(extension: string): string {
@@ -114,49 +124,46 @@ serve(async (req) => {
     const existingFiles: ProjectFile[] = Array.isArray(relevantFiles) ? relevantFiles : [];
     const chatHistoryArray: ChatMessage[] = Array.isArray(chatHistory) ? chatHistory : [];
 
-    // Build conversation with streaming context
-    const systemPrompt = `Tu es un expert développeur. Tu modifies uniquement les fichiers nécessaires.
+    // Contexte minimal optimisé
+    const mainFile = existingFiles.find(f => f.path === 'index.html') || existingFiles[0];
+    const fileContext = mainFile ? `Extrait du fichier ${mainFile.path}:\n${mainFile.content.substring(0, 800)}...` : '';
 
-RÈGLES :
-1. RETOURNE UNIQUEMENT LES FICHIERS MODIFIÉS
-2. Format : FILE_MODIFIED: [chemin]\n[contenu complet]
-3. Code production-ready
-4. Retourne directement les fichiers sans explication`;
+    const systemPrompt = `Tu es un expert en modification de code. Tu dois renvoyer UNIQUEMENT les modifications nécessaires sous forme de DIFFS.
+
+FORMAT DE RÉPONSE (JSON uniquement):
+{
+  "diffs": [
+    {
+      "file": "index.html",
+      "change_type": "replace",
+      "old_text": "texte exact à remplacer",
+      "new_text": "nouveau texte"
+    }
+  ]
+}
+
+RÈGLES:
+1. Utilise "replace" pour de petites modifications (bouton, couleur, texte)
+2. Utilise "full" avec "full_content" pour de grandes modifications (refonte complète)
+3. Retourne UNIQUEMENT du JSON valide, pas de markdown
+4. Sois PRÉCIS avec old_text (copie exact)`;
 
     const messages: any[] = [
       { role: 'system', content: systemPrompt }
     ];
 
-    // OPTIMISATION: Ne pas renvoyer le contexte si l'historique existe déjà
-    const isFirstMessage = chatHistoryArray.length <= 1;
+    // Ajouter historique de conversation
+    chatHistoryArray.slice(-3).forEach(msg => {
+      messages.push({ role: msg.role, content: msg.content });
+    });
 
-    if (isFirstMessage && existingFiles.length > 0) {
-      // Premier message: inclure le contexte des fichiers principaux
-      const mainFile = existingFiles.find(f => f.path === 'index.html') || existingFiles[0];
-      const filesContext = `Fichier actuel:\nFILE_MODIFIED: ${mainFile.path}\n${mainFile.content.substring(0, 1500)}`;
-      
-      messages.push({
-        role: 'user',
-        content: `${filesContext}\n\nModification demandée: ${message}`
-      });
-    } else {
-      // Messages suivants: utiliser l'historique de conversation
-      // L'API "garde le contexte" via l'historique des messages
-      chatHistoryArray.forEach(msg => {
-        messages.push({
-          role: msg.role,
-          content: msg.content
-        });
-      });
-      
-      // Ajouter la nouvelle demande
-      messages.push({
-        role: 'user',
-        content: message
-      });
-    }
+    // Ajouter la nouvelle demande avec contexte
+    messages.push({
+      role: 'user',
+      content: `${fileContext}\n\nModification: ${message}`
+    });
 
-    // Stream from OpenRouter
+    // Stream from OpenRouter avec Claude Sonnet 4.5
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -169,7 +176,8 @@ RÈGLES :
         model: 'anthropic/claude-sonnet-4.5',
         messages,
         stream: true,
-        max_tokens: 8000,
+        max_tokens: 4000,
+        temperature: 0.7,
       }),
     });
 
@@ -226,21 +234,28 @@ RÈGLES :
 
                 accumulated += delta;
                 
-                // Send chunk event for streaming display
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: delta })}\n\n`));
+                // Send token-by-token streaming
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'token', content: delta })}\n\n`));
 
-                // Detect FILE_MODIFIED markers in real-time
-                const fileModifiedMatches = accumulated.matchAll(/FILE_MODIFIED:\s*(.+?)\n/g);
-                for (const match of fileModifiedMatches) {
-                  const filePath = match[1].trim();
-                  if (!detectedModifications.includes(filePath)) {
-                    detectedModifications.push(filePath);
-                    // Send file_detected event
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                      type: 'file_detected', 
-                      data: { path: filePath }
-                    })}\n\n`));
+                // Tenter de parser le JSON progressivement
+                try {
+                  const cleanedJson = accumulated.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                  const parsedDiffs = JSON.parse(cleanedJson);
+                  
+                  if (parsedDiffs.diffs && Array.isArray(parsedDiffs.diffs)) {
+                    // Diffs détectés et valides
+                    for (const diff of parsedDiffs.diffs) {
+                      if (diff.file && !detectedModifications.includes(diff.file)) {
+                        detectedModifications.push(diff.file);
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                          type: 'file_detected', 
+                          data: { path: diff.file, changeType: diff.change_type }
+                        })}\n\n`));
+                      }
+                    }
                   }
+                } catch {
+                  // JSON incomplet, continuer à accumuler
                 }
               } catch {
                 // Ignore partial JSON
@@ -248,8 +263,28 @@ RÈGLES :
             }
           }
 
-          // Parse all modified files
-          const updatedFiles = parseModifiedFiles(accumulated, existingFiles);
+          // Parsing final des diffs
+          let finalDiffs: FileDiff[] = [];
+          try {
+            const cleanedJson = accumulated.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const parsed = JSON.parse(cleanedJson);
+            finalDiffs = parsed.diffs || [];
+          } catch (e) {
+            console.error('Failed to parse diffs:', e);
+            // Fallback: traiter comme modification complète
+            if (accumulated.includes('<!DOCTYPE html>') || accumulated.includes('<html')) {
+              finalDiffs = [{
+                file: 'index.html',
+                change_type: 'full',
+                full_content: accumulated
+              }];
+            }
+          }
+
+          // Appliquer les diffs
+          const updatedFiles = finalDiffs.length > 0 
+            ? applyDiffs(existingFiles, finalDiffs)
+            : existingFiles;
 
           // Update session in DB
           const { error: updateError } = await supabase
@@ -264,11 +299,11 @@ RÈGLES :
             console.error('Error updating session:', updateError);
           }
 
-          // Send completion event
+          // Send completion event avec diffs appliqués
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
             type: 'complete', 
             data: { 
-              totalFiles: updatedFiles.length,
+              diffs: finalDiffs,
               modifiedFiles: detectedModifications 
             }
           })}\n\n`));
