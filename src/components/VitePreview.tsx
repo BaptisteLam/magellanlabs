@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
+import { Sandpack } from '@codesandbox/sandpack-react';
+import { useEffect, useMemo } from 'react';
 
 interface VitePreviewProps {
   projectFiles: Record<string, string>;
@@ -6,67 +7,83 @@ interface VitePreviewProps {
 }
 
 export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) {
-  const [htmlContent, setHtmlContent] = useState<string>('');
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  // Vérifier si c'est un projet HTML pur ou React
+  const isReactProject = useMemo(() => {
+    return Object.keys(projectFiles).some(path => 
+      path.includes('App.tsx') || 
+      path.includes('App.jsx') || 
+      path.includes('main.tsx') || 
+      path.includes('main.jsx')
+    );
+  }, [projectFiles]);
 
-  useEffect(() => {
+  // Transformer les fichiers pour Sandpack
+  const sandpackFiles = useMemo(() => {
     if (!projectFiles || Object.keys(projectFiles).length === 0) {
-      return;
+      return {};
     }
 
-    // Chercher le fichier HTML principal
-    const htmlFile = Object.entries(projectFiles).find(([path]) => 
-      path.endsWith('.html') || path === 'index.html'
-    );
+    const files: Record<string, string> = {};
+    
+    // Convertir les chemins et contenus
+    Object.entries(projectFiles).forEach(([path, content]) => {
+      // Normaliser les chemins pour Sandpack
+      let normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      files[normalizedPath] = content;
+    });
 
-    if (htmlFile) {
-      setHtmlContent(htmlFile[1]);
-    } else {
-      // Si pas de HTML, créer un HTML de base avec le contenu
+    // Si pas de fichier d'entrée, créer un index.html basique
+    if (!files['/index.html'] && !isReactProject) {
       const content = Object.values(projectFiles).join('\n');
-      setHtmlContent(`<!DOCTYPE html>
+      files['/index.html'] = `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aperçu</title>
+  <title>Preview</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
   ${content}
 </body>
-</html>`);
+</html>`;
     }
-  }, [projectFiles]);
 
-  useEffect(() => {
-    if (htmlContent && iframeRef.current) {
-      const iframe = iframeRef.current;
-      const doc = iframe.contentDocument || iframe.contentWindow?.document;
-      
-      if (doc) {
-        doc.open();
-        doc.write(htmlContent);
-        doc.close();
-      }
-    }
-  }, [htmlContent]);
+    return files;
+  }, [projectFiles, isReactProject]);
 
-  if (!htmlContent) {
+  if (!projectFiles || Object.keys(projectFiles).length === 0) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-50">
-        <p className="text-gray-500">En attente de génération...</p>
+      <div className="w-full h-full flex items-center justify-center bg-muted">
+        <p className="text-muted-foreground">En attente de génération...</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full relative overflow-hidden rounded-lg">
-      <iframe
-        ref={iframeRef}
-        className="w-full h-full border-0 rounded-lg"
-        title="Preview"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
+    <div className="w-full h-full">
+      <Sandpack
+        files={sandpackFiles}
+        template={isReactProject ? "react-ts" : "static"}
+        theme={isDark ? "dark" : "light"}
+        options={{
+          showNavigator: false,
+          showTabs: false,
+          showLineNumbers: false,
+          editorHeight: "100%",
+          editorWidthPercentage: 0,
+          showConsole: false,
+          showConsoleButton: false,
+          closableTabs: false,
+          activeFile: Object.keys(sandpackFiles)[0],
+          visibleFiles: [],
+        }}
+        customSetup={{
+          dependencies: {
+            "react": "^18.3.1",
+            "react-dom": "^18.3.1",
+          }
+        }}
       />
     </div>
   );
