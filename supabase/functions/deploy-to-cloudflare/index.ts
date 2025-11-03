@@ -245,14 +245,40 @@ serve(async (req) => {
       // Publier le HTML tel quel, sans conversion React
       const html = projectFiles['index.html'] || htmlContent;
       
-      // Vérifier que le HTML n'est pas vide
+      // ✅ VALIDATION COMPLÈTE DU HTML
+      console.log(`📏 HTML size: ${html?.length || 0} caractères`);
+      
+      // Vérifier que le HTML n'est pas vide (minimum 50 caractères)
       if (!html || html.trim().length === 0) {
-        throw new Error('HTML content is empty');
+        throw new Error('❌ HTML vide — génération échouée');
+      }
+      
+      if (html.length < 50) {
+        throw new Error(`❌ HTML trop court (${html.length} caractères) — génération échouée`);
+      }
+      
+      // Valider les balises essentielles
+      const hasHtmlTag = html.includes('<html');
+      const hasHeadTag = html.includes('<head');
+      const hasBodyTag = html.includes('<body');
+      
+      console.log(`🔍 Validation HTML: <html>=${hasHtmlTag}, <head>=${hasHeadTag}, <body>=${hasBodyTag}`);
+      
+      if (!hasHtmlTag || !hasHeadTag || !hasBodyTag) {
+        throw new Error(
+          `❌ HTML invalide — balises manquantes: ${!hasHtmlTag ? '<html> ' : ''}${!hasHeadTag ? '<head> ' : ''}${!hasBodyTag ? '<body>' : ''}`
+        );
       }
       
       const htmlBytes = encoder.encode(html);
+      
+      // Vérifier que l'encodage a réussi
+      if (htmlBytes.byteLength === 0) {
+        throw new Error('❌ Erreur d\'encodage HTML — fichier vide après encodage');
+      }
+      
       builtFiles['index.html'] = htmlBytes;
-      console.log(`📦 index.html détecté (${(htmlBytes.byteLength / 1024).toFixed(2)} Ko)`);
+      console.log(`✅ index.html validé (${(htmlBytes.byteLength / 1024).toFixed(2)} Ko, ${html.length} caractères)`);
     }
 
     // Créer un nom de projet unique
