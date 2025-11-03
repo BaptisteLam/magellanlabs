@@ -763,6 +763,10 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
+      if (!session?.access_token) {
+        throw new Error('Session non valide, veuillez vous reconnecter');
+      }
+      
       // Préparer tous les fichiers du projet pour le déploiement
       const files = Object.entries(projectFiles).map(([name, content]) => {
         const extension = name.split('.').pop() || '';
@@ -781,18 +785,24 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
 
       sonnerToast.info("Déploiement sur Cloudflare Pages...");
       
-      const deployRes = await supabase.functions.invoke('deploy-to-cloudflare', {
-        body: {
+      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-cloudflare`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           sessionId,
           projectFiles: files,
-        }
+        }),
       });
 
-      if (deployRes.error) {
-        throw new Error(deployRes.error.message || 'Erreur de déploiement');
+      const result = await deployRes.json();
+      
+      if (!deployRes.ok) {
+        const errorText = await deployRes.text();
+        throw new Error(`Erreur de déploiement: ${errorText}`);
       }
-
-      const result = deployRes.data;
       
       if (!result?.success) {
         throw new Error(result?.error || 'Erreur de déploiement');
