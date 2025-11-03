@@ -292,6 +292,9 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
                 setIsLoading(false);
                 sonnerToast.success(`Projet généré avec ${event.data.totalFiles} fichiers !`);
                 
+                // Ouvrir automatiquement le dialog pour nommer le projet
+                setShowSaveDialog(true);
+                
                 if (onGeneratedChange) {
                   onGeneratedChange(true);
                 }
