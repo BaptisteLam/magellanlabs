@@ -253,7 +253,7 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 8000,
+        max_tokens: 4000,
         stream: true,
         system: systemPrompt,
         messages: [
@@ -465,34 +465,11 @@ Génère maintenant le projet complet avec TOUS les fichiers nécessaires en str
 
                 accumulated += delta;
                 
-                // Log périodique de la taille accumulée (tous les 1000 caractères)
-                if (accumulated.length % 1000 < delta.length) {
-                  console.log(`[generate-site] 📊 Accumulated: ${accumulated.length} characters`);
-                }
-
-                // Event: chunk
+                // Event: chunk (streaming progressif)
                 safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'chunk',
                   data: { content: delta }
                 })}\n\n`));
-
-                // Parser en temps réel pour détecter les fichiers
-                const currentFiles = parseGeneratedCode(accumulated);
-                
-                // Détecte les nouveaux fichiers
-                if (currentFiles.length > lastParsedFiles.length) {
-                  const newFiles = currentFiles.slice(lastParsedFiles.length);
-                  
-                  for (const file of newFiles) {
-                    // Event: file_detected
-                    safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                      type: 'file_detected',
-                      data: { path: file.path, content: file.content, type: file.type }
-                    })}\n\n`));
-                  }
-                  
-                  lastParsedFiles = currentFiles;
-                }
               } catch (e) {
                 console.error('[generate-site] Parse error:', e);
               }
