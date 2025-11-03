@@ -145,75 +145,74 @@ serve(async (req) => {
       throw new Error('OPENROUTER_API_KEY not configured');
     }
 
-    // Prompt système optimisé pour génération en 3 fichiers séparés
-    const systemPrompt = `Tu es un expert développeur web. Génère un site web complet, moderne et professionnel en 3 fichiers séparés.
+    // Prompt système optimisé pour génération multi-fichiers
+    const systemPrompt = `Tu es un expert développeur web. Génère un site web complet, moderne et professionnel avec TOUS les fichiers nécessaires.
 
-RÈGLES CRITIQUES :
-1. EXACTEMENT 3 fichiers : index.html, style.css, script.js
-2. HTML épuré SANS aucun CSS ni JS inline (uniquement classes Tailwind)
-3. style.css DOIT contenir du CSS custom RÉEL : animations, transitions, gradients, effets hover, keyframes
-4. script.js DOIT contenir du JavaScript RÉEL : menu mobile, scroll smooth, animations au scroll, interactions
-5. Design moderne, responsive, animations fluides
-6. Max 4 images (Unsplash/Pexels)
-7. Structure : header, hero, features/services, contact (NO footer)
+RÈGLES DE GÉNÉRATION :
+1. Génère une structure de projet complète avec AUTANT de fichiers que nécessaire
+2. Structure moderne avec composants séparés, styles modulaires, configuration complète
+3. Design professionnel, responsive, animations fluides
+4. Code propre, commenté, maintenable
+5. Images optimisées (Unsplash/Pexels si nécessaire)
 
-CONTENU OBLIGATOIRE PAR FICHIER :
+FICHIERS À GÉNÉRER (minimum) :
+- package.json (avec toutes les dépendances nécessaires)
+- index.html ou src/App.tsx (selon le type de projet)
+- Configuration (vite.config.ts, tailwind.config.ts, etc.)
+- Composants séparés dans src/components/
+- Styles modulaires (CSS modules ou fichiers séparés)
+- Scripts/utilitaires dans src/utils/ ou src/lib/
+- Types TypeScript si applicable dans src/types/
 
-index.html:
-- Uniquement HTML sémantique avec classes Tailwind
-- Liens vers style.css et script.js
-- Pas de <style> ni <script> inline
+STRUCTURE RECOMMANDÉE :
+Pour un site React/Vite moderne :
+- package.json
+- vite.config.ts
+- tailwind.config.ts
+- src/App.tsx
+- src/main.tsx
+- src/index.css
+- src/components/Header.tsx
+- src/components/Hero.tsx
+- src/components/Features.tsx
+- src/components/Contact.tsx
+- etc.
 
-style.css:
-- Minimum 100 lignes de CSS custom
-- @keyframes pour animations (fadeIn, slideUp, etc.)
-- Gradients personnalisés
-- Transitions et effets hover
-- Variables CSS custom si nécessaire
+Pour un site HTML/CSS/JS :
+- index.html
+- style.css
+- script.js
+- assets/ (si images locales)
 
-script.js:
-- Minimum 50 lignes de JavaScript
-- Menu mobile toggle
-- Smooth scroll
-- Animations au scroll (Intersection Observer)
-- Form validation si formulaire présent
+QUALITÉ DU CODE :
+- TypeScript pour les projets React
+- Composants réutilisables et modulaires
+- Styles avec Tailwind CSS + CSS custom pour animations
+- JavaScript moderne (ES6+)
+- Accessibilité (aria-labels, semantic HTML)
+- SEO optimisé (meta tags, structure sémantique)
 
 FORMAT OBLIGATOIRE (utilise // FILE: exactement) :
-// FILE: index.html
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>...</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <!-- HTML ici (classes Tailwind uniquement) -->
-  <script src="script.js"></script>
-</body>
-</html>
+// FILE: package.json
+{
+  "name": "...",
+  "dependencies": { ... }
+}
 
-// FILE: style.css
-/* Animations */
-@keyframes fadeIn { ... }
-@keyframes slideUp { ... }
-
-/* Styles custom */
+// FILE: vite.config.ts
+import { defineConfig } from 'vite'
 ...
 
-// FILE: script.js
-// Menu mobile
-const menuToggle = ...
-
-// Smooth scroll
+// FILE: src/App.tsx
+import React from 'react'
 ...
 
-// Animations au scroll
-...
+// FILE: src/components/Header.tsx
+export const Header = () => {
+  ...
+}
 
-Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier. Ne génère JAMAIS de fichiers vides.`;
+Génère DIRECTEMENT tous les fichiers avec du contenu COMPLET. Ne limite pas ta créativité - génère autant de fichiers que nécessaire pour un projet professionnel de qualité.`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -230,10 +229,10 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
         'X-Title': 'Trinity Studio AI',
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4.5',
+        model: 'anthropic/claude-sonnet-4-5',
         messages,
         stream: true,
-        max_tokens: 16000,
+        max_tokens: 32000,
         temperature: 0.8,
       }),
     });
