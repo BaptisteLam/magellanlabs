@@ -690,18 +690,18 @@ Génère DIRECTEMENT le HTML sans markdown.`;
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 bg-white rounded-md border border-slate-200 p-0.5">
             <Button
-              variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
+              variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs hover:bg-[#03A5C0] hover:text-white transition-colors"
+              className={`h-7 px-2 text-xs hover:text-blue-500 transition-colors ${viewMode === 'preview' ? 'text-blue-500' : ''}`}
               onClick={() => setViewMode('preview')}
             >
               <Eye className="w-3 h-3 mr-1" />
               Preview
             </Button>
             <Button
-              variant={viewMode === 'code' ? 'secondary' : 'ghost'}
+              variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs hover:bg-[#03A5C0] hover:text-white transition-colors"
+              className={`h-7 px-2 text-xs hover:text-blue-500 transition-colors ${viewMode === 'code' ? 'text-blue-500' : ''}`}
               onClick={() => setViewMode('code')}
             >
               <Code2 className="w-3 h-3 mr-1" />
@@ -716,7 +716,7 @@ Génère DIRECTEMENT le HTML sans markdown.`;
               onClick={() => window.location.reload()}
               variant="ghost"
               size="sm"
-              className="h-8 text-xs hover:bg-[#03A5C0] hover:text-white transition-colors"
+              className="h-8 text-xs hover:text-blue-500 transition-colors"
               title="Actualiser la preview"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -729,7 +729,7 @@ Génère DIRECTEMENT le HTML sans markdown.`;
               disabled={isSaving}
               variant="ghost"
               size="sm"
-              className="h-8 text-xs hover:bg-[#03A5C0] hover:text-white transition-colors"
+              className="h-8 text-xs hover:text-blue-500 transition-colors"
             >
               <Save className="w-3.5 h-3.5 mr-1.5" />
               Enregistrer
@@ -744,7 +744,7 @@ Génère DIRECTEMENT le HTML sans markdown.`;
                 onClick={() => window.open(deployedUrl, '_blank')}
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 hover:bg-[#03A5C0] hover:text-white transition-colors"
+                className="h-8 w-8 hover:text-blue-500 transition-colors"
                 title="Voir le site en ligne"
               >
                 <Eye className="w-4 h-4" />
@@ -756,7 +756,7 @@ Génère DIRECTEMENT le HTML sans markdown.`;
               disabled={isPublishing}
               variant="ghost"
               size="icon"
-              className="h-8 w-8 hover:bg-[#03A5C0] hover:text-white transition-colors"
+              className="h-8 w-8 hover:text-blue-500 transition-colors"
               title="Publier"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -769,7 +769,7 @@ Génère DIRECTEMENT le HTML sans markdown.`;
             onClick={toggleTheme}
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:bg-[#03A5C0] hover:text-white transition-colors"
+            className="h-8 w-8 hover:text-blue-500 transition-colors"
           >
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
