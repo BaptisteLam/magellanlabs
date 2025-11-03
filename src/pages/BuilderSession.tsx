@@ -1052,11 +1052,11 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
                   {/* TreeView - 20% */}
                   <div className="w-[20%] min-w-[200px]">
                     <CodeTreeView
-                      files={Object.keys(projectFiles)}
-                      activeFile={selectedFile}
-                      onFileClick={(path) => {
+                      files={projectFiles}
+                      selectedFile={selectedFile}
+                      onFileSelect={(path, content) => {
                         setSelectedFile(path);
-                        setSelectedFileContent(projectFiles[path]);
+                        setSelectedFileContent(content);
                         if (!openFiles.includes(path)) {
                           setOpenFiles([...openFiles, path]);
                         }

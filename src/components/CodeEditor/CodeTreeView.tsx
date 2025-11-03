@@ -10,20 +10,20 @@ interface FileNode {
 }
 
 interface CodeTreeViewProps {
-  files: string[];
-  activeFile: string | null;
-  onFileClick: (path: string) => void;
+  files: Record<string, string>;
+  selectedFile: string | null;
+  onFileSelect: (path: string, content: string) => void;
 }
 
-export function CodeTreeView({ files, activeFile, onFileClick }: CodeTreeViewProps) {
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['src', 'components', 'styles', 'utils', 'supabase']));
+export function CodeTreeView({ files, selectedFile, onFileSelect }: CodeTreeViewProps) {
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['src', 'components', 'styles', 'utils']));
 
   // Build tree structure from flat file list
   const buildTree = (): FileNode[] => {
     const root: FileNode[] = [];
     const folders = new Map<string, FileNode>();
 
-    files.forEach((path) => {
+    Object.keys(files).forEach((path) => {
       const parts = path.split('/');
       
       // Handle root files
@@ -118,7 +118,7 @@ export function CodeTreeView({ files, activeFile, onFileClick }: CodeTreeViewPro
 
   const renderNode = (node: FileNode, depth = 0): JSX.Element => {
     const isExpanded = expandedFolders.has(node.path);
-    const isSelected = activeFile === node.path;
+    const isSelected = selectedFile === node.path;
 
     if (node.type === 'folder') {
       return (
@@ -156,7 +156,7 @@ export function CodeTreeView({ files, activeFile, onFileClick }: CodeTreeViewPro
           isSelected ? 'bg-blue-50 border-l-blue-500' : 'border-l-transparent'
         }`}
         style={{ paddingLeft: `${depth * 12 + 24}px` }}
-        onClick={() => onFileClick(node.path)}
+        onClick={() => onFileSelect(node.path, files[node.path])}
       >
         {getFileIcon(node.extension)}
         <span className={`text-sm ${isSelected ? 'text-blue-700 font-medium' : 'text-slate-600'}`}>

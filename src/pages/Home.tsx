@@ -7,7 +7,6 @@ import { useThemeStore } from '@/stores/themeStore';
 
 const Home = () => {
   const [showFooter, setShowFooter] = useState(true);
-  const [showHeader, setShowHeader] = useState(true);
   const { isDark } = useThemeStore();
   
   const structuredData = {
@@ -43,15 +42,10 @@ const Home = () => {
         canonicalUrl="https://magellan-studio.fr"
         structuredData={structuredData}
       />
-      {showHeader && <Header />}
+      <Header />
       
       <main>
-        <AISearchHero 
-          onGeneratedChange={(hasGenerated) => {
-            setShowFooter(!hasGenerated);
-            setShowHeader(!hasGenerated);
-          }} 
-        />
+        <AISearchHero onGeneratedChange={setShowFooter} />
       </main>
       
       {showFooter && <Footer />}

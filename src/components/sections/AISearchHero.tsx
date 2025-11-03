@@ -1,4 +1,4 @@
-import { Save, Eye, Code2, X, Sparkles, FileText, Home, Upload, Download } from 'lucide-react';
+import { Save, Eye, Code2, X, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,11 +13,6 @@ import trinityLogoLoading from '@/assets/trinity-logo-loading.png';
 import { useThemeStore } from '@/stores/themeStore';
 import PromptBar from '@/components/PromptBar';
 import { Textarea } from '@/components/ui/textarea';
-import { useProjectStore, ProjectFile } from '@/stores/projectStore';
-import { VitePreview } from '@/components/VitePreview';
-import { MonacoEditor } from '@/components/CodeEditor/MonacoEditor';
-import { FileTabs } from '@/components/CodeEditor/FileTabs';
-import { CodeTreeView } from '@/components/CodeEditor/CodeTreeView';
 
 interface AISearchHeroProps {
   onGeneratedChange?: (hasGenerated: boolean) => void;
@@ -25,22 +20,18 @@ interface AISearchHeroProps {
 
 const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   const { isDark } = useThemeStore();
-  const { projectFiles, setProjectFiles } = useProjectStore();
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [generatedHtml, setGeneratedHtml] = useState('');
+  const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>}>>([]);
   const [user, setUser] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [websiteTitle, setWebsiteTitle] = useState('');
   const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [openFiles, setOpenFiles] = useState<string[]>([]);
-  const [activeFile, setActiveFile] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -86,10 +77,11 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
 
   const handleSubmit = async () => {
     if (!inputValue.trim() && attachedFiles.length === 0) {
-      sonnerToast.error("Veuillez entrer votre message");
+      sonnerToast.error("Veuillez entrer votre message ou joindre un fichier");
       return;
     }
 
+    // Vérifier si l'utilisateur est connecté
     if (!user) {
       localStorage.setItem('redirectAfterAuth', '/');
       sonnerToast.info("Connectez-vous pour générer votre site");
@@ -98,23 +90,189 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
     }
 
     setIsLoading(true);
-    
-    // Ajouter le message utilisateur
-    const userMessage = inputValue;
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Construire le message avec texte et images
+      let userMessageContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
       
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-site`, {
+      if (attachedFiles.length > 0) {
+        const contentArray: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+        if (inputValue.trim()) {
+          contentArray.push({ type: 'text', text: inputValue });
+        }
+        attachedFiles.forEach(file => {
+          contentArray.push({ 
+            type: 'image_url', 
+            image_url: { url: file.base64 }
+          });
+        });
+        userMessageContent = contentArray;
+      } else {
+        userMessageContent = inputValue;
+      }
+
+      // Mode modification incrémentale
+      if (generatedHtml) {
+        const modificationText = typeof userMessageContent === 'string' 
+          ? userMessageContent 
+          : (Array.isArray(userMessageContent)
+              ? userMessageContent.map(c => c.type === 'text' ? c.text : '[image jointe]').join(' ')
+              : String(userMessageContent));
+
+        // Prompt pour modification incrémentale uniquement
+        const systemPrompt = `Tu es Claude Sonnet 4.5, expert en modification de code HTML.
+
+RÈGLE CRITIQUE : Tu MODIFIES UNIQUEMENT la partie demandée, pas tout le HTML.
+
+Instructions :
+1. Commence par [EXPLANATION]phrase courte expliquant ce que tu modifies[/EXPLANATION]
+2. Ensuite, retourne UNIQUEMENT le HTML modifié de la section concernée
+3. Utilise Tailwind CDN si nécessaire
+4. Garde le même style et structure globale
+5. Ne régénère PAS tout le HTML, seulement ce qui change`;
+
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            system: systemPrompt,
+            isModification: true,
+            messages: [
+              {
+                role: 'user',
+                content: `HTML actuel:\n${generatedHtml}\n\nModification demandée:\n${modificationText}\n\nRetourne UNIQUEMENT la partie HTML modifiée avec le marqueur [EXPLANATION].`
+              }
+            ]
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erreur API Claude: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('Impossible de lire le stream');
+
+        const decoder = new TextDecoder('utf-8');
+        let accumulated = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(Boolean);
+
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            
+            const dataStr = line.replace('data:', '').trim();
+            if (dataStr === '[DONE]') continue;
+
+            try {
+              const json = JSON.parse(dataStr);
+              
+              if (json.type === 'content_block_delta') {
+                const delta = json.delta?.text || '';
+                if (!delta) continue;
+
+                accumulated += delta;
+
+                // Afficher explication
+                const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+                if (explanation) {
+                  setMessages(prev => {
+                    const filtered = prev.filter(m => m.role !== 'assistant');
+                    return [...filtered, { role: 'assistant', content: explanation[1].trim() }];
+                  });
+                }
+
+                // Appliquer modification incrémentale
+                const modifiedPart = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
+                if (modifiedPart) {
+                  // Intégrer la modification dans le HTML existant
+                  setGeneratedHtml(prev => {
+                    // Logique simple : remplacer ou ajouter
+                    if (modifiedPart.includes('<!DOCTYPE html>')) {
+                      return modifiedPart; // Remplacement complet
+                    }
+                    // Sinon, fusion intelligente (remplacer balises similaires)
+                    return prev; // Pour l'instant, garde l'ancien
+                  });
+                }
+              }
+            } catch (e) {
+              // Ignorer erreurs parsing
+            }
+          }
+        }
+
+        const finalExplanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+        const finalModified = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
+
+        // Appliquer modification finale
+        setGeneratedHtml(finalModified.includes('<!DOCTYPE html>') ? finalModified : generatedHtml);
+        
+        setInputValue('');
+        setAttachedFiles([]);
+        setIsLoading(false);
+        sonnerToast.success("Modification appliquée !");
+        return;
+      }
+
+      // Première génération (HTML complet)
+      const systemPrompt = `Tu es Claude Sonnet 4.5, expert en génération de sites web modernes.
+Tu produis un HTML complet, responsive, professionnel.
+
+Règles :
+1. Commence toujours par [EXPLANATION]phrase courte[/EXPLANATION].
+2. Ensuite, le HTML complet sans markdown.
+3. Utilise Tailwind CDN (<script src="https://cdn.tailwindcss.com"></script>)
+4. Icônes Lucide inline (pas d'emojis)
+5. 4 images maximum (Unsplash/Pexels)
+6. Sections : header, hero, features, contact, footer
+7. Mobile-first, cohérence visuelle, CTA clair.`;
+
+      const apiMessages: any[] = [];
+      
+      if (typeof userMessageContent === 'string') {
+        apiMessages.push({
+          role: 'user',
+          content: userMessageContent
+        });
+      } else if (Array.isArray(userMessageContent)) {
+        apiMessages.push({
+          role: 'user',
+          content: userMessageContent.map(item => {
+            if (item.type === 'text') {
+              return { type: 'text', text: item.text };
+            } else if (item.type === 'image_url') {
+              return { 
+                type: 'image_url', 
+                source: { 
+                  type: 'base64',
+                  media_type: 'image/jpeg',
+                  data: item.image_url?.url?.split(',')[1] || ''
+                }
+              };
+            }
+            return item;
+          })
+        });
+      }
+
+      // Call Claude API via edge function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
-          prompt: userMessage,
-          sessionId: sessionId
+          system: systemPrompt,
+          isModification: false,
+          messages: apiMessages
         }),
       });
 
@@ -125,10 +283,10 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('Impossible de lire le stream');
 
-      const decoder = new TextDecoder();
-      let accumulatedFiles: ProjectFile[] = [];
-      let assistantMessage = '';
+      const decoder = new TextDecoder('utf-8');
+      let accumulated = '';
 
+      // STREAMING TEMPS RÉEL (Claude API format)
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -143,73 +301,100 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
           if (dataStr === '[DONE]') continue;
 
           try {
-            const event = JSON.parse(dataStr);
+            const json = JSON.parse(dataStr);
             
-            console.log('📦 Event reçu:', event.type);
+            // Format Claude API streaming
+            if (json.type === 'content_block_delta') {
+              const delta = json.delta?.text || '';
+              if (!delta) continue;
 
-            switch (event.type) {
-              case 'start':
-                if (event.data?.sessionId) {
-                  setSessionId(event.data.sessionId);
-                }
-                assistantMessage = 'Génération en cours...';
-                setMessages(prev => [...prev.filter(m => m.role === 'user'), { role: 'assistant', content: assistantMessage }]);
-                break;
+              accumulated += delta;
 
-              case 'chunk':
-                // Mise à jour progressive du message assistant
-                assistantMessage += event.data?.content || '';
-                break;
+              // Afficher explication dans le chat
+              const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+              if (explanation) {
+                setMessages(prev => {
+                  const filtered = prev.filter(m => m.role !== 'assistant');
+                  return [...filtered, { role: 'assistant', content: explanation[1].trim() }];
+                });
+              }
 
-              case 'file_detected':
-                const newFile: ProjectFile = {
-                  path: event.data.path,
-                  content: event.data.content,
-                  type: event.data.type
-                };
-                
-                accumulatedFiles.push(newFile);
-                setProjectFiles([...accumulatedFiles]);
-                
-                // Ouvrir automatiquement le premier fichier
-                if (accumulatedFiles.length === 1) {
-                  setOpenFiles([newFile.path]);
-                  setActiveFile(newFile.path);
-                }
-                
-                console.log(`✅ Fichier détecté: ${newFile.path} (${newFile.content.length} chars)`);
-                break;
-
-              case 'complete':
-                console.log(`🎉 Génération terminée: ${event.data?.totalFiles} fichiers`);
-                sonnerToast.success(`${event.data?.totalFiles} fichiers générés !`);
-                setMessages(prev => [...prev.filter(m => m.role === 'user'), { 
-                  role: 'assistant', 
-                  content: `✅ Projet généré avec succès (${event.data?.totalFiles} fichiers - ${event.data?.projectType})` 
-                }]);
-                break;
-
-              case 'error':
-                throw new Error(event.data?.message || 'Erreur de génération');
+              // HTML live (instantané)
+              const htmlPreview = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
+              if (htmlPreview.startsWith('<!DOCTYPE html>') || htmlPreview.startsWith('<html')) {
+                setGeneratedHtml(htmlPreview);
+              }
             }
           } catch (e) {
-            console.error('Erreur parsing event:', e);
+            // Ignorer erreurs parsing partiel
           }
+        }
+      }
+
+      // Finaliser
+      const explanation = accumulated.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+      const finalHtml = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
+
+      // Créer la session (avec ou sans utilisateur connecté)
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('build_sessions')
+        .insert({
+          user_id: user?.id || null,
+          project_files: [
+            {
+              path: 'index.html',
+              content: finalHtml,
+              type: 'html'
+            }
+          ],
+          messages: [
+            { role: 'user', content: userMessageContent },
+            { role: 'assistant', content: explanation }
+          ],
+          title: 'Nouveau projet'
+        })
+        .select()
+        .single();
+
+      if (sessionError) {
+        console.error('Session creation error:', sessionError);
+        sonnerToast.error("Erreur lors de la création de la session");
+        setIsLoading(false);
+        return;
+      }
+
+      // Générer automatiquement le screenshot
+      if (finalHtml && sessionData?.id) {
+        try {
+          await supabase.functions.invoke('generate-screenshot', {
+            body: {
+              projectId: sessionData.id,
+              htmlContent: finalHtml,
+              table: 'build_sessions'
+            }
+          });
+          console.log('Screenshot generation started');
+        } catch (screenshotError) {
+          console.error('Error generating screenshot:', screenshotError);
+          // Ne pas bloquer la création du site si le screenshot échoue
         }
       }
 
       setInputValue('');
       setAttachedFiles([]);
+      setIsLoading(false);
       
       if (onGeneratedChange) {
         onGeneratedChange(true);
       }
 
+      sonnerToast.success("Site généré !");
+      
+      // Rediriger vers la page de l'éditeur
+      setTimeout(() => navigate(`/builder/${sessionData.id}`), 500);
     } catch (error) {
       console.error('Error:', error);
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
-      setMessages(prev => [...prev, { role: 'assistant', content: '❌ Erreur lors de la génération' }]);
-    } finally {
       setIsLoading(false);
     }
   };
@@ -220,64 +405,48 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       return;
     }
 
-    if (!sessionId) {
-      sonnerToast.error("Aucun projet à sauvegarder");
+    setShowSaveDialog(true);
+  };
+
+  const confirmSave = async () => {
+    if (!websiteTitle.trim()) {
+      sonnerToast.error("Veuillez entrer un titre pour votre site");
       return;
     }
 
-    sonnerToast.success("Projet sauvegardé dans votre dashboard !");
-    setTimeout(() => navigate('/dashboard'), 1000);
-  };
+    setIsSaving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('deploy-to-cloudflare', {
+        body: { 
+          htmlContent: generatedHtml,
+          title: websiteTitle 
+        }
+      });
 
-  const handlePublish = () => {
-    sonnerToast.info("Fonctionnalité de publication à venir !");
-  };
+      if (error) throw error;
 
-  const handleDownload = () => {
-    sonnerToast.info("Téléchargement du projet à venir !");
-  };
+      sonnerToast.success(`Site enregistré et déployé sur Cloudflare !`, {
+        description: `URL: ${data.url}`,
+        duration: 5000,
+      });
 
-  const handleBackHome = () => {
-    if (window.confirm("Quitter le builder ? Les modifications non sauvegardées seront perdues.")) {
-      setProjectFiles([]);
-      if (onGeneratedChange) {
-        onGeneratedChange(false);
-      }
+      setShowSaveDialog(false);
+      setWebsiteTitle('');
+      
+      // Rediriger vers le dashboard après 2 secondes
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+    } catch (error: any) {
+      console.error('Erreur lors de la sauvegarde:', error);
+      sonnerToast.error(error.message || "Erreur lors de la sauvegarde du site");
+    } finally {
+      setIsSaving(false);
     }
   };
-
-  const handleFileClick = (path: string) => {
-    if (!openFiles.includes(path)) {
-      setOpenFiles([...openFiles, path]);
-    }
-    setActiveFile(path);
-  };
-
-  const handleFileClose = (path: string) => {
-    const newOpenFiles = openFiles.filter(f => f !== path);
-    setOpenFiles(newOpenFiles);
-    
-    if (activeFile === path) {
-      setActiveFile(newOpenFiles.length > 0 ? newOpenFiles[newOpenFiles.length - 1] : null);
-    }
-  };
-
-  const handleFileContentChange = (content: string | undefined) => {
-    if (activeFile && content !== undefined) {
-      const updatedFiles = projectFiles.map(file =>
-        file.path === activeFile ? { ...file, content } : file
-      );
-      setProjectFiles(updatedFiles);
-    }
-  };
-
-  // Auto-scroll chat
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   // État de chargement
-  if (isLoading && projectFiles.length === 0) {
+  if (isLoading && !generatedHtml) {
     return (
       <div className="min-h-screen flex flex-col">
         <div className="flex-1 flex flex-col items-center justify-center bg-white relative overflow-hidden">
@@ -304,97 +473,47 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
     );
   }
 
-  if (projectFiles.length > 0) {
-    const activeFileContent = projectFiles.find(f => f.path === activeFile);
-    const activeFileExtension = activeFile?.split('.').pop() || 'txt';
-    
-    // Convertir ProjectFile[] en Record<string, string> pour VitePreview
-    const filesForPreview = projectFiles.reduce((acc, file) => {
-      acc[file.path] = file.content;
-      return acc;
-    }, {} as Record<string, string>);
-
+  if (generatedHtml) {
     return (
       <div className="h-screen">
-        {/* Barre d'outils */}
-        <div className="h-12 bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 flex items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={handleBackHome}
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs"
-            >
-              <Home className="w-4 h-4 mr-1.5" />
-              Accueil
-            </Button>
-            
-            <div className="h-6 w-px bg-slate-300" />
-            
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-slate-500" />
-              <span className="text-xs text-slate-600 font-medium">{projectFiles.length} fichiers</span>
-            </div>
-          </div>
+        {/* Barre d'outils discrète */}
+        <div className="h-10 bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 flex items-center justify-end px-4 gap-3">
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+          >
+            <Save className="w-3.5 h-3.5 mr-1.5" />
+            Enregistrer
+          </Button>
           
-          <div className="flex items-center gap-3">
+          <div className="h-5 w-px bg-slate-300" />
+          
+          <div className="flex items-center gap-1 bg-white rounded-md border border-slate-200 p-0.5">
             <Button
-              onClick={handleSave}
-              disabled={isSaving}
-              variant="ghost"
+              variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
               size="sm"
-              className="h-8 text-xs"
+              className="h-6 px-2 text-xs"
+              onClick={() => setViewMode('preview')}
             >
-              <Save className="w-4 h-4 mr-1.5" />
-              Enregistrer
+              <Eye className="w-3 h-3 mr-1" />
+              Preview
             </Button>
-            
             <Button
-              onClick={handleDownload}
-              variant="ghost"
+              variant={viewMode === 'code' ? 'secondary' : 'ghost'}
               size="sm"
-              className="h-8 text-xs"
+              className="h-6 px-2 text-xs"
+              onClick={() => setViewMode('code')}
             >
-              <Download className="w-4 h-4 mr-1.5" />
-              Télécharger
+              <Code2 className="w-3 h-3 mr-1" />
+              Code
             </Button>
-            
-            <Button
-              onClick={handlePublish}
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs"
-            >
-              <Upload className="w-4 h-4 mr-1.5" />
-              Publier
-            </Button>
-            
-            <div className="h-6 w-px bg-slate-300" />
-            
-            <div className="flex items-center gap-1 bg-white rounded-md border border-slate-200 p-0.5">
-              <Button
-                variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => setViewMode('preview')}
-              >
-                <Eye className="w-3.5 h-3.5 mr-1" />
-                Preview
-              </Button>
-              <Button
-                variant={viewMode === 'code' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => setViewMode('code')}
-              >
-                <Code2 className="w-3.5 h-3.5 mr-1" />
-                Code
-              </Button>
-            </div>
           </div>
         </div>
 
-        <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-3rem)]">
+        <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-2.5rem)]">
           <ResizablePanel defaultSize={30} minSize={25}>
             <div className="h-full flex flex-col bg-slate-50">
               {/* Chat history */}
@@ -408,19 +527,27 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
                             <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                           </svg>
                         </div>
-                        <p className="text-sm text-slate-700">{msg.content}</p>
+                        <div className="flex-1 min-w-0">
+                          {typeof msg.content === 'string' ? (
+                            <p className="text-sm text-slate-700">{msg.content}</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {msg.content.map((item, i) => (
+                                item.type === 'text' ? (
+                                  <p key={i} className="text-sm text-slate-700">{item.text}</p>
+                                ) : (
+                                  <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />
+                                )
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ) : (
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                          <Sparkles className="w-4 h-4 text-white" />
-                        </div>
-                        <p className="text-sm text-slate-600">{msg.content}</p>
-                      </div>
+                      <p className="text-xs text-slate-500 font-mono">HTML généré/modifié</p>
                     )}
                   </div>
                 ))}
-                <div ref={chatEndRef} />
               </div>
               
               {/* Chat input */}
@@ -443,96 +570,136 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
           <ResizableHandle withHandle />
           
           <ResizablePanel defaultSize={70}>
-            <div className="h-full w-full bg-white flex">
+            <div className="h-full w-full bg-white flex flex-col">
               {viewMode === 'preview' ? (
-                <VitePreview projectFiles={filesForPreview} isDark={isDark} />
+                <iframe 
+                  srcDoc={generatedHtml}
+                  className="w-full h-full border-0"
+                  title="Site web généré"
+                  sandbox="allow-same-origin allow-scripts"
+                />
               ) : (
-                <div className="h-full w-full flex">
-                  {/* Arborescence fichiers */}
-                  <div className="w-64 border-r border-slate-200 bg-slate-50">
-                    <CodeTreeView
-                      files={projectFiles.map(f => f.path)}
-                      onFileClick={handleFileClick}
-                      activeFile={activeFile}
-                    />
+                <div className="h-full w-full flex flex-col">
+                  {/* Toolbar for code view */}
+                  <div className="bg-slate-800 border-b border-slate-700 px-4 py-2 flex items-center gap-2">
+                    <span className="text-xs text-slate-300 font-mono">index.html</span>
+                    <span className="text-xs text-slate-500">({generatedHtml.length} caractères)</span>
                   </div>
-                  
-                  {/* Éditeur */}
-                  <div className="flex-1 flex flex-col">
-                    <FileTabs
-                      openFiles={openFiles}
-                      activeFile={activeFile}
-                      onTabClick={setActiveFile}
-                      onTabClose={handleFileClose}
-                    />
-                    
-                    {activeFileContent ? (
-                      <MonacoEditor
-                        value={activeFileContent.content}
-                        language={activeFileExtension}
-                        onChange={handleFileContentChange}
-                        readOnly={false}
-                      />
-                    ) : (
-                      <div className="flex-1 flex items-center justify-center text-slate-400">
-                        <div className="text-center">
-                          <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">Sélectionnez un fichier pour commencer</p>
-                        </div>
+                  {/* Code content with line numbers */}
+                  <div className="flex-1 overflow-auto bg-slate-900">
+                    <div className="flex">
+                      {/* Line numbers */}
+                      <div className="bg-slate-800 px-3 py-4 text-right select-none">
+                        {generatedHtml.split('\n').map((_, i) => (
+                          <div key={i} className="text-xs text-slate-500 leading-6 font-mono">
+                            {i + 1}
+                          </div>
+                        ))}
                       </div>
-                    )}
+                      {/* Code content */}
+                      <pre className="flex-1 p-4 text-xs text-slate-100 font-mono overflow-x-auto">
+                        <code>{generatedHtml}</code>
+                      </pre>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
+
+        {/* Dialog pour sauvegarder */}
+        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Enregistrer votre site</DialogTitle>
+              <DialogDescription>
+                Votre site sera déployé sur Cloudflare et enregistré dans votre dashboard
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Titre du site</Label>
+                <Input
+                  id="title"
+                  placeholder="Mon super site web"
+                  value={websiteTitle}
+                  onChange={(e) => setWebsiteTitle(e.target.value)}
+                  disabled={isSaving}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowSaveDialog(false)}
+                disabled={isSaving}
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={confirmSave}
+                disabled={isSaving}
+                className="bg-gradient-to-r from-blue-600 to-cyan-600"
+              >
+                {isSaving ? 'Déploiement...' : 'Enregistrer et déployer'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
 
-  // État initial
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      {/* Animated grid background */}
-      <div 
-        className="absolute inset-0 opacity-5"
-        style={{
-          backgroundImage: `
-            linear-gradient(${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'} 1px, transparent 1px),
-            linear-gradient(90deg, ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'} 1px, transparent 1px)
-          `,
-          backgroundSize: '100px 100px',
-          animation: 'moveGrid 20s linear infinite'
-        }}
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff' }}>
+      {/* Grid background - large squares, light gray */}
+      <div className="absolute inset-0" 
+           style={{ 
+             backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
+             backgroundSize: '80px 80px'
+           }} 
       />
+      {/* Large cyan and teal glows with animation */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slow" 
+             style={{ backgroundColor: 'rgba(91, 224, 229, 0.3)' }} />
+        <div className="absolute bottom-0 right-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slower" 
+             style={{ backgroundColor: 'rgba(3, 165, 192, 0.3)' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[120px] animate-pulse" 
+             style={{ backgroundColor: 'rgba(91, 224, 229, 0.25)' }} />
+        <div className="absolute top-1/3 right-1/3 w-[700px] h-[700px] rounded-full blur-[140px] animate-pulse-slow" 
+             style={{ backgroundColor: 'rgba(3, 165, 192, 0.25)' }} />
+      </div>
 
-      {/* Cyan glows */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20"
-           style={{ backgroundColor: '#5BE0E5' }} />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl opacity-20"
-           style={{ backgroundColor: '#03A5C0' }} />
 
-      <div className="relative z-10 container mx-auto px-4 max-w-4xl">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-[#03A5C0] to-[#5BE0E5] bg-clip-text text-transparent">
-            Créez votre site web
-            <br />
-            en un instant
-          </h1>
-          <p className="text-xl text-foreground/70 mb-8">
-            Décrivez votre projet et obtenez un site professionnel généré par l'IA
-          </p>
+      {/* Main content */}
+      <div className="relative z-10 w-full max-w-4xl px-4 text-center -mt-64">
+        {/* Badge */}
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-sm mb-6"
+             style={{ borderColor: 'rgba(59, 130, 246, 0.3)', backgroundColor: 'rgba(59, 130, 246, 0.1)' }}>
+          <Sparkles className="w-4 h-4" style={{ color: '#3B82F6' }} />
+          <span className="text-sm font-light" style={{ color: '#3B82F6' }}>Chat avec Magellan</span>
         </div>
 
-        <div className="bg-card/80 backdrop-blur-md border border-border rounded-2xl shadow-2xl p-8">
+        {/* Main title */}
+        <h1 className={`text-4xl md:text-5xl font-bold mb-4 leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          Crée ton site web en quelques secondes avec l'IA
+        </h1>
+
+        {/* Subtitle */}
+        <p className={`text-lg md:text-xl font-light mb-10 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+          Décris ton activité en une phrase... l'IA s'occupe du reste.
+        </p>
+
+        {/* AI Input Area */}
+        <div className="max-w-2xl mx-auto">
           <PromptBar
             inputValue={inputValue}
             setInputValue={setInputValue}
             onSubmit={handleSubmit}
             isLoading={isLoading}
             showPlaceholderAnimation={true}
-            showConfigButtons={true}
             attachedFiles={attachedFiles}
             onRemoveFile={removeFile}
             onFileSelect={handleFileSelect}
