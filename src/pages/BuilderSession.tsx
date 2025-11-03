@@ -1057,7 +1057,11 @@ Génère DIRECTEMENT le HTML sans markdown.`;
             <Button variant="ghost" onClick={() => setShowSaveDialog(false)}>
               Annuler
             </Button>
-            <Button onClick={confirmSave} disabled={isSaving}>
+            <Button 
+              onClick={confirmSave} 
+              disabled={isSaving}
+              className="bg-[hsl(var(--magellan-cyan))] hover:bg-[hsl(var(--magellan-cyan-light))] text-white"
+            >
               Enregistrer
             </Button>
           </DialogFooter>
