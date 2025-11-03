@@ -145,19 +145,20 @@ serve(async (req) => {
       throw new Error('OPENROUTER_API_KEY not configured');
     }
 
-    // Prompt système optimisé pour génération en streaming
-    const systemPrompt = `Tu es un expert développeur web. Génère un site HTML complet, moderne et professionnel.
+    // Prompt système optimisé pour génération en 3 fichiers séparés
+    const systemPrompt = `Tu es un expert développeur web. Génère un site web complet, moderne et professionnel en 3 fichiers séparés.
 
 RÈGLES CRITIQUES :
-1. UN SEUL fichier HTML autonome
-2. CSS dans <style> (head)
-3. JavaScript dans <script> (avant </body>)
-4. Tailwind CSS via CDN obligatoire
+1. EXACTEMENT 3 fichiers : index.html, style.css, script.js
+2. HTML épuré sans CSS ni JS inline
+3. Tout le CSS dans style.css (classes Tailwind + CSS custom)
+4. Tout le JavaScript dans script.js
 5. Design moderne, responsive, animations fluides
 6. Max 4 images (Unsplash/Pexels)
 7. Structure : header, hero, features/services, contact (NO footer)
 
-FORMAT EXACT :
+FORMAT OBLIGATOIRE (utilise // FILE: exactement) :
+// FILE: index.html
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -165,15 +166,21 @@ FORMAT EXACT :
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>...</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>/* CSS ici */</style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- HTML ici -->
-  <script>// JS ici</script>
+  <!-- HTML ici (classes Tailwind uniquement) -->
+  <script src="script.js"></script>
 </body>
 </html>
 
-Génère DIRECTEMENT le HTML sans markdown ni explication.`;
+// FILE: style.css
+/* Styles CSS custom ici (animations, gradients, etc.) */
+
+// FILE: script.js
+// JavaScript ici (interactivité, animations GSAP, etc.)
+
+Génère DIRECTEMENT les 3 fichiers au format ci-dessus sans markdown ni explication.`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
