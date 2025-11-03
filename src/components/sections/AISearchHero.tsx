@@ -1,4 +1,4 @@
-import { Save, Eye, Code2, X, Sparkles, Download } from 'lucide-react';
+import { Save, Eye, Code2, X, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import trinityLogoLoading from '@/assets/trinity-logo-loading.png';
 import { useThemeStore } from '@/stores/themeStore';
-import { useProjectStore } from '@/stores/projectStore';
 import PromptBar from '@/components/PromptBar';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -21,7 +20,6 @@ interface AISearchHeroProps {
 
 const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   const { isDark } = useThemeStore();
-  const { setProjectFiles, setGeneratedHtml: setStoreGeneratedHtml } = useProjectStore();
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [generatedHtml, setGeneratedHtml] = useState('');
@@ -34,11 +32,6 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  // Sync local state with store
-  useEffect(() => {
-    setStoreGeneratedHtml(generatedHtml);
-  }, [generatedHtml, setStoreGeneratedHtml]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -343,22 +336,17 @@ Règles :
       const finalHtml = accumulated.replace(/\[EXPLANATION\][\s\S]*?\[\/EXPLANATION\]/, '').trim();
 
       // Créer la session (avec ou sans utilisateur connecté)
-      const projectFiles = [
-        {
-          path: 'index.html',
-          content: finalHtml,
-          type: 'html'
-        }
-      ];
-
-      // Update store with generated files
-      setProjectFiles(projectFiles);
-
       const { data: sessionData, error: sessionError } = await supabase
         .from('build_sessions')
         .insert({
           user_id: user?.id || null,
-          project_files: projectFiles,
+          project_files: [
+            {
+              path: 'index.html',
+              content: finalHtml,
+              type: 'html'
+            }
+          ],
           messages: [
             { role: 'user', content: userMessageContent },
             { role: 'assistant', content: explanation }
@@ -418,34 +406,6 @@ Règles :
     }
 
     setShowSaveDialog(true);
-  };
-
-  const handleDownload = async () => {
-    try {
-      const JSZip = (await import('jszip')).default;
-      const zip = new JSZip();
-
-      // Ajouter le fichier HTML
-      zip.file('index.html', generatedHtml);
-
-      // Générer le ZIP
-      const blob = await zip.generateAsync({ type: 'blob' });
-
-      // Créer un lien de téléchargement
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'magellan-site.zip';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      sonnerToast.success('Site téléchargé avec succès !');
-    } catch (error) {
-      console.error('Erreur lors du téléchargement:', error);
-      sonnerToast.error('Erreur lors du téléchargement');
-    }
   };
 
   const confirmSave = async () => {
