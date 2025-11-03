@@ -473,57 +473,31 @@ serve(async (req) => {
       }
     }
 
-    // Préparer les fichiers pour Cloudflare Pages Direct Upload
-    // IMPORTANT: Cloudflare attend les fichiers INDIVIDUELS, pas un ZIP
-    const manifestEntries: Record<string, string> = {};
+    // 📦 Créer un fichier ZIP à la racine avec index.html, style.css, script.js
+    console.log('📦 Création du fichier ZIP pour Cloudflare...');
     
-    console.log(`📦 Préparation des fichiers pour Cloudflare...`);
+    const zip = new JSZip();
     
+    // Ajouter les fichiers à la racine du ZIP
     for (const [filename, content] of Object.entries(builtFiles)) {
-      console.log(`📄 Fichier ${filename}:`);
-      console.log(`   └─ Taille: ${content.byteLength} bytes (${(content.byteLength / 1024).toFixed(2)} Ko)`);
-      
-      // IMPORTANT: Vérifier que le contenu n'est pas vide
-      if (content.byteLength === 0) {
-        console.error(`❌ ERREUR: Le fichier ${filename} est VIDE!`);
-        throw new Error(`Le fichier ${filename} est vide - impossible de déployer`);
-      }
-      
-      // Afficher un extrait du contenu pour debug (premiers 100 caractères)
-      const decoder = new TextDecoder();
-      const contentPreview = decoder.decode(content.slice(0, 100));
-      console.log(`   └─ Extrait: ${contentPreview.substring(0, 80)}...`);
-      
-      // Calculer le hash SHA-256 du contenu
-      const arrayBuffer = content.buffer.slice(0) as ArrayBuffer;
-      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      
-      // Le manifest Cloudflare utilise "/" + filename comme clé
-      const manifestKey = `/${filename}`;
-      manifestEntries[manifestKey] = hashHex;
-      
-      console.log(`   ✓ Hash SHA-256: ${hashHex.substring(0, 16)}...`);
-      console.log(`   ✓ Manifest key: ${manifestKey}`);
+      zip.file(filename, content);
+      console.log(`   ✓ ${filename} ajouté au ZIP (${(content.byteLength / 1024).toFixed(2)} Ko)`);
     }
     
-    console.log(`📋 Manifest avec ${Object.keys(manifestEntries).length} fichiers:`, Object.keys(manifestEntries));
-    console.log(`📋 Manifest complet:`, JSON.stringify(manifestEntries, null, 2));
-
-    // ✅ CRÉER LE FORMDATA AVEC LES FICHIERS INDIVIDUELS (pas de ZIP!)
-    // Cloudflare Pages Direct Upload attend chaque fichier séparément
+    // Générer le ZIP en tant que Blob
+    const zipBlob = await zip.generateAsync({ 
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 }
+    });
+    
+    console.log(`✅ ZIP généré: ${(zipBlob.size / 1024).toFixed(2)} Ko`);
+    
+    // Préparer le FormData avec le fichier ZIP
     const formData = new FormData();
-    formData.append('manifest', JSON.stringify(manifestEntries));
+    formData.append('file', zipBlob, 'site.zip');
     
-    // Ajouter chaque fichier individuellement au FormData
-    for (const [filename, content] of Object.entries(builtFiles)) {
-      const arrayBuffer = content.buffer.slice(0) as ArrayBuffer;
-      const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' });
-      const manifestKey = `/${filename}`;
-      formData.append(manifestKey, blob, filename);
-      console.log(`✅ Ajouté au FormData: ${manifestKey} (${filename})`);
-    }
+    console.log('✅ FormData préparé avec le fichier ZIP');
 
     console.log(`🚀 Déploiement sur Cloudflare: ${projectName}`);
     const deployResponse = await fetch(
