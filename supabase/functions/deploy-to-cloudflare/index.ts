@@ -18,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    // Créer le client Supabase avec l'en-tête d'autorisation
+    // Authentification
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error('❌ No authorization header');
@@ -38,7 +38,6 @@ serve(async (req) => {
       }
     );
 
-    // Vérifier l'authentification
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     
     if (authError || !user) {
@@ -51,7 +50,9 @@ serve(async (req) => {
 
     console.log('✅ User authenticated:', user.id);
 
-    const { sessionId, projectFiles } = await req.json();
+    // Lire le body UNE SEULE FOIS
+    const requestBody = await req.json();
+    const { sessionId, projectFiles } = requestBody;
     
     if (!sessionId || !projectFiles) {
       console.error('❌ Missing sessionId or projectFiles');
@@ -61,11 +62,11 @@ serve(async (req) => {
       );
     }
 
-    console.log('📦 Deploying project to Cloudflare Pages...');
+    console.log('📦 Deploying project to Cloudflare Worker...');
     console.log('Session ID:', sessionId);
     console.log('Files count:', projectFiles.length);
 
-    // Get session data to check if project already exists
+    // Get session data
     const { data: session, error: sessionError } = await supabaseClient
       .from('build_sessions')
       .select('cloudflare_project_name, cloudflare_deployment_url, title')
@@ -83,84 +84,91 @@ serve(async (req) => {
       throw new Error('Cloudflare credentials not configured');
     }
 
-    // Generate project name from session title or use default
-    const projectName = session.cloudflare_project_name || 
+    // Generate worker name
+    const workerName = session.cloudflare_project_name || 
       `trinity-${session.title?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'site'}-${sessionId.slice(0, 8)}`;
 
-    console.log('Project name:', projectName);
+    console.log('Worker name:', workerName);
 
-    // Cloudflare Pages Direct Upload API nécessite un format spécifique
-    // 1. D'abord, créer ou obtenir le projet
-    const projectUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}`;
-    
-    console.log('🔍 Checking if project exists...');
-    
-    const checkProjectResponse = await fetch(projectUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
-      },
-    });
-
-    let projectExists = checkProjectResponse.ok;
-
-    if (!projectExists) {
-      console.log('📝 Creating new Cloudflare Pages project...');
-      
-      const createProjectUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects`;
-      const createResponse = await fetch(createProjectUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: projectName,
-          production_branch: 'main',
-        }),
-      });
-
-      if (!createResponse.ok) {
-        const errorText = await createResponse.text();
-        console.error('❌ Failed to create project:', errorText);
-        throw new Error(`Failed to create Cloudflare project: ${errorText}`);
-      }
-
-      const createResult = await createResponse.json();
-      console.log('✅ Project created:', createResult);
-      projectExists = true;
-    }
-
-    // 2. Préparer les fichiers au format attendu par Cloudflare
-    const manifest: Record<string, string> = {};
-    projectFiles.forEach((file: ProjectFile, index: number) => {
-      // Cloudflare attend les chemins de fichiers sans slash initial
-      const filePath = file.name.startsWith('/') ? file.name.slice(1) : file.name;
-      manifest[filePath] = file.content;
-    });
-
-    // 3. Déployer via Cloudflare Workers KV ou utiliser l'API Direct Upload
-    // Pour simplifier, on va créer un déploiement avec les fichiers
-    console.log('🚀 Creating deployment...');
-    
-    const deployUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`;
-    
-    // Créer un FormData avec les fichiers
-    const formData = new FormData();
-    
-    // Ajouter chaque fichier au FormData
-    for (const file of projectFiles) {
+    // Créer le Worker script qui servira les fichiers statiques
+    const filesMap: Record<string, string> = {};
+    projectFiles.forEach((file: ProjectFile) => {
       const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
-      const fileBlob = new Blob([file.content], { type: 'text/plain' });
-      formData.append(fileName, fileBlob, fileName);
+      filesMap[fileName] = file.content;
+    });
+
+    // Script Worker qui sert les fichiers statiques
+    const workerScript = `
+const FILES = ${JSON.stringify(filesMap)};
+
+const MIME_TYPES = {
+  'html': 'text/html; charset=utf-8',
+  'css': 'text/css; charset=utf-8',
+  'js': 'application/javascript; charset=utf-8',
+  'json': 'application/json; charset=utf-8',
+  'png': 'image/png',
+  'jpg': 'image/jpeg',
+  'jpeg': 'image/jpeg',
+  'gif': 'image/gif',
+  'svg': 'image/svg+xml',
+  'ico': 'image/x-icon',
+};
+
+function getMimeType(path) {
+  const ext = path.split('.').pop() || 'html';
+  return MIME_TYPES[ext] || 'text/plain';
+}
+
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    let path = url.pathname;
+    
+    // Serve index.html for root path
+    if (path === '/' || path === '') {
+      path = 'index.html';
+    } else {
+      path = path.startsWith('/') ? path.slice(1) : path;
     }
     
-    const deployResponse = await fetch(deployUrl, {
-      method: 'POST',
+    // Try to find the file
+    const content = FILES[path];
+    
+    if (content) {
+      return new Response(content, {
+        headers: {
+          'Content-Type': getMimeType(path),
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
+    }
+    
+    // If not found and it's not a file extension, try serving index.html (SPA support)
+    if (!path.includes('.') && FILES['index.html']) {
+      return new Response(FILES['index.html'], {
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+        },
+      });
+    }
+    
+    return new Response('Not Found', { status: 404 });
+  },
+};
+`;
+
+    console.log('🚀 Deploying Worker...');
+    
+    // Deploy Worker using Cloudflare API
+    const workerUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${workerName}`;
+    
+    const deployResponse = await fetch(workerUrl, {
+      method: 'PUT',
       headers: {
         'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+        'Content-Type': 'application/javascript',
       },
-      body: formData,
+      body: workerScript,
     });
 
     if (!deployResponse.ok) {
@@ -170,15 +178,27 @@ serve(async (req) => {
     }
 
     const deployResult = await deployResponse.json();
-    console.log('✅ Deployment result:', deployResult);
-    
-    const deploymentUrl = deployResult.result?.url || `https://${projectName}.pages.dev`;
+    console.log('✅ Worker deployed:', deployResult);
 
-    // Update session with Cloudflare info
+    // Enable the worker on workers.dev subdomain
+    const subdomainUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${workerName}/subdomain`;
+    
+    await fetch(subdomainUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ enabled: true }),
+    });
+
+    const deploymentUrl = `https://${workerName}.${CLOUDFLARE_ACCOUNT_ID}.workers.dev`;
+
+    // Update session
     const { error: updateError } = await supabaseClient
       .from('build_sessions')
       .update({
-        cloudflare_project_name: projectName,
+        cloudflare_project_name: workerName,
         cloudflare_deployment_url: deploymentUrl,
       })
       .eq('id', sessionId);
@@ -193,7 +213,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         url: deploymentUrl,
-        projectName: projectName,
+        projectName: workerName,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
