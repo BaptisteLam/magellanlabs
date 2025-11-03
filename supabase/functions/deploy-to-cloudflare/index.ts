@@ -281,22 +281,56 @@ serve(async (req) => {
       console.log(`✅ index.html validé (${(htmlBytes.byteLength / 1024).toFixed(2)} Ko, ${html.length} caractères)`);
     }
 
-    // Créer un nom de projet unique
-    const projectName = `trinity-${Date.now()}`;
+    // 📌 Vérifier si un projet Cloudflare existe déjà pour cette session ou ce titre
+    let projectName = '';
+    let isNewProject = false;
+
+    // Si on a un titre, chercher si un projet Cloudflare existe déjà pour ce titre
+    if (title) {
+      const { data: existingWebsite } = await supabase
+        .from('websites')
+        .select('cloudflare_project_name, cloudflare_url')
+        .eq('user_id', user.id)
+        .eq('title', title)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (existingWebsite?.cloudflare_project_name) {
+        projectName = existingWebsite.cloudflare_project_name;
+        console.log(`♻️ Réutilisation du projet Cloudflare existant: ${projectName}`);
+        console.log(`🔗 URL existante: ${existingWebsite.cloudflare_url}`);
+      }
+    }
+
+    // Si pas de projet existant, créer un nouveau nom
+    if (!projectName) {
+      projectName = `trinity-${Date.now()}`;
+      isNewProject = true;
+      console.log(`🆕 Création d'un nouveau projet Cloudflare: ${projectName}`);
+    }
     
-    // Vérifier si le projet existe
-    const listProjectsResponse = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/pages/projects`,
+    // Vérifier si le projet existe sur Cloudflare
+    const checkProjectResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/pages/projects/${projectName}`,
       {
         method: 'GET',
-        headers: { 'Authorization': `Bearer ${cloudflareToken}` },
+        headers: { 
+          'Authorization': `Bearer ${cloudflareToken}`,
+          'Content-Type': 'application/json'
+        },
       }
     );
 
     let projectExists = false;
-    if (listProjectsResponse.ok) {
-      const projectsList = await listProjectsResponse.json();
-      projectExists = projectsList.result?.some((p: any) => p.name === projectName) || false;
+    if (checkProjectResponse.ok) {
+      projectExists = true;
+      console.log(`✅ Le projet Cloudflare ${projectName} existe déjà`);
+    } else if (checkProjectResponse.status === 404) {
+      console.log(`📝 Le projet ${projectName} n'existe pas encore sur Cloudflare`);
+    } else {
+      const errorText = await checkProjectResponse.text();
+      console.log(`⚠️ Erreur lors de la vérification du projet: ${checkProjectResponse.status}`, errorText);
     }
 
     // Créer le projet si nécessaire
@@ -330,8 +364,15 @@ serve(async (req) => {
 
       if (!createProjectResponse.ok) {
         const errorText = await createProjectResponse.text();
-        console.error('❌ Erreur création projet:', errorText);
-        throw new Error('Failed to create Cloudflare project');
+        // Si le projet existe déjà (409), on continue
+        if (createProjectResponse.status === 409) {
+          console.log('⚠️ Projet déjà existant (409), on continue...');
+        } else {
+          console.error('❌ Erreur création projet:', errorText);
+          throw new Error('Failed to create Cloudflare project');
+        }
+      } else {
+        console.log(`✅ Projet Cloudflare créé: ${projectName}`);
       }
     }
 
@@ -423,22 +464,48 @@ serve(async (req) => {
     const cloudflareUrl = deployData.result?.url || `https://${projectName}.pages.dev`;
     console.log(`✅ Déploiement Cloudflare Pages créé: ${cloudflareUrl}`);
 
-    // Sauvegarder dans la DB
-    const { data: website, error: insertError } = await supabase
-      .from('websites')
-      .insert({
-        user_id: user.id,
-        title: title || 'Mon application React',
-        html_content: htmlContent,
-        cloudflare_url: cloudflareUrl,
-        cloudflare_project_name: projectName,
-      })
-      .select()
-      .single();
+    // Sauvegarder dans la DB ou mettre à jour si le projet existe déjà
+    let website;
+    if (isNewProject) {
+      // Nouveau projet - INSERT
+      const { data, error: insertError } = await supabase
+        .from('websites')
+        .insert({
+          user_id: user.id,
+          title: title || 'Mon application React',
+          html_content: htmlContent,
+          cloudflare_url: cloudflareUrl,
+          cloudflare_project_name: projectName,
+        })
+        .select()
+        .single();
 
-    if (insertError) {
-      console.error('❌ Erreur DB:', insertError);
-      throw insertError;
+      if (insertError) {
+        console.error('❌ Erreur DB INSERT:', insertError);
+        throw insertError;
+      }
+      website = data;
+      console.log(`✅ Nouveau site créé en DB: ${website.id}`);
+    } else {
+      // Projet existant - UPDATE
+      const { data, error: updateError } = await supabase
+        .from('websites')
+        .update({
+          html_content: htmlContent,
+          cloudflare_url: cloudflareUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.id)
+        .eq('cloudflare_project_name', projectName)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('❌ Erreur DB UPDATE:', updateError);
+        throw updateError;
+      }
+      website = data;
+      console.log(`✅ Site existant mis à jour en DB: ${website.id}`);
     }
 
     // Générer le screenshot après le déploiement
