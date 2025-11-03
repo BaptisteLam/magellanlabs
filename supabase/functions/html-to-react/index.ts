@@ -188,36 +188,6 @@ body {
   min-height: 100vh;
 }`);
 
-    // README.md
-    zip.file("README.md", `# ${title || 'Mon Site React'}
-
-Projet React + Vite + Tailwind CSS généré automatiquement.
-
-## Installation
-
-\`\`\`bash
-npm install
-\`\`\`
-
-## Développement
-
-\`\`\`bash
-npm run dev
-\`\`\`
-
-## Build
-
-\`\`\`bash
-npm run build
-\`\`\`
-
-## Preview
-
-\`\`\`bash
-npm run preview
-\`\`\`
-`);
-
     // .gitignore
     zip.file(".gitignore", `# Logs
 logs
