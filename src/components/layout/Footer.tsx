@@ -26,46 +26,153 @@ const Footer = () => {
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
 
-      // Si on a des fichiers générés, on les utilise
-      if (projectFiles.length > 0) {
-        projectFiles.forEach(file => {
-          zip.file(file.path, file.content);
-        });
-      } else if (generatedHtml) {
-        // Sinon on utilise le HTML généré
-        zip.file('index.html', generatedHtml);
-      } else {
-        // Par défaut, un template de base
-        const htmlContent = `<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Magellan Studio</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body>
-  <h1 class="text-4xl font-bold text-center mt-10">Magellan Studio</h1>
-  <p class="text-center mt-4">Votre site web généré par l'IA</p>
-</body>
-</html>`;
-        zip.file('index.html', htmlContent);
+      // Fonction pour récupérer le contenu d'un fichier
+      const fetchFile = async (path: string) => {
+        try {
+          const response = await fetch(`/${path}`);
+          if (response.ok) {
+            return await response.text();
+          }
+        } catch (error) {
+          console.error(`Erreur lors de la récupération de ${path}:`, error);
+        }
+        return null;
+      };
+
+      toast.info('Préparation du téléchargement...');
+
+      // Structure des fichiers à télécharger
+      const files = [
+        // Root files
+        'components.json',
+        'eslint.config.js',
+        'index.html',
+        'package.json',
+        'postcss.config.js',
+        'README.md',
+        'tailwind.config.ts',
+        'tsconfig.app.json',
+        'tsconfig.json',
+        'tsconfig.node.json',
+        'vite.config.ts',
+        
+        // src/
+        'src/App.css',
+        'src/App.tsx',
+        'src/index.css',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+        
+        // src/components/
+        'src/components/CodeEditor/CodeTreeView.tsx',
+        'src/components/CodeEditor/MonacoEditor.tsx',
+        'src/components/FileTree.tsx',
+        'src/components/PromptBar.tsx',
+        'src/components/SEOHead.tsx',
+        'src/components/ScrollToTop.tsx',
+        'src/components/VitePreview.tsx',
+        'src/components/layout/Header.tsx',
+        'src/components/layout/Footer.tsx',
+        'src/components/sections/AISearchHero.tsx',
+        'src/components/sections/HeroSection.tsx',
+        'src/components/sections/LandingHero.tsx',
+        'src/components/sections/ServicesSection.tsx',
+        'src/components/sections/TestimonialsSection.tsx',
+        
+        // src/components/ui/ (tous les fichiers shadcn)
+        'src/components/ui/TextType.tsx',
+        'src/components/ui/TextType.css',
+        'src/components/ui/accordion.tsx',
+        'src/components/ui/alert-dialog.tsx',
+        'src/components/ui/alert.tsx',
+        'src/components/ui/button.tsx',
+        'src/components/ui/card.tsx',
+        'src/components/ui/dialog.tsx',
+        'src/components/ui/input.tsx',
+        'src/components/ui/label.tsx',
+        'src/components/ui/select.tsx',
+        'src/components/ui/separator.tsx',
+        'src/components/ui/sheet.tsx',
+        'src/components/ui/tabs.tsx',
+        'src/components/ui/textarea.tsx',
+        'src/components/ui/toast.tsx',
+        'src/components/ui/toaster.tsx',
+        'src/components/ui/use-toast.ts',
+        'src/components/ui/tooltip.tsx',
+        'src/components/ui/resizable.tsx',
+        
+        // src/hooks/
+        'src/hooks/use-mobile.tsx',
+        'src/hooks/use-toast.ts',
+        'src/hooks/useTranslation.ts',
+        
+        // src/integrations/supabase/
+        'src/integrations/supabase/client.ts',
+        
+        // src/lib/
+        'src/lib/utils.ts',
+        
+        // src/pages/
+        'src/pages/AIBuilder.tsx',
+        'src/pages/About.tsx',
+        'src/pages/Auth.tsx',
+        'src/pages/Contact.tsx',
+        'src/pages/Dashboard.tsx',
+        'src/pages/Home.tsx',
+        'src/pages/NotFound.tsx',
+        'src/pages/Pricing.tsx',
+        'src/pages/PrivacyPolicy.tsx',
+        'src/pages/TermsOfService.tsx',
+        'src/pages/BuilderSession.tsx',
+        
+        // src/stores/
+        'src/stores/themeStore.ts',
+        'src/stores/projectStore.ts',
+      ];
+
+      // Télécharger tous les fichiers
+      for (const filePath of files) {
+        const content = await fetchFile(filePath);
+        if (content) {
+          zip.file(filePath, content);
+        }
       }
 
+      // Ajouter les edge functions
+      const edgeFunctions = [
+        'supabase/functions/ai-generate/index.ts',
+        'supabase/functions/claude/index.ts',
+        'supabase/functions/claude-stream/index.ts',
+        'supabase/functions/deploy-to-cloudflare/index.ts',
+        'supabase/functions/generate-screenshot/index.ts',
+        'supabase/functions/generate-site/index.ts',
+        'supabase/functions/html-to-react/index.ts',
+        'supabase/functions/modify-site/index.ts',
+        'supabase/functions/send-contact-email/index.ts',
+      ];
+
+      for (const funcPath of edgeFunctions) {
+        const content = await fetchFile(funcPath);
+        if (content) {
+          zip.file(funcPath, content);
+        }
+      }
+
+      // Générer et télécharger le ZIP
       const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'magellan-site.zip';
+      a.download = 'magellan-project.zip';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success('Fichiers Magellan téléchargés !');
+      toast.success('Projet Magellan téléchargé avec succès !');
     } catch (error) {
       console.error('Erreur:', error);
-      toast.error('Erreur lors du téléchargement');
+      toast.error('Erreur lors du téléchargement du projet');
     }
   };
 
