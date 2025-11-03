@@ -244,7 +244,15 @@ serve(async (req) => {
       
       // Publier le HTML tel quel, sans conversion React
       const html = projectFiles['index.html'] || htmlContent;
-      builtFiles['index.html'] = encoder.encode(html);
+      
+      // Vérifier que le HTML n'est pas vide
+      if (!html || html.trim().length === 0) {
+        throw new Error('HTML content is empty');
+      }
+      
+      const htmlBytes = encoder.encode(html);
+      builtFiles['index.html'] = htmlBytes;
+      console.log(`📦 index.html détecté (${(htmlBytes.byteLength / 1024).toFixed(2)} Ko)`);
     }
 
     // Créer un nom de projet unique
@@ -308,18 +316,21 @@ serve(async (req) => {
     const manifestEntries: Record<string, string> = {};
     
     for (const [filename, content] of Object.entries(builtFiles)) {
+      // Ajouter le fichier au ZIP (sans "/" au début pour le ZIP)
       zip.file(filename, content);
       
       // Calculer le hash SHA-256 du contenu
-      // Créer un nouveau ArrayBuffer pour éviter les problèmes de SharedArrayBuffer
       const tempBuffer = new ArrayBuffer(content.byteLength);
       new Uint8Array(tempBuffer).set(content);
       const hashBuffer = await crypto.subtle.digest('SHA-256', tempBuffer);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
       
-      // Le manifest doit mapper filename -> hash (pas path)
-      manifestEntries[`/${filename}`] = hashHex;
+      // Le manifest Cloudflare utilise "/" + filename comme clé
+      const manifestKey = `/${filename}`;
+      manifestEntries[manifestKey] = hashHex;
+      
+      console.log(`📄 ${filename} → ${manifestKey} (${(content.byteLength / 1024).toFixed(2)} Ko, hash: ${hashHex.substring(0, 8)}...)`);
     }
     
     // Ajouter fichier _headers pour CDN
@@ -356,8 +367,9 @@ serve(async (req) => {
 
     // Générer le ZIP
     const zipArrayBuffer = await zip.generateAsync({ type: 'arraybuffer' });
-    console.log(`📦 ZIP créé: ${zipArrayBuffer.byteLength} bytes`);
-    console.log(`📋 Manifest entries:`, Object.keys(manifestEntries));
+    const zipSizeKb = (zipArrayBuffer.byteLength / 1024).toFixed(2);
+    console.log(`📦 ZIP créé: ${zipSizeKb} Ko`);
+    console.log(`📋 Manifest envoyé avec ${Object.keys(manifestEntries).length} fichiers:`, Object.keys(manifestEntries));
 
     // Créer le FormData
     const formData = new FormData();
@@ -383,7 +395,7 @@ serve(async (req) => {
 
     const deployData = await deployResponse.json();
     const cloudflareUrl = deployData.result?.url || `https://${projectName}.pages.dev`;
-    console.log(`✅ Déploiement réussi: ${cloudflareUrl}`);
+    console.log(`✅ Déploiement Cloudflare Pages créé: ${cloudflareUrl}`);
 
     // Sauvegarder dans la DB
     const { data: website, error: insertError } = await supabase
