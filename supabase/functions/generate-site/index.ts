@@ -12,82 +12,58 @@ interface ProjectFile {
   type: string;
 }
 
-// Parser pour extraire les fichiers - format amélioré
+// Parser pour extraire les fichiers au format // FILE: path
 function parseGeneratedCode(code: string): ProjectFile[] {
   const files: ProjectFile[] = [];
   
-  // Format 1: // FILE: path
-  const fileRegex = /\/\/\s*FILE:\s*(.+?)\n([\s\S]*?)(?=\/\/\s*FILE:|$)/g;
-  let match;
+  // Détection du format // FILE: path
+  const fileRegex = /\/\/\s*FILE:\s*(.+?)\n/g;
+  const matches = [...code.matchAll(fileRegex)];
   
-  while ((match = fileRegex.exec(code)) !== null) {
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i];
     const filePath = match[1].trim();
-    const content = match[2].trim();
+    const startIndex = match.index! + match[0].length;
     
-    if (content && content.length > 0) {
-      const extension = filePath.split('.').pop() || '';
-      files.push({
-        path: filePath,
-        content: content,
-        type: getFileType(extension)
-      });
-    }
+    // Trouve le contenu jusqu'au prochain fichier
+    const nextMatch = matches[i + 1];
+    const endIndex = nextMatch ? nextMatch.index! : code.length;
+    const content = code.slice(startIndex, endIndex).trim();
+    
+    const extension = filePath.split('.').pop() || '';
+    
+    files.push({
+      path: filePath,
+      content: content,
+      type: getFileType(extension)
+    });
   }
   
-  // Format 2: ```language // filepath
+  // Fallback: format ```type:path
   if (files.length === 0) {
-    const codeBlockRegex = /```(\w+)?\s*(?:\/\/|#)?\s*(.+?)\n([\s\S]*?)```/g;
+    const codeBlockRegex = /```(?:[\w]+)?:?([\w/.]+)\n([\s\S]*?)```/g;
+    let match;
     
     while ((match = codeBlockRegex.exec(code)) !== null) {
-      const [, language, filepath, content] = match;
-      const cleanPath = filepath.trim();
-      const cleanContent = content.trim();
+      const [, path, content] = match;
+      const extension = path.split('.').pop() || '';
       
-      if (cleanContent && cleanContent.length > 0) {
-        const extension = cleanPath.split('.').pop() || language || '';
-        files.push({
-          path: cleanPath,
-          content: cleanContent,
-          type: getFileType(extension)
-        });
-      }
-    }
-  }
-  
-  // Format 3: JSON structure { "files": { "path": "content" } }
-  if (files.length === 0) {
-    try {
-      const jsonMatch = code.match(/\{[\s\S]*"files"[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (parsed.files && typeof parsed.files === 'object') {
-          for (const [path, content] of Object.entries(parsed.files)) {
-            if (typeof content === 'string' && content.length > 0) {
-              const extension = path.split('.').pop() || '';
-              files.push({
-                path,
-                content: content.trim(),
-                type: getFileType(extension)
-              });
-            }
-          }
-        }
-      }
-    } catch (e) {
-      // Pas de JSON valide
+      files.push({
+        path: path.trim(),
+        content: content.trim(),
+        type: getFileType(extension)
+      });
     }
   }
   
   // Fallback: HTML standalone
   if (files.length === 0 && (code.includes('<!DOCTYPE html>') || code.includes('<html'))) {
     const htmlContent = code.replace(/```html\n?|```\n?/g, '').trim();
-    if (htmlContent.length > 0) {
-      files.push({
-        path: 'index.html',
-        content: htmlContent,
-        type: 'html'
-      });
-    }
+    files.push({
+      path: 'index.html',
+      content: htmlContent,
+      type: 'html'
+    });
   }
   
   return files;
@@ -169,133 +145,75 @@ serve(async (req) => {
       throw new Error('OPENROUTER_API_KEY not configured');
     }
 
-    // Prompt système optimisé pour génération multi-fichiers structurée
-    const systemPrompt = `Tu es un expert développeur web fullstack. Génère un projet web complet, moderne et professionnel.
+    // Prompt système optimisé pour génération en 3 fichiers séparés
+    const systemPrompt = `Tu es un expert développeur web. Génère un site web complet, moderne et professionnel en 3 fichiers séparés.
 
-📋 RÈGLES DE GÉNÉRATION :
+RÈGLES CRITIQUES :
+1. EXACTEMENT 3 fichiers : index.html, style.css, script.js
+2. HTML épuré SANS aucun CSS ni JS inline (uniquement classes Tailwind)
+3. style.css DOIT contenir du CSS custom RÉEL : animations, transitions, gradients, effets hover, keyframes
+4. script.js DOIT contenir du JavaScript RÉEL : menu mobile, scroll smooth, animations au scroll, interactions
+5. Design moderne, responsive, animations fluides
+6. Max 4 images (Unsplash/Pexels)
+7. Structure : header, hero, features/services, contact (NO footer)
 
-1. **Structure Multi-Fichiers** : Génère TOUS les fichiers nécessaires pour un projet fonctionnel
-2. **Format de Sortie** : Utilise le format // FILE: chemin/fichier pour CHAQUE fichier
-3. **Qualité Professionnelle** : Code propre, commenté, maintenable, moderne
-4. **Technologies** : React + TypeScript + Vite + Tailwind CSS (ou HTML/CSS/JS selon le contexte)
-5. **Design** : Interface moderne, responsive, animations fluides
+CONTENU OBLIGATOIRE PAR FICHIER :
 
-📦 FICHIERS OBLIGATOIRES (selon type de projet) :
+index.html:
+- Uniquement HTML sémantique avec classes Tailwind
+- Liens vers style.css et script.js
+- Pas de <style> ni <script> inline
 
-**Pour React/Vite :**
-// FILE: package.json
-{
-  "name": "project-name",
-  "type": "module",
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
-    "vite": "^5.1.0",
-    "typescript": "^5.3.3",
-    "tailwindcss": "^3.4.1"
-  }
-}
+style.css:
+- Minimum 100 lignes de CSS custom
+- @keyframes pour animations (fadeIn, slideUp, etc.)
+- Gradients personnalisés
+- Transitions et effets hover
+- Variables CSS custom si nécessaire
 
-// FILE: vite.config.ts
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+script.js:
+- Minimum 50 lignes de JavaScript
+- Menu mobile toggle
+- Smooth scroll
+- Animations au scroll (Intersection Observer)
+- Form validation si formulaire présent
 
-export default defineConfig({
-  plugins: [react()]
-})
-
-// FILE: tailwind.config.ts
-export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-  theme: { extend: {} }
-}
-
+FORMAT OBLIGATOIRE (utilise // FILE: exactement) :
 // FILE: index.html
 <!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>App</title>
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
-</html>
-
-// FILE: src/main.tsx
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
-import './index.css'
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-)
-
-// FILE: src/App.tsx
-import React from 'react'
-import Header from './components/Header'
-import Hero from './components/Hero'
-
-export default function App() {
-  return (
-    <div className="min-h-screen">
-      <Header />
-      <Hero />
-    </div>
-  )
-}
-
-// FILE: src/index.css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-// FILE: src/components/Header.tsx
-export default function Header() { ... }
-
-// FILE: src/components/Hero.tsx
-export default function Hero() { ... }
-
-**Pour HTML/CSS/JS :**
-// FILE: index.html
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Site</title>
+  <title>...</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- HTML ici (classes Tailwind uniquement) -->
   <script src="script.js"></script>
 </body>
 </html>
 
 // FILE: style.css
-/* Animations et styles custom */
+/* Animations */
 @keyframes fadeIn { ... }
+@keyframes slideUp { ... }
+
+/* Styles custom */
+...
 
 // FILE: script.js
-// Interactivité JavaScript
+// Menu mobile
+const menuToggle = ...
 
-✨ IMPORTANT :
-- Génère du contenu COMPLET dans chaque fichier (pas de placeholders)
-- Sépare les composants/sections en fichiers distincts
-- Inclus animations, interactions, responsive design
-- Code TypeScript typé si React
-- Utilise Tailwind CSS + CSS custom pour animations
-- Minimum 5 fichiers pour un projet professionnel
+// Smooth scroll
+...
 
-Réponds UNIQUEMENT avec les fichiers au format // FILE: sans explication avant ou après.`;
+// Animations au scroll
+...
+
+Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier. Ne génère JAMAIS de fichiers vides.`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -312,10 +230,10 @@ Réponds UNIQUEMENT avec les fichiers au format // FILE: sans explication avant 
         'X-Title': 'Trinity Studio AI',
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4-5',
+        model: 'anthropic/claude-sonnet-4.5',
         messages,
         stream: true,
-        max_tokens: 32000,
+        max_tokens: 16000,
         temperature: 0.8,
       }),
     });

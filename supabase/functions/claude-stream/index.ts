@@ -30,8 +30,8 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5",
-        max_tokens: isModification ? 8000 : 16384,
+        model: "claude-sonnet-4-20250514",
+        max_tokens: isModification ? 4000 : 8000,
         stream: true,
         system,
         messages,
