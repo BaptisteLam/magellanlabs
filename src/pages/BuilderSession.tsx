@@ -131,6 +131,12 @@ export default function BuilderSession() {
             setProjectFiles(filesMap);
             setGeneratedHtml(projectFilesData.find((f: any) => f.path === 'index.html')?.content || '');
             
+            // Charger le favicon s'il existe
+            const faviconFile = Object.keys(filesMap).find(path => path.startsWith('public/favicon.'));
+            if (faviconFile) {
+              setCurrentFavicon(filesMap[faviconFile]);
+            }
+            
             const firstFile = Object.keys(filesMap)[0];
             if (firstFile) {
               setSelectedFile(firstFile);

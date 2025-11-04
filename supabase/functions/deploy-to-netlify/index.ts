@@ -103,7 +103,17 @@ serve(async (req) => {
     const filesMap: Record<string, Uint8Array> = {};
     projectFiles.forEach((file: ProjectFile) => {
       const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
-      filesMap[fileName] = new TextEncoder().encode(file.content);
+      
+      // Gérer les fichiers base64 (comme le favicon)
+      if (file.content.startsWith('data:')) {
+        // Extraire le contenu base64
+        const base64Data = file.content.split(',')[1];
+        const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        filesMap[fileName] = binaryData;
+      } else {
+        // Fichier texte normal
+        filesMap[fileName] = new TextEncoder().encode(file.content);
+      }
     });
 
     // Create simple ZIP (using basic ZIP structure)
