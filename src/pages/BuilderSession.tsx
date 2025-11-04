@@ -1036,39 +1036,26 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
           <div className="h-6 w-px bg-slate-300" />
 
           <div className="flex items-center gap-2">
-            {deployedUrl && (
-              <Button
-                onClick={() => window.open(deployedUrl, '_blank')}
-                variant="iconOnly"
-                size="icon"
-                className="h-8 w-8"
-                title="Voir le site en ligne"
-              >
-                <Eye className="w-4 h-4" />
-              </Button>
-            )}
-            
-            <Button
-              onClick={handleDownloadZip}
-              variant="iconOnly"
-              size="icon"
-              className="h-8 w-8"
-              title="Télécharger ZIP"
-            >
-              <Download className="w-4 h-4" />
-            </Button>
-            
             <Button
               onClick={handlePublish}
               disabled={isPublishing}
-              variant="iconOnly"
-              size="icon"
-              className="h-8 w-8"
-              title="Publier"
+              className="text-sm gap-2 transition-all border rounded-full px-6 py-2 bg-transparent"
+              style={{ 
+                borderColor: 'transparent',
+                color: isDark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#03A5C0';
+                e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+                e.currentTarget.style.color = '#03A5C0';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'transparent';
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = isDark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)';
+              }}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
+              {isPublishing ? 'Publication...' : 'Publier'}
             </Button>
           </div>
 
