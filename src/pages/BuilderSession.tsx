@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
 import { VitePreview } from "@/components/VitePreview";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
+import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
 import { FileTabs } from "@/components/CodeEditor/FileTabs";
 import { MonacoEditor } from "@/components/CodeEditor/MonacoEditor";
@@ -1244,7 +1245,10 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
                 isLoading && Object.keys(projectFiles).length === 0 ? (
                   <GeneratingPreview />
                 ) : (
-                  <VitePreview projectFiles={projectFiles} isDark={isDark} />
+                  <>
+                    <FakeUrlBar projectTitle={websiteTitle || 'Nouveau projet'} isDark={isDark} />
+                    <VitePreview projectFiles={projectFiles} isDark={isDark} />
+                  </>
                 )
               ) : viewMode === 'analytics' ? (
                 <Analytics 
