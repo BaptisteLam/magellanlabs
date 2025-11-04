@@ -122,7 +122,10 @@ serve(async (req) => {
     console.log('🚀 Deploying to Netlify...');
     
     // Deploy to Netlify
-    const siteName = session.title?.toLowerCase().replace(/[^a-z0-9]/g, '-') || `site-${sessionId.slice(0, 8)}`;
+    // Ajouter un identifiant unique pour éviter les conflits de noms
+    const baseTitle = session.title?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'site';
+    const uniqueId = sessionId.slice(0, 8);
+    const siteName = `${baseTitle}-${uniqueId}`;
     
     // Create or update site
     let siteId = session.netlify_site_id;
