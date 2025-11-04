@@ -1038,7 +1038,7 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
             </div>
             
             {/* Chat input */}
-            <div className={`border-t p-4 ${isDark ? 'border-slate-600' : 'bg-white border-slate-200'}`} style={{ backgroundColor: isDark ? '#1F1F20' : undefined }}>
+            <div className="border-t p-4" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff', borderTopColor: isDark ? '#1F1F20' : 'rgb(226, 232, 240)' }}>
               <PromptBar
                 inputValue={inputValue}
                 setInputValue={setInputValue}
