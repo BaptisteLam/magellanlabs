@@ -230,20 +230,32 @@ serve(async (req) => {
 
     // Generate screenshot after deployment (fire and forget)
     console.log('📸 Generating screenshot...');
-    supabaseAdmin.functions.invoke('generate-screenshot', {
-      body: {
+    
+    // Call with service role key for authentication
+    const screenshotPromise = fetch(`${supabaseUrl}/functions/v1/generate-screenshot`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         url: deploymentUrl,
         sessionId: sessionId,
-      },
-    }).then(({ data: screenshotData, error: screenshotError }) => {
-      if (screenshotError) {
-        console.error('⚠️ Screenshot generation failed:', screenshotError);
+      }),
+    }).then(async (response) => {
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('⚠️ Screenshot generation failed:', error);
       } else {
-        console.log('✅ Screenshot generated:', screenshotData?.thumbnailUrl);
+        const data = await response.json();
+        console.log('✅ Screenshot generated:', data?.thumbnailUrl);
       }
-    }).catch((screenshotErr) => {
-      console.error('⚠️ Screenshot error:', screenshotErr);
+    }).catch((error) => {
+      console.error('⚠️ Screenshot error:', error);
     });
+    
+    // Don't await, let it run in background
+    screenshotPromise;
 
     return new Response(
       JSON.stringify({

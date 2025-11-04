@@ -20,19 +20,30 @@ serve(async (req) => {
       );
     }
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
+    // Extract token
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Try to authenticate with the token (could be user JWT or service role key)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    // Create admin client to verify the token
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Try to get user from token (will work for both user JWT and service key)
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    
+    // If auth fails, check if it's a service role key call
+    let supabaseClient;
+    if (authError && token !== supabaseServiceKey) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    // Use admin client if it's a service key call, otherwise create user client
+    supabaseClient = supabaseAdmin;
 
     const { url, sessionId, websiteId } = await req.json();
 
