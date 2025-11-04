@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { BarChart3, Globe, FileText, Smartphone, Clock } from "lucide-react";
+import { BarChart3, Globe, FileText, Smartphone, Clock, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import GAConfigDialog from "./GAConfigDialog";
 
 interface AnalyticsProps {
   isPublished: boolean;
@@ -26,14 +28,16 @@ export default function Analytics({ isPublished, isDark, gaPropertyId, websiteId
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<string>('');
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [localGaPropertyId, setLocalGaPropertyId] = useState<string | null>(gaPropertyId || null);
 
   const COLORS = ['#03A5C0', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
   useEffect(() => {
-    if (isPublished && gaPropertyId) {
+    if (isPublished && localGaPropertyId) {
       fetchAnalytics();
     }
-  }, [period, gaPropertyId, isPublished]);
+  }, [period, localGaPropertyId, isPublished]);
 
   useEffect(() => {
     if (data?.last_updated) {
@@ -47,7 +51,7 @@ export default function Analytics({ isPublished, isDark, gaPropertyId, websiteId
   }, [data?.last_updated]);
 
   const fetchAnalytics = async () => {
-    if (!gaPropertyId) return;
+    if (!localGaPropertyId) return;
     
     setLoading(true);
     setError(null);
@@ -55,7 +59,7 @@ export default function Analytics({ isPublished, isDark, gaPropertyId, websiteId
     try {
       const { data: responseData, error: functionError } = await supabase.functions.invoke('get-analytics', {
         body: {
-          property_id: gaPropertyId,
+          property_id: localGaPropertyId,
           period: period,
         },
       });
@@ -68,6 +72,10 @@ export default function Analytics({ isPublished, isDark, gaPropertyId, websiteId
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConfigSuccess = (propertyId: string, measurementId: string) => {
+    setLocalGaPropertyId(propertyId);
   };
 
   if (!isPublished) {
@@ -90,29 +98,41 @@ export default function Analytics({ isPublished, isDark, gaPropertyId, websiteId
     );
   }
 
-  if (!gaPropertyId) {
+  if (!localGaPropertyId && websiteId) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
-        <div className="text-center max-w-md">
-          <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
-            isDark ? 'bg-slate-800' : 'bg-slate-100'
-          }`}>
-            <BarChart3 className="w-8 h-8 text-[#03A5C0]" />
+      <>
+        <div className="h-full flex items-center justify-center p-8">
+          <div className="text-center max-w-md">
+            <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+              isDark ? 'bg-slate-800' : 'bg-slate-100'
+            }`}>
+              <BarChart3 className="w-8 h-8 text-[#03A5C0]" />
+            </div>
+            <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
+              Configuration Google Analytics requise
+            </h3>
+            <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              Configurez votre compte Google Analytics 4 pour voir les statistiques de votre site.
+            </p>
+            <Button onClick={() => setShowConfigDialog(true)} className="gap-2">
+              <Settings className="w-4 h-4" />
+              Configurer GA4
+            </Button>
           </div>
-          <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
-            Configuration requise
-          </h3>
-          <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            Veuillez configurer votre ID de propriété Google Analytics 4 pour ce site.
-          </p>
         </div>
-      </div>
+        <GAConfigDialog
+          open={showConfigDialog}
+          onOpenChange={setShowConfigDialog}
+          websiteId={websiteId}
+          onSuccess={handleConfigSuccess}
+        />
+      </>
     );
   }
 
   return (
     <div className={`h-full overflow-auto p-6 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
-      {/* Header with period selector */}
+      {/* Header with period selector and config button */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className={`text-2xl font-semibold ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
@@ -125,18 +145,38 @@ export default function Analytics({ isPublished, isDark, gaPropertyId, websiteId
             </div>
           )}
         </div>
-        <Select value={period} onValueChange={(value: any) => setPeriod(value)}>
-          <SelectTrigger className={`w-40 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white'}`}>
-            <SelectValue placeholder="Période" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Aujourd'hui</SelectItem>
-            <SelectItem value="7d">7 derniers jours</SelectItem>
-            <SelectItem value="30d">30 derniers jours</SelectItem>
-            <SelectItem value="90d">90 derniers jours</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          {websiteId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowConfigDialog(true)}
+              className="gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              Configurer
+            </Button>
+          )}
+          <Select value={period} onValueChange={(value: any) => setPeriod(value)}>
+            <SelectTrigger className={`w-40 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white'}`}>
+              <SelectValue placeholder="Période" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Aujourd'hui</SelectItem>
+              <SelectItem value="7d">7 derniers jours</SelectItem>
+              <SelectItem value="30d">30 derniers jours</SelectItem>
+              <SelectItem value="90d">90 derniers jours</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
+      <GAConfigDialog
+        open={showConfigDialog}
+        onOpenChange={setShowConfigDialog}
+        websiteId={websiteId || ''}
+        onSuccess={handleConfigSuccess}
+      />
 
       {loading && (
         <div className="flex items-center justify-center h-64">
