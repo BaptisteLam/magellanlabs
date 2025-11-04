@@ -90,7 +90,8 @@ export default function Dashboard() {
           .order("created_at", { ascending: false }),
         supabase
           .from("build_sessions")
-          .select("id, title, created_at, updated_at, project_files, project_type, thumbnail_url")
+          .select("id, title, created_at, updated_at, project_files, project_type, thumbnail_url, netlify_deployment_url")
+          .is("netlify_deployment_url", null)
           .order("updated_at", { ascending: false })
       ]);
 
