@@ -207,9 +207,21 @@ const PromptBar = ({
                       >
                         <DropdownMenuItem 
                           onClick={() => setSelectedModel('sonnet')}
-                          className="flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors"
+                          className="flex items-center gap-2 px-3 py-2 cursor-pointer transition-all rounded-full mx-1 my-0.5"
                           style={{
                             color: isDark ? 'hsl(var(--foreground))' : '#334155',
+                            borderColor: 'transparent',
+                            border: '1px solid transparent',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#03A5C0';
+                            e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+                            e.currentTarget.style.color = '#03A5C0';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'transparent';
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.color = isDark ? 'hsl(var(--foreground))' : '#334155';
                           }}
                         >
                           <img src={claudeLogo} alt="Claude" className="w-4 h-4" />
@@ -217,9 +229,21 @@ const PromptBar = ({
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => setSelectedModel('grok')}
-                          className="flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors"
+                          className="flex items-center gap-2 px-3 py-2 cursor-pointer transition-all rounded-full mx-1 my-0.5"
                           style={{
                             color: isDark ? 'hsl(var(--foreground))' : '#334155',
+                            borderColor: 'transparent',
+                            border: '1px solid transparent',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#03A5C0';
+                            e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+                            e.currentTarget.style.color = '#03A5C0';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'transparent';
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.color = isDark ? 'hsl(var(--foreground))' : '#334155';
                           }}
                         >
                           <img src={xaiLogo} alt="XAI" className="w-4 h-4" />
