@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Download } from "lucide-react";
+import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Download, Paperclip } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
 import JSZip from "jszip";
@@ -48,6 +48,8 @@ export default function BuilderSession() {
   const streamingRef = useRef<{ abort: () => void } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
+  const [isHoveringFavicon, setIsHoveringFavicon] = useState(false);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
 
 
   useEffect(() => {
@@ -237,6 +239,68 @@ export default function BuilderSession() {
 
   const removeFile = (index: number) => {
     setAttachedFiles(attachedFiles.filter((_, i) => i !== index));
+  };
+
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Vérifier que c'est une image
+    if (!file.type.startsWith('image/')) {
+      sonnerToast.error("Veuillez sélectionner une image");
+      return;
+    }
+
+    try {
+      // Convertir en base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const base64 = await base64Promise;
+      
+      // Déterminer l'extension
+      const extension = file.type.split('/')[1];
+      const faviconPath = `public/favicon.${extension}`;
+      
+      // Ajouter le favicon aux fichiers du projet
+      setProjectFiles(prev => ({
+        ...prev,
+        [faviconPath]: base64
+      }));
+
+      // Mettre à jour index.html pour référencer le nouveau favicon
+      const updatedIndexHtml = generatedHtml.replace(
+        /<link rel="icon"[^>]*>/,
+        `<link rel="icon" type="${file.type}" href="/favicon.${extension}">`
+      );
+      
+      setGeneratedHtml(updatedIndexHtml);
+
+      // Sauvegarder dans la base de données
+      if (sessionId) {
+        await supabase
+          .from('build_sessions')
+          .update({ 
+            generated_html: updatedIndexHtml,
+            project_files: { ...projectFiles, [faviconPath]: base64 }
+          })
+          .eq('id', sessionId);
+      }
+
+      sonnerToast.success("Favicon mis à jour avec succès");
+      
+      if (faviconInputRef.current) {
+        faviconInputRef.current.value = '';
+      }
+    } catch (error) {
+      console.error('Error uploading favicon:', error);
+      sonnerToast.error("Erreur lors de l'upload du favicon");
+    }
   };
 
   const handleSubmit = async () => {
@@ -865,9 +929,28 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
           backgroundColor: isDark ? '#181818' : '#ffffff',
           borderColor: isDark ? '#333' : '#e2e8f0'
         }}>
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <input
+            type="file"
+            ref={faviconInputRef}
+            onChange={handleFaviconUpload}
+            accept="image/*"
+            className="hidden"
+          />
+          <button
+            onClick={() => faviconInputRef.current?.click()}
+            onMouseEnter={() => setIsHoveringFavicon(true)}
+            onMouseLeave={() => setIsHoveringFavicon(false)}
+            className="flex-shrink-0 hover:text-[#03A5C0] transition-colors cursor-pointer bg-transparent border-0 p-0"
+            title="Changer le favicon"
+          >
+            {isHoveringFavicon ? (
+              <Paperclip className="w-4 h-4" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+          </button>
           <span className={`text-sm flex-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {websiteTitle ? websiteTitle.toLowerCase().replace(/\s+/g, '') : 'monsite'}.com
           </span>
