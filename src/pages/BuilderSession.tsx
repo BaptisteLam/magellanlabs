@@ -855,7 +855,7 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
             className="flex items-center gap-1 rounded-md border p-0.5"
             style={{
               backgroundColor: isDark ? '#181818' : '#ffffff',
-              borderColor: isDark ? '#181818' : 'rgba(203, 213, 225, 1)'
+              borderColor: isDark ? '#1F1F20' : 'rgba(203, 213, 225, 1)'
             }}
           >
             <Button
