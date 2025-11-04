@@ -1039,20 +1039,17 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
             <Button
               onClick={handlePublish}
               disabled={isPublishing}
-              className="text-sm gap-2 transition-all border rounded-full px-6 py-2 bg-transparent"
+              className="text-sm gap-2 transition-all border rounded-full px-6 py-2"
               style={{ 
-                borderColor: 'transparent',
-                color: isDark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)'
+                borderColor: '#03A5C0',
+                backgroundColor: 'rgba(3, 165, 192, 0.1)',
+                color: '#03A5C0'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#03A5C0';
-                e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                e.currentTarget.style.color = '#03A5C0';
+                e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.2)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'transparent';
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = isDark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)';
+                e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
               }}
             >
               {isPublishing ? 'Publication...' : 'Publier'}
