@@ -123,6 +123,30 @@ serve(async (req) => {
         .from('build_sessions')
         .update({ thumbnail_url: thumbnailUrl })
         .eq('id', sessionId);
+      
+      // Also update the corresponding website entry if it exists (for published sites)
+      const { data: session } = await supabaseClient
+        .from('build_sessions')
+        .select('title, user_id')
+        .eq('id', sessionId)
+        .single();
+      
+      if (session) {
+        const { data: website } = await supabaseClient
+          .from('websites')
+          .select('id')
+          .eq('user_id', session.user_id)
+          .eq('title', session.title)
+          .maybeSingle();
+        
+        if (website) {
+          await supabaseClient
+            .from('websites')
+            .update({ thumbnail_url: thumbnailUrl })
+            .eq('id', website.id);
+          console.log(`[generate-screenshot] ✅ Website thumbnail also updated`);
+        }
+      }
     } else if (websiteId) {
       await supabaseClient
         .from('websites')

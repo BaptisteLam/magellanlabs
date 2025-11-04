@@ -810,11 +810,15 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
       if (result.url) {
         setDeployedUrl(result.url);
         
-        // Afficher popup de succès
+        // Afficher popup de succès (sans redirection)
         if (result.state === 'ready') {
-          sonnerToast.success("✅ Site en ligne", {
+          sonnerToast.success("✅ Site publié avec succès !", {
             description: result.url,
             duration: 10000,
+            action: {
+              label: 'Voir le site',
+              onClick: () => window.open(result.url, '_blank')
+            }
           });
         } else {
           sonnerToast.info(`Déploiement en cours (${result.state})`, {
@@ -822,11 +826,6 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
             duration: 8000,
           });
         }
-        
-        // Rediriger vers le dashboard
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 2000);
       }
     } catch (error: any) {
       console.error('Error publishing:', error);

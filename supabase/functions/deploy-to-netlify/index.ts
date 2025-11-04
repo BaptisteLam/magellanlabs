@@ -175,29 +175,75 @@ serve(async (req) => {
       console.error('⚠️ Failed to update session:', updateError);
     }
 
+    // Create or update website entry to mark as published
+    console.log('📝 Creating/updating website entry...');
+    
+    // Get project files to extract HTML content
+    const htmlFile = projectFiles.find((f: ProjectFile) => f.name === 'index.html');
+    const htmlContent = htmlFile?.content || '';
+    
+    // Check if website entry already exists for this session
+    const { data: existingWebsite } = await supabaseAdmin
+      .from('websites')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('title', session.title)
+      .maybeSingle();
+    
+    if (existingWebsite) {
+      // Update existing entry
+      const { error: websiteUpdateError } = await supabaseAdmin
+        .from('websites')
+        .update({
+          netlify_url: deploymentUrl,
+          netlify_site_id: siteId,
+          html_content: htmlContent,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingWebsite.id);
+      
+      if (websiteUpdateError) {
+        console.error('⚠️ Failed to update website:', websiteUpdateError);
+      } else {
+        console.log('✅ Website entry updated');
+      }
+    } else {
+      // Create new website entry
+      const { error: websiteInsertError } = await supabaseAdmin
+        .from('websites')
+        .insert({
+          user_id: user.id,
+          title: session.title || 'Sans titre',
+          netlify_url: deploymentUrl,
+          netlify_site_id: siteId,
+          html_content: htmlContent,
+        });
+      
+      if (websiteInsertError) {
+        console.error('⚠️ Failed to create website:', websiteInsertError);
+      } else {
+        console.log('✅ Website entry created');
+      }
+    }
+
     console.log('✅ Deployment successful:', deploymentUrl);
 
-    // Generate screenshot after deployment
+    // Generate screenshot after deployment (fire and forget)
     console.log('📸 Generating screenshot...');
-    try {
-      // Wait 3 seconds for the site to be fully deployed
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      const { data: screenshotData, error: screenshotError } = await supabaseAdmin.functions.invoke('generate-screenshot', {
-        body: {
-          url: deploymentUrl,
-          sessionId: sessionId,
-        },
-      });
-
+    supabaseAdmin.functions.invoke('generate-screenshot', {
+      body: {
+        url: deploymentUrl,
+        sessionId: sessionId,
+      },
+    }).then(({ data: screenshotData, error: screenshotError }) => {
       if (screenshotError) {
         console.error('⚠️ Screenshot generation failed:', screenshotError);
       } else {
         console.log('✅ Screenshot generated:', screenshotData?.thumbnailUrl);
       }
-    } catch (screenshotErr) {
+    }).catch((screenshotErr) => {
       console.error('⚠️ Screenshot error:', screenshotErr);
-    }
+    });
 
     return new Response(
       JSON.stringify({
