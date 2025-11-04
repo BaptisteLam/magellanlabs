@@ -835,9 +835,9 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
   }
 
   return (
-    <div className={`h-screen flex flex-col ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
+    <div className={`h-screen flex flex-col`} style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff' }}>
       {/* Barre d'action */}
-      <div className={`h-12 backdrop-blur-sm border-b flex items-center justify-between px-4 ${isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-50/80 border-slate-200'}`}>
+      <div className={`h-12 backdrop-blur-sm border-b flex items-center justify-between px-4 ${isDark ? 'border-slate-700' : 'bg-slate-50/80 border-slate-200'}`} style={{ backgroundColor: isDark ? '#1F1F20' : undefined }}>
         <div className="flex items-center gap-3">
           <Button
             onClick={() => navigate('/dashboard')}
@@ -952,7 +952,7 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
       {/* Panneau principal */}
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         <ResizablePanel defaultSize={30} minSize={25}>
-          <div className={`h-full flex flex-col ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
+          <div className={`h-full flex flex-col ${isDark ? '' : 'bg-slate-50'}`} style={{ backgroundColor: isDark ? '#1F1F20' : undefined }}>
             {/* Chat history */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.map((msg, idx) => (
@@ -1032,7 +1032,7 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
             </div>
             
             {/* Chat input */}
-            <div className={`border-t p-4 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-200'}`}>
+            <div className={`border-t p-4 ${isDark ? 'border-slate-600' : 'bg-white border-slate-200'}`} style={{ backgroundColor: isDark ? '#1F1F20' : undefined }}>
               <PromptBar
                 inputValue={inputValue}
                 setInputValue={setInputValue}
@@ -1040,6 +1040,7 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
                 isLoading={isLoading}
                 showPlaceholderAnimation={false}
                 showConfigButtons={false}
+                modificationMode={true}
                 attachedFiles={attachedFiles}
                 onRemoveFile={removeFile}
                 onFileSelect={async (files) => {

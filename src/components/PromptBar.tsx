@@ -77,7 +77,7 @@ const PromptBar = ({
     <div 
       className="w-full rounded-xl p-3 border transition-colors"
       style={{
-        backgroundColor: isDark ? 'hsl(var(--card))' : '#ffffff',
+        backgroundColor: isDark ? (modificationMode ? '#1F1F20' : 'hsl(var(--card))') : '#ffffff',
         borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.8)',
         boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04)'
       }}
@@ -132,10 +132,11 @@ const PromptBar = ({
             }
           }}
           placeholder={modificationMode ? "Décris les modifications à apporter..." : ""}
-          className="w-full min-h-[100px] resize-none border-0 p-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+          className="w-full min-h-[100px] resize-none border-0 p-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
           style={{ 
             fontSize: '14px',
-            color: isDark ? 'hsl(var(--foreground))' : '#334155'
+            color: isDark ? 'hsl(var(--foreground))' : '#334155',
+            backgroundColor: isDark && modificationMode ? '#181818' : 'transparent'
           }}
         />
         {!inputValue && showPlaceholderAnimation && !modificationMode && (
