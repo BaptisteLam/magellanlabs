@@ -16,8 +16,8 @@ interface ProjectFile {
 function parseGeneratedCode(code: string): ProjectFile[] {
   const files: ProjectFile[] = [];
   
-  // Détection du format // FILE: path
-  const fileRegex = /\/\/\s*FILE:\s*(.+?)\n/g;
+  // Format 1: // FILE: path suivi du contenu (avec ou sans code blocks)
+  const fileRegex = /\/\/\s*FILE:\s*(.+?)(?:\n|$)/g;
   const matches = [...code.matchAll(fileRegex)];
   
   for (let i = 0; i < matches.length; i++) {
@@ -28,18 +28,25 @@ function parseGeneratedCode(code: string): ProjectFile[] {
     // Trouve le contenu jusqu'au prochain fichier
     const nextMatch = matches[i + 1];
     const endIndex = nextMatch ? nextMatch.index! : code.length;
-    const content = code.slice(startIndex, endIndex).trim();
+    let rawContent = code.slice(startIndex, endIndex).trim();
+    
+    // Nettoyer les code blocks markdown si présents
+    // Exemples: ```json ... ```, ```typescript ... ```, etc.
+    const codeBlockMatch = rawContent.match(/^```[\w]*\n([\s\S]*?)```$/);
+    if (codeBlockMatch) {
+      rawContent = codeBlockMatch[1].trim();
+    }
     
     const extension = filePath.split('.').pop() || '';
     
     files.push({
       path: filePath,
-      content: content,
+      content: rawContent,
       type: getFileType(extension)
     });
   }
   
-  // Fallback: format ```type:path
+  // Format 2: code blocks avec nom de fichier (```json:package.json)
   if (files.length === 0) {
     const codeBlockRegex = /```(?:[\w]+)?:?([\w/.]+)\n([\s\S]*?)```/g;
     let match;
@@ -56,9 +63,15 @@ function parseGeneratedCode(code: string): ProjectFile[] {
     }
   }
   
-  // Fallback: HTML standalone
+  // Format 3: HTML standalone sans markers
   if (files.length === 0 && (code.includes('<!DOCTYPE html>') || code.includes('<html'))) {
-    const htmlContent = code.replace(/```html\n?|```\n?/g, '').trim();
+    let htmlContent = code;
+    
+    // Retirer tous les code blocks markdown
+    htmlContent = htmlContent.replace(/```html\n?/g, '');
+    htmlContent = htmlContent.replace(/```\n?/g, '');
+    htmlContent = htmlContent.trim();
+    
     files.push({
       path: 'index.html',
       content: htmlContent,
@@ -158,17 +171,22 @@ serve(async (req) => {
     }
 
     // Prompt système optimisé pour génération de projets web modernes multi-fichiers
-    const systemPrompt = `Tu es un expert développeur web fullstack spécialisé dans la création de projets web complets et modernes.
+    const systemPrompt = `Tu es un expert développeur web fullstack spécialisé dans la création de projets web complets, visuellement impressionnants et professionnels.
 
-ARCHITECTURE PRIVILÉGIÉE :
-- PAR DÉFAUT, génère TOUJOURS des projets React/Vite avec TypeScript
-- Utilise une structure modulaire avec plusieurs fichiers (composants, styles, utils, etc.)
-- Génère du HTML pur UNIQUEMENT pour des landing pages très simples (1-2 sections max)
+RÈGLES ABSOLUES DE GÉNÉRATION :
+1. **CONTENU RICHE ET COMPLET OBLIGATOIRE** : Tu DOIS créer des sites avec du vrai contenu substantiel (minimum 200+ lignes de code HTML/JSX)
+2. **INTERDICTION DE CONTENU MINIMAL** : Ne JAMAIS générer juste "Hello World" ou des pages avec 2-3 éléments
+3. **DESIGN PROFESSIONNEL** : Chaque site doit être visuellement attrayant avec des sections complètes, animations, gradients, etc.
+
+ARCHITECTURE PAR DÉFAUT :
+- Génère des projets React/Vite avec TypeScript pour toute demande nécessitant interactivité ou complexité
+- Génère du HTML pur enrichi (avec CSS avancé et JavaScript vanilla) pour les landing pages simples
+- TOUJOURS inclure plusieurs sections : Hero, Features, About, Services, Testimonials, Footer, etc.
 
 STRUCTURE OBLIGATOIRE POUR REACT/VITE :
 // FILE: package.json
 {
-  "name": "projet",
+  "name": "projet-moderne",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -196,7 +214,7 @@ STRUCTURE OBLIGATOIRE POUR REACT/VITE :
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Projet</title>
+    <title>Projet Moderne</title>
   </head>
   <body>
     <div id="root"></div>
@@ -217,31 +235,44 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 
 // FILE: src/App.tsx
-[ton composant principal]
+[Composant principal avec PLUSIEURS sections complètes - minimum 100+ lignes]
 
 // FILE: src/index.css
-[styles globaux]
+[Styles CSS avancés : variables CSS, gradients, animations, responsive - minimum 50+ lignes]
 
-// FILE: src/components/[NomComposant].tsx
-[composants additionnels]
+// FILE: src/components/[Composant].tsx
+[Au moins 2-3 composants réutilisables]
+
+POUR HTML PUR (Landing pages simples) :
+// FILE: index.html
+[HTML complet avec header, hero, features, testimonials, footer - minimum 200+ lignes]
+
+// FILE: style.css
+[CSS moderne avec animations, gradients, responsive - minimum 100+ lignes]
+
+// FILE: script.js
+[JavaScript vanilla pour interactions - minimum 30+ lignes]
 
 FORMAT DE SORTIE (OBLIGATOIRE) :
-Chaque fichier DOIT commencer par :
-// FILE: chemin/complet/du/fichier.extension
+Chaque fichier DOIT être précédé de :
+// FILE: chemin/complet/fichier.extension
 
-RÈGLES STRICTES :
-1. Génère TOUJOURS au minimum 4-5 fichiers pour React/Vite
-2. Sépare la logique en composants réutilisables (src/components/)
-3. Utilise TypeScript (.tsx, .ts) par défaut
-4. Crée un fichier CSS dédié (src/index.css ou src/styles/)
-5. Code production-ready : pas de "TODO", pas de placeholders
-6. Responsive et moderne par défaut
-7. Ne génère du HTML pur QUE si explicitement demandé pour une page ultra-simple
+EXIGENCES DE QUALITÉ :
+✅ Design moderne avec gradients, ombres, animations CSS
+✅ Responsive mobile-first (breakpoints tablet et desktop)
+✅ Typographie élégante avec hiérarchie claire
+✅ Palette de couleurs harmonieuse (3-5 couleurs)
+✅ Contenu textuel réaliste et substantiel (pas de lorem ipsum sauf si approprié)
+✅ Images placeholders bien intégrées
+✅ Interactions utilisateur fluides (hover, focus, smooth scroll)
 
-FICHIERS SUPPORTÉS :
-.tsx, .ts, .jsx, .js, .css, .json, .html, .svg, .md, vite.config.ts, tsconfig.json
+❌ INTERDIT :
+- Pages avec moins de 100 lignes de code total
+- "Hello World" ou contenu minimaliste
+- Design basique sans style
+- Absence de sections multiples
 
-Génère maintenant le projet complet avec TOUS les fichiers nécessaires en structure React/Vite.`;
+Génère maintenant un projet web complet, professionnel et visuellement impressionnant.`;
 
     // Appel Lovable AI Gateway avec Gemini Flash (plus rapide)
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
