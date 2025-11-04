@@ -205,7 +205,7 @@ export default function Dashboard() {
               <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>Chargement...</p>
             </div>
           ) : projects.length === 0 ? (
-            <Card className={isDark ? 'bg-slate-800 border-slate-700' : ''}>
+            <Card className={isDark ? 'border-slate-700' : ''} style={isDark ? { backgroundColor: '#181818' } : {}}>
               <CardContent className="py-12 text-center">
                 <p className={`mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Aucun projet pour le moment</p>
                 <Button onClick={() => navigate("/builder")}>
@@ -216,7 +216,7 @@ export default function Dashboard() {
           ) : (
             <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {projects.map((project) => (
-                <Card key={project.id} className={`hover:shadow-lg transition-shadow relative overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : ''}`}>
+                <Card key={project.id} className={`hover:shadow-lg transition-shadow relative overflow-hidden ${isDark ? 'border-slate-700' : ''}`} style={isDark ? { backgroundColor: '#181818' } : {}}>
                   {/* Type icon in corner */}
                   <div className={`absolute top-3 right-3 z-10 backdrop-blur-sm p-2 rounded-lg ${isDark ? 'bg-slate-700/80' : 'bg-background/80'}`}>
                     {getProjectIcon(project.type)}
