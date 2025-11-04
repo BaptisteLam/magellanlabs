@@ -16,6 +16,7 @@ import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
 import { FileTabs } from "@/components/CodeEditor/FileTabs";
 import { MonacoEditor } from "@/components/CodeEditor/MonacoEditor";
 import PromptBar from "@/components/PromptBar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -857,6 +858,38 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
           >
             <Home className="w-4 h-4" />
           </Button>
+        </div>
+
+        {/* Barre URL - au centre */}
+        <div className="absolute left-[30%] flex items-center gap-2 px-3 py-1.5 rounded-md border" style={{
+          backgroundColor: isDark ? '#181818' : '#ffffff',
+          borderColor: isDark ? '#333' : '#e2e8f0'
+        }}>
+          <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            {websiteTitle ? websiteTitle.toLowerCase().replace(/\s+/g, '') : 'monsite'}.com
+          </span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 hover:bg-[#03A5C0] hover:text-white transition-colors"
+                  onClick={() => {
+                    const domain = (websiteTitle ? websiteTitle.toLowerCase().replace(/\s+/g, '') : 'monsite') + '.com';
+                    window.open(`https://www.namecheap.com/domains/registration/results/?domain=${domain}`, '_blank');
+                  }}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Vérifier si le nom de domaine est disponible</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         <div className="flex items-center gap-3">
