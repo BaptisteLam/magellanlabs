@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ExternalLink, Trash2, Edit, Monitor, Globe, Smartphone, LayoutDashboard } from "lucide-react";
+import { ExternalLink, Trash2, Edit, Monitor, Globe, Smartphone, LayoutDashboard, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -45,6 +45,8 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState("");
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
 
   const getProjectType = (htmlContent?: string): ProjectType => {
     if (!htmlContent) return 'website';
@@ -156,6 +158,39 @@ export default function Dashboard() {
     navigate("/");
   };
 
+  const handleStartEdit = (project: Project) => {
+    setEditingProjectId(project.id);
+    setEditingTitle(project.title);
+  };
+
+  const handleSaveTitle = async (project: Project) => {
+    if (!editingTitle.trim()) {
+      toast.error("Le titre ne peut pas être vide");
+      return;
+    }
+
+    try {
+      const table = project.status === 'published' ? 'websites' : 'build_sessions';
+      const { error } = await supabase
+        .from(table)
+        .update({ title: editingTitle.trim() })
+        .eq("id", project.id);
+
+      if (error) throw error;
+      
+      toast.success("Titre modifié");
+      setEditingProjectId(null);
+      loadProjects();
+    } catch (error: any) {
+      toast.error("Erreur lors de la modification");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProjectId(null);
+    setEditingTitle("");
+  };
+
   return (
     <>
       <Header />
@@ -237,7 +272,47 @@ export default function Dashboard() {
 
                   <CardHeader>
                     <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-xl line-clamp-1">{project.title}</CardTitle>
+                      {editingProjectId === project.id ? (
+                        <div className="flex-1 flex gap-2 items-center">
+                          <input
+                            type="text"
+                            value={editingTitle}
+                            onChange={(e) => setEditingTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveTitle(project);
+                              if (e.key === 'Escape') handleCancelEdit();
+                            }}
+                            className={`flex-1 px-2 py-1 rounded border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
+                            autoFocus
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleSaveTitle(project)}
+                            className="h-8 w-8 p-0"
+                          >
+                            ✓
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleCancelEdit}
+                            className="h-8 w-8 p-0"
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 flex-1">
+                          <button
+                            onClick={() => handleStartEdit(project)}
+                            className={`p-1 rounded hover:bg-slate-100 transition-colors ${isDark ? 'hover:bg-slate-700' : ''}`}
+                          >
+                            <Pencil className={`w-3.5 h-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                          </button>
+                          <CardTitle className="text-xl line-clamp-1">{project.title}</CardTitle>
+                        </div>
+                      )}
                       <Badge variant={project.status === 'published' ? 'default' : 'secondary'}>
                         {project.status === 'published' ? 'Publié' : 'Brouillon'}
                       </Badge>
