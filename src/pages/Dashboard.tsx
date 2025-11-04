@@ -273,44 +273,29 @@ export default function Dashboard() {
                   <CardHeader>
                     <div className="flex items-start justify-between gap-2">
                       {editingProjectId === project.id ? (
-                        <div className="flex-1 flex gap-2 items-center">
+                        <div className="flex-1">
                           <input
                             type="text"
                             value={editingTitle}
                             onChange={(e) => setEditingTitle(e.target.value)}
+                            onBlur={() => handleSaveTitle(project)}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') handleSaveTitle(project);
                               if (e.key === 'Escape') handleCancelEdit();
                             }}
-                            className={`flex-1 px-2 py-1 rounded border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
+                            className={`w-full px-2 py-1 rounded border text-xl font-semibold ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
                             autoFocus
                           />
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleSaveTitle(project)}
-                            className="h-8 w-8 p-0"
-                          >
-                            ✓
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={handleCancelEdit}
-                            className="h-8 w-8 p-0"
-                          >
-                            ✕
-                          </Button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 flex-1">
+                        <div className="flex items-center gap-2 flex-1 group">
+                          <CardTitle className="text-xl line-clamp-1 flex-1">{project.title}</CardTitle>
                           <button
                             onClick={() => handleStartEdit(project)}
-                            className={`p-1 rounded hover:bg-slate-100 transition-colors ${isDark ? 'hover:bg-slate-700' : ''}`}
+                            className={`p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
                           >
                             <Pencil className={`w-3.5 h-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                           </button>
-                          <CardTitle className="text-xl line-clamp-1">{project.title}</CardTitle>
                         </div>
                       )}
                       <Badge variant={project.status === 'published' ? 'default' : 'secondary'}>
