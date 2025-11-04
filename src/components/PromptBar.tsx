@@ -77,7 +77,7 @@ const PromptBar = ({
     <div 
       className="w-full rounded-xl p-3 border transition-colors"
       style={{
-        backgroundColor: isDark ? 'hsl(var(--card))' : '#ffffff',
+        backgroundColor: isDark ? '#1F1F20' : '#ffffff',
         borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.8)',
         boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04)'
       }}
@@ -99,7 +99,7 @@ const PromptBar = ({
               key={index}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm"
               style={{
-                backgroundColor: isDark ? 'hsl(var(--card))' : '#f8fafc',
+                backgroundColor: isDark ? '#1F1F20' : '#f8fafc',
                 borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
                 color: isDark ? 'hsl(var(--foreground))' : '#334155'
               }}
@@ -119,7 +119,12 @@ const PromptBar = ({
         </div>
       )}
       
-      <div className="relative">
+      <div 
+        className="relative rounded-lg"
+        style={{
+          backgroundColor: isDark ? '#181818' : 'transparent'
+        }}
+      >
         <Textarea
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
@@ -201,7 +206,7 @@ const PromptBar = ({
                       <DropdownMenuContent 
                         className="min-w-[200px] z-50 overflow-hidden rounded-md border shadow-md"
                         style={{
-                          backgroundColor: isDark ? 'hsl(var(--card))' : '#ffffff',
+                          backgroundColor: isDark ? '#1F1F20' : '#ffffff',
                           borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
                         }}
                       >
