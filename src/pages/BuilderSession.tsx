@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
 import { VitePreview } from "@/components/VitePreview";
+import { GeneratingPreview } from "@/components/GeneratingPreview";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
 import { FileTabs } from "@/components/CodeEditor/FileTabs";
 import { MonacoEditor } from "@/components/CodeEditor/MonacoEditor";
@@ -64,22 +65,39 @@ export default function BuilderSession() {
   // Traiter le prompt initial IMMÉDIATEMENT après chargement session
   useEffect(() => {
     const processInitialPrompt = async () => {
-      if (!sessionId || isLoading || generatedHtml) return;
+      if (!sessionId || Object.keys(projectFiles).length > 0) return;
       
-      // Vérifier si la session a un message mais pas de fichiers générés
-      if (messages.length === 1 && messages[0].role === 'user' && Object.keys(projectFiles).length === 0) {
+      // Récupérer le prompt depuis l'URL si présent
+      const urlParams = new URLSearchParams(window.location.search);
+      const promptFromUrl = urlParams.get('prompt');
+      
+      if (promptFromUrl) {
+        // Si on a un prompt dans l'URL et pas de fichiers, on lance la génération
+        setInputValue(promptFromUrl);
+        // Petit délai pour s'assurer que tous les états sont initialisés
+        setTimeout(() => {
+          if (!isLoading) {
+            handleSubmit();
+          }
+        }, 500);
+      } else if (messages.length === 1 && messages[0].role === 'user') {
+        // Sinon, vérifier si la session a un message mais pas de fichiers générés
         const userPrompt = typeof messages[0].content === 'string' ? messages[0].content : '';
         if (userPrompt.trim()) {
-          // Déclencher la génération AUTOMATIQUEMENT
-          handleSubmit();
+          setInputValue(userPrompt);
+          setTimeout(() => {
+            if (!isLoading) {
+              handleSubmit();
+            }
+          }, 500);
         }
       }
     };
     
-    if (!sessionLoading) {
+    if (!sessionLoading && user) {
       processInitialPrompt();
     }
-  }, [sessionId, sessionLoading, messages, projectFiles]);
+  }, [sessionId, sessionLoading, user, projectFiles]);
 
 
   const checkAuth = async () => {
@@ -1223,7 +1241,11 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
           <ResizablePanel defaultSize={70}>
             <div className="h-full w-full flex flex-col">
               {viewMode === 'preview' ? (
-                <VitePreview projectFiles={projectFiles} isDark={isDark} />
+                isLoading && Object.keys(projectFiles).length === 0 ? (
+                  <GeneratingPreview />
+                ) : (
+                  <VitePreview projectFiles={projectFiles} isDark={isDark} />
+                )
               ) : viewMode === 'analytics' ? (
                 <Analytics 
                   isPublished={!!deployedUrl} 
