@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,8 +18,12 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🚀 Deploy to Netlify function called');
+    
     // Authentication
     const authHeader = req.headers.get('Authorization');
+    console.log('Auth header present:', !!authHeader);
+    
     if (!authHeader) {
       console.error('❌ No authorization header');
       return new Response(
@@ -28,17 +32,25 @@ serve(async (req) => {
       );
     }
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    );
+    // Extract JWT token from Authorization header
+    const token = authHeader.replace('Bearer ', '');
+    console.log('Token extracted, length:', token.length);
 
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    console.log('Supabase URL:', supabaseUrl);
+    console.log('Service key present:', !!supabaseServiceKey);
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration missing');
+    }
+
+    // Create admin client with service role key
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify the JWT token and get user
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
     if (authError || !user) {
       console.error('❌ Authentication error:', authError);
@@ -53,6 +65,9 @@ serve(async (req) => {
     const requestBody = await req.json();
     const { sessionId, projectFiles } = requestBody;
     
+    console.log('Session ID:', sessionId);
+    console.log('Files count:', projectFiles?.length);
+    
     if (!sessionId || !projectFiles) {
       console.error('❌ Missing sessionId or projectFiles');
       return new Response(
@@ -62,21 +77,23 @@ serve(async (req) => {
     }
 
     console.log('📦 Deploying project to Netlify...');
-    console.log('Session ID:', sessionId);
-    console.log('Files count:', projectFiles.length);
 
     // Get session data
-    const { data: session, error: sessionError } = await supabaseClient
+    const { data: session, error: sessionError } = await supabaseAdmin
       .from('build_sessions')
       .select('netlify_site_id, netlify_deployment_url, title')
       .eq('id', sessionId)
       .single();
 
     if (sessionError) {
+      console.error('❌ Session error:', sessionError);
       throw new Error(`Failed to get session: ${sessionError.message}`);
     }
 
+    console.log('Session data retrieved:', session?.title);
+
     const NETLIFY_TOKEN = Deno.env.get('NETLIFY_TOKEN');
+
 
     if (!NETLIFY_TOKEN) {
       throw new Error('Netlify token not configured');
@@ -131,7 +148,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${NETLIFY_TOKEN}`,
         'Content-Type': 'application/zip',
       },
-      body: zipData,
+      body: zipData as unknown as BodyInit,
     });
 
     if (!deployResponse.ok) {
@@ -146,7 +163,7 @@ serve(async (req) => {
     const deploymentUrl = deployResult.ssl_url || deployResult.url || `https://${siteName}.netlify.app`;
 
     // Update session
-    const { error: updateError } = await supabaseClient
+    const { error: updateError } = await supabaseAdmin
       .from('build_sessions')
       .update({
         netlify_site_id: siteId,
