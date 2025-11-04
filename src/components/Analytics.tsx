@@ -31,6 +31,29 @@ export default function Analytics({ isPublished, isDark, gaPropertyId, websiteId
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [localGaPropertyId, setLocalGaPropertyId] = useState<string | null>(gaPropertyId || null);
 
+  // Recharger le gaPropertyId depuis la base de données périodiquement
+  useEffect(() => {
+    if (!websiteId || localGaPropertyId) return;
+    
+    const loadGaPropertyId = async () => {
+      const { data: websiteData } = await supabase
+        .from('websites')
+        .select('ga_property_id')
+        .eq('id', websiteId)
+        .single();
+      
+      if (websiteData?.ga_property_id) {
+        setLocalGaPropertyId(websiteData.ga_property_id);
+      }
+    };
+    
+    loadGaPropertyId();
+    
+    // Vérifier toutes les 3 secondes si le gaPropertyId a été configuré
+    const interval = setInterval(loadGaPropertyId, 3000);
+    return () => clearInterval(interval);
+  }, [websiteId, localGaPropertyId]);
+
   const COLORS = ['#03A5C0', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
   useEffect(() => {
@@ -76,6 +99,7 @@ export default function Analytics({ isPublished, isDark, gaPropertyId, websiteId
 
   const handleConfigSuccess = (propertyId: string, measurementId: string) => {
     setLocalGaPropertyId(propertyId);
+    setShowConfigDialog(false);
   };
 
   if (!isPublished) {
