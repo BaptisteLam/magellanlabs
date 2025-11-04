@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Download, Paperclip } from "lucide-react";
+import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Download, Paperclip, BarChart3 } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
 import JSZip from "jszip";
@@ -17,6 +17,7 @@ import { FileTabs } from "@/components/CodeEditor/FileTabs";
 import { MonacoEditor } from "@/components/CodeEditor/MonacoEditor";
 import PromptBar from "@/components/PromptBar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import Analytics from "@/components/Analytics";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -35,7 +36,7 @@ export default function BuilderSession() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [websiteTitle, setWebsiteTitle] = useState('');
-  const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
+  const [viewMode, setViewMode] = useState<'preview' | 'code' | 'analytics'>('preview');
   const [sessionLoading, setSessionLoading] = useState(true);
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1016,6 +1017,15 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
               <Code2 className="w-3 h-3 mr-1" />
               Code
             </Button>
+            <Button
+              variant="iconOnly"
+              size="sm"
+              className={`h-7 px-2 text-xs ${viewMode === 'analytics' ? 'text-[#03A5C0]' : ''}`}
+              onClick={() => setViewMode('analytics')}
+            >
+              <BarChart3 className="w-3 h-3 mr-1" />
+              Analytics
+            </Button>
           </div>
 
           <div className="h-6 w-px bg-slate-300" />
@@ -1202,6 +1212,8 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
             <div className="h-full w-full flex flex-col">
               {viewMode === 'preview' ? (
                 <VitePreview projectFiles={projectFiles} isDark={isDark} />
+              ) : viewMode === 'analytics' ? (
+                <Analytics isPublished={!!deployedUrl} isDark={isDark} />
               ) : (
                 <div className="h-full flex bg-white">
                   {/* TreeView - 20% */}
