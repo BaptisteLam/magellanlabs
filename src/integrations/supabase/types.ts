@@ -29,6 +29,7 @@ export type Database = {
           title: string | null
           updated_at: string
           user_id: string
+          website_id: string | null
         }
         Insert: {
           cloudflare_deployment_url?: string | null
@@ -44,6 +45,7 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id: string
+          website_id?: string | null
         }
         Update: {
           cloudflare_deployment_url?: string | null
@@ -59,8 +61,17 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id?: string
+          website_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "build_sessions_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "websites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

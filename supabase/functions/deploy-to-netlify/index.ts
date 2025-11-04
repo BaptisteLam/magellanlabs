@@ -195,12 +195,18 @@ serve(async (req) => {
     // Check if website entry already exists for this session
     const { data: existingWebsite } = await supabaseAdmin
       .from('websites')
-      .select('id')
+      .select('id, ga_measurement_id')
       .eq('user_id', user.id)
       .eq('title', session.title)
       .maybeSingle();
     
+    let websiteId: string;
+    let measurementId: string | null = null;
+    
     if (existingWebsite) {
+      websiteId = existingWebsite.id;
+      measurementId = existingWebsite.ga_measurement_id;
+      
       // Update existing entry
       const { error: websiteUpdateError } = await supabaseAdmin
         .from('websites')
@@ -219,7 +225,7 @@ serve(async (req) => {
       }
     } else {
       // Create new website entry
-      const { error: websiteInsertError } = await supabaseAdmin
+      const { data: newWebsite, error: websiteInsertError } = await supabaseAdmin
         .from('websites')
         .insert({
           user_id: user.id,
@@ -227,12 +233,97 @@ serve(async (req) => {
           netlify_url: deploymentUrl,
           netlify_site_id: siteId,
           html_content: htmlContent,
-        });
+        })
+        .select('id')
+        .single();
       
-      if (websiteInsertError) {
+      if (websiteInsertError || !newWebsite) {
         console.error('⚠️ Failed to create website:', websiteInsertError);
+        websiteId = '';
       } else {
         console.log('✅ Website entry created');
+        websiteId = newWebsite.id;
+      }
+    }
+    
+    // Link build_session to website
+    if (websiteId) {
+      const { error: linkError } = await supabaseAdmin
+        .from('build_sessions')
+        .update({ website_id: websiteId })
+        .eq('id', sessionId);
+      
+      if (linkError) {
+        console.error('⚠️ Failed to link session to website:', linkError);
+      } else {
+        console.log('✅ Session linked to website');
+      }
+    }
+    
+    // Inject GA4 tracking script if measurement ID exists
+    if (measurementId && htmlContent) {
+      console.log('📊 Injecting GA4 tracking script...');
+      
+      const gaScript = `
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=${measurementId}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '${measurementId}');
+</script>`;
+      
+      // Find the HTML file and inject GA4 script
+      const htmlFileIndex = projectFiles.findIndex((f: ProjectFile) => f.name === 'index.html');
+      if (htmlFileIndex !== -1) {
+        const originalHtml = projectFiles[htmlFileIndex].content;
+        
+        // Inject script before closing </head> tag or at the beginning of <body>
+        let modifiedHtml = originalHtml;
+        if (originalHtml.includes('</head>')) {
+          modifiedHtml = originalHtml.replace('</head>', `${gaScript}\n</head>`);
+        } else if (originalHtml.includes('<body')) {
+          modifiedHtml = originalHtml.replace('<body', `${gaScript}\n<body`);
+        } else {
+          // If no head or body, add at the beginning
+          modifiedHtml = gaScript + '\n' + originalHtml;
+        }
+        
+        // Update the file content
+        projectFiles[htmlFileIndex].content = modifiedHtml;
+        
+        // Recreate ZIP with updated HTML
+        const newFilesMap: Record<string, Uint8Array> = {};
+        projectFiles.forEach((file: ProjectFile) => {
+          const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
+          
+          if (file.content.startsWith('data:')) {
+            const base64Data = file.content.split(',')[1];
+            const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+            newFilesMap[fileName] = binaryData;
+          } else {
+            newFilesMap[fileName] = new TextEncoder().encode(file.content);
+          }
+        });
+        
+        const newZipData = await createZip(newFilesMap);
+        
+        // Redeploy with GA4 script
+        const redeployResponse = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${NETLIFY_TOKEN}`,
+            'Content-Type': 'application/zip',
+          },
+          body: newZipData as unknown as BodyInit,
+        });
+        
+        if (redeployResponse.ok) {
+          console.log('✅ Redeployed with GA4 tracking');
+        } else {
+          console.error('⚠️ Failed to redeploy with GA4');
+        }
       }
     }
 
@@ -272,6 +363,7 @@ serve(async (req) => {
         success: true,
         url: deploymentUrl,
         siteId: siteId,
+        websiteId: websiteId || null,
         state: deployResult.state || 'ready',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

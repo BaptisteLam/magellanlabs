@@ -97,23 +97,22 @@ export default function BuilderSession() {
         .eq('id', sessionId)
         .single();
       
-      // Récupérer l'URL Netlify et GA property ID si ils existent
+      // Récupérer le websiteId lié à cette session
       const { data: websiteData } = await supabase
-        .from('websites')
-        .select('id, netlify_url, ga_property_id')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
+        .from('build_sessions')
+        .select('website_id, websites!inner(id, netlify_url, ga_property_id)')
+        .eq('id', sessionId)
         .maybeSingle();
       
-      if (websiteData) {
-        if (websiteData.netlify_url) {
-          setDeployedUrl(websiteData.netlify_url);
+      if (websiteData?.websites) {
+        const website = Array.isArray(websiteData.websites) ? websiteData.websites[0] : websiteData.websites;
+        if (website.netlify_url) {
+          setDeployedUrl(website.netlify_url);
         }
-        if (websiteData.ga_property_id) {
-          setGaPropertyId(websiteData.ga_property_id);
+        if (website.ga_property_id) {
+          setGaPropertyId(website.ga_property_id);
         }
-        setWebsiteId(websiteData.id);
+        setWebsiteId(website.id);
       }
 
       if (error) {
@@ -893,6 +892,11 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
 
       if (result.url) {
         setDeployedUrl(result.url);
+        
+        // Update websiteId if returned
+        if (result.websiteId) {
+          setWebsiteId(result.websiteId);
+        }
         
         // Afficher popup de succès (sans redirection)
         if (result.state === 'ready') {
