@@ -77,6 +77,10 @@ serve(async (req) => {
     }
 
     console.log('📦 Deploying project to Netlify...');
+    
+    // Get GA4 Measurement ID from environment
+    const GA_MEASUREMENT_ID = Deno.env.get('GA_MEASUREMENT_ID');
+    console.log('GA4 Measurement ID configured:', !!GA_MEASUREMENT_ID);
 
     // Get session data
     const { data: session, error: sessionError } = await supabaseAdmin
@@ -198,17 +202,15 @@ serve(async (req) => {
     // Check if website entry already exists for this session
     const { data: existingWebsite } = await supabaseAdmin
       .from('websites')
-      .select('id, ga_measurement_id')
+      .select('id')
       .eq('user_id', user.id)
       .eq('title', session.title)
       .maybeSingle();
     
     let websiteId: string;
-    let measurementId: string | null = null;
     
     if (existingWebsite) {
       websiteId = existingWebsite.id;
-      measurementId = existingWebsite.ga_measurement_id;
       
       // Update existing entry
       const { error: websiteUpdateError } = await supabaseAdmin
@@ -263,18 +265,24 @@ serve(async (req) => {
       }
     }
     
-    // Inject GA4 tracking script if measurement ID exists
-    if (measurementId && htmlContent) {
+    // Inject GA4 tracking script if measurement ID is configured
+    if (GA_MEASUREMENT_ID && htmlContent) {
       console.log('📊 Injecting GA4 tracking script...');
       
       const gaScript = `
 <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=${measurementId}"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', '${measurementId}');
+  gtag('config', '${GA_MEASUREMENT_ID}', {
+    'page_path': window.location.pathname,
+    'custom_map': {'dimension1': 'hostname'}
+  });
+  gtag('event', 'page_view', {
+    'hostname': window.location.hostname
+  });
 </script>`;
       
       // Find the HTML file and inject GA4 script
