@@ -177,6 +177,28 @@ serve(async (req) => {
 
     console.log('✅ Deployment successful:', deploymentUrl);
 
+    // Generate screenshot after deployment
+    console.log('📸 Generating screenshot...');
+    try {
+      // Wait 3 seconds for the site to be fully deployed
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      const { data: screenshotData, error: screenshotError } = await supabaseAdmin.functions.invoke('generate-screenshot', {
+        body: {
+          url: deploymentUrl,
+          sessionId: sessionId,
+        },
+      });
+
+      if (screenshotError) {
+        console.error('⚠️ Screenshot generation failed:', screenshotError);
+      } else {
+        console.log('✅ Screenshot generated:', screenshotData?.thumbnailUrl);
+      }
+    } catch (screenshotErr) {
+      console.error('⚠️ Screenshot error:', screenshotErr);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
