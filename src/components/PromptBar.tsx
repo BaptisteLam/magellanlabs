@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import TextType from '@/components/ui/TextType';
 import { useState, useRef } from 'react';
 import { useThemeStore } from '@/stores/themeStore';
+import claudeLogo from '@/assets/claude-logo.png';
+import xaiLogo from '@/assets/xai-logo.png';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -196,12 +198,32 @@ const PromptBar = ({
                           <Settings className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-popover">
-                        <DropdownMenuItem onClick={() => setSelectedModel('sonnet')}>
-                          Claude Sonnet (Recommandé)
+                      <DropdownMenuContent 
+                        className="min-w-[200px] z-50 overflow-hidden rounded-md border shadow-md"
+                        style={{
+                          backgroundColor: isDark ? 'hsl(var(--card))' : '#ffffff',
+                          borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
+                        }}
+                      >
+                        <DropdownMenuItem 
+                          onClick={() => setSelectedModel('sonnet')}
+                          className="flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors"
+                          style={{
+                            color: isDark ? 'hsl(var(--foreground))' : '#334155',
+                          }}
+                        >
+                          <img src={claudeLogo} alt="Claude" className="w-4 h-4" />
+                          <span>Claude Sonnet 4.5</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setSelectedModel('grok')}>
-                          Grok 2
+                        <DropdownMenuItem 
+                          onClick={() => setSelectedModel('grok')}
+                          className="flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors"
+                          style={{
+                            color: isDark ? 'hsl(var(--foreground))' : '#334155',
+                          }}
+                        >
+                          <img src={xaiLogo} alt="XAI" className="w-4 h-4" />
+                          <span>Grok Code Fast 1</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
