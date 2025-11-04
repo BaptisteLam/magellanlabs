@@ -37,6 +37,7 @@ interface Project {
   url?: string | null;
   type: ProjectType;
   thumbnail?: string;
+  netlify_site_id?: string | null;
 }
 
 export default function Dashboard() {
@@ -86,7 +87,7 @@ export default function Dashboard() {
       const [websitesResult, sessionsResult] = await Promise.all([
         supabase
           .from("websites")
-          .select("id, title, netlify_url, created_at, html_content, thumbnail_url")
+          .select("id, title, netlify_url, created_at, html_content, thumbnail_url, netlify_site_id")
           .order("created_at", { ascending: false }),
         supabase
           .from("build_sessions")
@@ -106,6 +107,7 @@ export default function Dashboard() {
         url: w.netlify_url,
         type: getProjectType(w.html_content),
         thumbnail: w.thumbnail_url,
+        netlify_site_id: w.netlify_site_id,
       }));
 
       const draftProjects: Project[] = (sessionsResult.data || []).map(s => {
@@ -315,11 +317,22 @@ export default function Dashboard() {
                         variant="outline"
                         className="flex-1 transition-colors hover:bg-[#03A5C0] hover:text-white hover:border-[#03A5C0]"
                         size="sm"
-                        onClick={() => {
+                        onClick={async () => {
                           if (project.status === 'draft') {
                             navigate(`/builder/${project.id}`);
                           } else {
-                            toast.info("Édition des sites publiés bientôt disponible");
+                            // Pour les sites publiés, trouver le build_session correspondant
+                            const { data: sessions } = await supabase
+                              .from('build_sessions')
+                              .select('id')
+                              .eq('netlify_site_id', (project as any).netlify_site_id)
+                              .single();
+                            
+                            if (sessions?.id) {
+                              navigate(`/builder/${sessions.id}`);
+                            } else {
+                              toast.error("Session introuvable");
+                            }
                           }
                         }}
                       >
