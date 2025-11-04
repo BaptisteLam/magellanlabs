@@ -91,8 +91,8 @@ export default function Dashboard() {
           .order("created_at", { ascending: false }),
         supabase
           .from("build_sessions")
-          .select("id, title, created_at, updated_at, project_files, project_type, thumbnail_url, netlify_deployment_url")
-          .is("netlify_deployment_url", null)
+          .select("id, title, created_at, updated_at, project_files, project_type, thumbnail_url, website_id")
+          .is("website_id", null)
           .order("updated_at", { ascending: false })
       ]);
 
@@ -322,14 +322,14 @@ export default function Dashboard() {
                             navigate(`/builder/${project.id}`);
                           } else {
                             // Pour les sites publiés, trouver le build_session correspondant
-                            const { data: sessions } = await supabase
+                            const { data: session } = await supabase
                               .from('build_sessions')
                               .select('id')
-                              .eq('netlify_site_id', (project as any).netlify_site_id)
-                              .single();
+                              .eq('website_id', project.id)
+                              .maybeSingle();
                             
-                            if (sessions?.id) {
-                              navigate(`/builder/${sessions.id}`);
+                            if (session?.id) {
+                              navigate(`/builder/${session.id}`);
                             } else {
                               toast.error("Session introuvable");
                             }
