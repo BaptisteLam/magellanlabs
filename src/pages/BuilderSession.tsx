@@ -52,6 +52,8 @@ export default function BuilderSession() {
   const [isHoveringFavicon, setIsHoveringFavicon] = useState(false);
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const [currentFavicon, setCurrentFavicon] = useState<string | null>(null);
+  const [gaPropertyId, setGaPropertyId] = useState<string | null>(null);
+  const [websiteId, setWebsiteId] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -95,17 +97,23 @@ export default function BuilderSession() {
         .eq('id', sessionId)
         .single();
       
-      // Récupérer l'URL Netlify si elle existe
+      // Récupérer l'URL Netlify et GA property ID si ils existent
       const { data: websiteData } = await supabase
         .from('websites')
-        .select('netlify_url')
+        .select('id, netlify_url, ga_property_id')
         .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       
-      if (websiteData?.netlify_url) {
-        setDeployedUrl(websiteData.netlify_url);
+      if (websiteData) {
+        if (websiteData.netlify_url) {
+          setDeployedUrl(websiteData.netlify_url);
+        }
+        if (websiteData.ga_property_id) {
+          setGaPropertyId(websiteData.ga_property_id);
+        }
+        setWebsiteId(websiteData.id);
       }
 
       if (error) {
@@ -1213,7 +1221,12 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
               {viewMode === 'preview' ? (
                 <VitePreview projectFiles={projectFiles} isDark={isDark} />
               ) : viewMode === 'analytics' ? (
-                <Analytics isPublished={!!deployedUrl} isDark={isDark} />
+                <Analytics 
+                  isPublished={!!deployedUrl} 
+                  isDark={isDark} 
+                  gaPropertyId={gaPropertyId || undefined}
+                  websiteId={websiteId || undefined}
+                />
               ) : (
                 <div className="h-full flex bg-white">
                   {/* TreeView - 20% */}

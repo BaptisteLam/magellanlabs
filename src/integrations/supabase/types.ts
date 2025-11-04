@@ -130,6 +130,8 @@ export type Database = {
           cloudflare_project_name: string | null
           cloudflare_url: string | null
           created_at: string | null
+          ga_measurement_id: string | null
+          ga_property_id: string | null
           html_content: string
           id: string
           netlify_site_id: string | null
@@ -143,6 +145,8 @@ export type Database = {
           cloudflare_project_name?: string | null
           cloudflare_url?: string | null
           created_at?: string | null
+          ga_measurement_id?: string | null
+          ga_property_id?: string | null
           html_content: string
           id?: string
           netlify_site_id?: string | null
@@ -156,6 +160,8 @@ export type Database = {
           cloudflare_project_name?: string | null
           cloudflare_url?: string | null
           created_at?: string | null
+          ga_measurement_id?: string | null
+          ga_property_id?: string | null
           html_content?: string
           id?: string
           netlify_site_id?: string | null
