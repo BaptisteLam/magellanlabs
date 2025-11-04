@@ -8,6 +8,7 @@ import { ExternalLink, Trash2, Edit, Monitor, Globe, Smartphone, LayoutDashboard
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { useThemeStore } from '@/stores/themeStore';
 
 interface Website {
   id: string;
@@ -40,6 +41,7 @@ interface Project {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { isDark } = useThemeStore();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState("");
@@ -157,11 +159,11 @@ export default function Dashboard() {
   return (
     <>
       <Header />
-      <div className="relative min-h-screen pt-20 pb-12" style={{ backgroundColor: '#ffffff' }}>
-        {/* Grid background - same as home page */}
+      <div className={`relative min-h-screen pt-20 pb-12 transition-colors ${isDark ? 'bg-[#1F1F20]' : 'bg-white'}`}>
+        {/* Grid background */}
         <div className="absolute inset-0" 
              style={{ 
-               backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
+               backgroundImage: `linear-gradient(${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(148, 163, 184, 0.15)'} 1px, transparent 1px), linear-gradient(90deg, ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(148, 163, 184, 0.15)'} 1px, transparent 1px)`,
                backgroundSize: '80px 80px'
              }} 
         />
@@ -169,18 +171,17 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 max-w-6xl relative z-10">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-4xl font-bold text-black">
+              <h1 className={`text-4xl font-bold ${isDark ? 'text-white' : 'text-black'}`}>
                 Mes projets
               </h1>
-              <p className="text-slate-600 mt-2">{userEmail}</p>
+              <p className={`mt-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{userEmail}</p>
             </div>
             <div className="flex gap-2">
               <Button 
                 onClick={() => navigate("/builder")} 
                 variant="ghost"
-                className="text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2"
+                className={`text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2 ${isDark ? 'text-white' : 'text-black'}`}
                 style={{ 
-                  color: '#000000',
                   borderColor: 'transparent'
                 }}
                 onMouseEnter={(e) => {
@@ -189,7 +190,7 @@ export default function Dashboard() {
                   e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#000000';
+                  e.currentTarget.style.color = isDark ? '#ffffff' : '#000000';
                   e.currentTarget.style.borderColor = 'transparent';
                   e.currentTarget.style.backgroundColor = 'transparent';
                 }}
@@ -201,12 +202,12 @@ export default function Dashboard() {
 
           {loading ? (
             <div className="text-center py-12">
-              <p className="text-slate-600">Chargement...</p>
+              <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>Chargement...</p>
             </div>
           ) : projects.length === 0 ? (
-            <Card>
+            <Card className={isDark ? 'bg-slate-800 border-slate-700' : ''}>
               <CardContent className="py-12 text-center">
-                <p className="text-slate-600 mb-4">Aucun projet pour le moment</p>
+                <p className={`mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Aucun projet pour le moment</p>
                 <Button onClick={() => navigate("/builder")}>
                   Créer votre premier projet
                 </Button>
@@ -215,9 +216,9 @@ export default function Dashboard() {
           ) : (
             <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {projects.map((project) => (
-                <Card key={project.id} className="hover:shadow-lg transition-shadow relative overflow-hidden">
+                <Card key={project.id} className={`hover:shadow-lg transition-shadow relative overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : ''}`}>
                   {/* Type icon in corner */}
-                  <div className="absolute top-3 right-3 z-10 bg-background/80 backdrop-blur-sm p-2 rounded-lg">
+                  <div className={`absolute top-3 right-3 z-10 backdrop-blur-sm p-2 rounded-lg ${isDark ? 'bg-slate-700/80' : 'bg-background/80'}`}>
                     {getProjectIcon(project.type)}
                   </div>
 
