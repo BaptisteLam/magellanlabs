@@ -90,17 +90,17 @@ export default function BuilderSession() {
         .eq('id', sessionId)
         .single();
       
-      // Récupérer l'URL Cloudflare si elle existe
+      // Récupérer l'URL Netlify si elle existe
       const { data: websiteData } = await supabase
         .from('websites')
-        .select('cloudflare_url')
+        .select('netlify_url')
         .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
       
-      if (websiteData?.cloudflare_url) {
-        setDeployedUrl(websiteData.cloudflare_url);
+      if (websiteData?.netlify_url) {
+        setDeployedUrl(websiteData.netlify_url);
       }
 
       if (error) {
@@ -783,9 +783,9 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
         };
       });
 
-      sonnerToast.info("Déploiement sur Cloudflare Pages...");
+      sonnerToast.info("Déploiement sur Netlify...");
       
-      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-cloudflare`, {
+      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-netlify`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -800,8 +800,7 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
       const result = await deployRes.json();
       
       if (!deployRes.ok) {
-        const errorText = await deployRes.text();
-        throw new Error(`Erreur de déploiement: ${errorText}`);
+        throw new Error(result?.error || 'Erreur de déploiement');
       }
       
       if (!result?.success) {
@@ -810,8 +809,19 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
 
       if (result.url) {
         setDeployedUrl(result.url);
-        sonnerToast.success("✅ Site publié sur Cloudflare Pages !");
-        sonnerToast.info(`URL: ${result.url}`, { duration: 10000 });
+        
+        // Afficher popup de succès
+        if (result.state === 'ready') {
+          sonnerToast.success("✅ Site en ligne", {
+            description: result.url,
+            duration: 10000,
+          });
+        } else {
+          sonnerToast.info(`Déploiement en cours (${result.state})`, {
+            description: result.url,
+            duration: 8000,
+          });
+        }
         
         // Rediriger vers le dashboard
         setTimeout(() => {

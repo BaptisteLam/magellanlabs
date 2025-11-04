@@ -12,7 +12,7 @@ import Footer from "@/components/layout/Footer";
 interface Website {
   id: string;
   title: string;
-  cloudflare_url: string | null;
+  netlify_url: string | null;
   created_at: string;
   html_content?: string;
 }
@@ -82,7 +82,7 @@ export default function Dashboard() {
       const [websitesResult, sessionsResult] = await Promise.all([
         supabase
           .from("websites")
-          .select("id, title, cloudflare_url, created_at, html_content, thumbnail_url")
+          .select("id, title, netlify_url, created_at, html_content, thumbnail_url")
           .order("created_at", { ascending: false }),
         supabase
           .from("build_sessions")
@@ -98,7 +98,7 @@ export default function Dashboard() {
         title: w.title,
         created_at: w.created_at,
         status: 'published' as const,
-        url: w.cloudflare_url,
+        url: w.netlify_url,
         type: getProjectType(w.html_content),
         thumbnail: w.thumbnail_url,
       }));

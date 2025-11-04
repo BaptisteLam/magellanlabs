@@ -496,7 +496,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
             <DialogHeader>
               <DialogTitle>Enregistrer votre site</DialogTitle>
               <DialogDescription>
-                Votre site sera déployé sur Cloudflare et enregistré dans votre dashboard
+                Votre site sera déployé sur Netlify et enregistré dans votre dashboard
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">

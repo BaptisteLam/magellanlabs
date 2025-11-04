@@ -6,7 +6,7 @@ verify_jwt = false
 [functions.claude]
 verify_jwt = false
 
-[functions.deploy-to-cloudflare]
+[functions.deploy-to-netlify]
 verify_jwt = true
 
 [functions.html-to-react]
