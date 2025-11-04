@@ -21,6 +21,8 @@ export type Database = {
           created_at: string
           id: string
           messages: Json | null
+          netlify_deployment_url: string | null
+          netlify_site_id: string | null
           project_files: Json | null
           project_type: string | null
           thumbnail_url: string | null
@@ -34,6 +36,8 @@ export type Database = {
           created_at?: string
           id?: string
           messages?: Json | null
+          netlify_deployment_url?: string | null
+          netlify_site_id?: string | null
           project_files?: Json | null
           project_type?: string | null
           thumbnail_url?: string | null
@@ -47,6 +51,8 @@ export type Database = {
           created_at?: string
           id?: string
           messages?: Json | null
+          netlify_deployment_url?: string | null
+          netlify_site_id?: string | null
           project_files?: Json | null
           project_type?: string | null
           thumbnail_url?: string | null
@@ -126,6 +132,8 @@ export type Database = {
           created_at: string | null
           html_content: string
           id: string
+          netlify_site_id: string | null
+          netlify_url: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string | null
@@ -137,6 +145,8 @@ export type Database = {
           created_at?: string | null
           html_content: string
           id?: string
+          netlify_site_id?: string | null
+          netlify_url?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string | null
@@ -148,6 +158,8 @@ export type Database = {
           created_at?: string | null
           html_content?: string
           id?: string
+          netlify_site_id?: string | null
+          netlify_url?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string | null
