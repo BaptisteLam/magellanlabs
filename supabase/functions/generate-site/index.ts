@@ -283,7 +283,7 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
-        max_tokens: 8000,
+        max_tokens: 16000,
         stream: true,
         messages: [
           { role: 'system', content: systemPrompt },
