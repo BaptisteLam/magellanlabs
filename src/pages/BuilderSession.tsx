@@ -928,8 +928,8 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
           </Button>
         </div>
 
-        {/* Barre URL - au centre, rétrécie de 35% */}
-        <div className="absolute left-[35%] right-[35%] flex items-center gap-2 px-3 py-1.5 rounded-md border" style={{
+        {/* Barre URL - repositionnée à gauche et rétrécie */}
+        <div className="absolute left-[30%] right-[43%] flex items-center gap-2 px-3 py-1.5 rounded-md border" style={{
           backgroundColor: isDark ? '#181818' : '#ffffff',
           borderColor: isDark ? '#333' : '#e2e8f0'
         }}>
