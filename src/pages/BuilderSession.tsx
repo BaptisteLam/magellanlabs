@@ -50,6 +50,7 @@ export default function BuilderSession() {
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
   const [isHoveringFavicon, setIsHoveringFavicon] = useState(false);
   const faviconInputRef = useRef<HTMLInputElement>(null);
+  const [currentFavicon, setCurrentFavicon] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -262,6 +263,9 @@ export default function BuilderSession() {
       });
 
       const base64 = await base64Promise;
+      
+      // Stocker le favicon pour l'affichage
+      setCurrentFavicon(base64);
       
       // Déterminer l'extension
       const extension = file.type.split('/')[1];
@@ -924,8 +928,8 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
           </Button>
         </div>
 
-        {/* Barre URL - au centre, plus longue */}
-        <div className="absolute left-[30%] right-[30%] flex items-center gap-2 px-3 py-1.5 rounded-md border" style={{
+        {/* Barre URL - au centre, rétrécie de 35% */}
+        <div className="absolute left-[35%] right-[35%] flex items-center gap-2 px-3 py-1.5 rounded-md border" style={{
           backgroundColor: isDark ? '#181818' : '#ffffff',
           borderColor: isDark ? '#333' : '#e2e8f0'
         }}>
@@ -943,7 +947,9 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
             className="flex-shrink-0 hover:text-[#03A5C0] transition-colors cursor-pointer bg-transparent border-0 p-0"
             title="Changer le favicon"
           >
-            {isHoveringFavicon ? (
+            {currentFavicon ? (
+              <img src={currentFavicon} alt="favicon" className="w-4 h-4 object-contain" />
+            ) : isHoveringFavicon ? (
               <Paperclip className="w-4 h-4" />
             ) : (
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
