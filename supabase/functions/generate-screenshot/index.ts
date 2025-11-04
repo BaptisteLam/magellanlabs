@@ -54,10 +54,9 @@ serve(async (req) => {
     const screenshotUrl = new URL('https://api.apiflash.com/v1/urltoimage');
     screenshotUrl.searchParams.set('access_key', APIFLASH_ACCESS_KEY);
     screenshotUrl.searchParams.set('url', url || 'https://example.com');
-    screenshotUrl.searchParams.set('format', 'jpeg');
-    screenshotUrl.searchParams.set('width', '1200');
-    screenshotUrl.searchParams.set('height', '630');
-    screenshotUrl.searchParams.set('quality', '80');
+    screenshotUrl.searchParams.set('format', 'webp');
+    screenshotUrl.searchParams.set('width', '800');
+    screenshotUrl.searchParams.set('height', '600');
     screenshotUrl.searchParams.set('delay', '2');
 
     // Télécharger le screenshot
@@ -69,12 +68,41 @@ serve(async (req) => {
     const screenshotBlob = await screenshotResponse.blob();
     const screenshotBuffer = await screenshotBlob.arrayBuffer();
 
+    // Supprimer l'ancien screenshot s'il existe
+    if (sessionId) {
+      const { data: existingSession } = await supabaseClient
+        .from('build_sessions')
+        .select('thumbnail_url')
+        .eq('id', sessionId)
+        .single();
+      
+      if (existingSession?.thumbnail_url) {
+        const oldFileName = existingSession.thumbnail_url.split('/').pop();
+        if (oldFileName) {
+          await supabaseClient.storage.from('screenshots').remove([oldFileName]);
+        }
+      }
+    } else if (websiteId) {
+      const { data: existingWebsite } = await supabaseClient
+        .from('websites')
+        .select('thumbnail_url')
+        .eq('id', websiteId)
+        .single();
+      
+      if (existingWebsite?.thumbnail_url) {
+        const oldFileName = existingWebsite.thumbnail_url.split('/').pop();
+        if (oldFileName) {
+          await supabaseClient.storage.from('screenshots').remove([oldFileName]);
+        }
+      }
+    }
+
     // Uploader vers Supabase Storage
-    const fileName = `${sessionId || websiteId || 'screenshot'}_${Date.now()}.jpg`;
+    const fileName = `${sessionId || websiteId || 'screenshot'}_${Date.now()}.webp`;
     const { data: uploadData, error: uploadError } = await supabaseClient.storage
       .from('screenshots')
       .upload(fileName, screenshotBuffer, {
-        contentType: 'image/jpeg',
+        contentType: 'image/webp',
         upsert: true,
       });
 
