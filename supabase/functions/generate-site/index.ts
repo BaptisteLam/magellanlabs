@@ -141,8 +141,8 @@ serve(async (req) => {
     }
 
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
+      Deno.env.get('MAGELLAN_URL') || 'https://qpqsmryanrlrqczerlig.supabase.co',
+      Deno.env.get('MAGELLAN_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     );
 

@@ -24,8 +24,8 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     
     // Try to authenticate with the token (could be user JWT or service role key)
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('MAGELLAN_URL') || 'https://qpqsmryanrlrqczerlig.supabase.co';
+    const supabaseServiceKey = Deno.env.get('MAGELLAN_SERVICE_ROLE_KEY')!;
     
     // Create admin client to verify the token
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);

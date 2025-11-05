@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { BarChart3, Globe, FileText, Smartphone, Clock, Settings } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/magellan/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
