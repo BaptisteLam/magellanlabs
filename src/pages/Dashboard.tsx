@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/magellan/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ExternalLink, Trash2, Edit, Monitor, Globe, Smartphone, LayoutDashboard, Pencil, Database } from "lucide-react";
+import { ExternalLink, Trash2, Edit, Monitor, Globe, Smartphone, LayoutDashboard, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -48,7 +48,6 @@ export default function Dashboard() {
   const [userEmail, setUserEmail] = useState("");
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
-  const [migrating, setMigrating] = useState(false);
 
   const getProjectType = (htmlContent?: string): ProjectType => {
     if (!htmlContent) return 'website';
@@ -195,51 +194,6 @@ export default function Dashboard() {
     setEditingTitle("");
   };
 
-  const handleMigration = async () => {
-    if (!confirm("Voulez-vous migrer toutes vos données vers Supabase Magellan ? Cette opération peut prendre quelques minutes.")) {
-      return;
-    }
-
-    setMigrating(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Session expirée");
-        return;
-      }
-
-      const response = await fetch(
-        'https://mtmroennrczdcaasrilw.supabase.co/functions/v1/migrate-to-magellan',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success(
-          `Migration réussie ! ${result.stats.profiles} profil(s), ${result.stats.projects} projet(s), ${result.stats.build_sessions} session(s), ${result.stats.websites} site(s), ${result.stats.screenshots} screenshot(s)`
-        );
-        if (result.stats.errors.length > 0) {
-          console.warn('Erreurs de migration:', result.stats.errors);
-        }
-        loadProjects();
-      } else {
-        toast.error(`Erreur de migration: ${result.error}`);
-      }
-    } catch (error: any) {
-      toast.error("Erreur lors de la migration");
-      console.error(error);
-    } finally {
-      setMigrating(false);
-    }
-  };
-
   return (
     <>
       <Header />
@@ -261,30 +215,6 @@ export default function Dashboard() {
               <p className={`mt-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{userEmail}</p>
             </div>
             <div className="flex gap-2">
-              <Button 
-                onClick={handleMigration}
-                disabled={migrating}
-                variant="outline"
-                className={`text-sm gap-2 transition-all hover:border hover:backdrop-blur-sm rounded-full px-4 py-2 ${isDark ? 'text-white' : 'text-black'}`}
-                style={{ 
-                  borderColor: 'transparent'
-                }}
-                onMouseEnter={(e) => {
-                  if (!migrating) {
-                    e.currentTarget.style.color = '#03A5C0';
-                    e.currentTarget.style.borderColor = 'rgba(3, 165, 192, 0.3)';
-                    e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = isDark ? '#ffffff' : '#000000';
-                  e.currentTarget.style.borderColor = 'transparent';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <Database className="w-4 h-4" />
-                {migrating ? 'Migration...' : 'Migrer vers Magellan'}
-              </Button>
               <Button 
                 onClick={() => navigate("/builder")} 
                 variant="ghost"
