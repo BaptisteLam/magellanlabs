@@ -481,17 +481,24 @@ export default function BuilderSession() {
                 const updatedFiles = { ...projectFiles };
 
                 for (const diff of diffs) {
-                  if (diff.change_type === 'full' && diff.full_content) {
-                    updatedFiles[diff.file] = diff.full_content;
-                    if (diff.file === 'index.html') {
-                      setGeneratedHtml(diff.full_content);
+                  const filePath = diff.path;
+                  const diffContent = diff.diff;
+                  
+                  if (!filePath || !diffContent) continue;
+                  
+                  // Appliquer le diff avec AiDiffService
+                  const { AiDiffService } = await import('@/services/aiDiffService');
+                  const currentContent = updatedFiles[filePath] || '';
+                  
+                  try {
+                    const updatedContent = AiDiffService.applyDiff(currentContent, diffContent);
+                    updatedFiles[filePath] = updatedContent;
+                    
+                    if (filePath === 'index.html') {
+                      setGeneratedHtml(updatedContent);
                     }
-                  } else if (diff.change_type === 'replace' && diff.old_text && diff.new_text) {
-                    const currentContent = updatedFiles[diff.file] || '';
-                    updatedFiles[diff.file] = currentContent.replace(diff.old_text, diff.new_text);
-                    if (diff.file === 'index.html') {
-                      setGeneratedHtml(updatedFiles[diff.file]);
-                    }
+                  } catch (error) {
+                    console.error(`Erreur application diff sur ${filePath}:`, error);
                   }
                 }
 
