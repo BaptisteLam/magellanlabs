@@ -68,24 +68,30 @@ serve(async (req) => {
       })
       .join('\n\n---\n\n');
 
-    // PROMPT OPTIMISÉ POUR DIFFS
-    const systemPrompt = `You are a code diff expert. Generate ONLY unified diffs, never full files.
+    // PROMPT OPTIMISÉ : réponse conversationnelle + diffs
+    const systemPrompt = `You are a helpful web development assistant. When the user asks for code changes:
+
+1. First, provide a brief conversational response (1-2 sentences) explaining what you're doing
+2. Then, generate ONLY minimal unified diffs for the changes
+
+FORMAT:
+[Your conversational response here]
+
+FILE: path/to/file.tsx
+DIFF:
+@@ -10,3 +10,4 @@
+ unchanged line
+-old line
++new line
+ unchanged line
+END_DIFF
 
 CRITICAL RULES:
-1. Return ONLY the minimal changes needed
-2. Use unified diff format:
-   FILE: path/to/file.tsx
-   DIFF:
-   @@ -10,3 +10,4 @@
-    unchanged line
-   -old line
-   +new line
-    unchanged line
-   END_DIFF
-
-3. Include 2-3 lines of context before/after changes
-4. NEVER regenerate entire files
-5. Be surgical: change only what's requested`;
+- Keep conversational response SHORT (max 2 sentences)
+- Use unified diff format for code changes
+- Include 2-3 lines of context before/after changes
+- NEVER regenerate entire files
+- Be surgical: change only what's requested`;
 
     // Streaming optimisé
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -139,6 +145,8 @@ CRITICAL RULES:
 
         const decoder = new TextDecoder();
         let fullResponse = '';
+        let conversationalResponse = '';
+        let inDiffSection = false;
         
         try {
           while (true) {
@@ -161,11 +169,19 @@ CRITICAL RULES:
 
                 fullResponse += delta;
                 
-                // Stream chaque token
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'delta',
-                  data: { content: delta }
-                })}\n\n`));
+                // Détecter si on est dans la section conversationnelle ou diff
+                if (delta.includes('FILE:') || delta.includes('DIFF:')) {
+                  inDiffSection = true;
+                }
+                
+                // Stream la partie conversationnelle seulement
+                if (!inDiffSection) {
+                  conversationalResponse += delta;
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'message',
+                    content: delta
+                  })}\n\n`));
+                }
               } catch (e) {
                 console.error('[modify-site] Parse error:', e);
               }
@@ -220,10 +236,13 @@ CRITICAL RULES:
             })();
           }
 
-          // Envoyer les diffs
+          // Envoyer les diffs + message conversationnel
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'complete',
-            data: { diffs }
+            data: { 
+              diffs,
+              message: conversationalResponse.trim()
+            }
           })}\n\n`));
           
           controller.close();

@@ -444,6 +444,7 @@ export default function BuilderSession() {
         const decoder = new TextDecoder('utf-8');
         let streamBuffer = '';
         const modifiedFiles: Set<string> = new Set();
+        let assistantMessage = '';
 
         // STREAMING TOKEN-BY-TOKEN
         while (true) {
@@ -462,9 +463,15 @@ export default function BuilderSession() {
             try {
               const event = JSON.parse(dataStr);
               
-              if (event.type === 'token') {
-                // Affichage token par token dans le chat
-                streamBuffer += event.content;
+              if (event.type === 'message') {
+                // Réponse conversationnelle streamée
+                assistantMessage += event.content;
+                setMessages(prev => {
+                  const withoutLastAssistant = prev.filter((m, i) => 
+                    !(i === prev.length - 1 && m.role === 'assistant')
+                  );
+                  return [...withoutLastAssistant, { role: 'assistant' as const, content: assistantMessage }];
+                });
               } else if (event.type === 'file_detected') {
                 const filePath = event.data.path;
                 modifiedFiles.add(filePath);
@@ -500,10 +507,11 @@ export default function BuilderSession() {
                         path.endsWith('.js') ? 'javascript' : 'text'
                 }));
 
-                const modifiedCount = modifiedFiles.size;
-                const assistantMessage = `✨ ${modifiedCount} fichier${modifiedCount > 1 ? 's modifié' : ' modifié'}${modifiedCount > 1 ? 's' : ''} avec succès !`;
+                // Utiliser le message conversationnel de l'IA ou un message par défaut
+                const finalMessage = event.data.message || assistantMessage || 
+                  `✨ ${modifiedFiles.size} fichier${modifiedFiles.size > 1 ? 's modifié' : ' modifié'}${modifiedFiles.size > 1 ? 's' : ''} !`;
                 
-                const updatedMessages = [...newMessages, { role: 'assistant' as const, content: assistantMessage }];
+                const updatedMessages = [...newMessages, { role: 'assistant' as const, content: finalMessage }];
                 setMessages(updatedMessages);
 
                 await supabase
