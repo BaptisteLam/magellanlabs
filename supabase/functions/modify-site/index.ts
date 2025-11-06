@@ -69,29 +69,27 @@ serve(async (req) => {
       .join('\n\n---\n\n');
 
     // PROMPT OPTIMISÉ : réponse conversationnelle + diffs
-    const systemPrompt = `You are a helpful web development assistant. When the user asks for code changes:
+    const systemPrompt = `Tu es un assistant de modification de code. Réponds en deux parties:
 
-1. First, provide a brief conversational response (1-2 sentences) explaining what you're doing
-2. Then, generate ONLY minimal unified diffs for the changes
+1. **Réponse courte** (1 phrase): Dis ce que tu vas faire
+2. **Actions XML**: Modifications précises
 
 FORMAT:
-[Your conversational response here]
+Je vais modifier X.
 
-FILE: path/to/file.tsx
-DIFF:
-@@ -10,3 +10,4 @@
- unchanged line
--old line
-+new line
- unchanged line
-END_DIFF
+<file path="src/App.tsx">
+<action type="replace" search="texte exact à trouver" content="nouveau texte" />
+</file>
 
-CRITICAL RULES:
-- Keep conversational response SHORT (max 2 sentences)
-- Use unified diff format for code changes
-- Include 2-3 lines of context before/after changes
-- NEVER regenerate entire files
-- Be surgical: change only what's requested`;
+TYPES:
+- replace: remplace du texte exact
+- insert-after: insère après une ligne
+- insert-before: insère avant une ligne
+
+RÈGLES:
+- search DOIT être EXACT (copie du code)
+- Inclure indentation dans search
+- Plusieurs actions possibles par fichier`;
 
     // Streaming optimisé
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -146,7 +144,7 @@ CRITICAL RULES:
         const decoder = new TextDecoder();
         let fullResponse = '';
         let conversationalResponse = '';
-        let inDiffSection = false;
+        let inXmlSection = false;
         
         try {
           while (true) {
@@ -169,13 +167,13 @@ CRITICAL RULES:
 
                 fullResponse += delta;
                 
-                // Détecter si on est dans la section conversationnelle ou diff
-                if (delta.includes('FILE:') || delta.includes('DIFF:')) {
-                  inDiffSection = true;
+                // Détecter XML
+                if (delta.includes('<file') || inXmlSection) {
+                  inXmlSection = true;
                 }
                 
-                // Stream la partie conversationnelle seulement
-                if (!inDiffSection) {
+                // Stream conversationnel
+                if (!inXmlSection) {
                   conversationalResponse += delta;
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                     type: 'message',
@@ -188,59 +186,35 @@ CRITICAL RULES:
             }
           }
 
-          // Parser les diffs
-          const diffRegex = /FILE:\s*(.+?)\s*DIFF:\s*([\s\S]+?)(?=FILE:|END_DIFF|$)/g;
-          const diffs: Array<{path: string, diff: string}> = [];
-          let match;
-
-          while ((match = diffRegex.exec(fullResponse)) !== null) {
-            const filePath = match[1].trim();
-            let diff = match[2].trim();
+          // Parser les actions XML
+          const actions: Array<{path: string, type: string, search?: string, content?: string}> = [];
+          const fileRegex = /<file path="([^"]+)">([\s\S]*?)<\/file>/g;
+          let fileMatch;
+          
+          while ((fileMatch = fileRegex.exec(fullResponse)) !== null) {
+            const path = fileMatch[1];
+            const fileContent = fileMatch[2];
             
-            // Nettoyer markdown
-            diff = diff.replace(/^```diff\n?/, '').replace(/\n?```$/, '').trim();
+            const actionRegex = /<action type="([^"]+)"(?:\s+search="([^"]*)")?(?:\s+content="([^"]*)")?\s*\/>/g;
+            let actionMatch;
             
-            diffs.push({ path: filePath, diff });
+            while ((actionMatch = actionRegex.exec(fileContent)) !== null) {
+              actions.push({
+                path,
+                type: actionMatch[1],
+                search: actionMatch[2]?.replace(/\\n/g, '\n').replace(/\\"/g, '"') || '',
+                content: actionMatch[3]?.replace(/\\n/g, '\n').replace(/\\"/g, '"') || ''
+              });
+            }
           }
 
-          console.log(`[modify-site] ✅ ${diffs.length} diffs generated`);
-          console.log(`[modify-site] 📊 Tokens saved: ~${Math.round((1 - fullResponse.length / (minimalContext.length * 2)) * 100)}%`);
+          console.log(`[modify-site] ✅ ${actions.length} actions generated`);
 
-          // Sauvegarder en arrière-plan (sans await)
-          if (sessionId && diffs.length > 0) {
-            (async () => {
-              try {
-                const { data } = await supabaseClient
-                  .from('build_sessions')
-                  .select('project_files')
-                  .eq('id', sessionId)
-                  .single();
-                
-                if (data?.project_files) {
-                  const updatedFiles = data.project_files.map((f: any) => {
-                    const fileDiff = diffs.find(d => d.path === f.path);
-                    if (!fileDiff) return f;
-                    
-                    // Appliquer le diff (simplifié - le client fera le vrai apply)
-                    return { ...f, needsUpdate: true, diff: fileDiff.diff };
-                  });
-                  
-                  await supabaseClient
-                    .from('build_sessions')
-                    .update({ project_files: updatedFiles })
-                    .eq('id', sessionId);
-                }
-              } catch (err) {
-                console.error('[modify-site] Save error:', err);
-              }
-            })();
-          }
-
-          // Envoyer les diffs + message conversationnel
+          // Envoyer les actions + message conversationnel
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'complete',
             data: { 
-              diffs,
+              actions,
               message: conversationalResponse.trim()
             }
           })}\n\n`));

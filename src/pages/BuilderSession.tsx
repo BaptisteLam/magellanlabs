@@ -411,6 +411,26 @@ export default function BuilderSession() {
               ? userMessageContent.find(c => c.type === 'text')?.text || ''
               : String(userMessageContent));
 
+        // Sélection intelligente des fichiers pertinents
+        const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
+          const keywords = prompt.toLowerCase().split(/\s+/);
+          const scored = Object.entries(files).map(([path, content]) => {
+            let score = 0;
+            keywords.forEach(k => {
+              if (path.toLowerCase().includes(k)) score += 50;
+              if (content.toLowerCase().includes(k)) score += 10;
+            });
+            if (path.includes('index.html') || path.includes('App.tsx')) score += 100;
+            return { path, content, score };
+          });
+          
+          return scored
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 5);
+        };
+
+        const relevantFilesArray = selectRelevantFiles(userPrompt, projectFiles);
+
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/modify-site`, {
           method: 'POST',
           headers: {
@@ -420,12 +440,12 @@ export default function BuilderSession() {
           body: JSON.stringify({
             sessionId,
             message: userPrompt,
-            relevantFiles: Object.entries(projectFiles).map(([path, content]) => ({
-              path,
-              content,
-              type: path.endsWith('.html') ? 'html' : 
-                    path.endsWith('.css') ? 'stylesheet' : 
-                    path.endsWith('.js') ? 'javascript' : 'text'
+            relevantFiles: relevantFilesArray.map(f => ({
+              path: f.path,
+              content: f.content,
+              type: f.path.endsWith('.html') ? 'html' : 
+                    f.path.endsWith('.css') ? 'stylesheet' : 
+                    f.path.endsWith('.js') ? 'javascript' : 'text'
             })),
             chatHistory: messages.slice(-4).map(m => ({
               role: m.role,
@@ -477,30 +497,44 @@ export default function BuilderSession() {
                 const filePath = event.data.path;
                 modifiedFiles.add(filePath);
               } else if (event.type === 'complete') {
-                // Appliquer les diffs côté client
-                const diffs = event.data.diffs || [];
+                // Appliquer les actions côté client
+                const actions = event.data.actions || [];
                 const updatedFiles = { ...projectFiles };
                 let modifiedCount = 0;
 
-                for (const diff of diffs) {
-                  const filePath = diff.path;
-                  const diffContent = diff.diff;
-                  
-                  if (!filePath || !diffContent) continue;
-                  
-                  // Appliquer le diff avec AiDiffService
+                for (const action of actions) {
+                  const filePath = action.path;
                   const currentContent = updatedFiles[filePath] || '';
                   
+                  if (!filePath) continue;
+                  
                   try {
-                    const updatedContent = AiDiffService.applyDiff(currentContent, diffContent);
-                    updatedFiles[filePath] = updatedContent;
-                    modifiedCount++;
+                    let newContent = currentContent;
                     
-                    if (filePath === 'index.html') {
-                      setGeneratedHtml(updatedContent);
+                    if (action.type === 'replace' && action.search && action.content !== undefined) {
+                      newContent = currentContent.replace(action.search, action.content);
+                    } else if (action.type === 'insert-after' && action.search && action.content) {
+                      const idx = currentContent.indexOf(action.search);
+                      if (idx !== -1) {
+                        newContent = currentContent.slice(0, idx + action.search.length) + '\n' + action.content + currentContent.slice(idx + action.search.length);
+                      }
+                    } else if (action.type === 'insert-before' && action.search && action.content) {
+                      const idx = currentContent.indexOf(action.search);
+                      if (idx !== -1) {
+                        newContent = currentContent.slice(0, idx) + action.content + '\n' + currentContent.slice(idx);
+                      }
+                    }
+                    
+                    if (newContent !== currentContent) {
+                      updatedFiles[filePath] = newContent;
+                      modifiedCount++;
+                      
+                      if (filePath === 'index.html') {
+                        setGeneratedHtml(newContent);
+                      }
                     }
                   } catch (error) {
-                    console.error(`Erreur application diff sur ${filePath}:`, error);
+                    console.error(`Erreur application action sur ${filePath}:`, error);
                   }
                 }
 
