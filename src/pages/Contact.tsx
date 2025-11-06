@@ -19,7 +19,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
-import { supabase } from '@/integrations/magellan/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const Contact = () => {

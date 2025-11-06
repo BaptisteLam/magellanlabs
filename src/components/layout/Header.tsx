@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/magellan/client';
+import { supabase } from '@/integrations/supabase/client';
 import { Menu, Moon, Sun, Coins, Plus, User, LogOut, FolderOpen } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useIsMobile } from '@/hooks/use-mobile';

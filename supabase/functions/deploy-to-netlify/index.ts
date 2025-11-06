@@ -36,8 +36,8 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     console.log('Token extracted, length:', token.length);
 
-    const supabaseUrl = Deno.env.get('MAGELLAN_URL') || 'https://qpqsmryanrlrqczerlig.supabase.co';
-    const supabaseServiceKey = Deno.env.get('MAGELLAN_SERVICE_ROLE_KEY');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     console.log('Supabase URL:', supabaseUrl);
     console.log('Service key present:', !!supabaseServiceKey);
