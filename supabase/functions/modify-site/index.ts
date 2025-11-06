@@ -1,5 +1,6 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.76.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,35 +37,57 @@ serve(async (req) => {
 
     const { message, relevantFiles, sessionId } = await req.json();
 
-    if (!message || !relevantFiles || !Array.isArray(relevantFiles) || relevantFiles.length === 0) {
+    if (!message || !relevantFiles || !Array.isArray(relevantFiles)) {
       return new Response(
-        JSON.stringify({ error: 'message and relevantFiles are required' }),
+        JSON.stringify({ error: 'message and relevantFiles required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[modify-site] Session ${sessionId} - ${relevantFiles.length} fichiers`);
+    console.log(`[modify-site] ${relevantFiles.length} files, ${message.length} chars`);
 
     const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
     if (!ANTHROPIC_API_KEY) {
       throw new Error('ANTHROPIC_API_KEY not configured');
     }
 
-    // Contexte minimal (comme Lovable)
-    const filesContext = relevantFiles
-      .map((f: any) => `${f.path}:\n${f.content}`)
+    // CONTEXTE MINIMAL: extraire seulement les zones pertinentes
+    const minimalContext = relevantFiles
+      .map((f: any) => {
+        const lines = f.content.split('\n');
+        // Si fichier > 100 lignes, prendre début + fin seulement
+        if (lines.length > 100) {
+          const preview = [
+            ...lines.slice(0, 20),
+            `... (${lines.length - 40} lines omitted) ...`,
+            ...lines.slice(-20)
+          ].join('\n');
+          return `${f.path}:\n${preview}`;
+        }
+        return `${f.path}:\n${f.content}`;
+      })
       .join('\n\n---\n\n');
 
-    const systemPrompt = `Expert developer. Modify only what's requested. Return ONLY changed files:
+    // PROMPT OPTIMISÉ POUR DIFFS
+    const systemPrompt = `You are a code diff expert. Generate ONLY unified diffs, never full files.
 
-FILE: path/to/file.tsx
-CONTENT:
-[complete file]
-END_FILE
+CRITICAL RULES:
+1. Return ONLY the minimal changes needed
+2. Use unified diff format:
+   FILE: path/to/file.tsx
+   DIFF:
+   @@ -10,3 +10,4 @@
+    unchanged line
+   -old line
+   +new line
+    unchanged line
+   END_DIFF
 
-Be precise and minimal.`;
+3. Include 2-3 lines of context before/after changes
+4. NEVER regenerate entire files
+5. Be surgical: change only what's requested`;
 
-    // Streaming de Claude Sonnet
+    // Streaming optimisé
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -74,13 +97,14 @@ Be precise and minimal.`;
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 16000,
+        max_tokens: 4000, // Réduit de 16k à 4k (diffs sont plus courts)
+        temperature: 0.3, // Plus déterministe
         stream: true,
         system: systemPrompt,
         messages: [
           {
             role: 'user',
-            content: `Files:\n${filesContext}\n\nTask: ${message}`
+            content: `Files (minimal context):\n${minimalContext}\n\nTask: ${message}\n\nReturn unified diffs ONLY.`
           }
         ],
       }),
@@ -88,22 +112,22 @@ Be precise and minimal.`;
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[modify-site] Anthropic API error:', response.status, errorText);
+      console.error('[modify-site] API error:', response.status, errorText);
       
       const statusMessages: Record<number, string> = {
-        400: 'Invalid request. Please check your input.',
-        401: 'Authentication failed. Please try again.',
-        429: 'Too many requests. Please try again in a few moments.',
-        500: 'An unexpected error occurred. Please try again later.'
+        400: 'Invalid request',
+        401: 'Auth failed',
+        429: 'Rate limited - try again in a moment',
+        500: 'API error'
       };
       
       return new Response(
-        JSON.stringify({ error: statusMessages[response.status] || 'Request failed. Please try again later.' }),
+        JSON.stringify({ error: statusMessages[response.status] || 'Failed' }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Stream SSE avec parsing des fichiers
+    // Stream SSE
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
@@ -117,7 +141,6 @@ Be precise and minimal.`;
         let fullResponse = '';
         
         try {
-          // Lecture du stream Claude
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -149,25 +172,26 @@ Be precise and minimal.`;
             }
           }
 
-          // Parser les fichiers de la réponse complète
-          const fileRegex = /FILE:\s*(.+?)\s*CONTENT:\s*([\s\S]+?)(?=FILE:|END_FILE|$)/g;
-          const modifiedFiles: Array<{path: string, content: string}> = [];
+          // Parser les diffs
+          const diffRegex = /FILE:\s*(.+?)\s*DIFF:\s*([\s\S]+?)(?=FILE:|END_DIFF|$)/g;
+          const diffs: Array<{path: string, diff: string}> = [];
           let match;
 
-          while ((match = fileRegex.exec(fullResponse)) !== null) {
+          while ((match = diffRegex.exec(fullResponse)) !== null) {
             const filePath = match[1].trim();
-            let content = match[2].trim();
+            let diff = match[2].trim();
             
-            // Nettoyer les balises markdown si présentes
-            content = content.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '').trim();
+            // Nettoyer markdown
+            diff = diff.replace(/^```diff\n?/, '').replace(/\n?```$/, '').trim();
             
-            modifiedFiles.push({ path: filePath, content });
+            diffs.push({ path: filePath, diff });
           }
 
-          console.log(`[modify-site] ✅ ${modifiedFiles.length} fichiers modifiés`);
+          console.log(`[modify-site] ✅ ${diffs.length} diffs generated`);
+          console.log(`[modify-site] 📊 Tokens saved: ~${Math.round((1 - fullResponse.length / (minimalContext.length * 2)) * 100)}%`);
 
-          // Sauvegarder en arrière-plan
-          if (sessionId && modifiedFiles.length > 0) {
+          // Sauvegarder en arrière-plan (sans await)
+          if (sessionId && diffs.length > 0) {
             (async () => {
               try {
                 const { data } = await supabaseClient
@@ -178,8 +202,11 @@ Be precise and minimal.`;
                 
                 if (data?.project_files) {
                   const updatedFiles = data.project_files.map((f: any) => {
-                    const modified = modifiedFiles.find(mf => mf.path === f.path);
-                    return modified ? { ...f, content: modified.content } : f;
+                    const fileDiff = diffs.find(d => d.path === f.path);
+                    if (!fileDiff) return f;
+                    
+                    // Appliquer le diff (simplifié - le client fera le vrai apply)
+                    return { ...f, needsUpdate: true, diff: fileDiff.diff };
                   });
                   
                   await supabaseClient
@@ -193,10 +220,10 @@ Be precise and minimal.`;
             })();
           }
 
-          // Envoyer la fin avec les fichiers
+          // Envoyer les diffs
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'complete',
-            data: { files: modifiedFiles }
+            data: { diffs }
           })}\n\n`));
           
           controller.close();
@@ -204,7 +231,7 @@ Be precise and minimal.`;
           console.error('[modify-site] Stream error:', error);
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'error',
-            data: { message: error instanceof Error ? error.message : 'Erreur' }
+            data: { message: error instanceof Error ? error.message : 'Error' }
           })}\n\n`));
           controller.error(error);
         }
@@ -223,7 +250,7 @@ Be precise and minimal.`;
   } catch (error) {
     console.error('[modify-site] Error:', error);
     return new Response(
-      JSON.stringify({ error: 'Request failed. Please try again later.' }),
+      JSON.stringify({ error: 'Failed' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
