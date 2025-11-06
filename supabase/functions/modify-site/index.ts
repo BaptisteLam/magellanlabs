@@ -50,24 +50,19 @@ serve(async (req) => {
       throw new Error('ANTHROPIC_API_KEY not configured');
     }
 
-    // Construire le contexte avec tous les fichiers
+    // Contexte minimal (comme Lovable)
     const filesContext = relevantFiles
-      .map((f: any) => `=== ${f.path} ===\n${f.content}`)
-      .join('\n\n');
+      .map((f: any) => `${f.path}:\n${f.content}`)
+      .join('\n\n---\n\n');
 
-    const systemPrompt = `Tu es un expert développeur React/TypeScript. Tu modifies le code selon les demandes de l'utilisateur.
+    const systemPrompt = `Expert developer. Modify only what's requested. Return ONLY changed files:
 
-RÈGLES :
-1. Applique EXACTEMENT la modification demandée
-2. Retourne UNIQUEMENT les fichiers modifiés
-3. Format de sortie : Pour chaque fichier modifié, écris:
-   FILE: chemin/du/fichier.tsx
-   CONTENT:
-   [contenu complet du fichier]
-   END_FILE
+FILE: path/to/file.tsx
+CONTENT:
+[complete file]
+END_FILE
 
-4. Ne modifie que ce qui est demandé
-5. Code production-ready sans TODO`;
+Be precise and minimal.`;
 
     // Streaming de Claude Sonnet
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -78,20 +73,14 @@ RÈGLES :
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 8000,
+        model: 'claude-sonnet-4-5-20250514',
+        max_tokens: 16000,
         stream: true,
         system: systemPrompt,
         messages: [
           {
             role: 'user',
-            content: `Fichiers du projet:
-
-${filesContext}
-
-Modification demandée: ${message}
-
-Retourne les fichiers modifiés au format spécifié.`
+            content: `Files:\n${filesContext}\n\nTask: ${message}`
           }
         ],
       }),
