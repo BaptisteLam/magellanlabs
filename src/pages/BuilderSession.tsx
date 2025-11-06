@@ -20,6 +20,7 @@ import { MonacoEditor } from "@/components/CodeEditor/MonacoEditor";
 import PromptBar from "@/components/PromptBar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Analytics from "@/components/Analytics";
+import { AiDiffService } from "@/services/aiDiffService";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -479,6 +480,7 @@ export default function BuilderSession() {
                 // Appliquer les diffs côté client
                 const diffs = event.data.diffs || [];
                 const updatedFiles = { ...projectFiles };
+                let modifiedCount = 0;
 
                 for (const diff of diffs) {
                   const filePath = diff.path;
@@ -487,12 +489,12 @@ export default function BuilderSession() {
                   if (!filePath || !diffContent) continue;
                   
                   // Appliquer le diff avec AiDiffService
-                  const { AiDiffService } = await import('@/services/aiDiffService');
                   const currentContent = updatedFiles[filePath] || '';
                   
                   try {
                     const updatedContent = AiDiffService.applyDiff(currentContent, diffContent);
                     updatedFiles[filePath] = updatedContent;
+                    modifiedCount++;
                     
                     if (filePath === 'index.html') {
                       setGeneratedHtml(updatedContent);
