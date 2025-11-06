@@ -1245,10 +1245,7 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
                 isLoading && Object.keys(projectFiles).length === 0 ? (
                   <GeneratingPreview />
                 ) : (
-                  <>
-                    <FakeUrlBar projectTitle={websiteTitle || 'Nouveau projet'} isDark={isDark} />
-                    <VitePreview projectFiles={projectFiles} isDark={isDark} />
-                  </>
+                  <VitePreview projectFiles={projectFiles} isDark={isDark} />
                 )
               ) : viewMode === 'analytics' ? (
                 <Analytics 
