@@ -73,7 +73,7 @@ Be precise and minimal.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 16000,
         stream: true,
         system: systemPrompt,
