@@ -34,14 +34,18 @@ serve(async (req) => {
       );
     }
 
-    const { modification, filePath, fileContent, sessionId } = await req.json();
+    const { message, relevantFiles, sessionId, chatHistory } = await req.json();
 
-    if (!modification || !filePath || !fileContent) {
+    if (!message || !relevantFiles || !Array.isArray(relevantFiles) || relevantFiles.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'modification, filePath and fileContent are required' }),
+        JSON.stringify({ error: 'message and relevantFiles are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Prendre le premier fichier pertinent pour la modification
+    const filePath = relevantFiles[0].path;
+    const fileContent = relevantFiles[0].content;
 
     console.log(`[modify-site] User ${user.id} modifying ${filePath} for session ${sessionId}`);
 
@@ -86,7 +90,7 @@ Retourne directement le contenu complet du fichier modifié, sans balises markdo
 ${fileContent}
 \`\`\`
 
-Modification demandée : ${modification}
+Modification demandée : ${message}
 
 Retourne le fichier complet modifié.`
           }
