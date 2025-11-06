@@ -500,17 +500,20 @@ export default function BuilderSession() {
                         path.endsWith('.js') ? 'javascript' : 'text'
                 }));
 
+                const modifiedCount = modifiedFiles.size;
+                const assistantMessage = `✨ ${modifiedCount} fichier${modifiedCount > 1 ? 's modifié' : ' modifié'}${modifiedCount > 1 ? 's' : ''} avec succès !`;
+                
+                const updatedMessages = [...newMessages, { role: 'assistant' as const, content: assistantMessage }];
+                setMessages(updatedMessages);
+
                 await supabase
                   .from('build_sessions')
                   .update({
                     project_files: filesArray,
-                    messages: newMessages as any,
+                    messages: updatedMessages as any,
                     updated_at: new Date().toISOString()
                   })
                   .eq('id', sessionId);
-
-                const modifiedCount = modifiedFiles.size;
-                sonnerToast.success(`✨ ${modifiedCount} fichier${modifiedCount > 1 ? 's modifié' : ' modifié'}${modifiedCount > 1 ? 's' : ''} !`);
               }
             } catch (e) {
               // Ignorer erreurs parsing partiel
@@ -707,24 +710,29 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
         setSelectedFile('index.html');
         setSelectedFileContent(parsedFiles['index.html'] || accumulated);
 
+        const fileCount = filesArray.length;
+        const assistantMessage = `✨ ${fileCount} fichier${fileCount > 1 ? 's généré' : ' généré'}${fileCount > 1 ? 's' : ''} avec succès !`;
+        
+        const updatedMessages = [...newMessages, { role: 'assistant' as const, content: assistantMessage }];
+        setMessages(updatedMessages);
+
         await supabase
           .from('build_sessions')
           .update({
             project_files: filesArray,
-            messages: newMessages as any,
+            messages: updatedMessages as any,
             updated_at: new Date().toISOString()
           })
           .eq('id', sessionId);
-
-        const fileCount = filesArray.length;
-        sonnerToast.success(`✨ ${fileCount} fichier${fileCount > 1 ? 's généré' : ' généré'}${fileCount > 1 ? 's' : ''} !`);
       }
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        sonnerToast.info("Génération arrêtée");
+        const errorMessage = "⏸️ Génération arrêtée";
+        setMessages(prev => [...prev, { role: 'assistant' as const, content: errorMessage }]);
       } else {
         console.error('Error:', error);
-        sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
+        const errorMessage = `❌ Erreur : ${error instanceof Error ? error.message : "Une erreur est survenue"}`;
+        setMessages(prev => [...prev, { role: 'assistant' as const, content: errorMessage }]);
       }
     } finally {
       setIsLoading(false);
