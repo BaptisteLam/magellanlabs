@@ -181,8 +181,24 @@ export default function BuilderSession() {
           setGeneratedHtml('');
         }
 
-        const parsedMessages = Array.isArray(data.messages) ? data.messages as any[] : [];
-        setMessages(parsedMessages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
+        // Charger l'historique complet des messages depuis chat_messages
+        const { data: chatMessages, error: chatError } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .eq('session_id', sessionId)
+          .order('created_at', { ascending: true });
+
+        if (!chatError && chatMessages && chatMessages.length > 0) {
+          const loadedMessages: Message[] = chatMessages.map(msg => ({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content
+          }));
+          setMessages(loadedMessages);
+        } else {
+          // Fallback sur l'ancienne méthode si pas de messages dans chat_messages
+          const parsedMessages = Array.isArray(data.messages) ? data.messages as any[] : [];
+          setMessages(parsedMessages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
+        }
         setWebsiteTitle(data.title || '');
       }
     } catch (error) {
@@ -375,6 +391,22 @@ export default function BuilderSession() {
     
     if (shouldAddMessage) {
       setMessages(newMessages);
+      
+      // Sauvegarder le message user dans chat_messages
+      const userMessageText = typeof userMessageContent === 'string' 
+        ? userMessageContent 
+        : (Array.isArray(userMessageContent) 
+            ? userMessageContent.find(c => c.type === 'text')?.text || '[message multimédia]'
+            : String(userMessageContent));
+
+      await supabase
+        .from('chat_messages')
+        .insert({
+          session_id: sessionId,
+          role: 'user',
+          content: userMessageText,
+          metadata: { has_images: attachedFiles.length > 0 }
+        });
     }
     
     setInputValue('');
@@ -447,7 +479,8 @@ export default function BuilderSession() {
                     f.path.endsWith('.css') ? 'stylesheet' : 
                     f.path.endsWith('.js') ? 'javascript' : 'text'
             })),
-            chatHistory: messages.slice(-4).map(m => ({
+            // Fenêtre glissante : seulement les 5 derniers messages pour le contexte
+            chatHistory: messages.slice(-5).map(m => ({
               role: m.role,
               content: typeof m.content === 'string' ? m.content : '[message multimédia]'
             }))
@@ -557,6 +590,17 @@ export default function BuilderSession() {
                 const updatedMessages = [...newMessages, { role: 'assistant' as const, content: finalMessage }];
                 setMessages(updatedMessages);
 
+                // Sauvegarder le message assistant dans chat_messages
+                await supabase
+                  .from('chat_messages')
+                  .insert({
+                    session_id: sessionId,
+                    role: 'assistant',
+                    content: finalMessage,
+                    metadata: { modified_files: Array.from(modifiedFiles), action_count: modifiedCount }
+                  });
+
+                // Aussi mettre à jour la session pour rétrocompatibilité
                 await supabase
                   .from('build_sessions')
                   .update({
@@ -767,6 +811,17 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
         const updatedMessages = [...newMessages, { role: 'assistant' as const, content: assistantMessage }];
         setMessages(updatedMessages);
 
+        // Sauvegarder le message assistant dans chat_messages
+        await supabase
+          .from('chat_messages')
+          .insert({
+            session_id: sessionId,
+            role: 'assistant',
+            content: assistantMessage,
+            metadata: { files_generated: fileCount }
+          });
+
+        // Aussi mettre à jour la session pour rétrocompatibilité
         await supabase
           .from('build_sessions')
           .update({
@@ -780,10 +835,30 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
       if (error.name === 'AbortError') {
         const errorMessage = "⏸️ Génération arrêtée";
         setMessages(prev => [...prev, { role: 'assistant' as const, content: errorMessage }]);
+        
+        // Sauvegarder même le message d'erreur
+        await supabase
+          .from('chat_messages')
+          .insert({
+            session_id: sessionId,
+            role: 'assistant',
+            content: errorMessage,
+            metadata: { error: true, error_type: 'AbortError' }
+          });
       } else {
         console.error('Error:', error);
         const errorMessage = `❌ Erreur : ${error instanceof Error ? error.message : "Une erreur est survenue"}`;
         setMessages(prev => [...prev, { role: 'assistant' as const, content: errorMessage }]);
+        
+        // Sauvegarder même le message d'erreur
+        await supabase
+          .from('chat_messages')
+          .insert({
+            session_id: sessionId,
+            role: 'assistant',
+            content: errorMessage,
+            metadata: { error: true, error_message: error instanceof Error ? error.message : "Unknown error" }
+          });
       }
     } finally {
       setIsLoading(false);
