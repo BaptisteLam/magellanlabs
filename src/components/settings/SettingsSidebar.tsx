@@ -52,11 +52,11 @@ export function SettingsSidebar() {
               key={item.id}
               onClick={() => setSection(item.id)}
               className={cn(
-                'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all',
+                'w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-all',
                 'text-sm font-medium',
                 isActive
-                  ? 'bg-primary/10 text-primary border border-primary/30'
-                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                  ? 'border-[1px] border-cyan-700/50 bg-cyan-400/10 text-cyan-400'
+                  : 'text-muted-foreground hover:bg-cyan-400/10 hover:text-cyan-400 border-[1px] border-transparent'
               )}
             >
               <Icon className="h-5 w-5" />
