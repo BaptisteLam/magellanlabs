@@ -158,6 +158,78 @@ Exemples:
   return data.choices[0].message.content.trim();
 }
 
+// Génère des événements de tâches avec OpenAI basés sur l'intention
+async function* generateTaskEvents(intent: IntentAnalysis): AsyncGenerator<AIEvent> {
+  const taskPrompt = `Tu es un assistant qui génère des tâches de développement détaillées.
+Pour la tâche suivante: "${intent.description}"
+Action: ${intent.action}
+
+Génère une liste de tâches et sous-tâches au format NDJSON. Chaque ligne doit être un objet JSON valide.
+Utilise UNIQUEMENT ces types d'événements:
+- {"type":"status","content":"Task: Titre de la tâche"}
+- {"type":"status","content":"Titre de la tâche: Détail de l'étape"}
+
+Exemple pour "créer un bouton":
+{"type":"status","content":"Task: Setting up component"}
+{"type":"status","content":"Setting up component: Creating src/components/Button.tsx"}
+{"type":"status","content":"Setting up component: Defining TypeScript interfaces"}
+{"type":"status","content":"Task: Styling component"}
+{"type":"status","content":"Styling component: Applying Tailwind CSS classes"}
+{"type":"status","content":"Styling component: Adding hover effects"}
+{"type":"status","content":"Task: Testing component"}
+{"type":"status","content":"Testing component: Verifying props handling"}
+
+IMPORTANT:
+- Une ligne = un objet JSON
+- Commence toujours par "Task: Titre" pour une nouvelle tâche
+- Puis les détails: "Titre: Détail"
+- 3-5 tâches maximum
+- 2-4 détails par tâche
+- Mentionne les fichiers concernés (src/...) quand pertinent
+- Reste concis et professionnel`;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: taskPrompt },
+        { role: 'user', content: `Génère les tâches pour: ${intent.description}` }
+      ],
+      temperature: 0.4,
+      max_tokens: 500
+    }),
+  });
+
+  if (!response.ok) {
+    console.error('❌ Erreur génération tâches OpenAI');
+    yield { type: 'status', content: 'Task: Preparing workspace' };
+    yield { type: 'status', content: 'Preparing workspace: Analyzing requirements' };
+    return;
+  }
+
+  const data = await response.json();
+  const content = data.choices[0].message.content;
+  
+  const lines = content.split('\n').filter((l: string) => l.trim());
+  for (const line of lines) {
+    try {
+      const event = JSON.parse(line);
+      if (event.type === 'status' && event.content) {
+        yield event;
+        // Petit délai entre chaque événement
+        await new Promise(resolve => setTimeout(resolve, 150));
+      }
+    } catch (e) {
+      console.error('⚠️ Erreur parsing task event:', line);
+    }
+  }
+}
+
 // Étape 2 : Génération/modification avec Claude Sonnet 4.5
 async function* generateWithClaude(
   intent: IntentAnalysis,
@@ -173,8 +245,6 @@ async function* generateWithClaude(
 Tu DOIS répondre UNIQUEMENT avec des événements NDJSON (une ligne = un objet JSON).
 
 Types d'événements disponibles:
-- {"type":"status","content":"message de statut"}
-- {"type":"message","content":"message conversationnel"}
 - {"type":"code_update","path":"chemin/fichier.tsx","code":"code complet du fichier"}
 - {"type":"complete"}
 
@@ -182,6 +252,7 @@ IMPORTANT:
 - Renvoie le CODE COMPLET de chaque fichier modifié/créé avec type="code_update"
 - Un événement par ligne (NDJSON)
 - Pas de markdown, pas de \`\`\`, juste du JSON valide
+- NE génère PAS d'événements "status" ou "message", uniquement "code_update" et "complete"
 - Termine toujours par {"type":"complete"}`;
 
   let userPrompt = `Résumé du projet:\n${projectSummary}\n\n`;
@@ -348,8 +419,12 @@ serve(async (req) => {
             const initialMessage = await generateConversationalResponse(message, intent, chatHistory, true);
             yield { type: 'message', content: initialMessage } as AIEvent;
             
-            yield { type: 'status', content: 'Génération du code...' } as AIEvent;
+            // Génération des tâches avec OpenAI (UI progressive)
+            for await (const taskEvent of generateTaskEvents(intent)) {
+              yield taskEvent;
+            }
             
+            // Génération du code avec Claude (en parallèle de l'affichage des tâches)
             for await (const event of generateWithClaude(intent, projectFiles, relevantFiles, chatHistory)) {
               yield event;
             }
