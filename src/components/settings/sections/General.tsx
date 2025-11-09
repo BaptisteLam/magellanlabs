@@ -39,7 +39,7 @@ export function General() {
         <p className="text-muted-foreground">Préférences utilisateur globales</p>
       </div>
 
-      <Card>
+      <Card className="rounded-[7px]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sun className="h-5 w-5" />
@@ -76,7 +76,7 @@ export function General() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-[7px]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             🌍 Langue
@@ -98,7 +98,7 @@ export function General() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-[7px]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
@@ -128,7 +128,7 @@ export function General() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-[7px]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Save className="h-5 w-5" />

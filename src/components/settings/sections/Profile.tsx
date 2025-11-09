@@ -141,7 +141,7 @@ export function Profile() {
         <p className="text-muted-foreground">Gérez vos informations personnelles</p>
       </div>
 
-      <Card>
+      <Card className="rounded-[7px]">
         <CardHeader>
           <CardTitle>Photo de profil</CardTitle>
           <CardDescription>Votre avatar public</CardDescription>
@@ -172,7 +172,7 @@ export function Profile() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-[7px]">
         <CardHeader>
           <CardTitle>Informations</CardTitle>
         </CardHeader>

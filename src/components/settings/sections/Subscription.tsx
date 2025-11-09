@@ -48,7 +48,7 @@ export function Subscription() {
         <p className="text-muted-foreground">Gérez votre plan et votre facturation</p>
       </div>
 
-      <Card>
+      <Card className="rounded-[7px]">
         <CardHeader>
           <CardTitle>Plan actuel</CardTitle>
         </CardHeader>
@@ -117,7 +117,7 @@ export function Subscription() {
         </div>
       </div>
 
-      <Card>
+      <Card className="rounded-[7px]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
