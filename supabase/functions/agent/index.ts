@@ -32,9 +32,18 @@ function generateProjectSummary(projectFiles: Record<string, string>): string {
   return summary.slice(0, 2000); // Limite approximative
 }
 
-// Étape 1 : Analyse d'intention avec OpenAI gpt-4o-mini (léger)
-async function analyzeIntent(userMessage: string): Promise<IntentAnalysis> {
-  console.log('🔍 Analyse d\'intention avec OpenAI gpt-4o-mini...');
+// Étape 1 : Analyse d'intention avec OpenAI (léger, avec résumé)
+async function analyzeIntent(
+  userMessage: string, 
+  chatHistory: Array<{ role: string; content: string }>,
+  projectSummary: string
+): Promise<IntentAnalysis> {
+  console.log('🔍 Analyse d\'intention avec OpenAI...');
+  
+  const recentHistory = chatHistory.slice(-3);
+  const contextPrompt = `Résumé du projet:\n${projectSummary}\n\nConversation récente:\n${
+    recentHistory.map(m => `${m.role}: ${m.content}`).join('\n')
+  }`;
   
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -63,10 +72,10 @@ Actions:
 - explain: expliquer quelque chose sans code
 - chat: conversation générale`
         },
-        { role: 'user', content: userMessage }
+        { role: 'user', content: `${contextPrompt}\n\nNouvelle demande: ${userMessage}` }
       ],
       temperature: 0.3,
-      max_tokens: 200
+      max_tokens: 300
     }),
   });
 
@@ -85,13 +94,68 @@ Actions:
     return intent;
   } catch (e) {
     console.error('❌ Erreur parsing intention:', content);
-    // Fallback en cas d'erreur de parsing
     return {
       type: "intent",
       action: "chat",
       description: userMessage
     };
   }
+}
+
+// Génère une réponse conversationnelle avec OpenAI
+async function generateConversationalResponse(
+  userMessage: string,
+  intent: IntentAnalysis,
+  chatHistory: Array<{ role: string; content: string }>,
+  isInitial: boolean = true
+): Promise<string> {
+  const recentHistory = chatHistory.slice(-3);
+  
+  const systemPrompt = isInitial 
+    ? `Tu es un assistant de développement web. L'utilisateur vient de demander quelque chose et tu vas lancer une tâche.
+Réponds en UNE SEULE PHRASE courte et naturelle pour confirmer ce que tu vas faire, SANS détails techniques.
+Exemples:
+- "Je vais modifier le header pour changer la couleur."
+- "D'accord, je crée une nouvelle page de contact."
+- "Compris, j'ajoute cette fonctionnalité."`
+    : `Tu es un assistant de développement web. Tu viens de terminer une tâche de code.
+Résume en UNE SEULE PHRASE courte ce qui a été fait, de manière naturelle et concise.
+Exemples:
+- "J'ai modifié le header avec la nouvelle couleur."
+- "La page de contact est créée."
+- "La fonctionnalité est ajoutée et prête."`;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...recentHistory,
+        { 
+          role: 'user', 
+          content: isInitial 
+            ? `Demande: ${userMessage}\nIntention détectée: ${intent.description}` 
+            : `Tâche terminée: ${intent.description}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 100
+    }),
+  });
+
+  if (!response.ok) {
+    return isInitial 
+      ? "Je m'occupe de votre demande." 
+      : "C'est fait.";
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content.trim();
 }
 
 // Étape 2 : Génération/modification avec Claude Sonnet 4.5
@@ -269,20 +333,30 @@ serve(async (req) => {
           async function* mainFlow() {
             yield { type: 'status', content: 'Analyse de votre demande...' } as AIEvent;
             
-            const intent = await analyzeIntent(message);
+            const projectSummary = generateProjectSummary(projectFiles);
+            const intent = await analyzeIntent(message, chatHistory, projectSummary);
             yield intent;
 
             if (intent.action === 'chat' || intent.action === 'explain') {
-              yield { type: 'message', content: `Je comprends que vous voulez: ${intent.description}` } as AIEvent;
+              const conversationResponse = await generateConversationalResponse(message, intent, chatHistory, true);
+              yield { type: 'message', content: conversationResponse } as AIEvent;
               yield { type: 'complete' } as AIEvent;
               return;
             }
 
+            // Message initial conversationnel
+            const initialMessage = await generateConversationalResponse(message, intent, chatHistory, true);
+            yield { type: 'message', content: initialMessage } as AIEvent;
+            
             yield { type: 'status', content: 'Génération du code...' } as AIEvent;
             
             for await (const event of generateWithClaude(intent, projectFiles, relevantFiles, chatHistory)) {
               yield event;
             }
+
+            // Message final conversationnel
+            const finalMessage = await generateConversationalResponse(message, intent, chatHistory, false);
+            yield { type: 'message', content: finalMessage } as AIEvent;
           }
 
           // Envoyer tous les événements
