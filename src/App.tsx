@@ -36,6 +36,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <SettingsCenter />
         <BrowserRouter>
           <ScrollToTop />
           <Routes>
