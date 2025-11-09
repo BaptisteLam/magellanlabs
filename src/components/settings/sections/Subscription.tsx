@@ -48,7 +48,7 @@ export function Subscription() {
         <p className="text-muted-foreground">Gérez votre plan et votre facturation</p>
       </div>
 
-      <Card className="rounded-[7px]">
+      <Card className="rounded-[8px]">
         <CardHeader>
           <CardTitle>Plan actuel</CardTitle>
         </CardHeader>
@@ -79,7 +79,7 @@ export function Subscription() {
           {plans.map((plan) => (
             <Card
               key={plan.name}
-              className={plan.popular ? 'border-[#03A5C0]/50 shadow-lg shadow-[#03A5C0]/20 rounded-[7px]' : 'rounded-[7px]'}
+              className={plan.popular ? 'border-[#03A5C0]/50 shadow-lg shadow-[#03A5C0]/20 rounded-[8px]' : 'rounded-[8px]'}
             >
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -103,8 +103,8 @@ export function Subscription() {
                 <Button
                   className={
                     plan.popular
-                      ? 'w-full bg-[#03A5C0]/20 text-[#03A5C0] border border-[#03A5C0]/50 hover:bg-[#03A5C0]/30 rounded-[7px]'
-                      : 'w-full rounded-[7px]'
+                      ? 'w-full bg-[#03A5C0]/20 text-[#03A5C0] border border-[#03A5C0]/50 hover:bg-[#03A5C0]/30 rounded-[8px]'
+                      : 'w-full rounded-[8px]'
                   }
                   variant={plan.name === currentPlan ? 'secondary' : 'default'}
                   disabled={plan.name === currentPlan}
@@ -117,7 +117,7 @@ export function Subscription() {
         </div>
       </div>
 
-      <Card className="rounded-[7px]">
+      <Card className="rounded-[8px]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
