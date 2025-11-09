@@ -1,7 +1,5 @@
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { SettingsSidebar } from './SettingsSidebar';
 import { MyProjects } from './sections/MyProjects';
 import { General } from './sections/General';
@@ -41,20 +39,7 @@ export function SettingsCenter() {
         <div className="flex h-full">
           <SettingsSidebar />
 
-          <div className="flex-1 flex flex-col">
-            <div className="flex items-center justify-end p-4 border-b border-border/50">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={closeSettings}
-                className="h-8 w-8 rounded-full hover:bg-accent"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-8">{renderSection()}</div>
-          </div>
+          <div className="flex-1 overflow-y-auto p-8">{renderSection()}</div>
         </div>
       </DialogContent>
     </Dialog>
