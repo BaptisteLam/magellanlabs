@@ -65,7 +65,7 @@ export function Integrations() {
                   variant={integration.connected ? 'outline' : 'default'}
                   className={
                     !integration.connected
-                      ? 'bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 w-full'
+                      ? 'bg-cyan-400/20 text-cyan-400 border border-cyan-700/50 hover:bg-cyan-400/30 w-full'
                       : 'w-full'
                   }
                 >
