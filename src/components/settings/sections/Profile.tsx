@@ -55,6 +55,7 @@ export function Profile() {
         .from('profiles')
         .upsert({
           id: user.id,
+          email: user.email,
           username,
           description,
           avatar_url: avatarUrl,
@@ -112,8 +113,14 @@ export function Profile() {
 
   const handleDeleteAccount = async () => {
     try {
-      const { error } = await supabase.auth.admin.deleteUser();
-      if (error) throw error;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Delete profile first
+      await supabase.from('profiles').delete().eq('id', user.id);
+
+      // Then sign out
+      await supabase.auth.signOut();
 
       toast({ title: 'Compte supprimé' });
       window.location.href = '/';

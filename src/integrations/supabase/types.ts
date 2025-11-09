@@ -113,22 +113,31 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
+          description: string | null
           email: string
           id: string
           updated_at: string | null
+          username: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
+          description?: string | null
           email: string
           id: string
           updated_at?: string | null
+          username?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
+          description?: string | null
           email?: string
           id?: string
           updated_at?: string | null
+          username?: string | null
         }
         Relationships: []
       }
@@ -176,6 +185,7 @@ export type Database = {
       }
       websites: {
         Row: {
+          build_session_id: string | null
           cloudflare_project_name: string | null
           cloudflare_url: string | null
           created_at: string | null
@@ -185,12 +195,14 @@ export type Database = {
           id: string
           netlify_site_id: string | null
           netlify_url: string | null
+          status: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          build_session_id?: string | null
           cloudflare_project_name?: string | null
           cloudflare_url?: string | null
           created_at?: string | null
@@ -200,12 +212,14 @@ export type Database = {
           id?: string
           netlify_site_id?: string | null
           netlify_url?: string | null
+          status?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          build_session_id?: string | null
           cloudflare_project_name?: string | null
           cloudflare_url?: string | null
           created_at?: string | null
@@ -215,12 +229,20 @@ export type Database = {
           id?: string
           netlify_site_id?: string | null
           netlify_url?: string | null
+          status?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "websites_build_session_id_fkey"
+            columns: ["build_session_id"]
+            isOneToOne: false
+            referencedRelation: "build_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "websites_user_id_fkey"
             columns: ["user_id"]

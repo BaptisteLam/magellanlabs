@@ -2,8 +2,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Menu, Moon, Sun, Coins, Plus, User, LogOut, FolderOpen } from 'lucide-react';
+import { Menu, Moon, Sun, Coins, Plus, User, LogOut, FolderOpen, Settings } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Sheet,
@@ -23,6 +24,7 @@ import { Progress } from '@/components/ui/progress';
 const Header = () => {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useThemeStore();
+  const { openSettings } = useSettingsStore();
   const [user, setUser] = useState<any>(null);
   const [userEmail, setUserEmail] = useState<string>("");
   const isMobile = useIsMobile();
@@ -123,10 +125,10 @@ const Header = () => {
                       
                       <DropdownMenuItem 
                         className="cursor-pointer transition-colors hover:bg-[#03A5C0] hover:text-white"
-                        onClick={() => navigate('/dashboard')}
+                        onClick={() => openSettings('projects')}
                       >
-                        <FolderOpen className="w-4 h-4 mr-2" />
-                        Mes projets
+                        <Settings className="w-4 h-4 mr-2" />
+                        Paramètres
                       </DropdownMenuItem>
                       
                       <DropdownMenuItem 

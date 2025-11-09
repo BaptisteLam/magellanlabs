@@ -15,6 +15,7 @@ import Dashboard from "./pages/Dashboard";
 import AIBuilder from "./pages/AIBuilder";
 import BuilderSession from "./pages/BuilderSession";
 import ScrollToTop from "./components/ScrollToTop";
+import { SettingsCenter } from "./components/settings/SettingsCenter";
 import { useThemeStore } from "./stores/themeStore";
 import { useEffect } from "react";
 
@@ -36,8 +37,8 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <SettingsCenter />
         <BrowserRouter>
+          <SettingsCenter />
           <ScrollToTop />
           <Routes>
             <Route path="/" element={<Home />} />
