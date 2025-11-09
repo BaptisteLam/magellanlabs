@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.get-analytics]
 verify_jwt = true
+
+[functions.agent]
+verify_jwt = true

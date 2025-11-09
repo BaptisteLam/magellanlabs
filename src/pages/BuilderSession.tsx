@@ -21,6 +21,7 @@ import PromptBar from "@/components/PromptBar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Analytics from "@/components/Analytics";
 import { AiDiffService } from "@/services/aiDiffService";
+import { useAgentAPI } from "@/hooks/useAgentAPI";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -32,7 +33,6 @@ export default function BuilderSession() {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useThemeStore();
   const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [generatedHtml, setGeneratedHtml] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [user, setUser] = useState<any>(null);
@@ -48,8 +48,6 @@ export default function BuilderSession() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedFileContent, setSelectedFileContent] = useState<string>('');
   const [openFiles, setOpenFiles] = useState<string[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const streamingRef = useRef<{ abort: () => void } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
   const [isHoveringFavicon, setIsHoveringFavicon] = useState(false);
@@ -57,6 +55,9 @@ export default function BuilderSession() {
   const [currentFavicon, setCurrentFavicon] = useState<string | null>(null);
   const [gaPropertyId, setGaPropertyId] = useState<string | null>(null);
   const [websiteId, setWebsiteId] = useState<string | null>(null);
+  
+  // Hook pour la nouvelle API Agent
+  const agent = useAgentAPI();
 
 
   useEffect(() => {
@@ -78,7 +79,7 @@ export default function BuilderSession() {
         setInputValue(promptFromUrl);
         // Petit délai pour s'assurer que tous les états sont initialisés
         setTimeout(() => {
-          if (!isLoading) {
+          if (!agent.isLoading) {
             handleSubmit();
           }
         }, 500);
@@ -88,7 +89,7 @@ export default function BuilderSession() {
         if (userPrompt.trim()) {
           setInputValue(userPrompt);
           setTimeout(() => {
-            if (!isLoading) {
+            if (!agent.isLoading) {
               handleSubmit();
             }
           }, 500);
@@ -358,7 +359,6 @@ export default function BuilderSession() {
   };
 
   const handleSubmit = async () => {
-    // Utiliser le premier message si inputValue est vide (génération initiale)
     const prompt = inputValue.trim() || (messages.length === 1 && typeof messages[0].content === 'string' ? messages[0].content : '');
     
     if (!prompt && attachedFiles.length === 0) {
@@ -366,7 +366,12 @@ export default function BuilderSession() {
       return;
     }
 
-    // Construire le message avec texte et images
+    if (!user) {
+      navigate('/auth');
+      throw new Error('Authentication required');
+    }
+
+    // Construire le message
     let userMessageContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
     
     if (attachedFiles.length > 0) {
@@ -385,14 +390,12 @@ export default function BuilderSession() {
       userMessageContent = prompt;
     }
 
-    // Ne pas dupliquer le message s'il existe déjà (génération initiale)
     const shouldAddMessage = inputValue.trim() || messages.length === 0 || messages[messages.length - 1]?.content !== userMessageContent;
     const newMessages = shouldAddMessage ? [...messages, { role: 'user' as const, content: userMessageContent }] : messages;
     
     if (shouldAddMessage) {
       setMessages(newMessages);
       
-      // Sauvegarder le message user dans chat_messages
       const userMessageText = typeof userMessageContent === 'string' 
         ? userMessageContent 
         : (Array.isArray(userMessageContent) 
@@ -411,460 +414,118 @@ export default function BuilderSession() {
     
     setInputValue('');
     setAttachedFiles([]);
-    setIsLoading(true);
-    setIsStreaming(true);
 
-    try {
-      // Require authentication
-      if (!user) {
-        navigate('/auth');
-        throw new Error('Authentication required');
-      }
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const abortController = new AbortController();
+    // Préparer les fichiers pertinents
+    const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
+      const keywords = prompt.toLowerCase().split(/\s+/);
+      const scored = Object.entries(files).map(([path, content]) => {
+        let score = 0;
+        keywords.forEach(k => {
+          if (path.toLowerCase().includes(k)) score += 50;
+          if (content.toLowerCase().includes(k)) score += 10;
+        });
+        if (path.includes('index.html') || path.includes('App.tsx')) score += 100;
+        return { path, content, score };
+      });
       
-      streamingRef.current = {
-        abort: () => {
-          abortController.abort();
-          setIsStreaming(false);
-          setIsLoading(false);
-        }
-      };
+      return scored
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+    };
 
-      // 🔥 DÉTECTION : Modification ou Génération
-      const isModification = generatedHtml.length > 100;
-      
-      if (isModification) {
-        // ✅ MODE MODIFICATION avec DIFFS
-        const userPrompt = typeof userMessageContent === 'string' 
-          ? userMessageContent 
-          : (Array.isArray(userMessageContent) 
-              ? userMessageContent.find(c => c.type === 'text')?.text || ''
-              : String(userMessageContent));
+    const userPrompt = typeof userMessageContent === 'string' 
+      ? userMessageContent 
+      : (Array.isArray(userMessageContent) 
+          ? userMessageContent.find(c => c.type === 'text')?.text || ''
+          : String(userMessageContent));
 
-        // Sélection intelligente des fichiers pertinents
-        const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
-          const keywords = prompt.toLowerCase().split(/\s+/);
-          const scored = Object.entries(files).map(([path, content]) => {
-            let score = 0;
-            keywords.forEach(k => {
-              if (path.toLowerCase().includes(k)) score += 50;
-              if (content.toLowerCase().includes(k)) score += 10;
-            });
-            if (path.includes('index.html') || path.includes('App.tsx')) score += 100;
-            return { path, content, score };
+    const relevantFilesArray = selectRelevantFiles(userPrompt, projectFiles);
+    
+    const chatHistory = messages.slice(-3).map(m => ({
+      role: m.role,
+      content: typeof m.content === 'string' ? m.content : '[message multimédia]'
+    }));
+
+    let assistantMessage = '';
+    const updatedFiles = { ...projectFiles };
+
+    // Appeler l'API Agent avec callbacks
+    await agent.callAgent(
+      userPrompt,
+      projectFiles,
+      relevantFilesArray,
+      chatHistory,
+      sessionId!,
+      {
+        onStatus: (status) => {
+          console.log('Status:', status);
+        },
+        onMessage: (message) => {
+          assistantMessage += message;
+          setMessages(prev => {
+            const withoutLastAssistant = prev.filter((m, i) => 
+              !(i === prev.length - 1 && m.role === 'assistant')
+            );
+            return [...withoutLastAssistant, { role: 'assistant' as const, content: assistantMessage }];
           });
+        },
+        onIntent: (intent) => {
+          console.log('Intent:', intent);
+        },
+        onCodeUpdate: (path, code) => {
+          updatedFiles[path] = code;
+          setProjectFiles({ ...updatedFiles });
           
-          return scored
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 5);
-        };
-
-        const relevantFilesArray = selectRelevantFiles(userPrompt, projectFiles);
-
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/modify-site`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session?.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            sessionId,
-            message: userPrompt,
-            relevantFiles: relevantFilesArray.map(f => ({
-              path: f.path,
-              content: f.content,
-              type: f.path.endsWith('.html') ? 'html' : 
-                    f.path.endsWith('.css') ? 'stylesheet' : 
-                    f.path.endsWith('.js') ? 'javascript' : 'text'
-            })),
-            // Fenêtre glissante : seulement les 5 derniers messages pour le contexte
-            chatHistory: messages.slice(-5).map(m => ({
-              role: m.role,
-              content: typeof m.content === 'string' ? m.content : '[message multimédia]'
-            }))
-          }),
-          signal: abortController.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
-        }
-
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error('Impossible de lire le stream');
-
-        const decoder = new TextDecoder('utf-8');
-        let streamBuffer = '';
-        const modifiedFiles: Set<string> = new Set();
-        let assistantMessage = '';
-
-        // STREAMING TOKEN-BY-TOKEN
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(Boolean);
-
-          for (const line of lines) {
-            if (!line.startsWith('data:')) continue;
-            
-            const dataStr = line.replace('data:', '').trim();
-            if (dataStr === '[DONE]') continue;
-
-            try {
-              const event = JSON.parse(dataStr);
-              
-              if (event.type === 'message') {
-                // Réponse conversationnelle streamée
-                assistantMessage += event.content;
-                setMessages(prev => {
-                  const withoutLastAssistant = prev.filter((m, i) => 
-                    !(i === prev.length - 1 && m.role === 'assistant')
-                  );
-                  return [...withoutLastAssistant, { role: 'assistant' as const, content: assistantMessage }];
-                });
-              } else if (event.type === 'file_detected') {
-                const filePath = event.data.path;
-                modifiedFiles.add(filePath);
-              } else if (event.type === 'complete') {
-                // Appliquer les actions côté client
-                const actions = event.data.actions || [];
-                const updatedFiles = { ...projectFiles };
-                let modifiedCount = 0;
-
-                for (const action of actions) {
-                  const filePath = action.path;
-                  const currentContent = updatedFiles[filePath] || '';
-                  
-                  if (!filePath) continue;
-                  
-                  try {
-                    let newContent = currentContent;
-                    
-                    if (action.type === 'replace' && action.search && action.content !== undefined) {
-                      newContent = currentContent.replace(action.search, action.content);
-                    } else if (action.type === 'insert-after' && action.search && action.content) {
-                      const idx = currentContent.indexOf(action.search);
-                      if (idx !== -1) {
-                        newContent = currentContent.slice(0, idx + action.search.length) + '\n' + action.content + currentContent.slice(idx + action.search.length);
-                      }
-                    } else if (action.type === 'insert-before' && action.search && action.content) {
-                      const idx = currentContent.indexOf(action.search);
-                      if (idx !== -1) {
-                        newContent = currentContent.slice(0, idx) + action.content + '\n' + currentContent.slice(idx);
-                      }
-                    }
-                    
-                    if (newContent !== currentContent) {
-                      updatedFiles[filePath] = newContent;
-                      modifiedCount++;
-                      
-                      if (filePath === 'index.html') {
-                        setGeneratedHtml(newContent);
-                      }
-                    }
-                  } catch (error) {
-                    console.error(`Erreur application action sur ${filePath}:`, error);
-                  }
-                }
-
-                setProjectFiles(updatedFiles);
-                setSelectedFileContent(updatedFiles[selectedFile || 'index.html'] || '');
-
-                // Auto-save
-                const filesArray = Object.entries(updatedFiles).map(([path, content]) => ({
-                  path,
-                  content,
-                  type: path.endsWith('.html') ? 'html' : 
-                        path.endsWith('.css') ? 'stylesheet' : 
-                        path.endsWith('.js') ? 'javascript' : 'text'
-                }));
-
-                // Utiliser le message conversationnel de l'IA ou un message par défaut
-                const finalMessage = event.data.message || assistantMessage || 
-                  `✨ ${modifiedFiles.size} fichier${modifiedFiles.size > 1 ? 's modifié' : ' modifié'}${modifiedFiles.size > 1 ? 's' : ''} !`;
-                
-                const updatedMessages = [...newMessages, { role: 'assistant' as const, content: finalMessage }];
-                setMessages(updatedMessages);
-
-                // Sauvegarder le message assistant dans chat_messages
-                await supabase
-                  .from('chat_messages')
-                  .insert({
-                    session_id: sessionId,
-                    role: 'assistant',
-                    content: finalMessage,
-                    metadata: { modified_files: Array.from(modifiedFiles), action_count: modifiedCount }
-                  });
-
-                // Aussi mettre à jour la session pour rétrocompatibilité
-                await supabase
-                  .from('build_sessions')
-                  .update({
-                    project_files: filesArray,
-                    messages: updatedMessages as any,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('id', sessionId);
-              }
-            } catch (e) {
-              // Ignorer erreurs parsing partiel
-            }
+          if (path === 'index.html') {
+            setGeneratedHtml(code);
           }
-        }
+          
+          if (selectedFile === path || !selectedFile) {
+            setSelectedFile(path);
+            setSelectedFileContent(code);
+          }
+        },
+        onComplete: async () => {
+          // Sauvegarder les fichiers
+          const filesArray = Object.entries(updatedFiles).map(([path, content]) => ({
+            path,
+            content,
+            type: path.endsWith('.html') ? 'html' : 
+                  path.endsWith('.css') ? 'stylesheet' : 
+                  path.endsWith('.js') ? 'javascript' : 'text'
+          }));
 
-      } else {
-        // ✅ MODE GÉNÉRATION STREAMING (3 FICHIERS SÉPARÉS)
-        const systemPrompt = `Tu es un expert développeur web. Génère un site web complet, moderne et professionnel en 3 fichiers séparés.
+          const finalMessage = assistantMessage || '✨ Modifications appliquées !';
+          const updatedMessages = [...newMessages, { role: 'assistant' as const, content: finalMessage }];
+          setMessages(updatedMessages);
 
-RÈGLES CRITIQUES :
-1. EXACTEMENT 3 fichiers : index.html, style.css, script.js
-2. HTML épuré SANS aucun CSS ni JS inline (uniquement classes Tailwind)
-3. style.css DOIT contenir du CSS custom RÉEL : animations, transitions, gradients, effets hover, keyframes
-4. script.js DOIT contenir du JavaScript RÉEL : menu mobile, scroll smooth, animations au scroll, interactions
-5. Design moderne, responsive, animations fluides
-6. Max 4 images (Unsplash/Pexels)
-7. Structure : header, hero, features/services, contact (NO footer)
+          // Sauvegarder dans chat_messages
+          await supabase
+            .from('chat_messages')
+            .insert({
+              session_id: sessionId,
+              role: 'assistant',
+              content: finalMessage,
+              metadata: { files_updated: Object.keys(updatedFiles).length }
+            });
 
-CONTENU OBLIGATOIRE PAR FICHIER :
-
-index.html:
-- Uniquement HTML sémantique avec classes Tailwind
-- Liens vers style.css et script.js
-- Pas de <style> ni <script> inline
-
-style.css:
-- Minimum 100 lignes de CSS custom
-- @keyframes pour animations (fadeIn, slideUp, etc.)
-- Gradients personnalisés
-- Transitions et effets hover
-- Variables CSS custom si nécessaire
-
-script.js:
-- Minimum 50 lignes de JavaScript
-- Menu mobile toggle
-- Smooth scroll
-- Animations au scroll (Intersection Observer)
-- Form validation si formulaire présent
-
-FORMAT OBLIGATOIRE (utilise // FILE: exactement) :
-// FILE: index.html
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>...</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <!-- HTML ici (classes Tailwind uniquement) -->
-  <script src="script.js"></script>
-</body>
-</html>
-
-// FILE: style.css
-/* Animations */
-@keyframes fadeIn { ... }
-@keyframes slideUp { ... }
-
-/* Styles custom */
-...
-
-// FILE: script.js
-// Menu mobile
-const menuToggle = ...
-
-// Smooth scroll
-...
-
-// Animations au scroll
-...
-
-Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier. Ne génère JAMAIS de fichiers vides.`;
-
-        const apiMessages: any[] = [{ role: 'system', content: systemPrompt }];
-        
-        if (typeof userMessageContent === 'string') {
-          apiMessages.push({ role: 'user', content: userMessageContent });
-        } else if (Array.isArray(userMessageContent)) {
-          apiMessages.push({
-            role: 'user',
-            content: userMessageContent.map(item => {
-              if (item.type === 'text') {
-                return { type: 'text', text: item.text };
-              } else if (item.type === 'image_url') {
-                return { type: 'image_url', image_url: { url: item.image_url?.url || '' } };
-              }
-              return item;
+          // Mettre à jour build_sessions pour rétrocompatibilité
+          await supabase
+            .from('build_sessions')
+            .update({
+              project_files: filesArray,
+              messages: updatedMessages as any,
+              updated_at: new Date().toISOString()
             })
-          });
+            .eq('id', sessionId);
+
+          sonnerToast.success('Modifications terminées !');
+        },
+        onError: (error) => {
+          sonnerToast.error(`Erreur: ${error}`);
         }
-
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session?.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messages: apiMessages,
-            model: 'anthropic/claude-sonnet-4.5',
-          }),
-          signal: abortController.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
-        }
-
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error('Impossible de lire le stream');
-
-        const decoder = new TextDecoder('utf-8');
-        let accumulated = '';
-        let updateCounter = 0;
-
-        // STREAMING TEMPS RÉEL - Mise à jour progressive token-by-token
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(Boolean);
-
-          for (const line of lines) {
-            if (!line.startsWith('data:')) continue;
-            
-            const dataStr = line.replace('data:', '').trim();
-            if (dataStr === '[DONE]') continue;
-
-            try {
-              const json = JSON.parse(dataStr);
-              const delta = json?.choices?.[0]?.delta?.content || '';
-              if (!delta) continue;
-
-              accumulated += delta;
-              updateCounter++;
-
-              // Mise à jour visuelle tous les 5 tokens pour fluidité
-              if (updateCounter % 5 === 0 && accumulated.length > 100) {
-                setGeneratedHtml(accumulated);
-                setProjectFiles({ 'index.html': accumulated });
-                setSelectedFile('index.html');
-                setSelectedFileContent(accumulated);
-              }
-            } catch (e) {
-              // Ignorer erreurs parsing partiel
-            }
-          }
-        }
-
-        // Parser les 3 fichiers du format // FILE:
-        const fileRegex = /\/\/\s*FILE:\s*(.+?)\n/g;
-        const matches = [...accumulated.matchAll(fileRegex)];
-        
-        let parsedFiles: Record<string, string> = {};
-        let filesArray: Array<{ path: string; content: string; type: string }> = [];
-        
-        if (matches.length > 0) {
-          // Format multi-fichiers détecté
-          for (let i = 0; i < matches.length; i++) {
-            const match = matches[i];
-            const filePath = match[1].trim();
-            const startIndex = match.index! + match[0].length;
-            const nextMatch = matches[i + 1];
-            const endIndex = nextMatch ? nextMatch.index! : accumulated.length;
-            const content = accumulated.slice(startIndex, endIndex).trim();
-            
-            parsedFiles[filePath] = content;
-            
-            const extension = filePath.split('.').pop() || '';
-            const type = extension === 'html' ? 'html' : 
-                        extension === 'css' ? 'stylesheet' : 
-                        extension === 'js' ? 'javascript' : 'text';
-            
-            filesArray.push({ path: filePath, content, type });
-            
-            if (filePath === 'index.html') {
-              setGeneratedHtml(content);
-            }
-          }
-        } else {
-          // Fallback: fichier HTML unique
-          parsedFiles = { 'index.html': accumulated };
-          filesArray = [{ path: 'index.html', content: accumulated, type: 'html' }];
-          setGeneratedHtml(accumulated);
-        }
-        
-        setProjectFiles(parsedFiles);
-        setSelectedFile('index.html');
-        setSelectedFileContent(parsedFiles['index.html'] || accumulated);
-
-        const fileCount = filesArray.length;
-        const assistantMessage = `✨ ${fileCount} fichier${fileCount > 1 ? 's généré' : ' généré'}${fileCount > 1 ? 's' : ''} avec succès !`;
-        
-        const updatedMessages = [...newMessages, { role: 'assistant' as const, content: assistantMessage }];
-        setMessages(updatedMessages);
-
-        // Sauvegarder le message assistant dans chat_messages
-        await supabase
-          .from('chat_messages')
-          .insert({
-            session_id: sessionId,
-            role: 'assistant',
-            content: assistantMessage,
-            metadata: { files_generated: fileCount }
-          });
-
-        // Aussi mettre à jour la session pour rétrocompatibilité
-        await supabase
-          .from('build_sessions')
-          .update({
-            project_files: filesArray,
-            messages: updatedMessages as any,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', sessionId);
       }
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        const errorMessage = "⏸️ Génération arrêtée";
-        setMessages(prev => [...prev, { role: 'assistant' as const, content: errorMessage }]);
-        
-        // Sauvegarder même le message d'erreur
-        await supabase
-          .from('chat_messages')
-          .insert({
-            session_id: sessionId,
-            role: 'assistant',
-            content: errorMessage,
-            metadata: { error: true, error_type: 'AbortError' }
-          });
-      } else {
-        console.error('Error:', error);
-        const errorMessage = `❌ Erreur : ${error instanceof Error ? error.message : "Une erreur est survenue"}`;
-        setMessages(prev => [...prev, { role: 'assistant' as const, content: errorMessage }]);
-        
-        // Sauvegarder même le message d'erreur
-        await supabase
-          .from('chat_messages')
-          .insert({
-            session_id: sessionId,
-            role: 'assistant',
-            content: errorMessage,
-            metadata: { error: true, error_message: error instanceof Error ? error.message : "Unknown error" }
-          });
-      }
-    } finally {
-      setIsLoading(false);
-      setIsStreaming(false);
-      streamingRef.current = null;
-    }
+    );
   };
 
   const handleSave = async () => {
@@ -1314,7 +975,7 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
 
 
               {/* Affichage du streaming en temps réel */}
-              {isStreaming && (
+              {agent.isStreaming && (
                 <div className="flex items-start gap-3">
                   <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
                     <svg className={`w-4 h-4 ${isDark ? 'text-slate-300' : 'text-slate-600'}`} fill="currentColor" viewBox="0 0 20 20">
@@ -1342,7 +1003,7 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
                 inputValue={inputValue}
                 setInputValue={setInputValue}
                 onSubmit={handleSubmit}
-                isLoading={isLoading}
+                isLoading={agent.isLoading}
                 showPlaceholderAnimation={false}
                 showConfigButtons={false}
                 modificationMode={true}
@@ -1376,7 +1037,7 @@ Génère DIRECTEMENT les 3 fichiers avec du contenu COMPLET dans chaque fichier.
           <ResizablePanel defaultSize={70}>
             <div className="h-full w-full flex flex-col">
               {viewMode === 'preview' ? (
-                isLoading && Object.keys(projectFiles).length === 0 ? (
+                agent.isLoading && Object.keys(projectFiles).length === 0 ? (
                   <GeneratingPreview />
                 ) : (
                   <VitePreview projectFiles={projectFiles} isDark={isDark} />
