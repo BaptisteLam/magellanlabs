@@ -17,19 +17,19 @@ const TaskTrigger = React.forwardRef<
   <CollapsiblePrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex w-full items-center justify-between rounded-lg border border-border bg-card px-4 py-3 text-sm font-medium transition-all hover:bg-accent/50",
+      "flex w-full items-center justify-between rounded-md border border-border/50 bg-background/50 px-3 py-2 text-sm font-medium transition-colors hover:bg-accent/30",
       "[&[data-state=open]>svg]:rotate-180",
       className
     )}
     {...props}
   >
     <div className="flex items-center gap-2">
-      {status === "complete" && <Check className="h-4 w-4 text-green-500" />}
-      {status === "running" && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-      {status === "pending" && <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30" />}
-      <span>{title}</span>
+      {status === "complete" && <Check className="h-3.5 w-3.5 text-muted-foreground" />}
+      {status === "running" && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+      {status === "pending" && <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/20 animate-pulse" />}
+      <span className="text-foreground/90">{title}</span>
     </div>
-    <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200" />
   </CollapsiblePrimitive.Trigger>
 ));
 TaskTrigger.displayName = "TaskTrigger";
@@ -46,7 +46,7 @@ const TaskContent = React.forwardRef<
     )}
     {...props}
   >
-    <div className="mt-2 space-y-1 rounded-lg border border-border bg-card/50 p-3">
+    <div className="mt-1.5 space-y-1 px-3 py-2">
       {children}
     </div>
   </CollapsiblePrimitive.Content>
@@ -60,13 +60,13 @@ const TaskItem = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "flex items-start gap-2 text-sm text-muted-foreground",
+      "flex items-start gap-2 text-sm text-muted-foreground py-0.5",
       className
     )}
     {...props}
   >
-    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
-    <span className="flex-1">{children}</span>
+    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/40" />
+    <span className="flex-1 leading-relaxed">{children}</span>
   </div>
 ));
 TaskItem.displayName = "TaskItem";
@@ -78,7 +78,7 @@ const TaskItemFile = React.forwardRef<
   <span
     ref={ref}
     className={cn(
-      "inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 font-mono text-xs",
+      "inline-flex items-center gap-1.5 rounded bg-background/80 border border-border/40 px-2 py-0.5 font-mono text-xs text-foreground/80",
       className
     )}
     {...props}
