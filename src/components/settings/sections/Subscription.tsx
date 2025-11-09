@@ -79,7 +79,7 @@ export function Subscription() {
           {plans.map((plan) => (
             <Card
               key={plan.name}
-              className={plan.popular ? 'border-[#03A5C0]/50 shadow-lg shadow-[#03A5C0]/20' : ''}
+              className={plan.popular ? 'border-[#03A5C0]/50 shadow-lg shadow-[#03A5C0]/20 rounded-[7px]' : 'rounded-[7px]'}
             >
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -103,8 +103,8 @@ export function Subscription() {
                 <Button
                   className={
                     plan.popular
-                      ? 'w-full bg-[#03A5C0]/20 text-[#03A5C0] border border-[#03A5C0]/50 hover:bg-[#03A5C0]/30'
-                      : 'w-full'
+                      ? 'w-full bg-[#03A5C0]/20 text-[#03A5C0] border border-[#03A5C0]/50 hover:bg-[#03A5C0]/30 rounded-[7px]'
+                      : 'w-full rounded-[7px]'
                   }
                   variant={plan.name === currentPlan ? 'secondary' : 'default'}
                   disabled={plan.name === currentPlan}

@@ -42,12 +42,12 @@ export function Integrations() {
         {integrations.map((integration) => {
           const Icon = integration.icon;
           return (
-            <Card key={integration.id}>
+            <Card key={integration.id} className="rounded-[7px]">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div
-                      className="p-2 rounded-lg"
+                  <div
+                      className="p-2 rounded-[7px]"
                       style={{ backgroundColor: `${integration.color}20` }}
                     >
                       <Icon className="h-6 w-6" style={{ color: integration.color }} />
@@ -65,8 +65,8 @@ export function Integrations() {
                   variant={integration.connected ? 'outline' : 'default'}
                   className={
                     !integration.connected
-                      ? 'bg-[#03A5C0]/20 text-[#03A5C0] border border-[#03A5C0]/50 hover:bg-[#03A5C0]/30 w-full'
-                      : 'w-full'
+                      ? 'bg-[#03A5C0]/20 text-[#03A5C0] border border-[#03A5C0]/50 hover:bg-[#03A5C0]/30 w-full rounded-[7px]'
+                      : 'w-full rounded-[7px]'
                   }
                 >
                   {integration.connected ? 'Déconnecter' : 'Connecter'}

@@ -52,7 +52,7 @@ export function SettingsSidebar() {
               key={item.id}
               onClick={() => setSection(item.id)}
               className={cn(
-                'w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-all',
+                'w-full flex items-center gap-3 px-3 py-1.5 rounded-[7px] transition-all',
                 'text-sm font-medium',
                 isActive
                   ? 'border-[1px] border-[#03A5C0]/50 bg-[#03A5C0]/10 text-[#03A5C0]'
@@ -69,7 +69,7 @@ export function SettingsSidebar() {
       <div className="p-3 border-t border-border/50">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium text-destructive hover:bg-destructive/10"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-[7px] transition-all text-sm font-medium text-destructive hover:bg-destructive/10"
         >
           <LogOut className="h-5 w-5" />
           <span>Déconnexion</span>

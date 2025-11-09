@@ -154,7 +154,7 @@ export function Profile() {
             </Avatar>
             <div>
               <Label htmlFor="avatar-upload" className="cursor-pointer">
-                <div className="flex items-center gap-2 px-4 py-2 border border-[#03A5C0]/50 bg-[#03A5C0]/10 text-[#03A5C0] rounded-lg hover:bg-[#03A5C0]/20 transition-colors">
+                <div className="flex items-center gap-2 px-4 py-2 border border-[#03A5C0]/50 bg-[#03A5C0]/10 text-[#03A5C0] rounded-[7px] hover:bg-[#03A5C0]/20 transition-colors">
                   <Upload className="h-4 w-4" />
                   <span>{uploading ? 'Upload...' : 'Changer'}</span>
                 </div>

@@ -33,7 +33,7 @@ export function SettingsCenter() {
       <DialogContent
         className={cn(
           'max-w-[85vw] h-[85vh] p-0 gap-0',
-          'bg-background border border-border/50 rounded-xl overflow-hidden'
+          'bg-background border border-border/50 rounded-[7px] overflow-hidden'
         )}
       >
         <div className="flex h-full">
