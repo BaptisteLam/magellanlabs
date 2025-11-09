@@ -93,67 +93,18 @@ const Header = () => {
             <div className="flex items-center gap-2">
               {user ? (
                 <>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        className="relative h-10 w-10 rounded-full hover:bg-accent"
-                        onClick={() => openSettings('profile')}
-                      >
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src="" alt={userEmail} />
-                          <AvatarFallback className="bg-[#03A5C0] text-white">
-                            {getUserInitial()}
-                          </AvatarFallback>
-                        </Avatar>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-64 z-[100] bg-background" align="end">
-                      <div className="p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium">50 Crédit</span>
-                          <Coins className="w-4 h-4 text-[#03A5C0]" />
-                        </div>
-                        <Progress value={50} className="h-2 [&>div]:bg-[#03A5C0]" />
-                      </div>
-                      
-                      <DropdownMenuSeparator />
-                      
-                      <DropdownMenuItem 
-                        className="cursor-pointer transition-colors hover:bg-[#03A5C0] hover:text-white"
-                        onClick={() => navigate('/credits')}
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Ajouter des crédits
-                      </DropdownMenuItem>
-                      
-                      <DropdownMenuItem 
-                        className="cursor-pointer transition-colors hover:bg-[#03A5C0] hover:text-white"
-                        onClick={() => openSettings('projects')}
-                      >
-                        <Settings className="w-4 h-4 mr-2" />
-                        Paramètres
-                      </DropdownMenuItem>
-                      
-                      <DropdownMenuItem 
-                        className="cursor-pointer transition-colors hover:bg-[#03A5C0] hover:text-white"
-                        onClick={() => navigate('/account')}
-                      >
-                        <User className="w-4 h-4 mr-2" />
-                        Mon compte
-                      </DropdownMenuItem>
-                      
-                      <DropdownMenuSeparator />
-                      
-                      <DropdownMenuItem 
-                        className="cursor-pointer text-red-500 hover:bg-red-50 hover:text-red-600"
-                        onClick={handleLogout}
-                      >
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Déconnexion
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button 
+                    variant="ghost" 
+                    className="relative h-10 w-10 rounded-full hover:bg-accent"
+                    onClick={() => openSettings('profile')}
+                  >
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src="" alt={userEmail} />
+                      <AvatarFallback className="bg-[#03A5C0] text-white">
+                        {getUserInitial()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
                   
                   <button
                     onClick={toggleTheme}
