@@ -22,6 +22,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import Analytics from "@/components/Analytics";
 import { AiDiffService } from "@/services/aiDiffService";
 import { useAgentAPI } from "@/hooks/useAgentAPI";
+import type { AIEvent } from '@/types/agent';
+import AiTaskList from '@/components/chat/AiTaskList';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -58,6 +60,9 @@ export default function BuilderSession() {
   
   // Hook pour la nouvelle API Agent
   const agent = useAgentAPI();
+  
+  // Événements IA pour la TaskList
+  const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
 
 
   useEffect(() => {
@@ -449,6 +454,9 @@ export default function BuilderSession() {
     let assistantMessage = '';
     const updatedFiles = { ...projectFiles };
 
+    // Réinitialiser les événements pour une nouvelle requête
+    setAiEvents([]);
+
     // Appeler l'API Agent avec callbacks
     await agent.callAgent(
       userPrompt,
@@ -459,6 +467,7 @@ export default function BuilderSession() {
       {
         onStatus: (status) => {
           console.log('Status:', status);
+          setAiEvents(prev => [...prev, { type: 'status', content: status }]);
         },
         onMessage: (message) => {
           assistantMessage += message;
@@ -471,8 +480,10 @@ export default function BuilderSession() {
         },
         onIntent: (intent) => {
           console.log('Intent:', intent);
+          setAiEvents(prev => [...prev, intent]);
         },
         onCodeUpdate: (path, code) => {
+          setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
           updatedFiles[path] = code;
           setProjectFiles({ ...updatedFiles });
           
@@ -486,6 +497,7 @@ export default function BuilderSession() {
           }
         },
         onComplete: async () => {
+          setAiEvents(prev => [...prev, { type: 'complete' }]);
           // Sauvegarder les fichiers
           const filesArray = Object.entries(updatedFiles).map(([path, content]) => ({
             path,
@@ -991,6 +1003,13 @@ export default function BuilderSession() {
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* AI Task List */}
+              {aiEvents.length > 0 && (
+                <div className="px-4 pb-4">
+                  <AiTaskList events={aiEvents} />
                 </div>
               )}
               
