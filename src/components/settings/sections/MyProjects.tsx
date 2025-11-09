@@ -135,7 +135,7 @@ export function MyProjects() {
             closeSettings();
             navigate('/ai-builder');
           }}
-          className="bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30"
+          className="bg-[#03A5C0]/20 text-[#03A5C0] border border-[#03A5C0]/50 hover:bg-[#03A5C0]/30"
         >
           <Plus className="h-4 w-4 mr-2" />
           Nouveau projet
@@ -164,7 +164,7 @@ export function MyProjects() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProjects.map((project) => (
-            <Card key={project.id} className="overflow-hidden hover:border-primary/50 transition-colors">
+            <Card key={project.id} className="overflow-hidden hover:border-[#03A5C0]/50 transition-colors">
               {project.thumbnail_url && (
                 <div className="aspect-video bg-muted">
                   <img

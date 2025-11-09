@@ -55,8 +55,8 @@ export function SettingsSidebar() {
                 'w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-all',
                 'text-sm font-medium',
                 isActive
-                  ? 'border-[1px] border-cyan-700/50 bg-cyan-400/10 text-cyan-400'
-                  : 'text-muted-foreground hover:bg-cyan-400/10 hover:text-cyan-400 border-[1px] border-transparent'
+                  ? 'border-[1px] border-[#03A5C0]/50 bg-[#03A5C0]/10 text-[#03A5C0]'
+                  : 'text-muted-foreground hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] border-[1px] border-transparent'
               )}
             >
               <Icon className="h-5 w-5" />

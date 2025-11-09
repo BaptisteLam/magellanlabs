@@ -79,7 +79,7 @@ export function Subscription() {
           {plans.map((plan) => (
             <Card
               key={plan.name}
-              className={plan.popular ? 'border-primary shadow-lg shadow-primary/20' : ''}
+              className={plan.popular ? 'border-[#03A5C0]/50 shadow-lg shadow-[#03A5C0]/20' : ''}
             >
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -95,7 +95,7 @@ export function Subscription() {
                 <ul className="space-y-2">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2">
-                      <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-[#03A5C0] shrink-0 mt-0.5" />
                       <span className="text-sm text-muted-foreground">{feature}</span>
                     </li>
                   ))}
@@ -103,7 +103,7 @@ export function Subscription() {
                 <Button
                   className={
                     plan.popular
-                      ? 'w-full bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30'
+                      ? 'w-full bg-[#03A5C0]/20 text-[#03A5C0] border border-[#03A5C0]/50 hover:bg-[#03A5C0]/30'
                       : 'w-full'
                   }
                   variant={plan.name === currentPlan ? 'secondary' : 'default'}
