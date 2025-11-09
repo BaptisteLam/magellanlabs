@@ -32,7 +32,7 @@ export function SettingsCenter() {
     <Dialog open={isOpen} onOpenChange={closeSettings}>
       <DialogContent
         className={cn(
-          'max-w-[70vw] h-[70vh] p-0 gap-0',
+          'max-w-[85vw] h-[85vh] p-0 gap-0',
           'bg-background border border-border/50 rounded-xl overflow-hidden'
         )}
       >
