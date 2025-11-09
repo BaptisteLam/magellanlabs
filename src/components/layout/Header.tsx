@@ -95,7 +95,11 @@ const Header = () => {
                 <>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-accent">
+                      <Button 
+                        variant="ghost" 
+                        className="relative h-10 w-10 rounded-full hover:bg-accent"
+                        onClick={() => openSettings('profile')}
+                      >
                         <Avatar className="h-10 w-10">
                           <AvatarImage src="" alt={userEmail} />
                           <AvatarFallback className="bg-[#03A5C0] text-white">
