@@ -34,7 +34,7 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
     
     // Convertir les chemins et contenus
     Object.entries(projectFiles).forEach(([path, content]) => {
-      // Normaliser les chemins pour Sandpack
+      // Normaliser les chemins pour Sandpack (toujours commencer par /)
       let normalizedPath = path.startsWith('/') ? path : `/${path}`;
       files[normalizedPath] = content;
       console.log(`📄 Ajout fichier: ${normalizedPath} (${content.length} chars)`);
@@ -65,12 +65,48 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
     return files;
   }, [projectFiles, isReactProject]);
 
+  // Déterminer le fichier d'entrée principal
+  const entryFile = useMemo(() => {
+    const fileKeys = Object.keys(sandpackFiles);
+    
+    if (isReactProject) {
+      // Pour React, chercher dans l'ordre : index.tsx, main.tsx, App.tsx, index.jsx, main.jsx, App.jsx
+      const reactEntries = [
+        '/index.tsx', '/src/index.tsx',
+        '/main.tsx', '/src/main.tsx',
+        '/App.tsx', '/src/App.tsx',
+        '/index.jsx', '/src/index.jsx',
+        '/main.jsx', '/src/main.jsx',
+        '/App.jsx', '/src/App.jsx'
+      ];
+      
+      for (const entry of reactEntries) {
+        if (fileKeys.includes(entry)) {
+          console.log('🎯 Point d\'entrée React trouvé:', entry);
+          return entry;
+        }
+      }
+    } else {
+      // Pour HTML statique, chercher index.html
+      if (fileKeys.includes('/index.html')) {
+        console.log('🎯 Point d\'entrée HTML trouvé: /index.html');
+        return '/index.html';
+      }
+    }
+    
+    // Fallback sur le premier fichier
+    const fallback = fileKeys[0] || '/index.html';
+    console.log('⚠️ Aucun point d\'entrée standard, utilisation de:', fallback);
+    return fallback;
+  }, [sandpackFiles, isReactProject]);
+
   if (!projectFiles || Object.keys(projectFiles).length === 0) {
     return <GeneratingPreview />;
   }
 
   console.log('🎨 VitePreview - Rendu Sandpack avec', Object.keys(sandpackFiles).length, 'fichiers');
   console.log('🎨 VitePreview - Type de projet:', isReactProject ? 'React' : 'HTML');
+  console.log('🎨 VitePreview - Point d\'entrée:', entryFile);
 
   return (
     <div className="w-full h-full overflow-hidden sandpack-wrapper rounded-xl">
@@ -88,7 +124,7 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
           showConsole: false,
           showConsoleButton: false,
           closableTabs: false,
-          activeFile: Object.keys(sandpackFiles)[0],
+          activeFile: entryFile,
           visibleFiles: [],
           showRefreshButton: false,
           autoReload: true,
