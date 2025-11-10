@@ -1068,7 +1068,7 @@ export default function BuilderSession() {
         <ResizableHandle withHandle />
         
           <ResizablePanel defaultSize={70}>
-            <div className="h-full w-full flex flex-col">
+            <div className="h-full w-full flex flex-col rounded-xl overflow-hidden">
               {viewMode === 'preview' ? (
                 agent.isLoading && Object.keys(projectFiles).length === 0 ? (
                   <GeneratingPreview />

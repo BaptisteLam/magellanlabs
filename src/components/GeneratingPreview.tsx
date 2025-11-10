@@ -26,7 +26,7 @@ export function GeneratingPreview() {
   }, []);
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-6">
+    <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-6 rounded-xl overflow-hidden">
       <video 
         src={isDark ? loadingSphereDark : loadingSphereLight}
         autoPlay
