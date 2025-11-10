@@ -15,6 +15,7 @@ import PromptBar from '@/components/PromptBar';
 import { CodeTreeView } from '@/components/CodeEditor/CodeTreeView';
 import { MonacoEditor } from '@/components/CodeEditor/MonacoEditor';
 import { VitePreview } from '@/components/VitePreview';
+import { GeneratingPreview } from '@/components/GeneratingPreview';
 
 interface AISearchHeroProps {
   onGeneratedChange?: (hasGenerated: boolean) => void;
@@ -260,26 +261,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   if (isLoading && Object.keys(projectFiles).length === 0) {
     return (
       <div className="min-h-screen flex flex-col">
-        <div className="flex-1 flex flex-col items-center justify-center bg-white relative overflow-hidden">
-          {/* Grid background animé */}
-          <div 
-            className="absolute inset-0 animate-scroll-down" 
-            style={{ 
-              backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
-              backgroundSize: '80px 80px'
-            }} 
-          />
-          
-          <div className="w-64 h-1 bg-slate-200 rounded-full overflow-hidden relative z-10">
-            <div 
-              className="h-full rounded-full"
-              style={{ 
-                backgroundColor: '#5BE0E5',
-                animation: 'loadProgress 20s linear forwards'
-              }}
-            />
-          </div>
-        </div>
+        <GeneratingPreview />
       </div>
     );
   }
