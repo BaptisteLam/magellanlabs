@@ -7,6 +7,7 @@ import { Profile } from './sections/Profile';
 import { Subscription } from './sections/Subscription';
 import { Integrations } from './sections/Integrations';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function SettingsCenter() {
   const { isOpen, closeSettings, currentSection } = useSettingsStore();
@@ -39,7 +40,9 @@ export function SettingsCenter() {
         <div className="flex h-full">
           <SettingsSidebar />
 
-          <div className="flex-1 overflow-y-auto p-8">{renderSection()}</div>
+          <ScrollArea className="flex-1">
+            <div className="p-8">{renderSection()}</div>
+          </ScrollArea>
         </div>
       </DialogContent>
     </Dialog>
