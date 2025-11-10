@@ -466,7 +466,7 @@ export default function BuilderSession() {
       sessionId!,
       {
         onStatus: (status) => {
-          console.log('Status:', status);
+          console.log('📊 Status:', status);
           setAiEvents(prev => [...prev, { type: 'status', content: status }]);
         },
         onMessage: (message) => {
@@ -478,8 +478,12 @@ export default function BuilderSession() {
             return [...withoutLastAssistant, { role: 'assistant' as const, content: assistantMessage }];
           });
         },
+        onLog: (log) => {
+          console.log('📝 Log:', log);
+          setAiEvents(prev => [...prev, { type: 'log', content: log }]);
+        },
         onIntent: (intent) => {
-          console.log('Intent:', intent);
+          console.log('🎯 Intent:', intent);
           setAiEvents(prev => [...prev, intent]);
         },
         onCodeUpdate: (path, code) => {

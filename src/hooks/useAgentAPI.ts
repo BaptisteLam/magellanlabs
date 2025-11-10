@@ -5,6 +5,7 @@ import type { AIEvent } from '@/types/agent';
 interface UseAgentAPIOptions {
   onStatus?: (status: string) => void;
   onMessage?: (message: string) => void;
+  onLog?: (log: string) => void;
   onIntent?: (intent: any) => void;
   onCodeUpdate?: (path: string, code: string) => void;
   onComplete?: () => void;
@@ -86,6 +87,9 @@ export function useAgentAPI() {
                 break;
               case 'message':
                 options.onMessage?.(event.content);
+                break;
+              case 'log':
+                options.onLog?.(event.content);
                 break;
               case 'intent':
                 options.onIntent?.(event);

@@ -85,6 +85,13 @@ export default function AiTaskList({ events }: { events: AIEvent[] }) {
         }
       }
       
+      if (e.type === 'log' && e.content) {
+        if (!grouped['Build Process']) {
+          grouped['Build Process'] = { items: [], status: 'in_progress' };
+        }
+        grouped['Build Process'].items.push(e.content);
+      }
+      
       if (e.type === 'code_update' && e.path) {
         if (!grouped['Generating code']) {
           grouped['Generating code'] = { items: [], status: 'in_progress' };

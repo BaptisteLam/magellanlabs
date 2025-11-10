@@ -245,6 +245,7 @@ async function* generateWithClaude(
 Tu DOIS répondre UNIQUEMENT avec des événements NDJSON (une ligne = un objet JSON).
 
 Types d'événements disponibles:
+- {"type":"log","content":"message de log technique"}
 - {"type":"code_update","path":"chemin/fichier.tsx","code":"code complet du fichier"}
 - {"type":"complete"}
 
@@ -252,7 +253,8 @@ IMPORTANT:
 - Renvoie le CODE COMPLET de chaque fichier modifié/créé avec type="code_update"
 - Un événement par ligne (NDJSON)
 - Pas de markdown, pas de \`\`\`, juste du JSON valide
-- NE génère PAS d'événements "status" ou "message", uniquement "code_update" et "complete"
+- NE génère PAS d'événements "status" ou "message", uniquement "log", "code_update" et "complete"
+- Utilise "log" pour indiquer les étapes techniques (ex: "Rebuilding preview...")
 - Termine toujours par {"type":"complete"}`;
 
   let userPrompt = `Résumé du projet:\n${projectSummary}\n\n`;

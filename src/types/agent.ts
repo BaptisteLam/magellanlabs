@@ -8,6 +8,7 @@ export type IntentAnalysis = {
 export type AIEvent =
   | { type: "status"; content: string }
   | { type: "message"; content: string }
+  | { type: "log"; content: string }
   | IntentAnalysis
   | { type: "code_update"; path: string; code: string }
   | { type: "complete" };
