@@ -1,5 +1,6 @@
 import { Sandpack } from '@codesandbox/sandpack-react';
 import { useMemo } from 'react';
+import { GeneratingPreview } from './GeneratingPreview';
 
 interface VitePreviewProps {
   projectFiles: Record<string, string>;
@@ -63,11 +64,7 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
   }, [projectFiles, isReactProject]);
 
   if (!projectFiles || Object.keys(projectFiles).length === 0) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-muted">
-        <p className="text-muted-foreground">En attente de génération...</p>
-      </div>
-    );
+    return <GeneratingPreview />;
   }
 
   console.log('🎨 VitePreview - Rendu Sandpack avec', Object.keys(sandpackFiles).length, 'fichiers');

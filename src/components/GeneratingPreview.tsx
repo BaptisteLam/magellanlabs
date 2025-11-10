@@ -23,20 +23,20 @@ export function GeneratingPreview() {
   }, []);
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-8">
+    <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-6">
       <video 
         src={loadingSphere}
         autoPlay
         loop
         muted
         playsInline
-        className="w-48 h-48 object-contain"
+        className="w-24 h-24 object-contain"
       />
       
       <div className="px-8 max-w-2xl text-center">
         <h2 
           key={messageIndex}
-          className="text-2xl font-semibold animate-fade-in"
+          className="text-xs animate-fade-in"
         >
           <ShinyText 
             text={loadingMessages[messageIndex]} 
