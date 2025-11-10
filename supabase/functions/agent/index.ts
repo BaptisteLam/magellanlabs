@@ -32,7 +32,7 @@ function generateProjectSummary(projectFiles: Record<string, string>): string {
   return summary.slice(0, 2000); // Limite approximative
 }
 
-// Étape 1 : Analyse d'intention avec OpenAI (léger, avec résumé)
+// Étape 1 : Analyse d'intention avec OpenAI (avec contexte complet)
 async function analyzeIntent(
   userMessage: string, 
   chatHistory: Array<{ role: string; content: string }>,
@@ -40,9 +40,10 @@ async function analyzeIntent(
 ): Promise<IntentAnalysis> {
   console.log('🔍 Analyse d\'intention avec OpenAI...');
   
-  const recentHistory = chatHistory.slice(-3);
-  const contextPrompt = `Résumé du projet:\n${projectSummary}\n\nConversation récente:\n${
-    recentHistory.map(m => `${m.role}: ${m.content}`).join('\n')
+  // Garder les 5 derniers messages pour meilleur contexte
+  const recentHistory = chatHistory.slice(-5);
+  const contextPrompt = `Résumé du projet:\n${projectSummary}\n\nHistorique de conversation:\n${
+    recentHistory.map(m => `${m.role}: ${m.content.substring(0, 200)}`).join('\n')
   }`;
   
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -57,12 +58,13 @@ async function analyzeIntent(
         {
           role: 'system',
           content: `Tu es un assistant qui analyse les intentions utilisateur pour un builder de site web.
+Utilise le contexte de la conversation pour comprendre les demandes liées aux échanges précédents.
 Réponds UNIQUEMENT avec un JSON au format:
 {
   "type": "intent",
   "action": "generate_code" | "modify_code" | "add_feature" | "explain" | "chat",
   "target": "chemin/fichier.tsx" (optionnel, si modification d'un fichier spécifique),
-  "description": "description claire de la tâche"
+  "description": "description claire de la tâche en tenant compte du contexte"
 }
 
 Actions:
@@ -72,10 +74,11 @@ Actions:
 - explain: expliquer quelque chose sans code
 - chat: conversation générale`
         },
-        { role: 'user', content: `${contextPrompt}\n\nNouvelle demande: ${userMessage}` }
+        { role: 'user', content: `${contextPrompt}\n\nDemande actuelle: ${userMessage}` }
       ],
       temperature: 0.3,
-      max_tokens: 300
+      max_tokens: 300,
+      stream: false
     }),
   });
 
@@ -102,18 +105,20 @@ Actions:
   }
 }
 
-// Génère une réponse conversationnelle avec OpenAI
+// Génère une réponse conversationnelle avec OpenAI (avec contexte complet)
 async function generateConversationalResponse(
   userMessage: string,
   intent: IntentAnalysis,
   chatHistory: Array<{ role: string; content: string }>,
   isInitial: boolean = true
 ): Promise<string> {
-  const recentHistory = chatHistory.slice(-3);
+  // Garder les 5 derniers messages pour un meilleur contexte
+  const recentHistory = chatHistory.slice(-5);
   
   const systemPrompt = isInitial 
     ? `Tu es un assistant de développement web. L'utilisateur vient de demander quelque chose et tu vas lancer une tâche.
 Réponds en UNE SEULE PHRASE courte et naturelle pour confirmer ce que tu vas faire, SANS détails techniques.
+Utilise le contexte de la conversation pour une réponse cohérente.
 Exemples:
 - "Je vais modifier le header pour changer la couleur."
 - "D'accord, je crée une nouvelle page de contact."
@@ -135,20 +140,22 @@ Exemples:
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
-        ...recentHistory,
+        ...recentHistory, // Contexte complet des derniers messages
         { 
           role: 'user', 
           content: isInitial 
-            ? `Demande: ${userMessage}\nIntention détectée: ${intent.description}` 
+            ? `Demande actuelle: ${userMessage}\nIntention détectée: ${intent.description}` 
             : `Tâche terminée: ${intent.description}`
         }
       ],
       temperature: 0.7,
-      max_tokens: 100
+      max_tokens: 150,
+      stream: false
     }),
   });
 
   if (!response.ok) {
+    console.error('❌ Erreur OpenAI conversational:', await response.text());
     return isInitial 
       ? "Je m'occupe de votre demande." 
       : "C'est fait.";
@@ -275,9 +282,12 @@ IMPORTANT:
     { role: 'assistant', content: systemPrompt }
   ];
 
-  // Ajouter l'historique (fenêtre glissante des 3 derniers messages)
-  const recentHistory = chatHistory.slice(-3);
-  messages.push(...recentHistory.map(m => ({ role: m.role, content: m.content })));
+  // Ajouter l'historique complet (fenêtre glissante des 5 derniers messages pour contexte)
+  const recentHistory = chatHistory.slice(-5);
+  messages.push(...recentHistory.map(m => ({ 
+    role: m.role, 
+    content: m.content.substring(0, 1000) // Limiter la longueur pour optimiser
+  })));
   
   messages.push({ role: 'user', content: userPrompt });
 
