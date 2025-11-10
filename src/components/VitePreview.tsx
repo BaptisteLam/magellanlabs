@@ -32,16 +32,10 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
 
     const files: Record<string, string> = {};
     
-    // Convertir les chemins et contenus
+    // Convertir les chemins et contenus - Sandpack préfère les chemins SANS / au début
     Object.entries(projectFiles).forEach(([path, content]) => {
-      // Pour Sandpack, ne PAS ajouter / au début si le chemin commence déjà par src/
-      // Sandpack s'attend à des chemins comme "App.tsx", "src/App.tsx", etc.
-      let normalizedPath = path;
-      
-      // Si le chemin ne commence ni par / ni par src/, on ajoute /
-      if (!path.startsWith('/') && !path.startsWith('src/')) {
-        normalizedPath = `/${path}`;
-      }
+      // Retirer le / du début si présent pour Sandpack
+      let normalizedPath = path.startsWith('/') ? path.slice(1) : path;
       
       files[normalizedPath] = content;
       console.log(`📄 Ajout fichier: ${normalizedPath} (${content.length} chars)`);
@@ -49,13 +43,28 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
 
     console.log('📦 VitePreview - Fichiers normalisés:', Object.keys(files));
 
-    // NE PAS créer de fallback pour les projets React - laisser Sandpack gérer
-    if (!isReactProject && !files['/index.html'] && !files['index.html']) {
-      console.log('⚠️ Projet HTML statique sans index.html, création d\'un fallback');
-      // Pour HTML statique, combiner tous les fichiers HTML trouvés
+    // Pour les projets React, s'assurer qu'on a un index.html si nécessaire
+    if (isReactProject && !files['index.html'] && !files['public/index.html']) {
+      console.log('⚠️ Projet React sans index.html, création');
+      files['public/index.html'] = `<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>React App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>`;
+    }
+
+    // Pour HTML statique
+    if (!isReactProject && !files['index.html']) {
+      console.log('⚠️ Projet HTML statique sans index.html');
       const htmlFiles = Object.entries(projectFiles).filter(([path]) => path.endsWith('.html'));
       if (htmlFiles.length > 0) {
-        files['/index.html'] = htmlFiles[0][1];
+        files['index.html'] = htmlFiles[0][1];
       }
     }
 
