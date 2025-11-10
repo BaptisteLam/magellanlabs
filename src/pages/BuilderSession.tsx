@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Download, Paperclip, BarChart3 } from "lucide-react";
+import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Download, Paperclip, BarChart3, Lightbulb, FileText, Edit, Loader } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
 import JSZip from "jszip";
@@ -63,6 +63,9 @@ export default function BuilderSession() {
   
   // Événements IA pour la TaskList
   const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
+  
+  // Événements de génération pour l'affichage de pensée
+  const [generationEvents, setGenerationEvents] = useState<Array<{ type: string; message: string; duration?: number; file?: string }>>([]);
 
 
   useEffect(() => {
@@ -456,6 +459,7 @@ export default function BuilderSession() {
 
     // Réinitialiser les événements pour une nouvelle requête
     setAiEvents([]);
+    setGenerationEvents([]);
 
     // Appeler l'API Agent avec callbacks
     await agent.callAgent(
@@ -485,6 +489,10 @@ export default function BuilderSession() {
         onIntent: (intent) => {
           console.log('🎯 Intent:', intent);
           setAiEvents(prev => [...prev, intent]);
+        },
+        onGenerationEvent: (event) => {
+          console.log('🔄 Generation:', event);
+          setGenerationEvents(prev => [...prev, event]);
         },
         onCodeUpdate: (path, code) => {
           console.log('🔄 Hot update:', path);
@@ -1000,6 +1008,65 @@ export default function BuilderSession() {
                 </div>
               ))}
 
+
+              {/* Affichage des événements de génération (pensée) */}
+              {generationEvents.length > 0 && agent.isLoading && (
+                <div className="flex flex-col space-y-2 mb-4 px-4">
+                  {generationEvents.map((event, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-muted-foreground text-sm">
+                      {event.type === 'thought' && event.duration !== undefined && event.duration > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Lightbulb className="w-4 h-4 text-[#03A5C0]" />
+                          <span>Thought for {event.duration}s</span>
+                        </div>
+                      )}
+                      
+                      {event.type === 'read' && (
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-[#03A5C0]" />
+                          <span>Read</span>
+                          <span className="px-2 py-0.5 rounded text-xs" style={{
+                            backgroundColor: isDark ? '#181818' : '#f1f5f9',
+                            color: isDark ? '#94a3b8' : '#64748b'
+                          }}>
+                            {event.message}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {event.type === 'edit' && (
+                        <div className="flex items-center gap-2">
+                          <Edit className="w-4 h-4 text-[#03A5C0]" />
+                          <span>Edited</span>
+                          <span className="px-2 py-0.5 rounded text-xs" style={{
+                            backgroundColor: isDark ? '#181818' : '#f1f5f9',
+                            color: isDark ? '#94a3b8' : '#64748b'
+                          }}>
+                            {event.file}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {event.type === 'complete' && (
+                        <div className="flex items-center gap-2 text-green-500">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>{event.message}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {/* Animation de pensée en cours */}
+                  {!generationEvents.some(e => e.type === 'complete') && (
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm animate-pulse">
+                      <Loader className="w-4 h-4 animate-spin text-[#03A5C0]" />
+                      <span>Thinking...</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Affichage du streaming en temps réel */}
               {agent.isStreaming && (

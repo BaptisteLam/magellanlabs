@@ -5,10 +5,18 @@ export type IntentAnalysis = {
   description: string;
 };
 
+export type GenerationEvent = {
+  type: "thought" | "read" | "edit" | "complete" | "error";
+  message: string;
+  duration?: number;
+  file?: string;
+};
+
 export type AIEvent =
   | { type: "status"; content: string }
   | { type: "message"; content: string }
   | { type: "log"; content: string }
   | IntentAnalysis
   | { type: "code_update"; path: string; code: string }
-  | { type: "complete" };
+  | { type: "complete" }
+  | GenerationEvent;

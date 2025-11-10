@@ -10,6 +10,7 @@ interface UseAgentAPIOptions {
   onCodeUpdate?: (path: string, code: string) => void;
   onComplete?: () => void;
   onError?: (error: string) => void;
+  onGenerationEvent?: (event: import('@/types/agent').GenerationEvent) => void;
 }
 
 export function useAgentAPI() {
@@ -31,6 +32,15 @@ export function useAgentAPI() {
     const { data: { session } } = await supabase.auth.getSession();
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
+
+    // Track thinking time
+    const thinkStart = Date.now();
+    options.onGenerationEvent?.({ type: 'thought', message: 'Analyzing your request...', duration: 0 });
+
+    // Emit read events for relevant files
+    relevantFiles.slice(0, 5).forEach(file => {
+      options.onGenerationEvent?.({ type: 'read', message: file.path });
+    });
 
     try {
       const response = await fetch(
@@ -84,6 +94,10 @@ export function useAgentAPI() {
             switch (event.type) {
               case 'status':
                 options.onStatus?.(event.content);
+                // Emit thought complete with duration after first status
+                if (!options.onGenerationEvent) break;
+                const thinkDuration = Math.floor((Date.now() - thinkStart) / 1000);
+                options.onGenerationEvent({ type: 'thought', message: 'Request analyzed', duration: thinkDuration });
                 break;
               case 'message':
                 options.onMessage?.(event.content);
@@ -96,9 +110,11 @@ export function useAgentAPI() {
                 break;
               case 'code_update':
                 options.onCodeUpdate?.(event.path, event.code);
+                options.onGenerationEvent?.({ type: 'edit', message: event.path, file: event.path });
                 break;
               case 'complete':
                 options.onComplete?.();
+                options.onGenerationEvent?.({ type: 'complete', message: 'Changes applied' });
                 break;
             }
           } catch (e) {
