@@ -91,7 +91,7 @@ const Footer = () => {
         </div>
         
         <div className="mt-8 pt-8 border-t border-border text-center text-sm text-foreground/60">
-          <p>&copy; {new Date().getFullYear()} Magellan Studio. Tous droits réservés.</p>
+          <p>&copy; {new Date().getFullYear()} Built by Magellan. Tous droits réservés.</p>
         </div>
       </div>
     </footer>
