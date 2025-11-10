@@ -53,7 +53,7 @@ async function analyzeIntent(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-oss-20b',
       messages: [
         {
           role: 'system',
@@ -137,7 +137,7 @@ Exemples:
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-oss-20b',
       messages: [
         { role: 'system', content: systemPrompt },
         ...recentHistory, // Contexte complet des derniers messages
@@ -202,7 +202,7 @@ IMPORTANT:
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-oss-20b',
       messages: [
         { role: 'system', content: taskPrompt },
         { role: 'user', content: `Génère les tâches pour: ${intent.description}` }
