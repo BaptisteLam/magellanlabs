@@ -34,32 +34,29 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
     
     // Convertir les chemins et contenus
     Object.entries(projectFiles).forEach(([path, content]) => {
-      // Normaliser les chemins pour Sandpack (toujours commencer par /)
-      let normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      // Pour Sandpack, ne PAS ajouter / au début si le chemin commence déjà par src/
+      // Sandpack s'attend à des chemins comme "App.tsx", "src/App.tsx", etc.
+      let normalizedPath = path;
+      
+      // Si le chemin ne commence ni par / ni par src/, on ajoute /
+      if (!path.startsWith('/') && !path.startsWith('src/')) {
+        normalizedPath = `/${path}`;
+      }
+      
       files[normalizedPath] = content;
       console.log(`📄 Ajout fichier: ${normalizedPath} (${content.length} chars)`);
     });
 
     console.log('📦 VitePreview - Fichiers normalisés:', Object.keys(files));
 
-    // Si pas de fichier d'entrée ET pas de projet React, créer un index.html basique
-    if (!files['/index.html'] && !isReactProject) {
-      console.log('⚠️ Aucun index.html trouvé, création d\'un fallback');
-      const content = Object.values(projectFiles).join('\n');
-      files['/index.html'] = `<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Preview</title>
-  <style>
-    @import url('https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css');
-  </style>
-</head>
-<body>
-  ${content}
-</body>
-</html>`;
+    // NE PAS créer de fallback pour les projets React - laisser Sandpack gérer
+    if (!isReactProject && !files['/index.html'] && !files['index.html']) {
+      console.log('⚠️ Projet HTML statique sans index.html, création d\'un fallback');
+      // Pour HTML statique, combiner tous les fichiers HTML trouvés
+      const htmlFiles = Object.entries(projectFiles).filter(([path]) => path.endsWith('.html'));
+      if (htmlFiles.length > 0) {
+        files['/index.html'] = htmlFiles[0][1];
+      }
     }
 
     return files;
@@ -70,14 +67,20 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
     const fileKeys = Object.keys(sandpackFiles);
     
     if (isReactProject) {
-      // Pour React, chercher dans l'ordre : index.tsx, main.tsx, App.tsx, index.jsx, main.jsx, App.jsx
+      // Pour React, chercher dans l'ordre avec et sans / au début
       const reactEntries = [
-        '/index.tsx', '/src/index.tsx',
-        '/main.tsx', '/src/main.tsx',
-        '/App.tsx', '/src/App.tsx',
-        '/index.jsx', '/src/index.jsx',
-        '/main.jsx', '/src/main.jsx',
-        '/App.jsx', '/src/App.jsx'
+        'src/main.tsx', '/src/main.tsx',
+        'src/index.tsx', '/src/index.tsx',
+        'main.tsx', '/main.tsx',
+        'index.tsx', '/index.tsx',
+        'src/App.tsx', '/src/App.tsx',
+        'App.tsx', '/App.tsx',
+        'src/main.jsx', '/src/main.jsx',
+        'src/index.jsx', '/src/index.jsx',
+        'main.jsx', '/main.jsx',
+        'index.jsx', '/index.jsx',
+        'src/App.jsx', '/src/App.jsx',
+        'App.jsx', '/App.jsx'
       ];
       
       for (const entry of reactEntries) {
@@ -87,17 +90,23 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
         }
       }
     } else {
-      // Pour HTML statique, chercher index.html
-      if (fileKeys.includes('/index.html')) {
-        console.log('🎯 Point d\'entrée HTML trouvé: /index.html');
-        return '/index.html';
+      // Pour HTML statique, chercher index.html avec ou sans /
+      const htmlEntries = ['/index.html', 'index.html'];
+      for (const entry of htmlEntries) {
+        if (fileKeys.includes(entry)) {
+          console.log('🎯 Point d\'entrée HTML trouvé:', entry);
+          return entry;
+        }
       }
     }
     
-    // Fallback sur le premier fichier
-    const fallback = fileKeys[0] || '/index.html';
-    console.log('⚠️ Aucun point d\'entrée standard, utilisation de:', fallback);
-    return fallback;
+    // Fallback: chercher n'importe quel fichier .tsx, .jsx, .html
+    const fallbackFile = fileKeys.find(key => 
+      key.endsWith('.tsx') || key.endsWith('.jsx') || key.endsWith('.html')
+    ) || fileKeys[0];
+    
+    console.log('⚠️ Aucun point d\'entrée standard, utilisation de:', fallbackFile);
+    return fallbackFile;
   }, [sandpackFiles, isReactProject]);
 
   if (!projectFiles || Object.keys(projectFiles).length === 0) {
