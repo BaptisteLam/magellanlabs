@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Loader2, Mail } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { Separator } from "@/components/ui/separator";
+import Header from "@/components/layout/Header";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -96,7 +97,9 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden pt-20">
+    <>
+      <Header />
+      <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden pt-20">
       {/* Grid background - adapté au thème */}
       <div className="absolute inset-0" 
            style={{ 
@@ -246,5 +249,6 @@ export default function Auth() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }
