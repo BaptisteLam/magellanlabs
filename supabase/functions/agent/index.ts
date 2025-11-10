@@ -262,7 +262,13 @@ IMPORTANT:
 - Pas de markdown, pas de \`\`\`, juste du JSON valide
 - NE génère PAS d'événements "status" ou "message", uniquement "log", "code_update" et "complete"
 - Utilise "log" pour indiquer les étapes techniques (ex: "Rebuilding preview...")
-- Termine toujours par {"type":"complete"}`;
+- Termine toujours par {"type":"complete"}
+
+RÈGLES DE DESIGN:
+- NE JAMAIS générer de boutons de changement de thème (dark/light mode) flottants ou en position fixe
+- NE JAMAIS générer de boutons "scroll to top" ou "retour en haut"
+- NE PAS ajouter d'éléments UI superposés ou en position fixe sauf si explicitement demandé
+- Garder un design épuré sans widgets inutiles`;
 
   let userPrompt = `Résumé du projet:\n${projectSummary}\n\n`;
   

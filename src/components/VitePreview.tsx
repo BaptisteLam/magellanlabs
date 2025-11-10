@@ -52,7 +52,9 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Preview</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css');
+  </style>
 </head>
 <body>
   ${content}
