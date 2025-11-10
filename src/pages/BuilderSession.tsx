@@ -918,7 +918,8 @@ export default function BuilderSession() {
             <Button
               onClick={handlePublish}
               disabled={isPublishing}
-              className="text-sm gap-2 transition-all border rounded-full px-6 py-0.5"
+              size="minimal"
+              className="text-sm gap-2 transition-all border rounded-full px-6"
               style={{
                 borderColor: '#03A5C0',
                 backgroundColor: 'rgba(3, 165, 192, 0.1)',
