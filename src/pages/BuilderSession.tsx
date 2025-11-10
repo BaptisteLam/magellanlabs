@@ -779,7 +779,7 @@ export default function BuilderSession() {
   return (
     <div className={`h-screen flex flex-col`} style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff' }}>
       {/* Barre d'action */}
-      <div className={`h-12 backdrop-blur-sm border-b flex items-center justify-between px-4 ${isDark ? 'border-slate-700' : 'bg-slate-50/80 border-slate-200'}`} style={{ backgroundColor: isDark ? '#1F1F20' : undefined }}>
+      <div className={`h-12 backdrop-blur-sm flex items-center justify-between px-4 ${isDark ? '' : 'bg-slate-50/80'}`} style={{ backgroundColor: isDark ? '#1F1F20' : undefined }}>
         <div className="flex items-center gap-3">
           <Button
             onClick={() => navigate('/dashboard')}
