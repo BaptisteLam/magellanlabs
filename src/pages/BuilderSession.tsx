@@ -70,6 +70,27 @@ export default function BuilderSession() {
   // Flag pour savoir si on est en première génération
   const [isInitialGeneration, setIsInitialGeneration] = useState(false);
 
+  // Fonction pour générer automatiquement un nom de projet
+  const generateProjectName = async (prompt: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-project-name', {
+        body: { prompt }
+      });
+
+      if (error) {
+        console.error('Erreur génération nom:', error);
+        return;
+      }
+
+      if (data?.projectName) {
+        console.log('📝 Nom de projet généré:', data.projectName);
+        setWebsiteTitle(data.projectName);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la génération du nom:', error);
+    }
+  };
+
 
   useEffect(() => {
     loadSession();
@@ -263,6 +284,29 @@ export default function BuilderSession() {
       }
     } catch (error) {
       console.error('Error saving session:', error);
+    }
+  };
+
+  // Fonction auxiliaire pour sauvegarder avec un titre spécifique
+  const saveSessionWithTitle = async (title: string, filesArray: any[], messagesArray: any[]) => {
+    if (!sessionId) return;
+
+    try {
+      const { error } = await supabase
+        .from('build_sessions')
+        .update({
+          project_files: filesArray,
+          messages: messagesArray as any,
+          title: title,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+
+      console.log('✅ Projet sauvegardé automatiquement:', title);
+    } catch (error) {
+      console.error('Erreur sauvegarde automatique:', error);
     }
   };
 
@@ -467,6 +511,9 @@ export default function BuilderSession() {
     // Activer le mode "première génération" si les fichiers sont vides
     if (Object.keys(projectFiles).length === 0) {
       setIsInitialGeneration(true);
+      
+      // Générer automatiquement un nom de projet
+      generateProjectName(userPrompt);
     }
 
     // Appeler l'API Agent avec callbacks
@@ -548,6 +595,12 @@ export default function BuilderSession() {
 
           const finalMessage = assistantMessage || '✨ Modifications appliquées !';
           const updatedMessages = [...newMessages, { role: 'assistant' as const, content: finalMessage }];
+          
+          // Sauvegarder automatiquement le projet avec le nom généré
+          if (websiteTitle && websiteTitle !== 'Sans titre') {
+            console.log('💾 Sauvegarde automatique du projet:', websiteTitle);
+            await saveSessionWithTitle(websiteTitle, filesArray, updatedMessages);
+          }
           setMessages(updatedMessages);
 
           // Sauvegarder dans chat_messages

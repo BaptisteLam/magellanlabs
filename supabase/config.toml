@@ -32,3 +32,6 @@ verify_jwt = true
 
 [functions.agent]
 verify_jwt = true
+
+[functions.generate-project-name]
+verify_jwt = true
