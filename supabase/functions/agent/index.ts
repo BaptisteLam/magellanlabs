@@ -1,396 +1,12 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-type IntentAnalysis = {
-  type: "intent";
-  action: "generate_code" | "modify_code" | "add_feature" | "explain" | "chat";
-  target?: string;
-  description: string;
-};
-
-type AIEvent =
-  | { type: "status"; content: string }
-  | { type: "message"; content: string }
-  | IntentAnalysis
-  | { type: "code_update"; path: string; code: string }
-  | { type: "complete" };
-
-// Génère un résumé du projet (< 600 tokens)
-function generateProjectSummary(projectFiles: Record<string, string>): string {
-  const fileNames = Object.keys(projectFiles);
-  const summary = `Projet contenant ${fileNames.length} fichiers:\n` +
-    fileNames.slice(0, 15).map(f => `- ${f}`).join('\n');
-  
-  return summary.slice(0, 2000); // Limite approximative
-}
-
-// Étape 1 : Analyse d'intention avec OpenAI (avec contexte complet)
-async function analyzeIntent(
-  userMessage: string, 
-  chatHistory: Array<{ role: string; content: string }>,
-  projectSummary: string
-): Promise<IntentAnalysis> {
-  console.log('🔍 Analyse d\'intention avec OpenAI...');
-  
-  // Garder les 5 derniers messages pour meilleur contexte
-  const recentHistory = chatHistory.slice(-5);
-  const contextPrompt = `Résumé du projet:\n${projectSummary}\n\nHistorique de conversation:\n${
-    recentHistory.map(m => `${m.role}: ${m.content.substring(0, 200)}`).join('\n')
-  }`;
-  
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-oss-20b',
-      messages: [
-        {
-          role: 'system',
-          content: `Tu es un assistant qui analyse les intentions utilisateur pour un builder de site web.
-Utilise le contexte de la conversation pour comprendre les demandes liées aux échanges précédents.
-Réponds UNIQUEMENT avec un JSON au format:
-{
-  "type": "intent",
-  "action": "generate_code" | "modify_code" | "add_feature" | "explain" | "chat",
-  "target": "chemin/fichier.tsx" (optionnel, si modification d'un fichier spécifique),
-  "description": "description claire de la tâche en tenant compte du contexte"
-}
-
-Actions:
-- generate_code: créer un nouveau site/composant complet
-- modify_code: modifier un fichier existant
-- add_feature: ajouter une nouvelle fonctionnalité
-- explain: expliquer quelque chose sans code
-- chat: conversation générale`
-        },
-        { role: 'user', content: `${contextPrompt}\n\nDemande actuelle: ${userMessage}` }
-      ],
-      temperature: 0.3,
-      max_tokens: 300,
-      stream: false
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    console.error('❌ Erreur OpenAI:', error);
-    throw new Error(`OpenAI API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const content = data.choices[0].message.content;
-  
-  try {
-    const intent = JSON.parse(content);
-    console.log('✅ Intention détectée:', intent);
-    return intent;
-  } catch (e) {
-    console.error('❌ Erreur parsing intention:', content);
-    return {
-      type: "intent",
-      action: "chat",
-      description: userMessage
-    };
-  }
-}
-
-// Génère une réponse conversationnelle avec OpenAI (avec contexte complet)
-async function generateConversationalResponse(
-  userMessage: string,
-  intent: IntentAnalysis,
-  chatHistory: Array<{ role: string; content: string }>,
-  isInitial: boolean = true
-): Promise<string> {
-  // Garder les 5 derniers messages pour un meilleur contexte
-  const recentHistory = chatHistory.slice(-5);
-  
-  const systemPrompt = isInitial 
-    ? `Tu es un assistant de développement web. L'utilisateur vient de demander quelque chose et tu vas lancer une tâche.
-Réponds en UNE SEULE PHRASE courte et naturelle pour confirmer ce que tu vas faire, SANS détails techniques.
-Utilise le contexte de la conversation pour une réponse cohérente.
-Exemples:
-- "Je vais modifier le header pour changer la couleur."
-- "D'accord, je crée une nouvelle page de contact."
-- "Compris, j'ajoute cette fonctionnalité."`
-    : `Tu es un assistant de développement web. Tu viens de terminer une tâche de code.
-Résume en UNE SEULE PHRASE courte ce qui a été fait, de manière naturelle et concise.
-Exemples:
-- "J'ai modifié le header avec la nouvelle couleur."
-- "La page de contact est créée."
-- "La fonctionnalité est ajoutée et prête."`;
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-oss-20b',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...recentHistory, // Contexte complet des derniers messages
-        { 
-          role: 'user', 
-          content: isInitial 
-            ? `Demande actuelle: ${userMessage}\nIntention détectée: ${intent.description}` 
-            : `Tâche terminée: ${intent.description}`
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 150,
-      stream: false
-    }),
-  });
-
-  if (!response.ok) {
-    console.error('❌ Erreur OpenAI conversational:', await response.text());
-    return isInitial 
-      ? "Je m'occupe de votre demande." 
-      : "C'est fait.";
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content.trim();
-}
-
-// Génère des événements de tâches avec OpenAI basés sur l'intention
-async function* generateTaskEvents(intent: IntentAnalysis): AsyncGenerator<AIEvent> {
-  const taskPrompt = `Tu es un assistant qui génère des tâches de développement détaillées.
-Pour la tâche suivante: "${intent.description}"
-Action: ${intent.action}
-
-Génère une liste de tâches et sous-tâches au format NDJSON. Chaque ligne doit être un objet JSON valide.
-Utilise UNIQUEMENT ces types d'événements:
-- {"type":"status","content":"Task: Titre de la tâche"}
-- {"type":"status","content":"Titre de la tâche: Détail de l'étape"}
-
-Exemple pour "créer un bouton":
-{"type":"status","content":"Task: Setting up component"}
-{"type":"status","content":"Setting up component: Creating src/components/Button.tsx"}
-{"type":"status","content":"Setting up component: Defining TypeScript interfaces"}
-{"type":"status","content":"Task: Styling component"}
-{"type":"status","content":"Styling component: Applying Tailwind CSS classes"}
-{"type":"status","content":"Styling component: Adding hover effects"}
-{"type":"status","content":"Task: Testing component"}
-{"type":"status","content":"Testing component: Verifying props handling"}
-
-IMPORTANT:
-- Une ligne = un objet JSON
-- Commence toujours par "Task: Titre" pour une nouvelle tâche
-- Puis les détails: "Titre: Détail"
-- 3-5 tâches maximum
-- 2-4 détails par tâche
-- Mentionne les fichiers concernés (src/...) quand pertinent
-- Reste concis et professionnel`;
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-oss-20b',
-      messages: [
-        { role: 'system', content: taskPrompt },
-        { role: 'user', content: `Génère les tâches pour: ${intent.description}` }
-      ],
-      temperature: 0.4,
-      max_tokens: 500
-    }),
-  });
-
-  if (!response.ok) {
-    console.error('❌ Erreur génération tâches OpenAI');
-    yield { type: 'status', content: 'Task: Preparing workspace' };
-    yield { type: 'status', content: 'Preparing workspace: Analyzing requirements' };
-    return;
-  }
-
-  const data = await response.json();
-  const content = data.choices[0].message.content;
-  
-  const lines = content.split('\n').filter((l: string) => l.trim());
-  for (const line of lines) {
-    try {
-      const event = JSON.parse(line);
-      if (event.type === 'status' && event.content) {
-        yield event;
-        // Petit délai entre chaque événement
-        await new Promise(resolve => setTimeout(resolve, 150));
-      }
-    } catch (e) {
-      console.error('⚠️ Erreur parsing task event:', line);
-    }
-  }
-}
-
-// Étape 2 : Génération/modification avec Claude Sonnet 4.5
-async function* generateWithClaude(
-  intent: IntentAnalysis,
-  projectFiles: Record<string, string>,
-  relevantFiles: Array<{ path: string; content: string }>,
-  chatHistory: Array<{ role: string; content: string }>
-): AsyncGenerator<AIEvent> {
-  console.log('🤖 Génération avec Claude Sonnet 4.5...');
-  
-  const projectSummary = generateProjectSummary(projectFiles);
-  
-  const systemPrompt = `Tu es un développeur expert qui génère et modifie du code pour des sites web React/TypeScript.
-Tu DOIS répondre UNIQUEMENT avec des événements NDJSON (une ligne = un objet JSON).
-
-Types d'événements disponibles:
-- {"type":"log","content":"message de log technique"}
-- {"type":"code_update","path":"chemin/fichier.tsx","code":"code complet du fichier"}
-- {"type":"complete"}
-
-IMPORTANT:
-- Renvoie le CODE COMPLET de chaque fichier modifié/créé avec type="code_update"
-- Un événement par ligne (NDJSON)
-- Pas de markdown, pas de \`\`\`, juste du JSON valide
-- NE génère PAS d'événements "status" ou "message", uniquement "log", "code_update" et "complete"
-- Utilise "log" pour indiquer les étapes techniques (ex: "Rebuilding preview...")
-- Termine toujours par {"type":"complete"}
-
-RÈGLES DE DESIGN:
-- NE JAMAIS générer de boutons de changement de thème (dark/light mode) flottants ou en position fixe
-- NE JAMAIS générer de boutons "scroll to top" ou "retour en haut"
-- NE PAS ajouter d'éléments UI superposés ou en position fixe sauf si explicitement demandé
-- Garder un design épuré sans widgets inutiles`;
-
-  let userPrompt = `Résumé du projet:\n${projectSummary}\n\n`;
-  
-  if (relevantFiles.length > 0) {
-    userPrompt += `Fichiers concernés:\n`;
-    relevantFiles.forEach(f => {
-      userPrompt += `\n--- ${f.path} ---\n${f.content}\n`;
-    });
-  }
-  
-  userPrompt += `\nTâche: ${intent.description}`;
-  if (intent.target) {
-    userPrompt += `\nFichier cible: ${intent.target}`;
-  }
-
-  const messages: any[] = [
-    { role: 'assistant', content: systemPrompt }
-  ];
-
-  // Ajouter l'historique complet (fenêtre glissante des 5 derniers messages pour contexte)
-  const recentHistory = chatHistory.slice(-5);
-  messages.push(...recentHistory.map(m => ({ 
-    role: m.role, 
-    content: m.content.substring(0, 1000) // Limiter la longueur pour optimiser
-  })));
-  
-  messages.push({ role: 'user', content: userPrompt });
-
-  console.log('📤 Envoi à Claude Sonnet 4.5...');
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': ANTHROPIC_API_KEY!,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 8000,
-      stream: true,
-      messages: messages.filter(m => m.role !== 'assistant' || m !== messages[0])
-        .map(m => m.role === 'assistant' ? { role: 'user', content: `[System] ${m.content}` } : m),
-      system: systemPrompt,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    console.error('❌ Erreur Claude:', error);
-    throw new Error(`Claude API error: ${response.status}`);
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error('No stream reader');
-
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n');
-
-      for (const line of lines) {
-        if (!line.trim() || line.startsWith(':')) continue;
-        if (!line.startsWith('data: ')) continue;
-
-        const data = line.slice(6);
-        if (data === '[DONE]') break;
-
-        try {
-          const event = JSON.parse(data);
-          
-          if (event.type === 'content_block_delta' && event.delta?.text) {
-            buffer += event.delta.text;
-            
-            // Parser les événements NDJSON du buffer
-            const eventLines = buffer.split('\n');
-            
-            for (let i = 0; i < eventLines.length - 1; i++) {
-              const eventLine = eventLines[i].trim();
-              if (!eventLine) continue;
-              
-              try {
-                const aiEvent = JSON.parse(eventLine) as AIEvent;
-                yield aiEvent;
-              } catch (e) {
-                console.error('⚠️ Erreur parsing event:', eventLine, e);
-              }
-            }
-            
-            // Garder la dernière ligne incomplète dans le buffer
-            buffer = eventLines[eventLines.length - 1];
-          }
-        } catch (e) {
-          console.error('⚠️ Erreur parsing SSE:', line, e);
-        }
-      }
-    }
-
-    // Parser le dernier buffer
-    if (buffer.trim()) {
-      const eventLines = buffer.split('\n');
-      for (const eventLine of eventLines) {
-        if (!eventLine.trim()) continue;
-        try {
-          const aiEvent = JSON.parse(eventLine) as AIEvent;
-          yield aiEvent;
-        } catch (e) {
-          console.error('⚠️ Erreur parsing final event:', eventLine, e);
-        }
-      }
-    }
-
-  } finally {
-    reader.releaseLock();
-  }
-}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -401,16 +17,77 @@ serve(async (req) => {
     const { 
       message, 
       projectFiles = {}, 
-      relevantFiles = [],
       chatHistory = [],
       sessionId 
     } = await req.json();
 
     console.log('🚀 Agent API called:', { message, filesCount: Object.keys(projectFiles).length });
 
-    if (!OPENAI_API_KEY || !ANTHROPIC_API_KEY) {
-      throw new Error('API keys not configured');
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error('ANTHROPIC_API_KEY not configured');
     }
+
+    // Construire contexte projet (limiter la taille)
+    const projectContext = Object.entries(projectFiles)
+      .slice(0, 20) // Limiter à 20 fichiers max
+      .map(([path, content]) => `=== ${path} ===\n${typeof content === 'string' ? content.slice(0, 2000) : content}`)
+      .join('\n\n');
+
+    // Construire historique (garder les 5 derniers messages)
+    const recentHistory = chatHistory.slice(-5);
+    const historyContext = recentHistory
+      .map((m: any) => `${m.role}: ${m.content.substring(0, 500)}`)
+      .join('\n');
+
+    const systemPrompt = `Tu es un expert développeur React/TypeScript qui génère et modifie du code pour des sites web.
+
+PROJET ACTUEL:
+${projectContext || 'Projet vide - première génération'}
+
+HISTORIQUE DE CONVERSATION:
+${historyContext || 'Aucun historique'}
+
+FORMAT DE RÉPONSE OBLIGATOIRE - Tu DOIS répondre avec des événements NDJSON (une ligne = un objet JSON):
+
+Types d'événements disponibles:
+1. {"type":"message","content":"Message conversationnel pour l'utilisateur"}
+2. {"type":"status","content":"Task: Titre de la tâche"} ou {"type":"status","content":"Titre: Détail de l'étape"}
+3. {"type":"code_update","path":"chemin/fichier.tsx","code":"code complet du fichier"}
+4. {"type":"complete"}
+
+FLUX DE RÉPONSE:
+1. Commence par un {"type":"message","content":"Message naturel expliquant ce que tu vas faire"}
+2. Envoie des événements {"type":"status"} pour montrer la progression des tâches
+3. Envoie des {"type":"code_update"} pour chaque fichier créé/modifié avec le code COMPLET
+4. Termine par {"type":"message","content":"Résumé de ce qui a été fait"}
+5. Finis par {"type":"complete"}
+
+RÈGLES DE CODE:
+- Nouvelle app/site : crée TOUS les fichiers nécessaires (App.tsx, composants, styles, etc.)
+- Modification : modifie UNIQUEMENT les fichiers concernés avec leur code COMPLET
+- Utilise React + TypeScript + Tailwind CSS
+- NE JAMAIS générer de boutons de changement de thème flottants ou en position fixe
+- NE JAMAIS générer de boutons "scroll to top" ou "retour en haut"
+- NE PAS ajouter d'éléments UI superposés sauf si explicitement demandé
+- Code propre, fonctionnel et sans widgets inutiles
+- Pas de markdown, pas de \`\`\`, juste du JSON valide NDJSON
+
+IMPORTANT:
+- Une ligne = un objet JSON
+- Commence toujours par un message conversationnel
+- Utilise des événements "status" pour montrer la progression (Task: titre, puis titre: détail)
+- Renvoie le CODE COMPLET de chaque fichier avec "code_update"
+- Termine toujours par un message final puis {"type":"complete"}
+
+Exemple de flux:
+{"type":"message","content":"Je vais créer votre site web."}
+{"type":"status","content":"Task: Setting up project structure"}
+{"type":"status","content":"Setting up project structure: Creating main App component"}
+{"type":"code_update","path":"src/App.tsx","code":"import React from 'react'..."}
+{"type":"status","content":"Task: Styling components"}
+{"type":"status","content":"Styling components: Applying Tailwind CSS"}
+{"type":"message","content":"Le site est créé et prêt."}
+{"type":"complete"}`;
 
     // Créer un stream de réponse
     const stream = new ReadableStream({
@@ -418,44 +95,97 @@ serve(async (req) => {
         const encoder = new TextEncoder();
         
         try {
-          // Générateur d'événements principal
-          async function* mainFlow() {
-            yield { type: 'status', content: 'Analyse de votre demande...' } as AIEvent;
-            
-            const projectSummary = generateProjectSummary(projectFiles);
-            const intent = await analyzeIntent(message, chatHistory, projectSummary);
-            yield intent;
+          console.log('📤 Envoi à Claude Sonnet 4.5...');
 
-            if (intent.action === 'chat' || intent.action === 'explain') {
-              const conversationResponse = await generateConversationalResponse(message, intent, chatHistory, true);
-              yield { type: 'message', content: conversationResponse } as AIEvent;
-              yield { type: 'complete' } as AIEvent;
-              return;
-            }
+          const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key': ANTHROPIC_API_KEY!,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-5',
+              max_tokens: 8000,
+              stream: true,
+              system: systemPrompt,
+              messages: [
+                ...recentHistory,
+                { role: 'user', content: message }
+              ],
+            }),
+          });
 
-            // Message initial conversationnel
-            const initialMessage = await generateConversationalResponse(message, intent, chatHistory, true);
-            yield { type: 'message', content: initialMessage } as AIEvent;
-            
-            // Génération des tâches avec OpenAI (UI progressive)
-            for await (const taskEvent of generateTaskEvents(intent)) {
-              yield taskEvent;
-            }
-            
-            // Génération du code avec Claude (en parallèle de l'affichage des tâches)
-            for await (const event of generateWithClaude(intent, projectFiles, relevantFiles, chatHistory)) {
-              yield event;
-            }
-
-            // Message final conversationnel
-            const finalMessage = await generateConversationalResponse(message, intent, chatHistory, false);
-            yield { type: 'message', content: finalMessage } as AIEvent;
+          if (!response.ok) {
+            const error = await response.text();
+            console.error('❌ Erreur Claude:', error);
+            throw new Error(`Claude API error: ${response.status}`);
           }
 
-          // Envoyer tous les événements
-          for await (const event of mainFlow()) {
-            const data = `data: ${JSON.stringify(event)}\n\n`;
-            controller.enqueue(encoder.encode(data));
+          const reader = response.body?.getReader();
+          if (!reader) throw new Error('No stream reader');
+
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (!line.trim() || line.startsWith(':')) continue;
+              if (!line.startsWith('data: ')) continue;
+
+              const data = line.slice(6);
+              if (data === '[DONE]') break;
+
+              try {
+                const event = JSON.parse(data);
+                
+                if (event.type === 'content_block_delta' && event.delta?.text) {
+                  buffer += event.delta.text;
+                  
+                  // Parser les événements NDJSON du buffer
+                  const eventLines = buffer.split('\n');
+                  
+                  for (let i = 0; i < eventLines.length - 1; i++) {
+                    const eventLine = eventLines[i].trim();
+                    if (!eventLine) continue;
+                    
+                    try {
+                      const aiEvent = JSON.parse(eventLine);
+                      const data = `data: ${JSON.stringify(aiEvent)}\n\n`;
+                      controller.enqueue(encoder.encode(data));
+                    } catch (e) {
+                      console.error('⚠️ Erreur parsing event:', eventLine, e);
+                    }
+                  }
+                  
+                  // Garder la dernière ligne incomplète dans le buffer
+                  buffer = eventLines[eventLines.length - 1];
+                }
+              } catch (e) {
+                console.error('⚠️ Erreur parsing SSE:', line, e);
+              }
+            }
+          }
+
+          // Parser le dernier buffer
+          if (buffer.trim()) {
+            const eventLines = buffer.split('\n');
+            for (const eventLine of eventLines) {
+              if (!eventLine.trim()) continue;
+              try {
+                const aiEvent = JSON.parse(eventLine);
+                const data = `data: ${JSON.stringify(aiEvent)}\n\n`;
+                controller.enqueue(encoder.encode(data));
+              } catch (e) {
+                console.error('⚠️ Erreur parsing final event:', eventLine, e);
+              }
+            }
           }
 
           controller.close();
