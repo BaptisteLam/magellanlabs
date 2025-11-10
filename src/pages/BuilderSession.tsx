@@ -1150,7 +1150,7 @@ export default function BuilderSession() {
           <ResizablePanel defaultSize={70}>
             <div className="h-full w-full flex flex-col rounded-xl overflow-hidden">
               {viewMode === 'preview' ? (
-                (agent.isLoading && isInitialGeneration) ? (
+                isInitialGeneration ? (
                   <GeneratingPreview />
                 ) : (
                   <VitePreview projectFiles={projectFiles} isDark={isDark} />
