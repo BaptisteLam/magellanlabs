@@ -4,6 +4,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type SettingsSection = 'projects' | 'general' | 'profile' | 'subscription' | 'integrations';
 
@@ -38,35 +39,37 @@ export function SettingsSidebar() {
 
   return (
     <div className="w-64 bg-sidebar border-r border-border/50 flex flex-col h-full">
-      <div className="p-6">
+      <div className="p-6 flex-shrink-0">
         <h2 className="text-lg font-semibold text-foreground">Paramètres</h2>
       </div>
 
-      <nav className="flex-1 px-3 space-y-1">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentSection === item.id;
+      <ScrollArea className="flex-1">
+        <nav className="px-3 space-y-1 pb-3">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentSection === item.id;
 
-          return (
-            <button
-              key={item.id}
-              onClick={() => setSection(item.id)}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 py-1.5 rounded-[8px] transition-all',
-                'text-sm font-medium',
-                isActive
-                  ? 'border-[1px] border-[#03A5C0]/50 bg-[#03A5C0]/10 text-[#03A5C0]'
-                  : 'text-muted-foreground hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] border-[1px] border-transparent'
-              )}
-            >
-              <Icon className="h-5 w-5" />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+            return (
+              <button
+                key={item.id}
+                onClick={() => setSection(item.id)}
+                className={cn(
+                  'w-full flex items-center gap-3 px-3 py-1.5 rounded-[8px] transition-all',
+                  'text-sm font-medium',
+                  isActive
+                    ? 'border-[1px] border-[#03A5C0]/50 bg-[#03A5C0]/10 text-[#03A5C0]'
+                    : 'text-muted-foreground hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] border-[1px] border-transparent'
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </ScrollArea>
 
-      <div className="p-3 border-t border-border/50">
+      <div className="p-3 border-t border-border/50 flex-shrink-0">
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-[8px] transition-all text-sm font-medium text-destructive hover:bg-destructive/10"
