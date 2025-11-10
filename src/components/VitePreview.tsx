@@ -74,22 +74,17 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
   // Déterminer le fichier d'entrée principal
   const entryFile = useMemo(() => {
     const fileKeys = Object.keys(sandpackFiles);
+    console.log('🔍 Recherche du point d\'entrée parmi:', fileKeys);
     
     if (isReactProject) {
-      // Pour React, chercher dans l'ordre avec et sans / au début
+      // Pour React, chercher dans l'ordre : main.tsx est le standard
       const reactEntries = [
-        'src/main.tsx', '/src/main.tsx',
-        'src/index.tsx', '/src/index.tsx',
-        'main.tsx', '/main.tsx',
-        'index.tsx', '/index.tsx',
-        'src/App.tsx', '/src/App.tsx',
-        'App.tsx', '/App.tsx',
-        'src/main.jsx', '/src/main.jsx',
-        'src/index.jsx', '/src/index.jsx',
-        'main.jsx', '/main.jsx',
-        'index.jsx', '/index.jsx',
-        'src/App.jsx', '/src/App.jsx',
-        'App.jsx', '/App.jsx'
+        'src/main.tsx',
+        'src/index.tsx', 
+        'main.tsx',
+        'index.tsx',
+        'src/App.tsx',
+        'App.tsx'
       ];
       
       for (const entry of reactEntries) {
@@ -98,23 +93,26 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
           return entry;
         }
       }
+      
+      // Si pas trouvé, chercher n'importe quel .tsx/.jsx dans src/
+      const srcEntry = fileKeys.find(key => 
+        key.startsWith('src/') && (key.endsWith('.tsx') || key.endsWith('.jsx'))
+      );
+      if (srcEntry) {
+        console.log('🎯 Point d\'entrée React alternatif:', srcEntry);
+        return srcEntry;
+      }
     } else {
-      // Pour HTML statique, chercher index.html avec ou sans /
-      const htmlEntries = ['/index.html', 'index.html'];
-      for (const entry of htmlEntries) {
-        if (fileKeys.includes(entry)) {
-          console.log('🎯 Point d\'entrée HTML trouvé:', entry);
-          return entry;
-        }
+      // Pour HTML statique
+      if (fileKeys.includes('index.html')) {
+        console.log('🎯 Point d\'entrée HTML trouvé: index.html');
+        return 'index.html';
       }
     }
     
-    // Fallback: chercher n'importe quel fichier .tsx, .jsx, .html
-    const fallbackFile = fileKeys.find(key => 
-      key.endsWith('.tsx') || key.endsWith('.jsx') || key.endsWith('.html')
-    ) || fileKeys[0];
-    
-    console.log('⚠️ Aucun point d\'entrée standard, utilisation de:', fallbackFile);
+    // Dernier fallback
+    const fallbackFile = fileKeys[0] || 'index.html';
+    console.log('⚠️ Fallback sur:', fallbackFile);
     return fallbackFile;
   }, [sandpackFiles, isReactProject]);
 
