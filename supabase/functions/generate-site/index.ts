@@ -173,10 +173,10 @@ serve(async (req) => {
     // Prompt système optimisé pour génération de projets web modernes multi-fichiers
     const systemPrompt = `Tu es un expert développeur web fullstack spécialisé dans la création de projets web complets, visuellement impressionnants et professionnels.
 
-RÈGLES ABSOLUES DE GÉNÉRATION :
-1. **CONTENU RICHE ET COMPLET OBLIGATOIRE** : Tu DOIS créer des sites avec du vrai contenu substantiel (minimum 200+ lignes de code HTML/JSX)
-2. **INTERDICTION DE CONTENU MINIMAL** : Ne JAMAIS générer juste "Hello World" ou des pages avec 2-3 éléments
-3. **DESIGN PROFESSIONNEL** : Chaque site doit être visuellement attrayant avec des sections complètes, animations, gradients, etc.
+RÈGLES DE GÉNÉRATION :
+1. **CONTENU COMPLET** : Crée des sites avec du vrai contenu substantiel (minimum 100-150 lignes de code HTML/JSX)
+2. **QUALITÉ AVANT QUANTITÉ** : Génère du code propre et fonctionnel plutôt que trop verbeux
+3. **DESIGN PROFESSIONNEL** : Chaque site doit être visuellement attrayant avec plusieurs sections, animations, gradients
 
 ARCHITECTURE PAR DÉFAUT :
 - Génère des projets React/Vite avec TypeScript pour toute demande nécessitant interactivité ou complexité
@@ -245,13 +245,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 POUR HTML PUR (Landing pages simples) :
 // FILE: index.html
-[HTML complet avec header, hero, features, testimonials, footer - minimum 200+ lignes]
+[HTML complet avec header, hero, features, footer - minimum 100-150 lignes]
 
 // FILE: style.css
-[CSS moderne avec animations, gradients, responsive - minimum 100+ lignes]
+[CSS moderne avec animations, gradients, responsive - minimum 50+ lignes]
 
 // FILE: script.js
-[JavaScript vanilla pour interactions - minimum 30+ lignes]
+[JavaScript vanilla pour interactions si nécessaire]
 
 FORMAT DE SORTIE (OBLIGATOIRE) :
 Chaque fichier DOIT être précédé de :
@@ -267,10 +267,10 @@ EXIGENCES DE QUALITÉ :
 ✅ Interactions utilisateur fluides (hover, focus, smooth scroll)
 
 ❌ INTERDIT :
-- Pages avec moins de 100 lignes de code total
+- Pages avec moins de 50 lignes de code total
 - "Hello World" ou contenu minimaliste
 - Design basique sans style
-- Absence de sections multiples
+- Absence de sections principales
 
 Génère maintenant un projet web complet, professionnel et visuellement impressionnant.`;
 
@@ -283,7 +283,7 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
-        max_tokens: 16000,
+        max_tokens: 8000,
         stream: true,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -361,15 +361,15 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
         let lastParsedFiles: ProjectFile[] = [];
         let timeout: number | null = null;
 
-        // Timeout de 360 secondes
+        // Timeout de 120 secondes (2 minutes)
         timeout = setTimeout(() => {
-          console.error('[generate-site] Timeout après 360s');
+          console.error('[generate-site] Timeout après 120s');
           safeEnqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'error',
-            data: { message: 'Timeout: La génération a pris trop de temps. Veuillez réessayer.' }
+            data: { message: 'Timeout: La génération a pris trop de temps. Veuillez réessayer avec une demande plus simple.' }
           })}\n\n`));
           closeStream();
-        }, 360000);
+        }, 120000);
 
         try {
           while (!streamClosed) {
