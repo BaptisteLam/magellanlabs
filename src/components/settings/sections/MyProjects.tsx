@@ -135,7 +135,7 @@ export function MyProjects() {
             closeSettings();
             navigate('/ai-builder');
           }}
-          className="bg-[#03A5C0]/20 text-[#03A5C0] border border-[#03A5C0]/50 hover:bg-[#03A5C0]/30 rounded-[8px]"
+          className="bg-transparent text-[#4cc9f0] border border-[#4cc9f0] hover:bg-[#4cc9f0]/10 rounded-full px-4 py-1.5 leading-none cursor-pointer"
         >
           <Plus className="h-4 w-4 mr-2" />
           Nouveau projet
