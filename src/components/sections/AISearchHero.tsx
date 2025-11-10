@@ -441,10 +441,9 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       {/* Main content */}
       <div className="relative z-10 w-full max-w-4xl px-4 text-center -mt-64">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-sm mb-6"
-             style={{ borderColor: 'rgba(59, 130, 246, 0.3)', backgroundColor: 'rgba(59, 130, 246, 0.1)' }}>
-          <Sparkles className="w-4 h-4" style={{ color: '#3B82F6' }} />
-          <span className="text-sm font-light" style={{ color: '#3B82F6' }}>Chat avec Magellan</span>
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#4cc9f0] bg-transparent mb-6 leading-none cursor-pointer backdrop-blur-sm">
+          <Sparkles className="w-4 h-4 text-[#4cc9f0]" />
+          <span className="text-sm font-light text-[#4cc9f0]">Chat avec Magellan</span>
         </div>
 
         {/* Main title */}
