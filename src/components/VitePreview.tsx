@@ -4,9 +4,10 @@ import { useMemo } from 'react';
 interface VitePreviewProps {
   projectFiles: Record<string, string>;
   isDark?: boolean;
+  onConsoleLog?: (log: { level: 'log' | 'error' | 'warn'; message: string }) => void;
 }
 
-export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) {
+export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: VitePreviewProps) {
   // Vérifier si c'est un projet HTML pur ou React
   const isReactProject = useMemo(() => {
     return Object.keys(projectFiles).some(path => 
@@ -75,6 +76,7 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
   return (
     <div className="w-full h-full overflow-hidden sandpack-wrapper rounded-xl">
       <Sandpack
+        key={JSON.stringify(sandpackFiles)} // Force reload on file changes
         files={sandpackFiles}
         template={isReactProject ? "react-ts" : "static"}
         theme={isDark ? "dark" : "light"}
@@ -84,12 +86,14 @@ export function VitePreview({ projectFiles, isDark = false }: VitePreviewProps) 
           showLineNumbers: false,
           editorHeight: "100%",
           editorWidthPercentage: 0,
-          showConsole: false,
-          showConsoleButton: false,
+          showConsole: true,
+          showConsoleButton: true,
           closableTabs: false,
           activeFile: Object.keys(sandpackFiles)[0],
           visibleFiles: [],
-          showRefreshButton: false,
+          showRefreshButton: true,
+          autoReload: true,
+          recompileMode: 'immediate',
         }}
         customSetup={isReactProject ? {
           dependencies: {

@@ -483,9 +483,12 @@ export default function BuilderSession() {
           setAiEvents(prev => [...prev, intent]);
         },
         onCodeUpdate: (path, code) => {
+          console.log('🔄 Hot update:', path);
           setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
           updatedFiles[path] = code;
-          setProjectFiles({ ...updatedFiles });
+          
+          // Injection instantanée dans le sandbox
+          setProjectFiles(prev => ({ ...prev, [path]: code }));
           
           if (path === 'index.html') {
             setGeneratedHtml(code);
@@ -497,7 +500,19 @@ export default function BuilderSession() {
           }
         },
         onComplete: async () => {
+          console.log('✅ Build complete - Hot reload');
           setAiEvents(prev => [...prev, { type: 'complete' }]);
+          
+          // Appliquer tous les fichiers mis à jour
+          setProjectFiles({ ...updatedFiles });
+          
+          // Forcer le reload de la preview
+          setTimeout(() => {
+            if (viewMode !== 'preview') {
+              setViewMode('preview');
+            }
+          }, 100);
+          
           // Sauvegarder les fichiers
           const filesArray = Object.entries(updatedFiles).map(([path, content]) => ({
             path,
