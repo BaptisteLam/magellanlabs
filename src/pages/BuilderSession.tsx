@@ -66,6 +66,9 @@ export default function BuilderSession() {
   
   // Événements de génération pour l'affichage de pensée
   const [generationEvents, setGenerationEvents] = useState<Array<{ type: string; message: string; duration?: number; file?: string }>>([]);
+  
+  // Flag pour savoir si on est en première génération
+  const [isInitialGeneration, setIsInitialGeneration] = useState(false);
 
 
   useEffect(() => {
@@ -460,6 +463,11 @@ export default function BuilderSession() {
     // Réinitialiser les événements pour une nouvelle requête
     setAiEvents([]);
     setGenerationEvents([]);
+    
+    // Activer le mode "première génération" si les fichiers sont vides
+    if (Object.keys(projectFiles).length === 0) {
+      setIsInitialGeneration(true);
+    }
 
     // Appeler l'API Agent avec callbacks
     await agent.callAgent(
@@ -514,6 +522,10 @@ export default function BuilderSession() {
         onComplete: async () => {
           console.log('✅ Build complete - Hot reload');
           setAiEvents(prev => [...prev, { type: 'complete' }]);
+          setGenerationEvents(prev => [...prev, { type: 'complete', message: 'Changes applied' }]);
+          
+          // Désactiver le mode "première génération"
+          setIsInitialGeneration(false);
           
           // Appliquer tous les fichiers mis à jour
           setProjectFiles({ ...updatedFiles });
@@ -1138,7 +1150,7 @@ export default function BuilderSession() {
           <ResizablePanel defaultSize={70}>
             <div className="h-full w-full flex flex-col rounded-xl overflow-hidden">
               {viewMode === 'preview' ? (
-                agent.isLoading && Object.keys(projectFiles).length === 0 ? (
+                (agent.isLoading && isInitialGeneration) ? (
                   <GeneratingPreview />
                 ) : (
                   <VitePreview projectFiles={projectFiles} isDark={isDark} />
