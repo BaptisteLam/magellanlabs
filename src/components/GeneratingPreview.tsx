@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import ShinyText from './ui/ShinyText';
-import loadingSphere from '@/assets/loading-sphere.webm';
+import loadingSphereDark from '@/assets/loading-sphere-dark.webm';
+import loadingSphereLight from '@/assets/loading-sphere-light.webm';
+import { useThemeStore } from '@/stores/themeStore';
 
 const loadingMessages = [
   "Analyse de votre demande et compréhension de vos besoins...",
@@ -13,6 +15,7 @@ const loadingMessages = [
 
 export function GeneratingPreview() {
   const [messageIndex, setMessageIndex] = useState(0);
+  const { isDark } = useThemeStore();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -25,7 +28,7 @@ export function GeneratingPreview() {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-6">
       <video 
-        src={loadingSphere}
+        src={isDark ? loadingSphereDark : loadingSphereLight}
         autoPlay
         loop
         muted
