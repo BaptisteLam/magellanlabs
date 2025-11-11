@@ -10,6 +10,18 @@ interface SucrasePreviewProps {
 export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: SucrasePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('');
+  
+  // MODE DEBUG - Afficher les informations
+  useEffect(() => {
+    const info = `
+📦 Fichiers reçus: ${Object.keys(projectFiles).length}
+📝 Liste: ${Object.keys(projectFiles).join(', ')}
+🔍 Type: ${typeof projectFiles}
+    `.trim();
+    setDebugInfo(info);
+    console.log(info);
+  }, [projectFiles]);
 
   // Détecter le type de projet
   const isReactProject = useMemo(() => {
@@ -343,9 +355,11 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
   
   if (!projectFiles || Object.keys(projectFiles).length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-background text-foreground gap-4">
-        <p className="text-muted-foreground">Aucun fichier à prévisualiser...</p>
-        <p className="text-xs text-muted-foreground">Nombre de fichiers: {Object.keys(projectFiles || {}).length}</p>
+      <div className="flex flex-col items-center justify-center h-full bg-background text-foreground gap-4 p-8">
+        <h2 className="text-2xl font-bold text-red-500">⚠️ Aucun fichier détecté</h2>
+        <pre className="text-xs text-muted-foreground bg-muted p-4 rounded">{debugInfo}</pre>
+        <p className="text-sm text-muted-foreground">Type: {typeof projectFiles}</p>
+        <p className="text-sm text-muted-foreground">Keys: {JSON.stringify(Object.keys(projectFiles || {}))}</p>
       </div>
     );
   }
@@ -364,9 +378,23 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
   if (!generatedHTML) {
     console.log('⚠️ Pas de HTML généré');
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-background text-foreground gap-4">
-        <p className="text-yellow-500">Génération du HTML en cours...</p>
-        <p className="text-xs text-muted-foreground">Fichiers: {Object.keys(projectFiles).join(', ')}</p>
+      <div className="flex flex-col items-center justify-center h-full bg-background text-foreground gap-4 p-8">
+        <h2 className="text-2xl font-bold text-yellow-500">⚠️ Pas de HTML généré</h2>
+        <pre className="text-xs text-muted-foreground bg-muted p-4 rounded max-w-2xl">{debugInfo}</pre>
+        <div className="text-left text-xs text-muted-foreground space-y-2 max-w-2xl">
+          <p className="font-semibold">Fichiers détectés:</p>
+          {Object.keys(projectFiles).map(key => (
+            <div key={key} className="ml-4">
+              <span className="text-primary">{key}</span>
+              <span className="text-muted-foreground"> ({projectFiles[key]?.length || 0} chars)</span>
+            </div>
+          ))}
+        </div>
+        {error && (
+          <div className="bg-destructive/10 p-4 rounded max-w-2xl">
+            <p className="text-destructive text-sm">{error}</p>
+          </div>
+        )}
       </div>
     );
   }
