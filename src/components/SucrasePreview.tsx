@@ -261,9 +261,24 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
 <body>
   <div id="root"></div>
   <script>
-    window.React = React;
-    window.ReactDOM = ReactDOM;
-    ${bundledCode}
+    // Attendre que React et ReactDOM soient chargés
+    (function waitForReact() {
+      if (typeof React !== 'undefined' && typeof ReactDOM !== 'undefined') {
+        console.log('✅ React et ReactDOM chargés');
+        window.React = React;
+        window.ReactDOM = ReactDOM;
+        
+        try {
+          ${bundledCode}
+        } catch (err) {
+          console.error('❌ Erreur exécution code:', err);
+          document.body.innerHTML = '<div style="padding: 20px; color: red; font-family: monospace;"><h2>Erreur</h2><pre>' + err.message + '\\n\\n' + err.stack + '</pre></div>';
+        }
+      } else {
+        console.log('⏳ En attente de React/ReactDOM...');
+        setTimeout(waitForReact, 50);
+      }
+    })();
   </script>
 </body>
 </html>`;
