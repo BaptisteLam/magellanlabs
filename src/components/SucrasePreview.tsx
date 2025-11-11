@@ -172,9 +172,32 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
         
         modules['react/jsx-dev-runtime'] = function(module, exports) {
           module.exports = {
-            jsxDEV: window.React.createElement
+            jsxDEV: function(type, props, key) {
+              const { children, ...rest } = props || {};
+              return window.React.createElement(type, { key, ...rest }, children);
+            },
+            Fragment: window.React.Fragment
           };
         };
+        
+        modules['react/jsx-runtime'] = function(module, exports) {
+          module.exports = {
+            jsx: function(type, props) {
+              const { children, ...rest } = props || {};
+              return window.React.createElement(type, rest, children);
+            },
+            jsxs: function(type, props) {
+              const { children, ...rest } = props || {};
+              return window.React.createElement(type, rest, children);
+            },
+            Fragment: window.React.Fragment
+          };
+        };
+        
+        // Helper pour les imports par défaut (généré par Sucrase)
+        function _interopRequireDefault(obj) {
+          return obj && obj.__esModule ? obj : { default: obj };
+        }
         
         function require(path) {
           if (moduleCache[path]) return moduleCache[path];
@@ -227,9 +250,12 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
           }
         });
 
-        // Wrapper le module
+        // Wrapper le module avec les helpers nécessaires
         bundledCode += `
           modules['${path}'] = function(module, exports, require) {
+            function _interopRequireDefault(obj) {
+              return obj && obj.__esModule ? obj : { default: obj };
+            }
             ${processedCode}
           };
         `;
