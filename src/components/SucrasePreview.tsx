@@ -355,7 +355,7 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
   console.log('📦 Nombre de fichiers:', Object.keys(projectFiles).length);
   
   // TEST MODE: Afficher un HTML minimal pour tester l'iframe
-  const testMode = false; // Mettez à true pour tester
+  const testMode = true; // Mettez à true pour tester
   if (testMode) {
     const testHTML = `<!DOCTYPE html>
 <html lang="fr">
