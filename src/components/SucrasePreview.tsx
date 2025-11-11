@@ -225,9 +225,14 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
       background: ${isDark ? '#000' : '#fff'};
       color: ${isDark ? '#fff' : '#000'};
     }
+    #root {
+      min-height: 100vh;
+    }
     ${cssContent.join('\n')}
   </style>
   <script>
+    console.log('🔵 Iframe: Démarrage...');
+    
     // Intercepter les console logs
     const originalConsole = {
       log: console.log,
@@ -254,13 +259,19 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
     
     // Capturer les erreurs
     window.addEventListener('error', (event) => {
-      console.error('Runtime error:', event.error);
+      console.error('🔴 Runtime error:', event.error);
+    });
+    
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('🔴 Unhandled promise rejection:', event.reason);
     });
   </script>
 </head>
 <body>
   <div id="root"></div>
   <script>
+    console.log('🔵 Début chargement script...');
+    
     // Attendre que React et ReactDOM soient chargés
     (function waitForReact() {
       if (typeof React !== 'undefined' && typeof ReactDOM !== 'undefined') {
@@ -269,13 +280,15 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
         window.ReactDOM = ReactDOM;
         
         try {
+          console.log('🔵 Exécution du code bundlé...');
           ${bundledCode}
+          console.log('✅ Code bundlé exécuté avec succès');
         } catch (err) {
           console.error('❌ Erreur exécution code:', err);
-          document.body.innerHTML = '<div style="padding: 20px; color: red; font-family: monospace;"><h2>Erreur</h2><pre>' + err.message + '\\n\\n' + err.stack + '</pre></div>';
+          document.body.innerHTML = '<div style="padding: 20px; color: red; font-family: monospace; background: ' + (${isDark} ? '#000' : '#fff') + ';"><h2>Erreur d\\'exécution</h2><pre>' + err.message + '\\n\\n' + err.stack + '</pre></div>';
         }
       } else {
-        console.log('⏳ En attente de React/ReactDOM...');
+        console.log('⏳ En attente de React/ReactDOM... (React: ' + typeof React + ', ReactDOM: ' + typeof ReactDOM + ')');
         setTimeout(waitForReact, 50);
       }
     })();
@@ -284,6 +297,7 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
 </html>`;
 
       console.log('✅ HTML généré avec succès');
+      console.log('📄 Taille HTML:', html.length, 'caractères');
       return html;
 
     } catch (err) {
@@ -323,10 +337,15 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
     }
   }, [generatedHTML]);
 
+  // Debug: afficher les fichiers reçus
+  console.log('📦 SucrasePreview - Fichiers reçus:', Object.keys(projectFiles));
+  console.log('📦 Nombre de fichiers:', Object.keys(projectFiles).length);
+  
   if (!projectFiles || Object.keys(projectFiles).length === 0) {
     return (
-      <div className="flex items-center justify-center h-full bg-background text-foreground">
+      <div className="flex flex-col items-center justify-center h-full bg-background text-foreground gap-4">
         <p className="text-muted-foreground">Aucun fichier à prévisualiser...</p>
+        <p className="text-xs text-muted-foreground">Nombre de fichiers: {Object.keys(projectFiles || {}).length}</p>
       </div>
     );
   }
@@ -338,6 +357,16 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
           <h2 className="text-xl font-semibold text-destructive mb-4">Erreur de compilation</h2>
           <pre className="text-sm text-destructive/90 whitespace-pre-wrap font-mono">{error}</pre>
         </div>
+      </div>
+    );
+  }
+
+  if (!generatedHTML) {
+    console.log('⚠️ Pas de HTML généré');
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-background text-foreground gap-4">
+        <p className="text-yellow-500">Génération du HTML en cours...</p>
+        <p className="text-xs text-muted-foreground">Fichiers: {Object.keys(projectFiles).join(', ')}</p>
       </div>
     );
   }
