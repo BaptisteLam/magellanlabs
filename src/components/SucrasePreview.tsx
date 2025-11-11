@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo, useState } from 'react';
 import { transform } from 'sucrase';
+import { Button } from '@/components/ui/button';
 
 interface SucrasePreviewProps {
   projectFiles: Record<string, string>;
@@ -353,6 +354,58 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
   console.log('📦 SucrasePreview - Fichiers reçus:', Object.keys(projectFiles));
   console.log('📦 Nombre de fichiers:', Object.keys(projectFiles).length);
   
+  // TEST MODE: Afficher un HTML minimal pour tester l'iframe
+  const testMode = false; // Mettez à true pour tester
+  if (testMode) {
+    const testHTML = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: ${isDark ? '#1a1a1a' : '#ffffff'};
+      color: ${isDark ? '#ffffff' : '#000000'};
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    h1 {
+      font-size: 3rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🎉 L'iframe fonctionne !</h1>
+  <script>
+    console.log('✅ Test iframe - JavaScript fonctionne');
+    window.parent.postMessage({ type: 'console', level: 'log', message: '✅ Test iframe OK' }, '*');
+  </script>
+</body>
+</html>`;
+    
+    return (
+      <div className="w-full h-full overflow-hidden rounded-xl">
+        <iframe
+          title="Test Preview"
+          srcDoc={testHTML}
+          className="w-full h-full border-0"
+          sandbox="allow-scripts allow-same-origin"
+        />
+      </div>
+    );
+  }
+  
   if (!projectFiles || Object.keys(projectFiles).length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-background text-foreground gap-4 p-8">
@@ -360,6 +413,16 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
         <pre className="text-xs text-muted-foreground bg-muted p-4 rounded">{debugInfo}</pre>
         <p className="text-sm text-muted-foreground">Type: {typeof projectFiles}</p>
         <p className="text-sm text-muted-foreground">Keys: {JSON.stringify(Object.keys(projectFiles || {}))}</p>
+        <Button 
+          onClick={() => {
+            console.log('📋 ProjectFiles:', projectFiles);
+            console.log('📋 Type:', typeof projectFiles);
+            console.log('📋 Keys:', Object.keys(projectFiles || {}));
+          }}
+          className="mt-4"
+        >
+          Afficher les détails dans la console
+        </Button>
       </div>
     );
   }
