@@ -59,7 +59,10 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
           try {
             const result = transform(content, {
               filename: path,
-              presets: ['react', 'typescript'],
+              presets: [
+                ['react', { runtime: 'classic' }],
+                'typescript'
+              ],
               retainLines: false,
             });
             
@@ -76,7 +79,6 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
       // Créer un système de modules simple
       const bundleCode = `
         const modules = {};
-        const exports = {};
         const moduleCache = {};
         
         // Mock pour React et ReactDOM
@@ -98,29 +100,37 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
           }
           
           const module = { exports: {} };
+          moduleCache[moduleName] = module.exports;
+          
           try {
-            modules[moduleName](module, module.exports);
-            moduleCache[moduleName] = module.exports;
-            return module.exports;
+            modules[moduleName](module, module.exports, require);
           } catch (err) {
             console.error('Erreur dans le module', moduleName, ':', err);
             throw err;
           }
+          
+          return module.exports;
         }
         
         ${Object.entries(transpiledModules).map(([path, code]) => {
           // Remplacer les imports par des require()
           let processedCode = code;
           
-          // Remplacer import React
+          // Remplacer tous les types d'imports React
           processedCode = processedCode.replace(
-            /import\s+(?:\*\s+as\s+)?React(?:\s*,\s*\{[^}]*\})?\s+from\s+['"]react['"]/g,
+            /import\s+(?:React(?:\s*,\s*\{[^}]*\})?|\{[^}]*\})\s+from\s+['"]react['"]/g,
+            'const React = require("react")'
+          );
+          
+          // Remplacer import * as React
+          processedCode = processedCode.replace(
+            /import\s+\*\s+as\s+React\s+from\s+['"]react['"]/g,
             'const React = require("react")'
           );
           
           // Remplacer import ReactDOM
           processedCode = processedCode.replace(
-            /import\s+(?:\*\s+as\s+)?ReactDOM\s+from\s+['"]react-dom['"]/g,
+            /import\s+ReactDOM\s+from\s+['"]react-dom['"]/g,
             'const ReactDOM = require("react-dom")'
           );
           
@@ -168,10 +178,24 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
             '// CSS import removed'
           );
           
-          return `modules["${path}"] = function(module, exports) {
+          // Gérer les exports
+          processedCode = processedCode.replace(
+            /export\s+default\s+/g,
+            'module.exports = '
+          );
+          
+          processedCode = processedCode.replace(
+            /export\s+\{([^}]+)\}/g,
+            (match, exports) => {
+              const exportList = exports.split(',').map(e => e.trim());
+              return exportList.map(exp => `module.exports.${exp} = ${exp};`).join('\\n');
+            }
+          );
+          
+          return `modules["${path}"] = function(module, exports, require) {
             ${processedCode}
           };`;
-        }).join('\n')}
+        }).join('\\n')}
         
         // Charger le point d'entrée
         try {
