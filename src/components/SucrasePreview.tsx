@@ -172,6 +172,10 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
         );
         processedCode = processedCode.replace(
           /import\s+(?:{[^}]*}|\*\s+as\s+\w+|\w+)\s+from\s+['"]react-dom[\/]client['"]/g,
+          'const { createRoot } = window.ReactDOM'
+        );
+        processedCode = processedCode.replace(
+          /import\s+(?:{[^}]*}|\*\s+as\s+\w+|\w+)\s+from\s+['"]react-dom['"]/g,
           'const ReactDOM = window.ReactDOM'
         );
 
@@ -212,8 +216,8 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Preview</title>
-  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.${isDark ? 'development' : 'production.min'}.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.${isDark ? 'development' : 'production.min'}.js"></script>
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -258,7 +262,7 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
   <div id="root"></div>
   <script>
     window.React = React;
-    window.ReactDOM = ReactDOMClient;
+    window.ReactDOM = ReactDOM;
     ${bundledCode}
   </script>
 </body>
