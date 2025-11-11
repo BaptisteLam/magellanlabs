@@ -28,6 +28,9 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
         }
       });
 
+      // Log pour debug
+      console.log('📁 Fichiers disponibles:', Object.keys(projectFiles));
+      
       // Trouver le point d'entrée principal
       const entryPoints = [
         'src/main.tsx',
@@ -42,13 +45,16 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
 
       let entryFile = entryPoints.find(entry => projectFiles[entry]);
       
+      console.log('🎯 Point d\'entrée trouvé:', entryFile);
+      
       // Si pas de point d'entrée React, chercher un fichier HTML
       if (!entryFile) {
         const htmlFile = Object.entries(projectFiles).find(([path]) => path.endsWith('.html'));
         if (htmlFile) {
+          console.log('📄 Utilisation du fichier HTML:', htmlFile[0]);
           return htmlFile[1];
         }
-        throw new Error('Aucun point d\'entrée trouvé');
+        throw new Error('Aucun point d\'entrée trouvé. Fichiers: ' + Object.keys(projectFiles).join(', '));
       }
 
       // Transpiler tous les fichiers TS/TSX/JS/JSX avec Babel
@@ -57,6 +63,7 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
       Object.entries(projectFiles).forEach(([path, content]) => {
         if (path.match(/\.(tsx?|jsx?)$/)) {
           try {
+            console.log(`⚙️ Transpilation de ${path}...`);
             const result = transform(content, {
               filename: path,
               presets: [
@@ -68,13 +75,16 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
             
             if (result.code) {
               transpiledModules[path] = result.code;
+              console.log(`✅ ${path} transpilé (${result.code.length} chars)`);
             }
           } catch (err) {
-            console.error(`Erreur transpilation ${path}:`, err);
+            console.error(`❌ Erreur transpilation ${path}:`, err);
             throw new Error(`Erreur de transpilation dans ${path}: ${err instanceof Error ? err.message : String(err)}`);
           }
         }
       });
+      
+      console.log('📦 Modules transpilés:', Object.keys(transpiledModules));
 
       // Créer un système de modules simple
       const bundleCode = `
@@ -198,11 +208,14 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
         }).join('\\n')}
         
         // Charger le point d'entrée
+        console.log('🚀 Chargement du point d\'entrée:', '${entryFile}');
+        console.log('📚 Modules disponibles:', Object.keys(modules));
         try {
           require('${entryFile}');
+          console.log('✅ Application chargée avec succès');
         } catch (err) {
-          console.error('Erreur au chargement:', err);
-          document.body.innerHTML = '<div style="color: red; padding: 20px; font-family: monospace;"><h2>Erreur de chargement</h2><pre>' + err.message + '</pre></div>';
+          console.error('❌ Erreur au chargement:', err);
+          document.body.innerHTML = '<div style="color: red; padding: 20px; font-family: monospace;"><h2>Erreur de chargement</h2><pre>' + err.message + '\\n\\n' + (err.stack || '') + '</pre></div>';
         }
       `;
 
