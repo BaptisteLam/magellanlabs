@@ -355,7 +355,7 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
   console.log('📦 Nombre de fichiers:', Object.keys(projectFiles).length);
   
   // TEST MODE: Afficher un HTML minimal pour tester l'iframe
-  const testMode = true; // Mettez à true pour tester
+  const testMode = false; // Mettez à true pour tester
   if (testMode) {
     const testHTML = `<!DOCTYPE html>
 <html lang="fr">
@@ -405,6 +405,18 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
       </div>
     );
   }
+  
+  // DEBUG: Afficher l'état complet de projectFiles
+  console.log('🔍 DEBUG SucrasePreview:', {
+    projectFilesKeys: Object.keys(projectFiles),
+    projectFilesCount: Object.keys(projectFiles).length,
+    isReactProject,
+    firstFilePreview: Object.keys(projectFiles)[0] ? {
+      path: Object.keys(projectFiles)[0],
+      contentLength: projectFiles[Object.keys(projectFiles)[0]]?.length,
+      contentPreview: projectFiles[Object.keys(projectFiles)[0]]?.substring(0, 100)
+    } : null
+  });
   
   if (!projectFiles || Object.keys(projectFiles).length === 0) {
     return (
