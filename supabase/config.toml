@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.deploy-to-netlify]
 verify_jwt = true
 
+[functions.deploy-to-cloudflare]
+verify_jwt = true
+
 [functions.html-to-react]
 verify_jwt = true
 
