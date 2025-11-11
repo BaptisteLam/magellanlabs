@@ -70,6 +70,9 @@ export default function BuilderSession() {
   // Flag pour savoir si on est en première génération
   const [isInitialGeneration, setIsInitialGeneration] = useState(false);
   
+  // Flag pour éviter de traiter le prompt initial plusieurs fois
+  const [initialPromptProcessed, setInitialPromptProcessed] = useState(false);
+  
   // Mode Inspect pour la preview interactive
   const [inspectMode, setInspectMode] = useState(false);
 
@@ -103,39 +106,43 @@ export default function BuilderSession() {
   // Traiter le prompt initial IMMÉDIATEMENT après chargement session
   useEffect(() => {
     const processInitialPrompt = async () => {
-      if (!sessionId || Object.keys(projectFiles).length > 0) return;
+      // Ne rien faire si déjà traité ou si on a des fichiers
+      if (initialPromptProcessed || Object.keys(projectFiles).length > 0) return;
       
-      // Récupérer le prompt depuis l'URL si présent
       const urlParams = new URLSearchParams(window.location.search);
       const promptFromUrl = urlParams.get('prompt');
       
       if (promptFromUrl) {
-        // Si on a un prompt dans l'URL et pas de fichiers, on lance la génération
+        console.log('🚀 Traitement du prompt initial depuis URL:', promptFromUrl);
         setInputValue(promptFromUrl);
-        // Petit délai pour s'assurer que tous les états sont initialisés
+        setInitialPromptProcessed(true);
+        
+        // Petit délai pour s'assurer que tout est initialisé
         setTimeout(() => {
-          if (!agent.isLoading) {
-            handleSubmit();
-          }
-        }, 500);
+          handleSubmit();
+        }, 100);
       } else if (messages.length === 1 && messages[0].role === 'user') {
-        // Sinon, vérifier si la session a un message mais pas de fichiers générés
         const userPrompt = typeof messages[0].content === 'string' ? messages[0].content : '';
         if (userPrompt.trim()) {
+          console.log('🚀 Traitement du prompt initial depuis messages:', userPrompt);
           setInputValue(userPrompt);
+          setInitialPromptProcessed(true);
+          
           setTimeout(() => {
-            if (!agent.isLoading) {
-              handleSubmit();
-            }
-          }, 500);
+            handleSubmit();
+          }, 100);
         }
       }
     };
     
-    if (!sessionLoading && user) {
+    // NE traiter le prompt initial QUE si :
+    // 1. La session a fini de charger (sessionLoading === false)
+    // 2. L'utilisateur est authentifié
+    // 3. On n'a pas déjà traité le prompt
+    if (!sessionLoading && user && !initialPromptProcessed) {
       processInitialPrompt();
     }
-  }, [sessionId, sessionLoading, user, projectFiles]);
+  }, [sessionId, sessionLoading, user, projectFiles, messages, initialPromptProcessed]);
 
 
   const checkAuth = async () => {
