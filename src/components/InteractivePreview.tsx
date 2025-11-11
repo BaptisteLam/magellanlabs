@@ -148,6 +148,10 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
     setSelectedElement(null);
   };
 
+  // Debug: Vérifier les fichiers reçus
+  console.log('🔍 InteractivePreview - Fichiers reçus:', Object.keys(projectFiles).length);
+  console.log('🔍 InteractivePreview - Fichiers:', Object.keys(projectFiles));
+
   return (
     <div className="relative w-full h-full">
       {/* Overlay d'aide en mode inspection */}
