@@ -45,6 +45,7 @@ function App() {
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/builder" element={<AIBuilder />} />
+            <Route path="/builder/:sessionId" element={<BuilderSession />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/tarifs" element={<Pricing />} />
