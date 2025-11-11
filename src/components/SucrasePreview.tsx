@@ -147,10 +147,34 @@ export function SucrasePreview({ projectFiles, isDark = false, onConsoleLog }: S
         return to;
       };
 
-      // Créer le code bundlé
+      // Créer le code bundlé avec les modules React/ReactDOM globaux
       let bundledCode = `
         const modules = {};
         const moduleCache = {};
+        
+        // Modules factices pour React et ReactDOM
+        modules['react'] = function(module, exports) {
+          module.exports = window.React;
+          module.exports.default = window.React;
+        };
+        
+        modules['react-dom'] = function(module, exports) {
+          module.exports = window.ReactDOM;
+          module.exports.default = window.ReactDOM;
+        };
+        
+        modules['react-dom/client'] = function(module, exports) {
+          module.exports = {
+            createRoot: window.ReactDOM.createRoot,
+            default: { createRoot: window.ReactDOM.createRoot }
+          };
+        };
+        
+        modules['react/jsx-dev-runtime'] = function(module, exports) {
+          module.exports = {
+            jsxDEV: window.React.createElement
+          };
+        };
         
         function require(path) {
           if (moduleCache[path]) return moduleCache[path];
