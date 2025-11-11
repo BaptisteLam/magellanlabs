@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
-import { BabelPreview } from "@/components/BabelPreview";
+import { InteractivePreview } from "@/components/InteractivePreview";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
 import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
@@ -1206,7 +1206,28 @@ export default function BuilderSession() {
                 isInitialGeneration ? (
                   <GeneratingPreview />
                 ) : (
-                  <BabelPreview projectFiles={projectFiles} isDark={isDark} />
+                  <InteractivePreview 
+                    projectFiles={projectFiles} 
+                    isDark={isDark}
+                    onElementModify={async (prompt, elementInfo) => {
+                      // Créer un prompt contextuel avec les infos de l'élément
+                      const contextualPrompt = `Modifier l'élément suivant dans le code :
+
+Type: <${elementInfo.tagName.toLowerCase()}>
+${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
+${elementInfo.classList.length > 0 ? `Classes: ${elementInfo.classList.join(', ')}` : ''}
+Chemin CSS: ${elementInfo.path}
+Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textContent.length > 200 ? '...' : ''}"
+
+Instruction: ${prompt}
+
+Ne modifie que cet élément spécifique, pas le reste du code.`;
+                      
+                      // Soumettre le prompt
+                      setInputValue(contextualPrompt);
+                      setTimeout(() => handleSubmit(), 100);
+                    }}
+                  />
                 )
               ) : viewMode === 'analytics' ? (
                 <Analytics 
