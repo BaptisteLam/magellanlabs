@@ -12,8 +12,6 @@ import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
-import AIBuilder from "./pages/AIBuilder";
-import BuilderSession from "./pages/BuilderSession";
 import ScrollToTop from "./components/ScrollToTop";
 import { SettingsCenter } from "./components/settings/SettingsCenter";
 import { useThemeStore } from "./stores/themeStore";
@@ -44,8 +42,6 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/builder" element={<AIBuilder />} />
-            <Route path="/builder/:sessionId" element={<BuilderSession />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/tarifs" element={<Pricing />} />
