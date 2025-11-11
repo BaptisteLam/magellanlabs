@@ -69,6 +69,9 @@ export default function BuilderSession() {
   
   // Flag pour savoir si on est en première génération
   const [isInitialGeneration, setIsInitialGeneration] = useState(false);
+  
+  // Mode Inspect pour la preview interactive
+  const [inspectMode, setInspectMode] = useState(false);
 
   // Fonction pour générer automatiquement un nom de projet
   const generateProjectName = async (prompt: string) => {
@@ -1173,6 +1176,8 @@ export default function BuilderSession() {
                 showPlaceholderAnimation={false}
                 showConfigButtons={false}
                 modificationMode={true}
+                inspectMode={inspectMode}
+                onInspectToggle={() => setInspectMode(!inspectMode)}
                 attachedFiles={attachedFiles}
                 onRemoveFile={removeFile}
                 onFileSelect={async (files) => {
@@ -1209,6 +1214,8 @@ export default function BuilderSession() {
                   <InteractivePreview 
                     projectFiles={projectFiles} 
                     isDark={isDark}
+                    inspectMode={inspectMode}
+                    onInspectModeChange={setInspectMode}
                     onElementModify={async (prompt, elementInfo) => {
                       // Créer un prompt contextuel avec les infos de l'élément
                       const contextualPrompt = `Modifier l'élément suivant dans le code :

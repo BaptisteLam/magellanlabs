@@ -1,4 +1,4 @@
-import { ArrowUp, Paperclip, Settings, Globe, Monitor, Smartphone, X } from 'lucide-react';
+import { ArrowUp, Paperclip, Settings, Globe, Monitor, Smartphone, X, MousePointer2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import TextType from '@/components/ui/TextType';
@@ -30,7 +30,9 @@ interface PromptBarProps {
   attachedFiles?: Array<{ name: string; base64: string; type: string }>;
   onRemoveFile?: (index: number) => void;
   showConfigButtons?: boolean;
-  modificationMode?: boolean; // Nouveau: indique si on est en mode modification
+  modificationMode?: boolean;
+  inspectMode?: boolean;
+  onInspectToggle?: () => void;
 }
 
 const PromptBar = ({ 
@@ -44,7 +46,9 @@ const PromptBar = ({
   attachedFiles = [],
   onRemoveFile,
   showConfigButtons = true,
-  modificationMode = false
+  modificationMode = false,
+  inspectMode = false,
+  onInspectToggle
 }: PromptBarProps) => {
   const { isDark } = useThemeStore();
   const [selectedModel, setSelectedModel] = useState<'sonnet' | 'grok'>('sonnet');
@@ -164,6 +168,25 @@ const PromptBar = ({
       <div className="flex items-center justify-between mt-2 gap-2">
         <TooltipProvider>
           <div className="flex items-center gap-1">
+            {/* Bouton Mode Inspect - uniquement en mode modification */}
+            {modificationMode && onInspectToggle && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={onInspectToggle}
+                    className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
+                    style={iconButtonStyle(inspectMode)}
+                  >
+                    <MousePointer2 className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">{inspectMode ? 'Désactiver inspection' : 'Mode Inspect'}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
             {/* Bouton déposer un document */}
             <Tooltip>
               <TooltipTrigger asChild>

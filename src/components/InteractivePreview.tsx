@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { VitePreview } from './VitePreview';
-import { Button } from './ui/button';
-import { MousePointer2, X } from 'lucide-react';
 import { ElementEditDialog } from './ElementEditDialog';
 
 interface InteractivePreviewProps {
   projectFiles: Record<string, string>;
   isDark?: boolean;
   onElementModify?: (prompt: string, elementInfo: ElementInfo) => void;
+  inspectMode: boolean;
+  onInspectModeChange: (mode: boolean) => void;
 }
 
 export interface ElementInfo {
@@ -19,8 +19,7 @@ export interface ElementInfo {
   id?: string;
 }
 
-export function InteractivePreview({ projectFiles, isDark = false, onElementModify }: InteractivePreviewProps) {
-  const [inspectMode, setInspectMode] = useState(false);
+export function InteractivePreview({ projectFiles, isDark = false, onElementModify, inspectMode, onInspectModeChange }: InteractivePreviewProps) {
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -133,7 +132,7 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
       if (event.data.type === 'element-selected') {
         setSelectedElement(event.data.data);
         setShowEditDialog(true);
-        setInspectMode(false);
+        onInspectModeChange(false);
       }
     };
 
@@ -151,24 +150,6 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
 
   return (
     <div className="relative w-full h-full">
-      {/* Bouton Mode Inspect */}
-      <div className="absolute top-4 right-4 z-10 flex gap-2">
-        <Button
-          onClick={() => setInspectMode(!inspectMode)}
-          variant={inspectMode ? "default" : "outline"}
-          size="sm"
-          className="gap-2"
-          style={{
-            borderColor: inspectMode ? 'transparent' : 'rgb(3,165,192)',
-            backgroundColor: inspectMode ? 'rgb(3,165,192)' : 'rgba(3,165,192,0.1)',
-            color: inspectMode ? 'white' : 'rgb(3,165,192)'
-          }}
-        >
-          {inspectMode ? <X className="w-4 h-4" /> : <MousePointer2 className="w-4 h-4" />}
-          {inspectMode ? 'Annuler' : 'Mode Inspect'}
-        </Button>
-      </div>
-
       {/* Overlay d'aide en mode inspection */}
       {inspectMode && (
         <div className="absolute top-16 right-4 z-10 bg-background border border-border rounded-lg p-3 shadow-lg max-w-xs">
