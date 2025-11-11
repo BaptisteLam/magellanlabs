@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
-import { SucrasePreview } from "@/components/SucrasePreview";
+import { BabelPreview } from "@/components/BabelPreview";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
 import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
@@ -1206,7 +1206,7 @@ export default function BuilderSession() {
                 isInitialGeneration ? (
                   <GeneratingPreview />
                 ) : (
-                  <SucrasePreview projectFiles={projectFiles} isDark={isDark} />
+                  <BabelPreview projectFiles={projectFiles} isDark={isDark} />
                 )
               ) : viewMode === 'analytics' ? (
                 <Analytics 
