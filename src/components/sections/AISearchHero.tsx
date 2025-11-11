@@ -199,69 +199,11 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         throw new Error('Erreur lors de la création de la session');
       }
 
-      setSessionId(session.id);
-      
-      // Générer le site directement sans redirection
-      const { data: authData } = await supabase.auth.getSession();
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-site`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.session?.access_token}`,
-        },
-        body: JSON.stringify({
-          prompt,
-          images: attachedFiles,
-          sessionId: session.id
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erreur API: ${response.status}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('Impossible de lire le stream');
-
-      const decoder = new TextDecoder('utf-8');
-      const newFiles: Record<string, string> = {};
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter(Boolean);
-
-        for (const line of lines) {
-          if (!line.startsWith('data:')) continue;
-          
-          const dataStr = line.replace('data:', '').trim();
-          if (!dataStr) continue;
-
-          try {
-            const event = JSON.parse(dataStr);
-            
-            if (event.type === 'file') {
-              newFiles[event.data.path] = event.data.content;
-              setProjectFiles({ ...newFiles });
-            } else if (event.type === 'complete') {
-              console.log('✅ Génération complète');
-              setProjectFiles(newFiles);
-              setIsLoading(false);
-              sonnerToast.success('Site généré !');
-              if (onGeneratedChange) onGeneratedChange(false);
-            } else if (event.type === 'error') {
-              throw new Error(event.data.message);
-            }
-          } catch (e) {
-            console.error('Erreur parsing SSE:', e);
-          }
-        }
-      }
-
+      // Rediriger immédiatement vers la session builder
+      navigate(`/builder/${session.id}?prompt=${encodeURIComponent(prompt)}`);
       setInputValue('');
       setAttachedFiles([]);
+      setIsLoading(false);
     } catch (error) {
       console.error('💥 Erreur complète:', error);
       console.error('💥 Type d\'erreur:', error instanceof Error ? 'Error' : typeof error);
