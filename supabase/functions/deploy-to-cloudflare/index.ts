@@ -145,26 +145,27 @@ serve(async (req) => {
     
     console.log('🚀 Deploying to Cloudflare Pages project:', projectName);
     
-    // Prepare form data for direct upload
-    const formData = new FormData();
+    // Prepare manifest for direct upload
+    const manifest: Record<string, string> = {};
+    const fileContents: Record<string, string> = {};
     
     modifiedFiles.forEach((file: ProjectFile) => {
       const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
       
       if (file.content.startsWith('data:')) {
-        // Binary files (images, etc.)
+        // Binary files (images, etc.) - convert to base64
         const base64Data = file.content.split(',')[1];
-        const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-        const blob = new Blob([binaryData]);
-        formData.append(fileName, blob, fileName);
+        manifest[fileName] = base64Data;
+        fileContents[fileName] = base64Data;
       } else {
-        // Text files
-        const blob = new Blob([file.content], { type: 'text/plain' });
-        formData.append(fileName, blob, fileName);
+        // Text files - convert to base64
+        const base64Content = btoa(unescape(encodeURIComponent(file.content)));
+        manifest[fileName] = base64Content;
+        fileContents[fileName] = base64Content;
       }
     });
     
-    console.log('📋 Form data created with', modifiedFiles.length, 'files');
+    console.log('📋 Manifest created with', Object.keys(manifest).length, 'files');
     
     // Try to deploy via direct upload API
     console.log('📤 Deploying via Cloudflare Pages Direct Upload...');
@@ -217,15 +218,19 @@ serve(async (req) => {
       throw new Error(`Failed to check project: ${error}`);
     }
     
-    // Now deploy using direct upload
+    // Now deploy using direct upload with manifest
     const deployResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify({
+          manifest: manifest,
+          branch: 'main',
+        }),
       }
     );
     
