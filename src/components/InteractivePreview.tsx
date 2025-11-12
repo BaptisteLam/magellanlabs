@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { VitePreview } from './VitePreview';
+import { useState, useEffect } from 'react';
+import { CustomIframePreview } from './CustomIframePreview';
 import { ElementEditDialog } from './ElementEditDialog';
 
 interface InteractivePreviewProps {
@@ -22,123 +22,13 @@ export interface ElementInfo {
 export function InteractivePreview({ projectFiles, isDark = false, onElementModify, inspectMode, onInspectModeChange }: InteractivePreviewProps) {
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
-  // Injecter le script d'inspection dans l'iframe
-  useEffect(() => {
-    if (!inspectMode) return;
-
-    const injectInspectScript = () => {
-      const iframe = document.querySelector('iframe');
-      if (!iframe?.contentWindow) return;
-
-      const script = iframe.contentDocument?.createElement('script');
-      if (!script) return;
-
-      script.textContent = `
-        (function() {
-          let currentHighlight = null;
-          
-          const getElementPath = (element) => {
-            const path = [];
-            let current = element;
-            while (current && current !== document.body) {
-              let selector = current.tagName.toLowerCase();
-              if (current.id) {
-                selector += '#' + current.id;
-              } else if (current.className) {
-                const classes = Array.from(current.classList).join('.');
-                if (classes) selector += '.' + classes;
-              }
-              path.unshift(selector);
-              current = current.parentElement;
-            }
-            return path.join(' > ');
-          };
-
-          const handleMouseOver = (e) => {
-            e.stopPropagation();
-            if (currentHighlight) {
-              currentHighlight.style.outline = '';
-              currentHighlight.style.cursor = '';
-            }
-            currentHighlight = e.target;
-            e.target.style.outline = '2px solid #03A5C0';
-            e.target.style.cursor = 'pointer';
-          };
-
-          const handleMouseOut = (e) => {
-            e.stopPropagation();
-            if (e.target.style) {
-              e.target.style.outline = '';
-              e.target.style.cursor = '';
-            }
-          };
-
-          const handleClick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const element = e.target;
-            const elementInfo = {
-              tagName: element.tagName,
-              textContent: element.textContent?.trim() || '',
-              classList: Array.from(element.classList || []),
-              path: getElementPath(element),
-              innerHTML: element.innerHTML,
-              id: element.id || undefined
-            };
-            
-            window.parent.postMessage({
-              type: 'element-selected',
-              data: elementInfo
-            }, '*');
-            
-            // Désactiver le mode inspection après sélection
-            document.removeEventListener('mouseover', handleMouseOver, true);
-            document.removeEventListener('mouseout', handleMouseOut, true);
-            document.removeEventListener('click', handleClick, true);
-            
-            if (currentHighlight) {
-              currentHighlight.style.outline = '';
-              currentHighlight.style.cursor = '';
-            }
-          };
-
-          document.addEventListener('mouseover', handleMouseOver, true);
-          document.addEventListener('mouseout', handleMouseOut, true);
-          document.addEventListener('click', handleClick, true);
-        })();
-      `;
-
-      iframe.contentDocument?.body.appendChild(script);
-    };
-
-    // Attendre que l'iframe soit chargée
-    const checkIframe = setInterval(() => {
-      const iframe = document.querySelector('iframe');
-      if (iframe?.contentDocument?.body) {
-        injectInspectScript();
-        clearInterval(checkIframe);
-      }
-    }, 500);
-
-    return () => clearInterval(checkIframe);
-  }, [inspectMode]);
-
-  // Écouter les messages de l'iframe
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === 'element-selected') {
-        setSelectedElement(event.data.data);
-        setShowEditDialog(true);
-        onInspectModeChange(false);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  // Gérer la sélection d'élément
+  const handleElementSelect = (elementInfo: ElementInfo) => {
+    setSelectedElement(elementInfo);
+    setShowEditDialog(true);
+    onInspectModeChange(false);
+  };
 
   const handleModify = (prompt: string) => {
     if (selectedElement && onElementModify) {
@@ -147,10 +37,6 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
     setShowEditDialog(false);
     setSelectedElement(null);
   };
-
-  // Debug: Vérifier les fichiers reçus
-  console.log('🔍 InteractivePreview - Fichiers reçus:', Object.keys(projectFiles).length);
-  console.log('🔍 InteractivePreview - Fichiers:', Object.keys(projectFiles));
 
   return (
     <div className="relative w-full h-full">
@@ -163,10 +49,12 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
         </div>
       )}
 
-      {/* Preview Sandpack */}
-      <VitePreview 
+      {/* Preview Custom Iframe */}
+      <CustomIframePreview 
         projectFiles={projectFiles} 
         isDark={isDark}
+        inspectMode={inspectMode}
+        onElementSelect={handleElementSelect}
       />
 
       {/* Dialog de modification */}
