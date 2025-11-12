@@ -162,23 +162,22 @@ ${files[indexCssPath].code}` };
   return (
     <div className="w-full h-full overflow-hidden sandpack-wrapper rounded-xl">
       <SandpackProvider
-        template={template}
+        template="vite-react-ts"
         theme={theme}
         files={sandpackFiles}
         customSetup={{
+          environment: "node",
           dependencies: {
             "react": "18.2.0",
             "react-dom": "18.2.0",
-            "vite": "5.0.0",
-            "typescript": "5.2.0",
-            "tailwindcss": "3.4.0",
-            "autoprefixer": "10.4.0",
-            "postcss": "8.4.0",
-            "lucide-react": "0.460.0",
-            "framer-motion": "11.0.0",
-            "classnames": "2.3.2",
-            "clsx": "2.1.0",
-            "tailwind-merge": "2.2.0"
+            "vite": "4.3.9",
+            "typescript": "4.9.5",
+            "tailwindcss": "3.3.3",
+            "autoprefixer": "10.4.14",
+            "postcss": "8.4.21",
+            "lucide-react": "0.263.0",
+            "framer-motion": "10.16.4",
+            "classnames": "2.3.2"
           }
         }}
         options={{
