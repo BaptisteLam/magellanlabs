@@ -139,21 +139,20 @@ serve(async (req) => {
       }
     }
 
-    // Create form data for Cloudflare Pages deployment
-    const formData = new FormData();
+    // Créer le manifest pour Cloudflare Pages
+    const manifest: Record<string, string> = {};
     
     modifiedFiles.forEach((file: ProjectFile) => {
       const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
       
       if (file.content.startsWith('data:')) {
+        // Pour les fichiers binaires (images, etc.)
         const base64Data = file.content.split(',')[1];
-        const mimeType = file.content.split(';')[0].split(':')[1];
-        const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-        const blob = new Blob([binaryData], { type: mimeType });
-        formData.append(fileName, blob, fileName);
+        manifest[fileName] = base64Data;
       } else {
-        const blob = new Blob([file.content], { type: 'text/plain' });
-        formData.append(fileName, blob, fileName);
+        // Pour les fichiers texte - encoder en base64
+        const base64Content = btoa(unescape(encodeURIComponent(file.content)));
+        manifest[fileName] = base64Content;
       }
     });
 
@@ -170,8 +169,11 @@ serve(async (req) => {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify({
+          manifest: manifest,
+        }),
       }
     );
 
@@ -215,8 +217,11 @@ serve(async (req) => {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+              'Content-Type': 'application/json',
             },
-            body: formData,
+            body: JSON.stringify({
+              manifest: manifest,
+            }),
           }
         );
         
