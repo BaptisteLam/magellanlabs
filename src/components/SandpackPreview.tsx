@@ -182,7 +182,7 @@ ${files[indexCssPath].code}` };
         }}
         options={{
           autoReload: true,
-          recompileMode: 'immediate',
+          recompileMode: 'delayed',
         }}
       >
         <SandpackLayout style={{ height: '100%' }}>
@@ -196,7 +196,7 @@ ${files[indexCssPath].code}` };
             />
           )}
           <SandpackPreviewComponent
-            style={{ height: '100%' }}
+            style={{ height: '100%', background: 'white' }}
             showNavigator={false}
             showOpenInCodeSandbox={false}
             showRefreshButton={false}
