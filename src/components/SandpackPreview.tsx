@@ -167,16 +167,24 @@ ${files[indexCssPath].code}` };
         files={sandpackFiles}
         customSetup={{
           dependencies: {
-            "react": "^18.2.0",
-            "react-dom": "^18.2.0",
-            "tailwindcss": "^3.4.0",
-            "autoprefixer": "^10.4.16",
-            "postcss": "^8.4.32"
+            "react": "18.2.0",
+            "react-dom": "18.2.0",
+            "vite": "5.0.0",
+            "typescript": "5.2.0",
+            "tailwindcss": "3.4.0",
+            "autoprefixer": "10.4.0",
+            "postcss": "8.4.0",
+            "lucide-react": "0.460.0",
+            "framer-motion": "11.0.0",
+            "classnames": "2.3.2",
+            "clsx": "2.1.0",
+            "tailwind-merge": "2.2.0"
           }
         }}
         options={{
           autoReload: true,
-          recompileMode: 'immediate',
+          recompileMode: 'delayed',
+          recompileDelay: 300,
         }}
       >
         <SandpackLayout style={{ height: '100%' }}>
