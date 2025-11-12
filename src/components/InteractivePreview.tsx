@@ -1,14 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
-import { HybridPreview } from './HybridPreview';
-import { ElementEditDialog } from './ElementEditDialog';
-
-interface InteractivePreviewProps {
-  projectFiles: Record<string, string>;
-  isDark?: boolean;
-  onElementModify?: (prompt: string, elementInfo: ElementInfo) => void;
-  inspectMode: boolean;
-  onInspectModeChange: (mode: boolean) => void;
-}
+import { useMemo, useRef } from 'react';
 
 export interface ElementInfo {
   tagName: string;
@@ -19,131 +9,147 @@ export interface ElementInfo {
   id?: string;
 }
 
-export function InteractivePreview({ projectFiles, isDark = false, onElementModify, inspectMode, onInspectModeChange }: InteractivePreviewProps) {
-  const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
-  const [showEditDialog, setShowEditDialog] = useState(false);
+interface InteractivePreviewProps {
+  projectFiles: Record<string, string>;
+  isDark?: boolean;
+  inspectMode?: boolean;
+  onInspectModeChange?: (mode: boolean) => void;
+  onElementModify?: (prompt: string, elementInfo: any) => void;
+}
 
-  // Détecter si c'est un projet HTML pur
-  const isHtmlProject = useMemo(() => {
-    return Object.keys(projectFiles).some(path => 
-      path.endsWith('index.html') && 
-      !Object.keys(projectFiles).some(p => p.endsWith('.tsx') || p.endsWith('.jsx'))
-    );
+export function InteractivePreview({ 
+  projectFiles,
+  isDark = false,
+  inspectMode = false
+}: InteractivePreviewProps) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const htmlContent = useMemo(() => {
+    console.log('🔄 Building preview from files:', Object.keys(projectFiles));
+    
+    // Vérifier si c'est un projet HTML pur
+    const isHtmlProject = projectFiles['index.html'] && 
+      !Object.keys(projectFiles).some(p => p.endsWith('.tsx') || p.endsWith('.jsx'));
+    
+    if (isHtmlProject) {
+      console.log('📄 HTML Project detected');
+      return projectFiles['index.html'];
+    }
+    
+    // Projet React - construire le HTML
+    const appTsx = projectFiles['src/App.tsx'] || projectFiles['App.tsx'];
+    const mainTsx = projectFiles['src/main.tsx'] || projectFiles['main.tsx'];
+    const indexCss = projectFiles['src/index.css'] || projectFiles['index.css'] || '';
+    
+    // Collecter tous les composants
+    const components: Record<string, string> = {};
+    for (const [path, content] of Object.entries(projectFiles)) {
+      if (path.includes('components/') && (path.endsWith('.tsx') || path.endsWith('.jsx'))) {
+        const componentName = path.split('/').pop()?.replace(/\.(tsx|jsx)$/, '') || '';
+        components[componentName] = content;
+      }
+    }
+    
+    if (!appTsx) {
+      console.error('❌ No App.tsx found');
+      return `<html><body style="padding: 20px; font-family: system-ui;">
+        <h2>❌ Aucun fichier App.tsx trouvé</h2>
+        <p>Fichiers disponibles :</p>
+        <ul>${Object.keys(projectFiles).map(k => `<li>${k}</li>`).join('')}</ul>
+      </body></html>`;
+    }
+    
+    console.log('⚛️ React Project detected, building HTML...');
+    
+    // Nettoyer les imports pour les composants
+    let processedApp = appTsx;
+    
+    // Remplacer les imports de composants par le code inline
+    for (const [name, code] of Object.entries(components)) {
+      const importRegex = new RegExp(
+        `import\\s+(?:{[^}]+}|\\w+)\\s+from\\s+['"]\\.\\/components\\/${name}['"];?`,
+        'g'
+      );
+      processedApp = processedApp.replace(importRegex, '');
+      
+      // Injecter le code du composant avant App
+      const componentCode = code
+        .replace(/import.*from.*;/g, '') // Retirer les imports
+        .replace(/export\s+default\s+/g, '') // Retirer export default
+        .replace(/export\s+/g, ''); // Retirer export
+      
+      processedApp = componentCode + '\n\n' + processedApp;
+    }
+    
+    // Retirer les imports React (déjà disponibles globalement)
+    processedApp = processedApp.replace(/import\s+React.*from\s+['"]react['"];?/g, '');
+    processedApp = processedApp.replace(/import\s+{[^}]+}\s+from\s+['"]react['"];?/g, '');
+    
+    // Remplacer lucide-react par lucide global
+    processedApp = processedApp.replace(/import\s*{([^}]+)}\s*from\s*['"]lucide-react['"];?/g, (match, icons) => {
+      const iconList = icons.split(',').map((i: string) => i.trim());
+      return iconList.map((icon: string) => `const ${icon} = window.lucide.${icon};`).join('\n');
+    });
+    
+    return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Babel Standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    ${indexCss}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script>
+    // Initialiser Lucide
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  </script>
+  
+  <script type="text/babel">
+    ${processedApp}
+    
+    // Rendre l'app
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
+  </script>
+</body>
+</html>`;
   }, [projectFiles]);
 
-  // Convertir au format Sandpack
-  const convertToSandpackFormat = (files: Record<string, string>) => {
-    const sandpackFiles: Record<string, { code: string }> = {};
-    
-    for (const [path, content] of Object.entries(files)) {
-      // Normaliser le chemin pour Sandpack
-      let sandpackPath = path;
-      
-      // Retirer "src/" du début
-      if (sandpackPath.startsWith('src/')) {
-        sandpackPath = sandpackPath.replace('src/', '');
-      }
-      
-      // Ajouter "/" au début si absent
-      if (!sandpackPath.startsWith('/')) {
-        sandpackPath = '/' + sandpackPath;
-      }
-      
-      // Format Sandpack : { code: string }
-      sandpackFiles[sandpackPath] = {
-        code: content
-      };
-    }
-    
-    // Ajouter package.json si absent OU le mettre à jour
-    const existingPackageJson = sandpackFiles['/package.json'];
-    let packageJsonContent = {
-      name: 'generated-app',
-      version: '1.0.0',
-      dependencies: {
-        'react': '^18.3.1',
-        'react-dom': '^18.3.1',
-        'lucide-react': '^0.263.1'
-      }
-    };
-
-    // Si package.json existe déjà, le parser et ajouter lucide-react
-    if (existingPackageJson) {
-      try {
-        const parsed = JSON.parse(existingPackageJson.code);
-        packageJsonContent = {
-          ...parsed,
-          dependencies: {
-            ...parsed.dependencies,
-            'lucide-react': '^0.263.1'
-          }
-        };
-      } catch (e) {
-        console.error('Error parsing package.json:', e);
-      }
-    }
-
-    sandpackFiles['/package.json'] = {
-      code: JSON.stringify(packageJsonContent, null, 2)
-    };
-    
-    // S'assurer qu'il y a un point d'entrée
-    if (!sandpackFiles['/index.tsx'] && !sandpackFiles['/App.tsx']) {
-      console.error('❌ Aucun point d\'entrée trouvé (index.tsx ou App.tsx)');
-    }
-    
-    console.log('✅ Sandpack files:', Object.keys(sandpackFiles));
-    return sandpackFiles;
-  };
-
-  const sandpackFiles = useMemo(() => 
-    convertToSandpackFormat(projectFiles), 
-    [projectFiles]
-  );
-
-  // Gérer la sélection d'élément
-  const handleElementSelect = (elementInfo: ElementInfo) => {
-    setSelectedElement(elementInfo);
-    setShowEditDialog(true);
-    onInspectModeChange(false);
-  };
-
-  const handleModify = (prompt: string) => {
-    if (selectedElement && onElementModify) {
-      onElementModify(prompt, selectedElement);
-    }
-    setShowEditDialog(false);
-    setSelectedElement(null);
-  };
-
   return (
-    <div className="relative w-full h-full">
-      {/* Overlay d'aide en mode inspection */}
-      {inspectMode && (
-        <div className="absolute top-16 right-4 z-10 bg-background border border-border rounded-lg p-3 shadow-lg max-w-xs">
-          <p className="text-sm text-muted-foreground">
-            Cliquez sur un élément de la page pour le modifier
-          </p>
-        </div>
-      )}
-
-      {/* Preview Hybride (React ou HTML statique) */}
-      <HybridPreview 
-        projectFiles={isHtmlProject ? projectFiles : sandpackFiles} 
-        isDark={isDark}
-        inspectMode={inspectMode}
-        onElementSelect={handleElementSelect}
-      />
-
-      {/* Dialog de modification */}
-      <ElementEditDialog
-        isOpen={showEditDialog}
-        onClose={() => {
-          setShowEditDialog(false);
-          setSelectedElement(null);
-        }}
-        elementInfo={selectedElement}
-        onModify={handleModify}
+    <div className="w-full h-full relative">
+      <iframe
+        ref={iframeRef}
+        srcDoc={htmlContent}
+        className="w-full h-full border-0"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+        title="Preview"
+        style={{ backgroundColor: isDark ? '#1a1a1a' : '#ffffff' }}
       />
     </div>
   );
