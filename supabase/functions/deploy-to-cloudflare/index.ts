@@ -139,20 +139,19 @@ serve(async (req) => {
       }
     }
 
-    // Créer le manifest pour Cloudflare Pages
-    const manifest: Record<string, string> = {};
+    // Préparer les fichiers pour l'upload
+    const filesToUpload: Record<string, { content: string; base64: boolean }> = {};
     
     modifiedFiles.forEach((file: ProjectFile) => {
       const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
       
       if (file.content.startsWith('data:')) {
-        // Pour les fichiers binaires (images, etc.)
+        // Fichiers binaires (images, etc.)
         const base64Data = file.content.split(',')[1];
-        manifest[fileName] = base64Data;
+        filesToUpload[fileName] = { content: base64Data, base64: true };
       } else {
-        // Pour les fichiers texte - encoder en base64
-        const base64Content = btoa(unescape(encodeURIComponent(file.content)));
-        manifest[fileName] = base64Content;
+        // Fichiers texte
+        filesToUpload[fileName] = { content: file.content, base64: false };
       }
     });
 
@@ -161,9 +160,23 @@ serve(async (req) => {
     const projectName = session.cloudflare_project_name || `${baseTitle}-${uniqueId}`;
     
     console.log('🚀 Deploying to Cloudflare Pages project:', projectName);
+    console.log('📦 Files to upload:', Object.keys(filesToUpload).length);
     
-    // Deploy to Cloudflare Pages using Direct Upload
-    const deployResponse = await fetch(
+    // Créer le manifest avec les hashes des fichiers
+    const manifest: Record<string, string> = {};
+    for (const [path, fileData] of Object.entries(filesToUpload)) {
+      // Générer un hash simple basé sur le contenu
+      const content = fileData.base64 ? fileData.content : btoa(unescape(encodeURIComponent(fileData.content)));
+      const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content));
+      const hashArray = Array.from(new Uint8Array(hash));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      manifest['/' + path] = hashHex;
+    }
+    
+    console.log('📋 Manifest created with', Object.keys(manifest).length, 'files');
+    
+    // Étape 1: Créer le deployment et obtenir les URLs d'upload
+    const createDeploymentResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
       {
         method: 'POST',
@@ -171,20 +184,18 @@ serve(async (req) => {
           'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          manifest: manifest,
-        }),
+        body: JSON.stringify({ manifest }),
       }
     );
 
     let deployResult;
     
-    if (!deployResponse.ok) {
-      const errorText = await deployResponse.text();
-      console.error('❌ Deployment failed:', errorText);
+    if (!createDeploymentResponse.ok) {
+      const errorText = await createDeploymentResponse.text();
+      console.error('❌ Deployment creation failed:', errorText);
       
       // If project doesn't exist, create it first
-      if (deployResponse.status === 404) {
+      if (createDeploymentResponse.status === 404) {
         console.log('📝 Creating new Cloudflare Pages project...');
         
         const createProjectResponse = await fetch(
@@ -208,9 +219,9 @@ serve(async (req) => {
           throw new Error(`Failed to create Cloudflare Pages project: ${createError}`);
         }
         
-        console.log('✅ Project created, retrying deployment...');
+        console.log('✅ Project created, retrying deployment creation...');
         
-        // Retry deployment
+        // Retry deployment creation
         const retryResponse = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
           {
@@ -219,23 +230,59 @@ serve(async (req) => {
               'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              manifest: manifest,
-            }),
+            body: JSON.stringify({ manifest }),
           }
         );
         
         if (!retryResponse.ok) {
           const retryError = await retryResponse.text();
-          throw new Error(`Deployment failed after project creation: ${retryError}`);
+          throw new Error(`Deployment creation failed after project creation: ${retryError}`);
         }
         
         deployResult = await retryResponse.json();
       } else {
-        throw new Error(`Deployment failed: ${errorText}`);
+        throw new Error(`Deployment creation failed: ${errorText}`);
       }
     } else {
-      deployResult = await deployResponse.json();
+      deployResult = await createDeploymentResponse.json();
+    }
+    
+    console.log('✅ Deployment created:', deployResult.result?.id);
+    
+    // Étape 2: Uploader chaque fichier
+    if (deployResult.success && deployResult.result?.upload_token) {
+      const uploadToken = deployResult.result.upload_token;
+      const deploymentId = deployResult.result.id;
+      
+      console.log('📤 Uploading files...');
+      
+      for (const [path, fileData] of Object.entries(filesToUpload)) {
+        const uploadPath = '/' + path;
+        const content = fileData.base64 
+          ? Uint8Array.from(atob(fileData.content), c => c.charCodeAt(0))
+          : new TextEncoder().encode(fileData.content);
+        
+        const uploadResponse = await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments/${deploymentId}/files${uploadPath}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+              'Content-Type': fileData.base64 ? 'application/octet-stream' : 'text/plain',
+            },
+            body: content,
+          }
+        );
+        
+        if (!uploadResponse.ok) {
+          const uploadError = await uploadResponse.text();
+          console.error(`❌ Failed to upload ${path}:`, uploadError);
+        } else {
+          console.log(`✅ Uploaded ${path}`);
+        }
+      }
+      
+      console.log('✅ All files uploaded');
     }
 
     console.log('✅ Deployed to Cloudflare Pages:', deployResult);
