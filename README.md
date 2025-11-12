@@ -62,7 +62,33 @@ This project is built with:
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/bd69d0ff-8787-4ab6-be94-536fb7e5ee8b) and click on Share -> Publish.
+### Automatic Deployment (via Lovable)
+
+Simply open [Lovable](https://lovable.dev/projects/bd69d0ff-8787-4ab6-be94-536fb7e5ee8b) and click on Share -> Publish. Your project will be automatically deployed to Cloudflare Pages.
+
+### Manual Deployment to Cloudflare Pages
+
+**Prerequisites:**
+- Install [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
+- Have a Cloudflare account with Pages enabled
+
+**Deploy via CLI:**
+```sh
+# Build the project
+npm run build
+
+# Deploy to Cloudflare Pages
+npx wrangler pages deploy dist --project-name=your-project-name
+```
+
+**Deploy via API (used by Lovable):**
+The project includes an edge function at `supabase/functions/deploy-to-cloudflare/index.ts` that handles automatic deployments to Cloudflare Pages via their REST API.
+
+**Configuration:**
+The deployment requires the following environment variables (configured in Supabase secrets):
+- `CLOUDFLARE_ACCOUNT_ID` - Your Cloudflare account ID
+- `CLOUDFLARE_API_TOKEN` - API token with Pages write permissions
+- `GA_MEASUREMENT_ID` (optional) - Google Analytics tracking ID
 
 ## Can I connect a custom domain to my Lovable project?
 

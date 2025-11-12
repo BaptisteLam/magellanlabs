@@ -794,9 +794,9 @@ export default function BuilderSession() {
         };
       });
 
-      sonnerToast.info("Déploiement sur Netlify...");
+      sonnerToast.info("Déploiement sur Cloudflare Pages...");
       
-      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-netlify`, {
+      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-cloudflare`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
