@@ -182,8 +182,7 @@ ${files[indexCssPath].code}` };
         }}
         options={{
           autoReload: true,
-          recompileMode: 'delayed',
-          recompileDelay: 300,
+          recompileMode: 'immediate',
         }}
       >
         <SandpackLayout style={{ height: '100%' }}>
