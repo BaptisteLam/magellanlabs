@@ -1,8 +1,10 @@
 import {
+  SandpackProvider,
   SandpackLayout,
   SandpackCodeEditor,
   SandpackPreview as SandpackPreviewComponent,
 } from '@codesandbox/sandpack-react';
+import { githubLight } from '@codesandbox/sandpack-themes';
 import { useMemo } from 'react';
 import { GeneratingPreview } from './GeneratingPreview';
 import './SandpackPreview.css';
@@ -154,25 +156,53 @@ ${files[indexCssPath].code}` };
     return <GeneratingPreview />;
   }
 
+  const template = isReactProject ? "vite-react-ts" : "static";
+  const theme = isDark ? "dark" : githubLight;
+
   return (
     <div className="w-full h-full overflow-hidden sandpack-wrapper rounded-xl">
-      <SandpackLayout style={{ height: '100%' }}>
-        {showEditor && (
-          <SandpackCodeEditor
+      <SandpackProvider
+        template="vite-react-ts"
+        theme={theme}
+        files={sandpackFiles}
+        customSetup={{
+          environment: "node",
+          dependencies: {
+            "react": "18.2.0",
+            "react-dom": "18.2.0",
+            "vite": "4.3.9",
+            "typescript": "4.9.5",
+            "tailwindcss": "3.3.3",
+            "autoprefixer": "10.4.14",
+            "postcss": "8.4.21",
+            "lucide-react": "0.263.0",
+            "framer-motion": "10.16.4",
+            "classnames": "2.3.2"
+          }
+        }}
+        options={{
+          autoReload: true,
+          recompileMode: 'immediate',
+        }}
+      >
+        <SandpackLayout style={{ height: '100%' }}>
+          {showEditor && (
+            <SandpackCodeEditor
+              style={{ height: '100%' }}
+              showTabs
+              showLineNumbers
+              showInlineErrors
+              wrapContent
+            />
+          )}
+          <SandpackPreviewComponent
             style={{ height: '100%' }}
-            showTabs
-            showLineNumbers
-            showInlineErrors
-            wrapContent
+            showNavigator={false}
+            showOpenInCodeSandbox={false}
+            showRefreshButton={false}
           />
-        )}
-        <SandpackPreviewComponent
-          style={{ height: '100%' }}
-          showNavigator={false}
-          showOpenInCodeSandbox={false}
-          showRefreshButton={false}
-        />
-      </SandpackLayout>
+        </SandpackLayout>
+      </SandpackProvider>
     </div>
   );
 }

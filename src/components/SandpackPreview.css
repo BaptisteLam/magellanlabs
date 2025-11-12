@@ -1,8 +1,7 @@
-/* Cacher le bouton "Open in CodeSandbox", la barre de navigation et la console pour une expérience 100% marque blanche */
+/* Cacher le bouton "Open in CodeSandbox" et la barre de navigation pour une expérience 100% marque blanche */
 .sp-preview-actions,
 .sp-navigator,
-.sp-preview-container .sp-stack,
-.sp-console {
+.sp-preview-container .sp-stack {
   display: none !important;
 }
 

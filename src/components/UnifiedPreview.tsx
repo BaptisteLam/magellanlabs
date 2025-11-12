@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { SandpackPreview } from './SandpackPreview';
-import { SandpackContext } from '@/contexts/SandpackContext';
 
 interface UnifiedPreviewProps {
   projectFiles: Record<string, string> | Record<string, { code: string }>;
@@ -21,38 +20,20 @@ export function UnifiedPreview({
   onElementSelect 
 }: UnifiedPreviewProps) {
 
-  // Normaliser les fichiers au format { code: string }
+  // Normaliser les fichiers au format string
   const normalizedFiles = useMemo(() => {
-    const normalized: Record<string, { code: string }> = {};
+    const normalized: Record<string, string> = {};
     for (const [path, content] of Object.entries(projectFiles)) {
-      const fileContent = typeof content === 'string' ? content : content.code;
-      normalized[path] = { code: fileContent };
+      normalized[path] = typeof content === 'string' ? content : content.code;
     }
     return normalized;
   }, [projectFiles]);
 
-  // Détecter si c'est un projet React
-  const isReactProject = useMemo(() => {
-    return Object.keys(projectFiles).some(path => 
-      path.includes('App.tsx') || 
-      path.includes('App.jsx') || 
-      path.includes('main.tsx') || 
-      path.includes('main.jsx') ||
-      path.includes('package.json')
-    );
-  }, [projectFiles]);
-
   return (
-    <SandpackContext 
-      files={normalizedFiles} 
+    <SandpackPreview
+      projectFiles={normalizedFiles}
       isDark={isDark}
-      isReactProject={isReactProject}
-    >
-      <SandpackPreview
-        projectFiles={projectFiles}
-        isDark={isDark}
-        showEditor={showEditor}
-      />
-    </SandpackContext>
+      showEditor={showEditor}
+    />
   );
 }
