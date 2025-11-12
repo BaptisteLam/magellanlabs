@@ -17,7 +17,11 @@ export function CustomIframePreview({
 
   // Générer le HTML complet avec script d'inspection intégré
   const generatedHTML = useMemo(() => {
+    console.log('📦 CustomIframePreview - projectFiles:', Object.keys(projectFiles));
+    console.log('📦 CustomIframePreview - nombre de fichiers:', Object.keys(projectFiles).length);
+    
     if (!projectFiles || Object.keys(projectFiles).length === 0) {
+      console.log('⚠️ Aucun fichier de projet');
       return '<html><body><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui">Generating preview...</div></body></html>';
     }
 
@@ -27,13 +31,25 @@ export function CustomIframePreview({
       .map(([_, content]) => content)
       .join('\n');
 
+    // Vérifier si c'est un projet React/TypeScript
+    const isReactProject = Object.keys(projectFiles).some(path => 
+      path.endsWith('.tsx') || path.endsWith('.jsx') || path.includes('App.tsx') || path.includes('main.tsx')
+    );
+    
+    console.log('📦 Type de projet:', isReactProject ? 'React/TypeScript' : 'HTML statique');
+    
     // Trouver le fichier HTML principal ou créer un template
     let htmlContent = '';
     const htmlFile = Object.entries(projectFiles).find(([path]) => path.endsWith('.html'));
     
     if (htmlFile) {
+      console.log('✅ Fichier HTML trouvé:', htmlFile[0]);
       htmlContent = htmlFile[1];
+    } else if (isReactProject) {
+      console.error('❌ PROBLÈME: Projet React détecté mais CustomIframePreview ne peut pas compiler React!');
+      return '<html><body><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui;color:red">❌ Erreur: Ce composant ne peut pas afficher des projets React. Utilisez VitePreview ou BabelPreview.</div></body></html>';
     } else {
+      console.log('⚠️ Aucun fichier HTML, création d\'un template de base');
       // Créer un HTML de base
       htmlContent = `<!DOCTYPE html>
 <html lang="fr">

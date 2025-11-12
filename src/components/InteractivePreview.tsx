@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CustomIframePreview } from './CustomIframePreview';
+import { HybridPreview } from './HybridPreview';
 import { ElementEditDialog } from './ElementEditDialog';
 
 interface InteractivePreviewProps {
@@ -49,8 +49,8 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
         </div>
       )}
 
-      {/* Preview Custom Iframe */}
-      <CustomIframePreview 
+      {/* Preview Hybride (React ou HTML statique) */}
+      <HybridPreview 
         projectFiles={projectFiles} 
         isDark={isDark}
         inspectMode={inspectMode}
