@@ -35,8 +35,8 @@ export function SandpackPreview({
     
     // Convertir les chemins et contenus
     Object.entries(projectFiles).forEach(([path, content]) => {
-      // Retirer le / du début si présent
-      let normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+      // Normaliser le chemin: ajouter / au début si absent
+      let normalizedPath = path.startsWith('/') ? path : `/${path}`;
       
       // Extraire le code si c'est un objet { code: string }
       const fileContent = typeof content === 'string' ? content : content.code;
@@ -44,9 +44,50 @@ export function SandpackPreview({
       files[normalizedPath] = fileContent;
     });
 
+    // Ajouter tailwind.config.js si absent
+    if (!files['/tailwind.config.js'] && !files['tailwind.config.js']) {
+      files['/tailwind.config.js'] = `/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}`;
+    }
+
+    // Ajouter postcss.config.js si absent
+    if (!files['/postcss.config.js'] && !files['postcss.config.js']) {
+      files['/postcss.config.js'] = `export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}`;
+    }
+
+    // S'assurer que index.css contient les directives Tailwind
+    const indexCssPath = files['/src/index.css'] ? '/src/index.css' : 
+                        files['/index.css'] ? '/index.css' : null;
+    
+    if (indexCssPath && !files[indexCssPath].includes('@tailwind')) {
+      files[indexCssPath] = `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+${files[indexCssPath]}`;
+    } else if (!indexCssPath) {
+      files['/src/index.css'] = `@tailwind base;
+@tailwind components;
+@tailwind utilities;`;
+    }
+
     // Pour React, s'assurer qu'on a un index.html
-    if (isReactProject && !files['index.html'] && !files['public/index.html']) {
-      files['public/index.html'] = `<!DOCTYPE html>
+    if (isReactProject && !files['/index.html'] && !files['/public/index.html']) {
+      files['/index.html'] = `<!DOCTYPE html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
@@ -60,11 +101,11 @@ export function SandpackPreview({
     }
 
     // Pour HTML statique
-    if (!isReactProject && !files['index.html']) {
+    if (!isReactProject && !files['/index.html']) {
       const htmlFiles = Object.entries(projectFiles).filter(([path]) => path.endsWith('.html'));
       if (htmlFiles.length > 0) {
         const htmlContent = typeof htmlFiles[0][1] === 'string' ? htmlFiles[0][1] : htmlFiles[0][1].code;
-        files['index.html'] = htmlContent;
+        files['/index.html'] = htmlContent;
       }
     }
 
@@ -77,12 +118,12 @@ export function SandpackPreview({
     
     if (isReactProject) {
       const reactEntries = [
-        'src/main.tsx',
-        'src/index.tsx', 
-        'main.tsx',
-        'index.tsx',
-        'src/App.tsx',
-        'App.tsx'
+        '/src/main.tsx',
+        '/src/index.tsx', 
+        '/main.tsx',
+        '/index.tsx',
+        '/src/App.tsx',
+        '/App.tsx'
       ];
       
       for (const entry of reactEntries) {
@@ -92,16 +133,16 @@ export function SandpackPreview({
       }
       
       const srcEntry = fileKeys.find(key => 
-        key.startsWith('src/') && (key.endsWith('.tsx') || key.endsWith('.jsx'))
+        key.startsWith('/src/') && (key.endsWith('.tsx') || key.endsWith('.jsx'))
       );
       if (srcEntry) return srcEntry;
     } else {
-      if (fileKeys.includes('index.html')) {
-        return 'index.html';
+      if (fileKeys.includes('/index.html')) {
+        return '/index.html';
       }
     }
     
-    return fileKeys[0] || 'index.html';
+    return fileKeys[0] || '/index.html';
   }, [sandpackFiles, isReactProject]);
 
   if (!projectFiles || Object.keys(projectFiles).length === 0) {
@@ -134,6 +175,9 @@ export function SandpackPreview({
           dependencies: {
             "react": "^18.3.1",
             "react-dom": "^18.3.1",
+            "tailwindcss": "^3.4.0",
+            "autoprefixer": "^10.4.16",
+            "postcss": "^8.4.32"
           }
         } : undefined}
       />
