@@ -176,6 +176,14 @@ serve(async (req) => {
     console.log('📋 Manifest created with', Object.keys(manifest).length, 'files');
     
     // Étape 1: Créer le deployment et obtenir les URLs d'upload
+    const deploymentPayload = {
+      manifest,
+      branch: 'main',
+      production_branch: 'main',
+    };
+    
+    console.log('📤 Sending deployment request with', Object.keys(manifest).length, 'files');
+    
     const createDeploymentResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
       {
@@ -184,7 +192,7 @@ serve(async (req) => {
           'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ manifest }),
+        body: JSON.stringify(deploymentPayload),
       }
     );
 
@@ -221,7 +229,7 @@ serve(async (req) => {
         
         console.log('✅ Project created, retrying deployment creation...');
         
-        // Retry deployment creation
+        // Retry deployment creation with correct payload
         const retryResponse = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
           {
@@ -230,7 +238,7 @@ serve(async (req) => {
               'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ manifest }),
+            body: JSON.stringify(deploymentPayload),
           }
         );
         
