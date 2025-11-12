@@ -8,15 +8,21 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    headers: {
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'require-corp',
-    },
   },
   plugins: [
     react(),
     mode === 'development' &&
     componentTagger(),
+    {
+      name: 'configure-response-headers',
+      configureServer: (server: any) => {
+        server.middlewares.use((_req: any, res: any, next: any) => {
+          res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+          res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+          next();
+        });
+      },
+    },
   ].filter(Boolean),
   resolve: {
     alias: {
