@@ -7,12 +7,32 @@ interface WebContainerPreviewProps {
   isDark?: boolean;
 }
 
+// Instance singleton globale de WebContainer
+let globalWebContainer: WebContainer | null = null;
+let bootPromise: Promise<WebContainer> | null = null;
+
+async function getWebContainer(): Promise<WebContainer> {
+  if (globalWebContainer) {
+    return globalWebContainer;
+  }
+  
+  if (!bootPromise) {
+    console.log('🚀 Booting WebContainer (singleton)...');
+    bootPromise = WebContainer.boot();
+    globalWebContainer = await bootPromise;
+    bootPromise = null;
+  } else {
+    await bootPromise;
+  }
+  
+  return globalWebContainer!;
+}
+
 export function WebContainerPreview({ projectFiles, isDark = false }: WebContainerPreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [containerUrl, setContainerUrl] = useState<string>('');
   const [isBooting, setIsBooting] = useState(true);
   const [error, setError] = useState<string>('');
-  const webcontainerRef = useRef<WebContainer | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -22,18 +42,27 @@ export function WebContainerPreview({ projectFiles, isDark = false }: WebContain
         setIsBooting(true);
         setError('');
 
-        // Boot WebContainer
-        console.log('🚀 Booting WebContainer...');
-        const webcontainer = await WebContainer.boot();
-        webcontainerRef.current = webcontainer;
+        // Réutiliser l'instance singleton
+        const webcontainer = await getWebContainer();
 
         if (!mounted) return;
 
         // Préparer les fichiers pour WebContainer
-        const files: Record<string, { file: { contents: string } }> = {};
+        const files: Record<string, { file: { contents: string } } | { directory: {} }> = {};
         
         for (const [path, content] of Object.entries(projectFiles)) {
-          files[path] = {
+          const parts = path.split('/');
+          let current = files;
+          
+          for (let i = 0; i < parts.length - 1; i++) {
+            const dir = parts[i];
+            if (!current[dir]) {
+              current[dir] = { directory: {} };
+            }
+          }
+          
+          const fileName = parts[parts.length - 1];
+          files[fileName] = {
             file: {
               contents: content
             }
@@ -48,6 +77,14 @@ export function WebContainerPreview({ projectFiles, isDark = false }: WebContain
         console.log('📦 Installing dependencies...');
         const installProcess = await webcontainer.spawn('npm', ['install']);
         
+        installProcess.output.pipeTo(
+          new WritableStream({
+            write(data) {
+              console.log('📦 npm install:', data);
+            },
+          })
+        );
+
         const installExitCode = await installProcess.exit;
         if (installExitCode !== 0) {
           throw new Error('npm install failed');
@@ -89,9 +126,6 @@ export function WebContainerPreview({ projectFiles, isDark = false }: WebContain
 
     return () => {
       mounted = false;
-      if (webcontainerRef.current) {
-        webcontainerRef.current.teardown();
-      }
     };
   }, [projectFiles]);
 
