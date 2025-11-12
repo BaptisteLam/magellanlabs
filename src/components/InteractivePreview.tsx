@@ -59,27 +59,73 @@ export function InteractivePreview({
     
     console.log('📝 App.tsx preview (first 300 chars):', appTsx.substring(0, 300));
     
+    // Collecter TOUS les composants
+    const allComponents: string[] = [];
+
+    for (const [path, content] of Object.entries(projectFiles)) {
+      if (path.includes('components/') && (path.endsWith('.tsx') || path.endsWith('.jsx'))) {
+        console.log('📦 Found component:', path);
+        
+        let processedComponent = content;
+        
+        // Retirer imports React
+        processedComponent = processedComponent.replace(/import\s+React[^;]*;?/g, '');
+        processedComponent = processedComponent.replace(/import\s*{[^}]*}\s*from\s*['"]react['"];?/g, '');
+        
+        // Remplacer lucide-react
+        const lucideMatch = processedComponent.match(/import\s*{([^}]+)}\s*from\s*['"]lucide-react['"];?/);
+        if (lucideMatch) {
+          const icons = lucideMatch[1].split(',').map(i => i.trim());
+          const iconDeclarations = icons.map(icon => 
+            `const ${icon} = window.lucide?.${icon} || (() => React.createElement('span', null, ''));`
+          ).join('\n');
+          processedComponent = processedComponent.replace(/import\s*{[^}]+}\s*from\s*['"]lucide-react['"];?/, iconDeclarations);
+        }
+        
+        // Retirer export default
+        processedComponent = processedComponent.replace(/export\s+default\s+/g, '');
+        
+        allComponents.push(processedComponent);
+      }
+    }
+
+    console.log('✅ Found', allComponents.length, 'components');
+
     // Process App.tsx
     let processedApp = appTsx;
-    
-    // 1. Retirer imports React
+
+    // Retirer imports React
     processedApp = processedApp.replace(/import\s+React[^;]*;?/g, '');
     processedApp = processedApp.replace(/import\s*{[^}]*}\s*from\s*['"]react['"];?/g, '');
-    
-    // 2. Remplacer lucide-react
+
+    // Remplacer lucide-react dans App
     const lucideImportMatch = processedApp.match(/import\s*{([^}]+)}\s*from\s*['"]lucide-react['"];?/);
     if (lucideImportMatch) {
       const icons = lucideImportMatch[1].split(',').map(i => i.trim());
-      console.log('🎨 Lucide icons:', icons);
+      console.log('🎨 Lucide icons in App:', icons);
       
-      const iconDeclarations = icons.map(icon => `const ${icon} = window.lucide?.${icon} || (() => null);`).join('\n');
+      const iconDeclarations = icons.map(icon => 
+        `const ${icon} = window.lucide?.${icon} || (() => React.createElement('span', null, ''));`
+      ).join('\n');
       processedApp = processedApp.replace(/import\s*{[^}]+}\s*from\s*['"]lucide-react['"];?/, iconDeclarations);
     }
-    
-    // 3. Retirer imports de composants
+
+    // Retirer TOUS les imports de composants
     processedApp = processedApp.replace(/import\s+[^;]*from\s*['"]\.\/components\/[^'"]*['"];?/g, '');
-    
-    console.log('✅ Processed App.tsx (first 300 chars):', processedApp.substring(0, 300));
+    processedApp = processedApp.replace(/import\s+[^;]*from\s*['"]@\/components\/[^'"]*['"];?/g, '');
+
+    // Retirer export default
+    processedApp = processedApp.replace(/export\s+default\s+/g, '');
+
+    console.log('✅ Processed App.tsx');
+
+    // Combiner TOUT le code
+    const fullCode = [
+      ...allComponents,  // D'abord les composants
+      processedApp       // Puis App
+    ].join('\n\n');
+
+    console.log('📦 Total code length:', fullCode.length);
     
     const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -127,7 +173,7 @@ export function InteractivePreview({
     console.log('🎯 Babel script executing...');
     
     try {
-      ${processedApp}
+      ${fullCode}
       
       console.log('✅ App component defined:', typeof App !== 'undefined');
       
