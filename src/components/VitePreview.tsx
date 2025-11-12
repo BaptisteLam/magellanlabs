@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { GeneratingPreview } from './GeneratingPreview';
 
 interface VitePreviewProps {
-  projectFiles: Record<string, string>;
+  projectFiles: Record<string, string> | Record<string, { code: string }>;
   isDark?: boolean;
   onConsoleLog?: (log: { level: 'log' | 'error' | 'warn'; message: string }) => void;
 }
@@ -37,8 +37,11 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
       // Retirer le / du début si présent pour Sandpack
       let normalizedPath = path.startsWith('/') ? path.slice(1) : path;
       
-      files[normalizedPath] = content;
-      console.log(`📄 Ajout fichier: ${normalizedPath} (${content.length} chars)`);
+      // Extraire le code si c'est un objet { code: string }
+      const fileContent = typeof content === 'string' ? content : content.code;
+      
+      files[normalizedPath] = fileContent;
+      console.log(`📄 Ajout fichier: ${normalizedPath} (${fileContent.length} chars)`);
     });
 
     console.log('📦 VitePreview - Fichiers normalisés:', Object.keys(files));

@@ -3,7 +3,7 @@ import { VitePreview } from './VitePreview';
 import { CustomIframePreview } from './CustomIframePreview';
 
 interface HybridPreviewProps {
-  projectFiles: Record<string, string>;
+  projectFiles: Record<string, string> | Record<string, { code: string }>;
   isDark?: boolean;
   inspectMode?: boolean;
   onElementSelect?: (elementInfo: any) => void;
@@ -21,6 +21,15 @@ export function HybridPreview({
   onElementSelect 
 }: HybridPreviewProps) {
   const [iframeRef, setIframeRef] = useState<HTMLIFrameElement | null>(null);
+
+  // Normaliser les fichiers au format approprié
+  const normalizedFiles = useMemo(() => {
+    const normalized: Record<string, string> = {};
+    for (const [path, content] of Object.entries(projectFiles)) {
+      normalized[path] = typeof content === 'string' ? content : content.code;
+    }
+    return normalized;
+  }, [projectFiles]);
 
   // Détecter le type de projet
   const projectType = useMemo(() => {
@@ -178,7 +187,7 @@ export function HybridPreview({
     console.log('🎨 Utilisation de CustomIframePreview pour HTML statique');
     return (
       <CustomIframePreview 
-        projectFiles={projectFiles} 
+        projectFiles={normalizedFiles} 
         isDark={isDark}
         inspectMode={inspectMode}
         onElementSelect={onElementSelect}
