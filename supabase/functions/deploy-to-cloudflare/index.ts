@@ -145,27 +145,21 @@ serve(async (req) => {
     
     console.log('🚀 Deploying to Cloudflare Pages project:', projectName);
     
-    // Prepare manifest for direct upload
-    const manifest: Record<string, string> = {};
-    const fileContents: Record<string, string> = {};
+    // Prepare manifest in Cloudflare format with entries structure
+    const entries: Record<string, { path: string; entryPoint?: boolean }> = {};
     
     modifiedFiles.forEach((file: ProjectFile) => {
       const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
       
-      if (file.content.startsWith('data:')) {
-        // Binary files (images, etc.) - convert to base64
-        const base64Data = file.content.split(',')[1];
-        manifest[fileName] = base64Data;
-        fileContents[fileName] = base64Data;
-      } else {
-        // Text files - convert to base64
-        const base64Content = btoa(unescape(encodeURIComponent(file.content)));
-        manifest[fileName] = base64Content;
-        fileContents[fileName] = base64Content;
-      }
+      entries[fileName] = {
+        path: fileName,
+        entryPoint: fileName === 'index.html',
+      };
     });
     
-    console.log('📋 Manifest created with', Object.keys(manifest).length, 'files');
+    const manifest = { entries };
+    
+    console.log('📋 Manifest created with', Object.keys(entries).length, 'files');
     
     // Try to deploy via direct upload API
     console.log('📤 Deploying via Cloudflare Pages Direct Upload...');
@@ -218,19 +212,38 @@ serve(async (req) => {
       throw new Error(`Failed to check project: ${error}`);
     }
     
-    // Now deploy using direct upload with manifest
+    // Prepare files as FormData
+    const formData = new FormData();
+    
+    // Add manifest
+    formData.append('manifest', JSON.stringify(manifest));
+    
+    // Add each file as a Blob
+    modifiedFiles.forEach((file: ProjectFile) => {
+      const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
+      
+      if (file.content.startsWith('data:')) {
+        // Binary files (images, etc.)
+        const base64Data = file.content.split(',')[1];
+        const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        const blob = new Blob([binaryData]);
+        formData.append(fileName, blob, fileName);
+      } else {
+        // Text files
+        const blob = new Blob([file.content], { type: 'text/plain' });
+        formData.append(fileName, blob, fileName);
+      }
+    });
+    
+    // Deploy using direct upload with FormData
     const deployResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
-          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          manifest: manifest,
-          branch: 'main',
-        }),
+        body: formData,
       }
     );
     
