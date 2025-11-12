@@ -2,14 +2,19 @@ import { Sandpack } from '@codesandbox/sandpack-react';
 import { useMemo } from 'react';
 import { GeneratingPreview } from './GeneratingPreview';
 
-interface VitePreviewProps {
+interface SandpackPreviewProps {
   projectFiles: Record<string, string> | Record<string, { code: string }>;
   isDark?: boolean;
-  onConsoleLog?: (log: { level: 'log' | 'error' | 'warn'; message: string }) => void;
+  showEditor?: boolean;
 }
 
-export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: VitePreviewProps) {
-  // Vérifier si c'est un projet HTML pur ou React
+export function SandpackPreview({ 
+  projectFiles, 
+  isDark = false,
+  showEditor = false 
+}: SandpackPreviewProps) {
+  
+  // Détecter le type de projet
   const isReactProject = useMemo(() => {
     return Object.keys(projectFiles).some(path => 
       path.includes('App.tsx') || 
@@ -23,32 +28,24 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
   // Transformer les fichiers pour Sandpack
   const sandpackFiles = useMemo(() => {
     if (!projectFiles || Object.keys(projectFiles).length === 0) {
-      console.log('📦 VitePreview - Aucun fichier');
       return {};
     }
 
-    console.log('📦 VitePreview - Fichiers reçus:', Object.keys(projectFiles));
-    console.log('📦 VitePreview - Total:', Object.keys(projectFiles).length, 'fichiers');
-
     const files: Record<string, string> = {};
     
-    // Convertir les chemins et contenus - Sandpack préfère les chemins SANS / au début
+    // Convertir les chemins et contenus
     Object.entries(projectFiles).forEach(([path, content]) => {
-      // Retirer le / du début si présent pour Sandpack
+      // Retirer le / du début si présent
       let normalizedPath = path.startsWith('/') ? path.slice(1) : path;
       
       // Extraire le code si c'est un objet { code: string }
       const fileContent = typeof content === 'string' ? content : content.code;
       
       files[normalizedPath] = fileContent;
-      console.log(`📄 Ajout fichier: ${normalizedPath} (${fileContent.length} chars)`);
     });
 
-    console.log('📦 VitePreview - Fichiers normalisés:', Object.keys(files));
-
-    // Pour les projets React, s'assurer qu'on a un index.html si nécessaire
+    // Pour React, s'assurer qu'on a un index.html
     if (isReactProject && !files['index.html'] && !files['public/index.html']) {
-      console.log('⚠️ Projet React sans index.html, création');
       files['public/index.html'] = `<!DOCTYPE html>
 <html lang="fr">
   <head>
@@ -64,23 +61,21 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
 
     // Pour HTML statique
     if (!isReactProject && !files['index.html']) {
-      console.log('⚠️ Projet HTML statique sans index.html');
       const htmlFiles = Object.entries(projectFiles).filter(([path]) => path.endsWith('.html'));
       if (htmlFiles.length > 0) {
-        files['index.html'] = htmlFiles[0][1];
+        const htmlContent = typeof htmlFiles[0][1] === 'string' ? htmlFiles[0][1] : htmlFiles[0][1].code;
+        files['index.html'] = htmlContent;
       }
     }
 
     return files;
   }, [projectFiles, isReactProject]);
 
-  // Déterminer le fichier d'entrée principal
+  // Déterminer le fichier d'entrée
   const entryFile = useMemo(() => {
     const fileKeys = Object.keys(sandpackFiles);
-    console.log('🔍 Recherche du point d\'entrée parmi:', fileKeys);
     
     if (isReactProject) {
-      // Pour React, chercher dans l'ordre : main.tsx est le standard
       const reactEntries = [
         'src/main.tsx',
         'src/index.tsx', 
@@ -92,59 +87,45 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
       
       for (const entry of reactEntries) {
         if (fileKeys.includes(entry)) {
-          console.log('🎯 Point d\'entrée React trouvé:', entry);
           return entry;
         }
       }
       
-      // Si pas trouvé, chercher n'importe quel .tsx/.jsx dans src/
       const srcEntry = fileKeys.find(key => 
         key.startsWith('src/') && (key.endsWith('.tsx') || key.endsWith('.jsx'))
       );
-      if (srcEntry) {
-        console.log('🎯 Point d\'entrée React alternatif:', srcEntry);
-        return srcEntry;
-      }
+      if (srcEntry) return srcEntry;
     } else {
-      // Pour HTML statique
       if (fileKeys.includes('index.html')) {
-        console.log('🎯 Point d\'entrée HTML trouvé: index.html');
         return 'index.html';
       }
     }
     
-    // Dernier fallback
-    const fallbackFile = fileKeys[0] || 'index.html';
-    console.log('⚠️ Fallback sur:', fallbackFile);
-    return fallbackFile;
+    return fileKeys[0] || 'index.html';
   }, [sandpackFiles, isReactProject]);
 
   if (!projectFiles || Object.keys(projectFiles).length === 0) {
     return <GeneratingPreview />;
   }
 
-  console.log('🎨 VitePreview - Rendu Sandpack avec', Object.keys(sandpackFiles).length, 'fichiers');
-  console.log('🎨 VitePreview - Type de projet:', isReactProject ? 'React' : 'HTML');
-  console.log('🎨 VitePreview - Point d\'entrée:', entryFile);
-
   return (
     <div className="w-full h-full overflow-hidden sandpack-wrapper rounded-xl">
       <Sandpack
-        key={JSON.stringify(sandpackFiles)} // Force reload on file changes
+        key={JSON.stringify(sandpackFiles)}
         files={sandpackFiles}
         template={isReactProject ? "react-ts" : "static"}
         theme={isDark ? "dark" : "light"}
         options={{
           showNavigator: false,
-          showTabs: false,
-          showLineNumbers: false,
+          showTabs: showEditor,
+          showLineNumbers: showEditor,
           editorHeight: "100%",
-          editorWidthPercentage: 0,
+          editorWidthPercentage: showEditor ? 50 : 0,
           showConsole: false,
           showConsoleButton: false,
           closableTabs: false,
           activeFile: entryFile,
-          visibleFiles: [],
+          visibleFiles: showEditor ? Object.keys(sandpackFiles) : [],
           showRefreshButton: false,
           autoReload: true,
           recompileMode: 'immediate',
@@ -159,4 +140,3 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
     </div>
   );
 }
-

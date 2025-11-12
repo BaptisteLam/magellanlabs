@@ -1,5 +1,4 @@
-import { useMemo } from 'react';
-import { WebContainerPreview } from './WebContainerPreview';
+import { UnifiedPreview } from './UnifiedPreview';
 
 interface HybridPreviewProps {
   projectFiles: Record<string, string> | Record<string, { code: string }>;
@@ -9,7 +8,7 @@ interface HybridPreviewProps {
 }
 
 /**
- * Composant de preview utilisant WebContainer pour un vrai environnement Vite
+ * Composant de preview utilisant Sandpack - solution unifiée et fiable
  */
 export function HybridPreview({ 
   projectFiles, 
@@ -18,21 +17,12 @@ export function HybridPreview({
   onElementSelect 
 }: HybridPreviewProps) {
 
-  // Normaliser les fichiers au format approprié
-  const normalizedFiles = useMemo(() => {
-    const normalized: Record<string, string> = {};
-    for (const [path, content] of Object.entries(projectFiles)) {
-      normalized[path] = typeof content === 'string' ? content : content.code;
-    }
-    return normalized;
-  }, [projectFiles]);
-
-  console.log('🎯 Using WebContainer for preview');
-
   return (
-    <WebContainerPreview
-      projectFiles={normalizedFiles}
+    <UnifiedPreview
+      projectFiles={projectFiles}
       isDark={isDark}
+      inspectMode={inspectMode}
+      onElementSelect={onElementSelect}
     />
   );
 }
