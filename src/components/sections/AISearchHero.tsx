@@ -199,8 +199,8 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         throw new Error('Erreur lors de la création de la session');
       }
 
-      // Rediriger immédiatement vers la session builder
-      navigate(`/builder/${session.id}?prompt=${encodeURIComponent(prompt)}`);
+      // Rediriger immédiatement vers la session builder (sans le prompt dans l'URL)
+      navigate(`/builder/${session.id}`);
       setInputValue('');
       setAttachedFiles([]);
       setIsLoading(false);
