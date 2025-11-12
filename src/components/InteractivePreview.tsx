@@ -55,19 +55,37 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
       };
     }
     
-    // Ajouter package.json si absent
-    if (!sandpackFiles['/package.json']) {
-      sandpackFiles['/package.json'] = {
-        code: JSON.stringify({
-          name: 'generated-app',
-          version: '1.0.0',
+    // Ajouter package.json si absent OU le mettre à jour
+    const existingPackageJson = sandpackFiles['/package.json'];
+    let packageJsonContent = {
+      name: 'generated-app',
+      version: '1.0.0',
+      dependencies: {
+        'react': '^18.3.1',
+        'react-dom': '^18.3.1',
+        'lucide-react': '^0.263.1'
+      }
+    };
+
+    // Si package.json existe déjà, le parser et ajouter lucide-react
+    if (existingPackageJson) {
+      try {
+        const parsed = JSON.parse(existingPackageJson.code);
+        packageJsonContent = {
+          ...parsed,
           dependencies: {
-            'react': '^18.3.1',
-            'react-dom': '^18.3.1'
+            ...parsed.dependencies,
+            'lucide-react': '^0.263.1'
           }
-        }, null, 2)
-      };
+        };
+      } catch (e) {
+        console.error('Error parsing package.json:', e);
+      }
     }
+
+    sandpackFiles['/package.json'] = {
+      code: JSON.stringify(packageJsonContent, null, 2)
+    };
     
     // S'assurer qu'il y a un point d'entrée
     if (!sandpackFiles['/index.tsx'] && !sandpackFiles['/App.tsx']) {
