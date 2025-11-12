@@ -1,0 +1,19 @@
+/* Cacher le bouton "Open in CodeSandbox" pour une expérience 100% marque blanche */
+.sp-preview-actions {
+  display: none !important;
+}
+
+/* Styles pour la wrapper Sandpack */
+.sandpack-wrapper {
+  width: 100%;
+  height: 100%;
+}
+
+.sandpack-wrapper .sp-layout {
+  height: 100%;
+}
+
+.sandpack-wrapper .sp-preview-container,
+.sandpack-wrapper .sp-preview-iframe {
+  height: 100% !important;
+}
