@@ -72,6 +72,23 @@ RÈGLES DE CODE:
 - Code propre, fonctionnel et sans widgets inutiles
 - Pas de markdown, pas de \`\`\`, juste du JSON valide NDJSON
 
+IMAGES LIBRES DE DROIT - OBLIGATOIRE:
+- Tu DOIS TOUJOURS utiliser des images réelles et pertinentes provenant d'Unsplash
+- JAMAIS d'images placeholder génériques (pas de placeholder.svg, pas de /placeholder.svg, pas de ?height=X&width=Y)
+- Utilise le format Unsplash Source API: https://source.unsplash.com/{largeur}x{hauteur}/?{mots-clés}
+- Exemples d'URLs à utiliser:
+  * Hero/bannière: https://source.unsplash.com/1920x1080/?{sujet-pertinent}
+  * Images de section: https://source.unsplash.com/800x600/?{sujet-pertinent}
+  * Portraits/avatars: https://source.unsplash.com/400x400/?portrait,professional
+  * Produits: https://source.unsplash.com/600x600/?{type-produit}
+- Les mots-clés doivent être EN ANGLAIS et pertinents au contexte (ex: technology, business, nature, food, etc.)
+- Pour les images multiples dans une même section, ajoute des mots-clés variés pour avoir des images différentes
+- Exemples concrets:
+  * Site tech: https://source.unsplash.com/1920x1080/?technology,innovation
+  * Site restaurant: https://source.unsplash.com/1920x1080/?restaurant,food
+  * Équipe: https://source.unsplash.com/400x400/?portrait,business,person
+  * Portfolio: https://source.unsplash.com/800x600/?creative,design,workspace
+
 IMPORTANT:
 - Une ligne = un objet JSON
 - Commence toujours par un message conversationnel
