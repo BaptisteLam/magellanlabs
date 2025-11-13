@@ -174,12 +174,13 @@ serve(async (req) => {
     const manifest: Record<string, string> = {};
     
     for (const file of modifiedFiles) {
-      const fileName = file.name.startsWith('/') ? `/${file.name.slice(1)}` : `/${file.name}`;
+      const fileName = file.name.startsWith('/') ? file.name : `/${file.name}`;
       const hash = await calculateSHA256(file.content);
       manifest[fileName] = hash;
     }
     
     console.log('📋 Manifest created with', Object.keys(manifest).length, 'files');
+    console.log('📋 Sample manifest entries:', JSON.stringify(Object.entries(manifest).slice(0, 2), null, 2));
     
     // Try to deploy via direct upload API
     console.log('📤 Deploying via Cloudflare Pages Direct Upload...');
@@ -234,6 +235,16 @@ serve(async (req) => {
     
     // Step 1: Create deployment with manifest to get upload token
     console.log('📤 Step 1: Creating deployment with manifest...');
+    
+    const deployPayload = {
+      manifest: manifest
+    };
+    
+    console.log('📤 Payload structure:', JSON.stringify({
+      hasManifest: !!deployPayload.manifest,
+      manifestKeys: Object.keys(deployPayload.manifest || {}).length
+    }));
+    
     const deployResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
       {
@@ -242,7 +253,7 @@ serve(async (req) => {
           'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ manifest }),
+        body: JSON.stringify(deployPayload),
       }
     );
     
