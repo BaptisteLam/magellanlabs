@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview Runtime</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    #root { width: 100%; min-height: 100vh; }
+    #error { 
+      padding: 20px; 
+      background: #fee; 
+      color: #c00; 
+      font-family: monospace; 
+      white-space: pre-wrap; 
+      display: none;
+    }
+    .inspect-highlight {
+      outline: 2px solid #03A5C0 !important;
+      outline-offset: 2px;
+      cursor: pointer !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="error"></div>
+  <div id="root"></div>
+
+  <script type="module">
+    import * as esbuild from 'https://cdn.jsdelivr.net/npm/esbuild-wasm@0.19.11/esm/browser.min.js';
+    
+    let initialized = false;
+    let inspectMode = false;
+
+    async function init() {
+      if (initialized) return;
+      await esbuild.initialize({
+        wasmURL: 'https://cdn.jsdelivr.net/npm/esbuild-wasm@0.19.11/esbuild.wasm',
+      });
+      initialized = true;
+      window.parent.postMessage({ type: 'ready' }, '*');
+    }
+
+    function showError(message) {
+      const errorEl = document.getElementById('error');
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      window.parent.postMessage({ type: 'error', message }, '*');
+    }
+
+    function clearError() {
+      document.getElementById('error').style.display = 'none';
+    }
+
+    function getElementPath(element) {
+      const path = [];
+      let current = element;
+      while (current && current !== document.body) {
+        let selector = current.tagName.toLowerCase();
+        if (current.id) {
+          selector += `#${current.id}`;
+        } else if (current.className) {
+          const classes = Array.from(current.classList).join('.');
+          if (classes) selector += `.${classes}`;
+        }
+        path.unshift(selector);
+        current = current.parentElement;
+      }
+      return path.join(' > ');
+    }
+
+    function enableInspectMode() {
+      inspectMode = true;
+      document.body.style.cursor = 'crosshair';
+      
+      document.addEventListener('mouseover', handleMouseOver);
+      document.addEventListener('mouseout', handleMouseOut);
+      document.addEventListener('click', handleClick, true);
+    }
+
+    function disableInspectMode() {
+      inspectMode = false;
+      document.body.style.cursor = '';
+      
+      document.removeEventListener('mouseover', handleMouseOver);
+      document.removeEventListener('mouseout', handleMouseOut);
+      document.removeEventListener('click', handleClick, true);
+      
+      document.querySelectorAll('.inspect-highlight').forEach(el => {
+        el.classList.remove('inspect-highlight');
+      });
+    }
+
+    function handleMouseOver(e) {
+      if (!inspectMode || e.target === document.body) return;
+      e.target.classList.add('inspect-highlight');
+    }
+
+    function handleMouseOut(e) {
+      if (!inspectMode) return;
+      e.target.classList.remove('inspect-highlight');
+    }
+
+    function handleClick(e) {
+      if (!inspectMode) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const element = e.target;
+      const info = {
+        tag: element.tagName.toLowerCase(),
+        id: element.id || '',
+        classList: Array.from(element.classList).filter(c => c !== 'inspect-highlight'),
+        text: element.textContent?.slice(0, 100) || '',
+        path: getElementPath(element),
+        innerHTML: element.innerHTML?.slice(0, 200) || ''
+      };
+
+      window.parent.postMessage({ type: 'clickElement', element: info }, '*');
+    }
+
+    async function compile({ code, framework = 'react', entry = 'App.jsx' }) {
+      try {
+        clearError();
+        await init();
+
+        // Determine imports based on framework
+        let imports = '';
+        let renderCode = '';
+        
+        if (framework === 'react') {
+          imports = `
+            import React from 'https://esm.sh/react@18.2.0';
+            import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+            import * as ReactDOMClient from 'https://esm.sh/react-dom@18.2.0/client';
+          `;
+          renderCode = `
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(React.createElement(App));
+          `;
+        } else if (framework === 'vue') {
+          imports = `import { createApp } from 'https://esm.sh/vue@3.3.4';`;
+          renderCode = `createApp(App).mount('#root');`;
+        } else if (framework === 'svelte') {
+          imports = `import Svelte from 'https://esm.sh/svelte@4.2.0';`;
+          renderCode = `new App({ target: document.getElementById('root') });`;
+        }
+
+        // Build complete code with imports
+        const fullCode = `
+          ${imports}
+          ${code}
+          ${renderCode}
+        `;
+
+        // Bundle with esbuild
+        const result = await esbuild.transform(fullCode, {
+          loader: entry.endsWith('.tsx') ? 'tsx' : entry.endsWith('.ts') ? 'ts' : 'jsx',
+          format: 'esm',
+          target: 'es2020',
+          jsxFactory: framework === 'react' ? 'React.createElement' : undefined,
+          jsxFragment: framework === 'react' ? 'React.Fragment' : undefined,
+        });
+
+        // Clear root and execute
+        const rootEl = document.getElementById('root');
+        rootEl.innerHTML = '';
+
+        // Create and execute script
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.textContent = result.code;
+        document.body.appendChild(script);
+
+        window.parent.postMessage({ type: 'compiled' }, '*');
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    // Listen for messages from parent
+    window.addEventListener('message', async (event) => {
+      const { type, data } = event.data;
+      
+      if (type === 'compile') {
+        await compile(data);
+      } else if (type === 'inspectMode') {
+        if (data.enabled) {
+          enableInspectMode();
+        } else {
+          disableInspectMode();
+        }
+      }
+    });
+
+    // Initialize on load
+    init();
+  </script>
+</body>
+</html>

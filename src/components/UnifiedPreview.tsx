@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { SandpackPreview } from './SandpackPreview';
+import { FastPreview } from './FastPreview';
 
 interface UnifiedPreviewProps {
   projectFiles: Record<string, string> | Record<string, { code: string }>;
@@ -30,10 +30,11 @@ export function UnifiedPreview({
   }, [projectFiles]);
 
   return (
-    <SandpackPreview
+    <FastPreview
       projectFiles={normalizedFiles}
       isDark={isDark}
-      showEditor={showEditor}
+      inspectMode={inspectMode}
+      onElementSelect={onElementSelect}
     />
   );
 }
