@@ -181,7 +181,12 @@ serve(async (req) => {
     
     console.log('📋 Manifest created with', Object.keys(manifest).length, 'files');
     console.log('📋 Sample manifest entries:', JSON.stringify(Object.entries(manifest).slice(0, 2), null, 2));
-    
+
+    // Validate manifest is not empty
+    if (Object.keys(manifest).length === 0) {
+      throw new Error('Manifest is empty - no files to deploy');
+    }
+
     // Try to deploy via direct upload API
     console.log('📤 Deploying via Cloudflare Pages Direct Upload...');
     
@@ -235,16 +240,21 @@ serve(async (req) => {
     
     // Step 1: Create deployment with manifest to get upload token
     console.log('📤 Step 1: Creating deployment with manifest...');
-    
+
     const deployPayload = {
       manifest: manifest
     };
-    
+
     console.log('📤 Payload structure:', JSON.stringify({
       hasManifest: !!deployPayload.manifest,
       manifestKeys: Object.keys(deployPayload.manifest || {}).length
     }));
-    
+
+    // Log the full payload for debugging (first 500 chars)
+    const payloadString = JSON.stringify(deployPayload);
+    console.log('📤 Full payload (first 500 chars):', payloadString.substring(0, 500));
+    console.log('📤 Payload byte length:', new TextEncoder().encode(payloadString).length);
+
     const deployResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
       {
@@ -253,13 +263,16 @@ serve(async (req) => {
           'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(deployPayload),
+        body: payloadString,
       }
     );
     
     if (!deployResponse.ok) {
       const deployError = await deployResponse.text();
       console.error('❌ Deployment creation failed:', deployError);
+      console.error('❌ Request details - Endpoint:', `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`);
+      console.error('❌ Request details - Headers:', JSON.stringify({ 'Content-Type': 'application/json' }));
+      console.error('❌ Request details - Payload preview:', payloadString.substring(0, 200));
       throw new Error(`Deployment creation failed: ${deployError}`);
     }
     
