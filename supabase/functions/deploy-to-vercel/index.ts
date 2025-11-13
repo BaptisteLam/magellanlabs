@@ -85,15 +85,16 @@ serve(async (req) => {
     }
 
     // Prepare files for Vercel deployment
-    const vercelFiles: Record<string, { file: string }> = {};
+    const vercelFiles = [];
     const encoder = new TextEncoder();
     for (const file of modifiedFiles) {
       const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
       const uint8Array = encoder.encode(file.content);
       const base64 = btoa(String.fromCharCode(...uint8Array));
-      vercelFiles[fileName] = {
-        file: base64
-      };
+      vercelFiles.push({
+        file: fileName,
+        data: base64
+      });
     }
 
     // Create project name from session title
