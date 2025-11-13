@@ -84,16 +84,13 @@ serve(async (req) => {
       });
     }
 
-    // Prepare files for Vercel deployment
+    // Prepare files for Vercel deployment (already built, send as raw text)
     const vercelFiles = [];
-    const encoder = new TextEncoder();
     for (const file of modifiedFiles) {
       const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
-      const uint8Array = encoder.encode(file.content);
-      const base64 = btoa(String.fromCharCode(...uint8Array));
       vercelFiles.push({
         file: fileName,
-        data: base64
+        data: file.content  // Send as raw text, not base64
       });
     }
 
@@ -102,7 +99,7 @@ serve(async (req) => {
       ? session.title.toLowerCase().replace(/[^a-z0-9-]/g, '-').substring(0, 50)
       : `project-${sessionId.substring(0, 8)}`;
 
-    // Deploy to Vercel
+    // Deploy to Vercel (pre-built static files)
     const deployResponse = await fetch('https://api.vercel.com/v13/deployments', {
       method: 'POST',
       headers: {
@@ -114,8 +111,12 @@ serve(async (req) => {
         files: vercelFiles,
         projectSettings: {
           framework: null,
+          buildCommand: null,
+          installCommand: null,
+          outputDirectory: null,
         },
         target: 'production',
+        public: true
       }),
     });
 
