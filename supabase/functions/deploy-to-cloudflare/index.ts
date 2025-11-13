@@ -174,7 +174,8 @@ serve(async (req) => {
     const manifest: Record<string, string> = {};
     
     for (const file of modifiedFiles) {
-      const fileName = file.name.startsWith('/') ? file.name : `/${file.name}`;
+      // Remove leading slash if present, Cloudflare expects paths without leading slash
+      let fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
       const hash = await calculateSHA256(file.content);
       manifest[fileName] = hash;
     }
@@ -279,7 +280,7 @@ serve(async (req) => {
     
     for (const file of modifiedFiles) {
       const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
-      const hash = manifest[`/${fileName}`];
+      const hash = manifest[fileName];
       
       let fileData: Uint8Array<ArrayBuffer>;
       if (file.content.startsWith('data:')) {
