@@ -145,21 +145,41 @@ serve(async (req) => {
     
     console.log('🚀 Deploying to Cloudflare Pages project:', projectName);
     
-    // Prepare manifest in Cloudflare format with entries structure
-    const entries: Record<string, { path: string; entryPoint?: boolean }> = {};
-    
-    modifiedFiles.forEach((file: ProjectFile) => {
-      const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
+    // Helper function to calculate SHA-256 hash
+    async function calculateSHA256(content: string): Promise<string> {
+      const encoder = new TextEncoder();
+      let data: Uint8Array<ArrayBuffer>;
       
-      entries[fileName] = {
-        path: fileName,
-        entryPoint: fileName === 'index.html',
-      };
-    });
+      if (content.startsWith('data:')) {
+        // Binary file - decode base64
+        const base64Data = content.split(',')[1];
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        data = bytes;
+      } else {
+        // Text file
+        data = encoder.encode(content);
+      }
+      
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
     
-    const manifest = { entries };
+    // Prepare manifest with SHA-256 hashes
+    console.log('📋 Calculating file hashes...');
+    const manifest: Record<string, string> = {};
     
-    console.log('📋 Manifest created with', Object.keys(entries).length, 'files');
+    for (const file of modifiedFiles) {
+      const fileName = file.name.startsWith('/') ? `/${file.name.slice(1)}` : `/${file.name}`;
+      const hash = await calculateSHA256(file.content);
+      manifest[fileName] = hash;
+    }
+    
+    console.log('📋 Manifest created with', Object.keys(manifest).length, 'files');
     
     // Try to deploy via direct upload API
     console.log('📤 Deploying via Cloudflare Pages Direct Upload...');
@@ -212,49 +232,85 @@ serve(async (req) => {
       throw new Error(`Failed to check project: ${error}`);
     }
     
-    // Prepare files as FormData
-    const formData = new FormData();
-    
-    // Add manifest
-    formData.append('manifest', JSON.stringify(manifest));
-    
-    // Add each file as a Blob
-    modifiedFiles.forEach((file: ProjectFile) => {
-      const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
-      
-      if (file.content.startsWith('data:')) {
-        // Binary files (images, etc.)
-        const base64Data = file.content.split(',')[1];
-        const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-        const blob = new Blob([binaryData]);
-        formData.append(fileName, blob, fileName);
-      } else {
-        // Text files
-        const blob = new Blob([file.content], { type: 'text/plain' });
-        formData.append(fileName, blob, fileName);
-      }
-    });
-    
-    // Deploy using direct upload with FormData
+    // Step 1: Create deployment with manifest to get upload token
+    console.log('📤 Step 1: Creating deployment with manifest...');
     const deployResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify({ manifest }),
       }
     );
     
     if (!deployResponse.ok) {
       const deployError = await deployResponse.text();
-      console.error('❌ Deployment failed:', deployError);
-      throw new Error(`Deployment failed: ${deployError}`);
+      console.error('❌ Deployment creation failed:', deployError);
+      throw new Error(`Deployment creation failed: ${deployError}`);
     }
     
     deployResult = await deployResponse.json();
-    console.log('✅ Deployment successful:', deployResult.result?.id);
+    const uploadToken = deployResult.result?.jwt;
+    const deploymentId = deployResult.result?.id;
+    
+    console.log('✅ Deployment created:', deploymentId);
+    
+    if (!uploadToken) {
+      throw new Error('No upload token received from Cloudflare');
+    }
+    
+    // Step 2: Upload each file individually
+    console.log('📤 Step 2: Uploading files...');
+    let uploadedCount = 0;
+    
+    for (const file of modifiedFiles) {
+      const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
+      const hash = manifest[`/${fileName}`];
+      
+      let fileData: Uint8Array<ArrayBuffer>;
+      if (file.content.startsWith('data:')) {
+        // Binary file
+        const base64Data = file.content.split(',')[1];
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        fileData = bytes;
+      } else {
+        // Text file
+        const encoder = new TextEncoder();
+        fileData = encoder.encode(file.content);
+      }
+      
+      const uploadResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments/${deploymentId}/files/${hash}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${uploadToken}`,
+            'Content-Type': 'application/octet-stream',
+          },
+          body: fileData.buffer,
+        }
+      );
+      
+      if (!uploadResponse.ok) {
+        const uploadError = await uploadResponse.text();
+        console.error(`❌ Failed to upload ${fileName}:`, uploadError);
+        throw new Error(`Failed to upload ${fileName}: ${uploadError}`);
+      }
+      
+      uploadedCount++;
+      if (uploadedCount % 5 === 0) {
+        console.log(`📤 Uploaded ${uploadedCount}/${modifiedFiles.length} files...`);
+      }
+    }
+    
+    console.log('✅ All files uploaded:', uploadedCount);
 
     const deploymentUrl = deployResult.result?.url || `https://${projectName}.pages.dev`;
 
