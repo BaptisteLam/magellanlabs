@@ -794,9 +794,9 @@ export default function BuilderSession() {
         };
       });
 
-      sonnerToast.info("Déploiement sur Cloudflare Pages...");
+      sonnerToast.info("Déploiement sur Vercel...");
       
-      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-cloudflare`, {
+      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-vercel`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
