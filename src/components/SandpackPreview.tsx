@@ -1,5 +1,4 @@
 import { Sandpack } from '@codesandbox/sandpack-react';
-import '@codesandbox/sandpack-react/dist/index.css';
 import { useMemo } from 'react';
 import { GeneratingPreview } from './GeneratingPreview';
 import './SandpackPreview.css';
