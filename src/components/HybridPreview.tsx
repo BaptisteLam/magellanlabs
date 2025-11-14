@@ -1,4 +1,4 @@
-import { SandpackPreview } from './SandpackPreview';
+import { WebContainerPreview } from './WebContainerPreview';
 
 interface HybridPreviewProps {
   projectFiles: Record<string, string> | Record<string, { code: string }>;
@@ -8,7 +8,7 @@ interface HybridPreviewProps {
 }
 
 /**
- * Composant de preview utilisant Sandpack en marque blanche
+ * Composant de preview utilisant WebContainers (StackBlitz Tech) en marque blanche
  */
 export function HybridPreview({ 
   projectFiles, 
@@ -18,10 +18,9 @@ export function HybridPreview({
 }: HybridPreviewProps) {
 
   return (
-    <SandpackPreview
+    <WebContainerPreview
       projectFiles={projectFiles}
       isDark={isDark}
-      showEditor={false}
       inspectMode={inspectMode}
       onElementSelect={onElementSelect}
     />
