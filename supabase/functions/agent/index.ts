@@ -123,13 +123,14 @@ Exemple de flux:
             },
             body: JSON.stringify({
               model: 'claude-sonnet-4-5',
-              max_tokens: 8000,
+              max_tokens: 16000, // Augmenté pour éviter les coupures
               stream: true,
               system: systemPrompt,
               messages: [
                 ...recentHistory,
                 { role: 'user', content: message }
               ],
+              temperature: 1.0, // Ajout pour plus de créativité
             }),
           });
 
