@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { WebContainer } from '@webcontainer/api';
-import WebContainerSingleton from '@/lib/webcontainerSingleton';
+import { getWebContainer } from '@/lib/webcontainerSingleton';
 
 interface WebContainerPreviewProps {
   projectFiles: Record<string, string> | Record<string, { code: string }>;
@@ -16,35 +15,24 @@ export function WebContainerPreview({
   onElementSelect 
 }: WebContainerPreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const webcontainerRef = useRef<WebContainer | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [isBooting, setIsBooting] = useState(true);
   const [error, setError] = useState<string>('');
-  const hasBootedRef = useRef(false);
   const processRef = useRef<any>(null);
+  const mountedRef = useRef(false);
 
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
 
-    async function bootWebContainer() {
-      // Utiliser le singleton pour éviter "Unable to create more instances"
-      if (webcontainerRef.current) {
-        console.log('⚠️ WebContainer already exists, updating files instead');
-        await updateFiles();
-        return;
-      }
-
+    async function bootAndRun() {
       try {
-        console.log('🚀 Récupération WebContainer singleton...');
         setIsBooting(true);
         setError('');
 
-        // Utiliser le singleton au lieu de créer une nouvelle instance
-        const webcontainer = await WebContainerSingleton.getInstance();
-        webcontainerRef.current = webcontainer;
-        console.log('✅ WebContainer singleton récupéré');
+        // Récupérer l'instance unique de WebContainer
+        const webcontainer = await getWebContainer();
 
-        if (!mounted) return;
+        if (!mountedRef.current) return;
 
         // Normaliser les fichiers
         const normalizedFiles: Record<string, string> = {};
@@ -104,7 +92,10 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  server: { port: 3000 }
+  server: {
+    port: 3000,
+    strictPort: true,
+  }
 });`
             }
           };
@@ -117,8 +108,8 @@ export default defineConfig({
               contents: `<!DOCTYPE html>
 <html lang="fr">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Preview</title>
   </head>
   <body>
@@ -130,100 +121,73 @@ export default defineConfig({
           };
         }
 
-        console.log('📁 Mounting files...', Object.keys(files));
+        console.log('📦 Mounting files...');
         await webcontainer.mount(files);
-        console.log('✅ Files mounted');
 
-        if (!mounted) return;
+        if (!mountedRef.current) return;
+
+        // Tuer l'ancien process s'il existe
+        if (processRef.current) {
+          console.log('🔪 Killing old process...');
+          try {
+            processRef.current.kill();
+          } catch (e) {
+            console.warn('Failed to kill process:', e);
+          }
+          processRef.current = null;
+        }
 
         // Installer les dépendances
-        console.log('📦 Installing dependencies...');
+        console.log('📥 Installing dependencies...');
         const installProcess = await webcontainer.spawn('npm', ['install']);
         
-        installProcess.output.pipeTo(new WritableStream({
-          write(data) {
-            console.log('npm install:', data);
-          }
-        }));
-
         const installExitCode = await installProcess.exit;
         if (installExitCode !== 0) {
-          throw new Error('Installation failed');
+          throw new Error('Failed to install dependencies');
         }
-        console.log('✅ Dependencies installed');
 
-        if (!mounted) return;
+        if (!mountedRef.current) return;
 
-        // Démarrer le serveur dev
-        console.log('🔥 Starting dev server...');
-        const devProcess = await webcontainer.spawn('npm', ['run', 'dev']);
-        
-        devProcess.output.pipeTo(new WritableStream({
+        console.log('🚀 Starting dev server...');
+        processRef.current = await webcontainer.spawn('npm', ['run', 'dev']);
+
+        processRef.current.output.pipeTo(new WritableStream({
           write(data) {
-            console.log('dev server:', data);
+            console.log('📦 Dev server:', data);
           }
         }));
 
-        // Attendre que le serveur soit prêt
+        // Écouter l'événement server-ready
         webcontainer.on('server-ready', (port, url) => {
-          console.log('✅ Server ready:', url);
-          if (mounted) {
+          console.log('✅ Server ready at', url);
+          if (mountedRef.current) {
             setPreviewUrl(url);
             setIsBooting(false);
           }
         });
 
-      } catch (err) {
-        console.error('❌ WebContainer error:', err);
-        if (mounted) {
-          setError(err instanceof Error ? err.message : 'Failed to boot WebContainer');
+      } catch (err: any) {
+        console.error('❌ Error in WebContainer:', err);
+        if (mountedRef.current) {
+          setError(err.message || 'Failed to boot WebContainer');
           setIsBooting(false);
         }
       }
     }
 
-    async function updateFiles() {
-      if (!webcontainerRef.current) return;
-      
-      try {
-        console.log('📝 Updating files in existing WebContainer...');
-        const normalizedFiles: Record<string, string> = {};
-        Object.entries(projectFiles).forEach(([path, content]) => {
-          if (typeof content === 'string') {
-            normalizedFiles[path] = content;
-          } else if (content && typeof content === 'object' && 'code' in content) {
-            normalizedFiles[path] = content.code;
-          }
-        });
-
-        // Mettre à jour les fichiers un par un
-        for (const [path, content] of Object.entries(normalizedFiles)) {
-          await webcontainerRef.current.fs.writeFile(path, content);
-        }
-        console.log('✅ Files updated');
-
-        // Redémarrer le processus pour recharger les modifications
-        if (processRef.current) {
-          console.log('🔄 Restarting dev server...');
-          processRef.current.kill();
-          processRef.current = await webcontainerRef.current.spawn('npm', ['run', 'dev']);
-          
-          processRef.current.output.pipeTo(new WritableStream({
-            write(data) {
-              console.log('📦 Server output:', data);
-            }
-          }));
-        }
-      } catch (err) {
-        console.error('❌ Error updating files:', err);
-      }
-    }
-
-    bootWebContainer();
+    bootAndRun();
 
     return () => {
-      mounted = false;
-      // Ne pas teardown ici pour éviter de détruire l'instance trop tôt
+      mountedRef.current = false;
+      // Tuer le process au démontage
+      if (processRef.current) {
+        try {
+          processRef.current.kill();
+        } catch (e) {
+          console.warn('Failed to kill process on unmount:', e);
+        }
+        processRef.current = null;
+      }
     };
   }, [projectFiles]);
 
@@ -244,11 +208,9 @@ export default defineConfig({
       <div className="w-full h-full flex items-center justify-center bg-background">
         <div className="text-center p-8">
           <div className="text-4xl mb-4 animate-pulse">⚡</div>
-          <h2 className="text-xl font-semibold text-foreground mb-2">Démarrage WebContainer</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-2">Démarrage du serveur</h2>
           <p className="text-muted-foreground">
-            {!webcontainerRef.current ? 'Boot du container...' : 
-             !previewUrl ? 'Installation et build...' : 
-             'Chargement...'}
+            Installation et build en cours...
           </p>
           <p className="text-sm text-muted-foreground mt-2">
             {Object.keys(projectFiles).length} fichiers chargés
