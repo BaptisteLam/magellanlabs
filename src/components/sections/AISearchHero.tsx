@@ -14,7 +14,7 @@ import { useThemeStore } from '@/stores/themeStore';
 import PromptBar from '@/components/PromptBar';
 import { CodeTreeView } from '@/components/CodeEditor/CodeTreeView';
 import { MonacoEditor } from '@/components/CodeEditor/MonacoEditor';
-import { SandpackPreview } from '@/components/SandpackPreview';
+import { HybridPreview } from '@/components/HybridPreview';
 import { GeneratingPreview } from '@/components/GeneratingPreview';
 
 interface AISearchHeroProps {
@@ -345,7 +345,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
           <ResizablePanel defaultSize={40} minSize={30}>
             {viewMode === 'preview' ? (
               <div className="h-full bg-white">
-                <SandpackPreview projectFiles={projectFiles} isDark={isDark} />
+                <HybridPreview projectFiles={projectFiles} isDark={isDark} />
               </div>
             ) : (
               <div className="h-full flex items-center justify-center text-slate-400">
