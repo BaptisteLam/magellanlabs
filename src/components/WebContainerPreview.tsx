@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { WebContainer } from '@webcontainer/api';
+import WebContainerSingleton from '@/lib/webcontainerSingleton';
 
 interface WebContainerPreviewProps {
   projectFiles: Record<string, string> | Record<string, { code: string }>;
@@ -26,23 +27,22 @@ export function WebContainerPreview({
     let mounted = true;
 
     async function bootWebContainer() {
-      // Ne créer qu'une seule instance - éviter "Unable to create more instances"
-      if (hasBootedRef.current || webcontainerRef.current) {
+      // Utiliser le singleton pour éviter "Unable to create more instances"
+      if (webcontainerRef.current) {
         console.log('⚠️ WebContainer already exists, updating files instead');
         await updateFiles();
         return;
       }
 
-      hasBootedRef.current = true;
       try {
-        console.log('🚀 Booting WebContainer...');
+        console.log('🚀 Récupération WebContainer singleton...');
         setIsBooting(true);
         setError('');
 
-        // Boot WebContainer
-        const webcontainer = await WebContainer.boot();
+        // Utiliser le singleton au lieu de créer une nouvelle instance
+        const webcontainer = await WebContainerSingleton.getInstance();
         webcontainerRef.current = webcontainer;
-        console.log('✅ WebContainer booted');
+        console.log('✅ WebContainer singleton récupéré');
 
         if (!mounted) return;
 
