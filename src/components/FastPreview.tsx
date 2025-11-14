@@ -112,15 +112,23 @@ function extractCodeFromFiles(
   let entry = 'App.jsx';
   let code = '';
 
-  // Find main component file
+  // Find main component file - check both with and without leading slash
   const possibleEntries = [
+    'src/App.tsx',
     '/src/App.tsx',
+    'src/App.jsx',
     '/src/App.jsx',
+    'App.tsx',
     '/App.tsx',
+    'App.jsx',
     '/App.jsx',
+    'src/App.vue',
     '/src/App.vue',
+    'App.vue',
     '/App.vue',
+    'src/App.svelte',
     '/src/App.svelte',
+    'App.svelte',
     '/App.svelte',
   ];
 
@@ -129,6 +137,8 @@ function extractCodeFromFiles(
       entry = path.split('/').pop() || 'App.jsx';
       code = files[path];
       
+      console.log('🎯 FastPreview: Found entry file:', path);
+      
       if (path.endsWith('.vue')) {
         framework = 'vue';
       } else if (path.endsWith('.svelte')) {
@@ -136,6 +146,11 @@ function extractCodeFromFiles(
       }
       break;
     }
+  }
+
+  // Log available files for debugging
+  if (!code) {
+    console.log('⚠️ FastPreview: No entry file found. Available files:', Object.keys(files));
   }
 
   // If no component found, try to find any React file
