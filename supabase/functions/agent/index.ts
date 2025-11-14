@@ -145,6 +145,8 @@ Exemple de flux:
           const decoder = new TextDecoder();
           let buffer = '';
 
+          let hasReceivedComplete = false;
+
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -174,18 +176,24 @@ Exemple de flux:
                     
                     try {
                       const aiEvent = JSON.parse(eventLine);
+                      
+                      // Tracker si on a reçu complete
+                      if (aiEvent.type === 'complete') {
+                        hasReceivedComplete = true;
+                      }
+                      
                       const data = `data: ${JSON.stringify(aiEvent)}\n\n`;
                       controller.enqueue(encoder.encode(data));
-                    } catch (e) {
-                      console.error('⚠️ Erreur parsing event:', eventLine, e);
+                    } catch (e: any) {
+                      console.warn('⚠️ Erreur parsing event:', eventLine.substring(0, 100), e?.message);
                     }
                   }
                   
                   // Garder la dernière ligne incomplète dans le buffer
                   buffer = eventLines[eventLines.length - 1];
                 }
-              } catch (e) {
-                console.error('⚠️ Erreur parsing SSE:', line, e);
+              } catch (e: any) {
+                console.warn('⚠️ Erreur parsing SSE:', line.substring(0, 100), e?.message);
               }
             }
           }
@@ -197,12 +205,25 @@ Exemple de flux:
               if (!eventLine.trim()) continue;
               try {
                 const aiEvent = JSON.parse(eventLine);
+                
+                // Tracker si on a reçu complete
+                if (aiEvent.type === 'complete') {
+                  hasReceivedComplete = true;
+                }
+                
                 const data = `data: ${JSON.stringify(aiEvent)}\n\n`;
                 controller.enqueue(encoder.encode(data));
-              } catch (e) {
-                console.error('⚠️ Erreur parsing final event:', eventLine, e);
+              } catch (e: any) {
+                console.warn('⚠️ Erreur parsing final buffer:', eventLine.substring(0, 100), e?.message);
               }
             }
+          }
+
+          // S'assurer qu'on envoie toujours un événement complete
+          if (!hasReceivedComplete) {
+            console.log('⚠️ Aucun événement complete reçu de Claude, envoi forcé');
+            const completeEvent = `data: ${JSON.stringify({ type: 'complete' })}\n\n`;
+            controller.enqueue(encoder.encode(completeEvent));
           }
 
           controller.close();
