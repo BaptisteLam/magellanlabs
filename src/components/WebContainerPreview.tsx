@@ -44,7 +44,7 @@ export function WebContainerPreview({
           }
         });
 
-        // Créer la structure de fichiers pour WebContainer
+        // Créer la structure de fichiers pour WebContainer (objets purs uniquement)
         const files: Record<string, any> = {};
         Object.entries(normalizedFiles).forEach(([path, content]) => {
           const parts = path.split('/');
@@ -58,9 +58,14 @@ export function WebContainerPreview({
           }
           
           current[parts[parts.length - 1]] = {
-            file: { contents: content }
+            file: { contents: String(content) }
           };
         });
+
+        // Fonction pour nettoyer et rendre les fichiers clonables
+        const sanitizeForWebContainer = (obj: any): any => {
+          return JSON.parse(JSON.stringify(obj));
+        };
 
         // Ajouter package.json si manquant
         if (!files['package.json']) {
@@ -122,7 +127,9 @@ export default defineConfig({
         }
 
         console.log('📦 Mounting files...');
-        await webcontainer.mount(files);
+        // Nettoyer les fichiers pour les rendre clonables (supprime toute référence non-sérialisable)
+        const cleanFiles = sanitizeForWebContainer(files);
+        await webcontainer.mount(cleanFiles);
 
         if (!mountedRef.current) return;
 
