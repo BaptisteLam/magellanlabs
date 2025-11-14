@@ -7,7 +7,6 @@ interface SandpackPreviewProps {
   projectFiles: Record<string, string> | Record<string, { code: string }>;
   isDark?: boolean;
   showEditor?: boolean;
-  onFilesChange?: (files: Record<string, string>) => void;
   inspectMode?: boolean;
   onElementSelect?: (elementInfo: any) => void;
 }
@@ -15,8 +14,7 @@ interface SandpackPreviewProps {
 export function SandpackPreview({ 
   projectFiles, 
   isDark = false,
-  showEditor = false,
-  onFilesChange
+  showEditor = false 
 }: SandpackPreviewProps) {
   
   // Normaliser et transformer les fichiers pour Sandpack
@@ -107,7 +105,6 @@ ${files[indexCssPath]}`;
           editorWidthPercentage: showEditor ? 50 : 0,
           recompileMode: "delayed",
           autoReload: true,
-          autorun: true,
         }}
         customSetup={{
           dependencies: {
