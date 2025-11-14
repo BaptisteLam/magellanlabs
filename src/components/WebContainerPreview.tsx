@@ -19,11 +19,20 @@ export function WebContainerPreview({
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [isBooting, setIsBooting] = useState(true);
   const [error, setError] = useState<string>('');
+  const hasBootedRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
 
     async function bootWebContainer() {
+      // Ne créer qu'une seule instance - éviter "Unable to create more instances"
+      if (hasBootedRef.current || webcontainerRef.current) {
+        console.log('⚠️ WebContainer already exists, updating files instead');
+        await updateFiles();
+        return;
+      }
+
+      hasBootedRef.current = true;
       try {
         console.log('🚀 Booting WebContainer...');
         setIsBooting(true);
@@ -172,13 +181,35 @@ export default defineConfig({
       }
     }
 
+    async function updateFiles() {
+      if (!webcontainerRef.current) return;
+      
+      try {
+        console.log('📝 Updating files in existing WebContainer...');
+        const normalizedFiles: Record<string, string> = {};
+        Object.entries(projectFiles).forEach(([path, content]) => {
+          if (typeof content === 'string') {
+            normalizedFiles[path] = content;
+          } else if (content && typeof content === 'object' && 'code' in content) {
+            normalizedFiles[path] = content.code;
+          }
+        });
+
+        // Mettre à jour les fichiers un par un
+        for (const [path, content] of Object.entries(normalizedFiles)) {
+          await webcontainerRef.current.fs.writeFile(path, content);
+        }
+        console.log('✅ Files updated');
+      } catch (err) {
+        console.error('❌ Error updating files:', err);
+      }
+    }
+
     bootWebContainer();
 
     return () => {
       mounted = false;
-      if (webcontainerRef.current) {
-        webcontainerRef.current.teardown();
-      }
+      // Ne pas teardown ici pour éviter de détruire l'instance trop tôt
     };
   }, [projectFiles]);
 
