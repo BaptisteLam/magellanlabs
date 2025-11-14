@@ -32,14 +32,23 @@
     
     let initialized = false;
     let inspectMode = false;
+    let initPromise = null;
 
     async function init() {
       if (initialized) return;
-      await esbuild.initialize({
+      if (initPromise) return initPromise;
+      
+      initPromise = esbuild.initialize({
         wasmURL: 'https://cdn.jsdelivr.net/npm/esbuild-wasm@0.19.11/esbuild.wasm',
+      }).then(() => {
+        initialized = true;
+        window.parent.postMessage({ type: 'ready' }, '*');
+      }).catch(err => {
+        console.error('esbuild init error:', err);
+        showError('Failed to initialize esbuild: ' + err.message);
       });
-      initialized = true;
-      window.parent.postMessage({ type: 'ready' }, '*');
+      
+      return initPromise;
     }
 
     function showError(message) {
