@@ -20,6 +20,7 @@ export function WebContainerPreview({
   const [isBooting, setIsBooting] = useState(true);
   const [error, setError] = useState<string>('');
   const hasBootedRef = useRef(false);
+  const processRef = useRef<any>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -200,6 +201,19 @@ export default defineConfig({
           await webcontainerRef.current.fs.writeFile(path, content);
         }
         console.log('✅ Files updated');
+
+        // Redémarrer le processus pour recharger les modifications
+        if (processRef.current) {
+          console.log('🔄 Restarting dev server...');
+          processRef.current.kill();
+          processRef.current = await webcontainerRef.current.spawn('npm', ['run', 'dev']);
+          
+          processRef.current.output.pipeTo(new WritableStream({
+            write(data) {
+              console.log('📦 Server output:', data);
+            }
+          }));
+        }
       } catch (err) {
         console.error('❌ Error updating files:', err);
       }
