@@ -1,4 +1,4 @@
-import { UnifiedPreview } from './UnifiedPreview';
+import { SandpackPreview } from './SandpackPreview';
 
 interface HybridPreviewProps {
   projectFiles: Record<string, string> | Record<string, { code: string }>;
@@ -8,7 +8,7 @@ interface HybridPreviewProps {
 }
 
 /**
- * Composant de preview utilisant Sandpack - solution unifiée et fiable
+ * Composant de preview utilisant Sandpack en marque blanche
  */
 export function HybridPreview({ 
   projectFiles, 
@@ -18,9 +18,10 @@ export function HybridPreview({
 }: HybridPreviewProps) {
 
   return (
-    <UnifiedPreview
+    <SandpackPreview
       projectFiles={projectFiles}
       isDark={isDark}
+      showEditor={false}
       inspectMode={inspectMode}
       onElementSelect={onElementSelect}
     />
