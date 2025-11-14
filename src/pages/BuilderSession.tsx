@@ -1221,10 +1221,10 @@ export default function BuilderSession() {
                   <HybridPreview 
                     projectFiles={projectFiles} 
                     isDark={isDark}
+                    showEditor={false}
                     inspectMode={inspectMode}
                     onElementSelect={async (elementInfo) => {
                       console.log('Element selected:', elementInfo);
-                      // À implémenter: ouvrir un dialog pour modifier l'élément
                     }}
                   />
                 )
@@ -1236,61 +1236,14 @@ export default function BuilderSession() {
                   websiteId={websiteId || undefined}
                 />
               ) : (
-                <div className="h-full flex bg-white">
-                  {/* TreeView - 20% */}
-                  <div className="w-[20%] min-w-[200px]">
-                    <CodeTreeView
-                      files={projectFiles}
-                      selectedFile={selectedFile}
-                      onFileSelect={(path, content) => {
-                        setSelectedFile(path);
-                        setSelectedFileContent(content);
-                        if (!openFiles.includes(path)) {
-                          setOpenFiles([...openFiles, path]);
-                        }
-                      }}
-                    />
-                  </div>
-
-                  {/* Monaco Editor - 80% */}
-                  <div className="flex-1 flex flex-col">
-                    <FileTabs
-                      openFiles={openFiles}
-                      activeFile={selectedFile}
-                      onTabClick={(path) => {
-                        setSelectedFile(path);
-                        setSelectedFileContent(projectFiles[path]);
-                      }}
-                      onTabClose={(path) => {
-                        const newOpenFiles = openFiles.filter((f) => f !== path);
-                        setOpenFiles(newOpenFiles);
-                        if (selectedFile === path) {
-                          const nextFile = newOpenFiles[newOpenFiles.length - 1] || null;
-                          setSelectedFile(nextFile);
-                          setSelectedFileContent(nextFile ? projectFiles[nextFile] : '');
-                        }
-                      }}
-                    />
-                    <div className="flex-1">
-                      {selectedFileContent ? (
-                        <MonacoEditor
-                          value={selectedFileContent}
-                          language={selectedFile?.split('.').pop() || 'plaintext'}
-                          onChange={(value) => {
-                            if (value !== undefined && selectedFile) {
-                              setSelectedFileContent(value);
-                              setProjectFiles((prev) => ({ ...prev, [selectedFile]: value }));
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div className="h-full flex items-center justify-center text-gray-500">
-                          Sélectionnez un fichier pour le modifier
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <HybridPreview 
+                  projectFiles={projectFiles} 
+                  isDark={isDark}
+                  showEditor={true}
+                  onFilesChange={(updatedFiles) => {
+                    setProjectFiles(updatedFiles);
+                  }}
+                />
               )}
             </div>
           </ResizablePanel>
