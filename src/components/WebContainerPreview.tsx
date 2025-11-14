@@ -20,6 +20,7 @@ export function WebContainerPreview({
   const [error, setError] = useState<string>('');
   const processRef = useRef<any>(null);
   const mountedRef = useRef(false);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -152,6 +153,23 @@ export default defineConfig({
 
         if (!mountedRef.current) return;
 
+        // Nettoyer l'ancien listener s'il existe
+        if (unsubscribeRef.current) {
+          console.log('🧹 Cleaning up old server-ready listener');
+          unsubscribeRef.current();
+          unsubscribeRef.current = null;
+        }
+
+        // Enregistrer le listener server-ready AVANT de démarrer le serveur
+        console.log('👂 Registering server-ready listener...');
+        unsubscribeRef.current = webcontainer.on('server-ready', (port, url) => {
+          console.log('✅ Server ready at', url);
+          if (mountedRef.current) {
+            setPreviewUrl(url);
+            setIsBooting(false);
+          }
+        });
+
         console.log('🚀 Starting dev server...');
         processRef.current = await webcontainer.spawn('npm', ['run', 'dev']);
 
@@ -161,17 +179,15 @@ export default defineConfig({
           }
         }));
 
-        // Écouter l'événement server-ready
-        webcontainer.on('server-ready', (port, url) => {
-          console.log('✅ Server ready at', url);
-          if (mountedRef.current) {
-            setPreviewUrl(url);
-            setIsBooting(false);
-          }
-        });
-
       } catch (err: any) {
         console.error('❌ Error in WebContainer:', err);
+
+        // Nettoyer le listener en cas d'erreur
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current();
+          unsubscribeRef.current = null;
+        }
+
         if (mountedRef.current) {
           setError(err.message || 'Failed to boot WebContainer');
           setIsBooting(false);
@@ -183,6 +199,14 @@ export default defineConfig({
 
     return () => {
       mountedRef.current = false;
+
+      // Nettoyer le listener server-ready
+      if (unsubscribeRef.current) {
+        console.log('🧹 Unsubscribing from server-ready on cleanup');
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+
       // Tuer le process au démontage
       if (processRef.current) {
         try {
