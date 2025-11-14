@@ -10,6 +10,8 @@ command = "bun install --no-frozen-lockfile && bun run build"
 
 [build.environment]
 NODE_VERSION = "18"
+BUN_INSTALL_BIN = "/usr/local/bin/bun"
+SKIP_DEPENDENCY_INSTALL = "false"
 
 # Environment variables (configure via Cloudflare dashboard for production)
 [vars]
