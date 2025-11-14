@@ -34,13 +34,16 @@ export function WebContainerPreview({
 
         if (!mountedRef.current) return;
 
+        // Sanitizer les fichiers d'entrée pour supprimer toute référence non-clonable
+        const sanitizedInput = JSON.parse(JSON.stringify(projectFiles));
+
         // Normaliser les fichiers
         const normalizedFiles: Record<string, string> = {};
-        Object.entries(projectFiles).forEach(([path, content]) => {
+        Object.entries(sanitizedInput).forEach(([path, content]) => {
           if (typeof content === 'string') {
             normalizedFiles[path] = content;
           } else if (content && typeof content === 'object' && 'code' in content) {
-            normalizedFiles[path] = content.code;
+            normalizedFiles[path] = String((content as any).code);
           }
         });
 
@@ -62,10 +65,6 @@ export function WebContainerPreview({
           };
         });
 
-        // Fonction pour nettoyer et rendre les fichiers clonables
-        const sanitizeForWebContainer = (obj: any): any => {
-          return JSON.parse(JSON.stringify(obj));
-        };
 
         // Ajouter package.json si manquant
         if (!files['package.json']) {
@@ -127,9 +126,7 @@ export default defineConfig({
         }
 
         console.log('📦 Mounting files...');
-        // Nettoyer les fichiers pour les rendre clonables (supprime toute référence non-sérialisable)
-        const cleanFiles = sanitizeForWebContainer(files);
-        await webcontainer.mount(cleanFiles);
+        await webcontainer.mount(files);
 
         if (!mountedRef.current) return;
 
