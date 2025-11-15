@@ -145,14 +145,19 @@ Exemple de flux COMPLET:
           if (!reader) throw new Error('No stream reader');
 
           const decoder = new TextDecoder();
-          let buffer = '';
+          let buffer = ''; // Buffer pour les événements NDJSON de Claude
+          let sseBuffer = ''; // Buffer pour les lignes SSE incomplètes
+          let hasComplete = false;
 
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
             const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
+            sseBuffer += chunk;
+            
+            const lines = sseBuffer.split('\n');
+            sseBuffer = lines.pop() || ''; // Garder la dernière ligne incomplète
 
             for (const line of lines) {
               if (!line.trim() || line.startsWith(':')) continue;
@@ -167,7 +172,7 @@ Exemple de flux COMPLET:
                 if (event.type === 'content_block_delta' && event.delta?.text) {
                   buffer += event.delta.text;
                   
-                  // Parser les événements NDJSON du buffer
+                  // Parser les événements NDJSON complets du buffer
                   const eventLines = buffer.split('\n');
                   
                   for (let i = 0; i < eventLines.length - 1; i++) {
@@ -176,35 +181,71 @@ Exemple de flux COMPLET:
                     
                     try {
                       const aiEvent = JSON.parse(eventLine);
-                      const data = `data: ${JSON.stringify(aiEvent)}\n\n`;
-                      controller.enqueue(encoder.encode(data));
+                      if (aiEvent.type === 'complete') hasComplete = true;
+                      const eventData = `data: ${JSON.stringify(aiEvent)}\n\n`;
+                      controller.enqueue(encoder.encode(eventData));
+                      console.log('✅ Événement envoyé:', aiEvent.type);
                     } catch (e) {
-                      console.error('⚠️ Erreur parsing event:', eventLine, e);
+                      // JSON incomplet, on attend plus de données
+                      console.log('⏳ JSON incomplet, attente:', eventLine.substring(0, 50));
                     }
                   }
                   
-                  // Garder la dernière ligne incomplète dans le buffer
+                  // Garder la dernière ligne (potentiellement incomplète)
                   buffer = eventLines[eventLines.length - 1];
                 }
               } catch (e) {
-                console.error('⚠️ Erreur parsing SSE:', line, e);
+                console.error('⚠️ Erreur parsing SSE:', e);
               }
             }
           }
 
-          // Parser le dernier buffer
+          // Parser le buffer SSE restant
+          if (sseBuffer.trim()) {
+            const lines = sseBuffer.split('\n');
+            for (const line of lines) {
+              if (!line.trim() || line.startsWith(':')) continue;
+              if (!line.startsWith('data: ')) continue;
+              
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+              
+              try {
+                const event = JSON.parse(data);
+                if (event.type === 'content_block_delta' && event.delta?.text) {
+                  buffer += event.delta.text;
+                }
+              } catch (e) {
+                console.error('⚠️ Erreur parsing SSE final:', e);
+              }
+            }
+          }
+
+          // Parser le buffer NDJSON final
           if (buffer.trim()) {
             const eventLines = buffer.split('\n');
             for (const eventLine of eventLines) {
               if (!eventLine.trim()) continue;
               try {
                 const aiEvent = JSON.parse(eventLine);
-                const data = `data: ${JSON.stringify(aiEvent)}\n\n`;
-                controller.enqueue(encoder.encode(data));
+                if (aiEvent.type === 'complete') hasComplete = true;
+                const eventData = `data: ${JSON.stringify(aiEvent)}\n\n`;
+                controller.enqueue(encoder.encode(eventData));
+                console.log('✅ Événement final envoyé:', aiEvent.type);
               } catch (e) {
-                console.error('⚠️ Erreur parsing final event:', eventLine, e);
+                console.log('⚠️ JSON invalide dans buffer final:', eventLine.substring(0, 100));
               }
             }
+          }
+
+          // S'assurer qu'un événement complete est TOUJOURS envoyé
+          if (!hasComplete) {
+            const completeEvent = { type: 'complete' };
+            const completeData = `data: ${JSON.stringify(completeEvent)}\n\n`;
+            controller.enqueue(encoder.encode(completeData));
+            console.log('🏁 Événement complete forcé envoyé');
+          } else {
+            console.log('✅ Événement complete déjà reçu');
           }
 
           controller.close();
