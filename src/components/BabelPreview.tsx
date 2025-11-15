@@ -20,11 +20,18 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
         return null;
       }
 
-      // Collecter tous les fichiers CSS
+      // Collecter tous les fichiers CSS et assets
       const cssContent: string[] = [];
+      const assets: Record<string, string> = {};
+      
       Object.entries(projectFiles).forEach(([path, content]) => {
         if (path.endsWith('.css')) {
           cssContent.push(content);
+        }
+        // Convertir les images en data URLs
+        if (path.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/i)) {
+          // Pour les images, on suppose qu'elles sont déjà en base64 ou on les marque comme assets
+          assets[path] = content;
         }
       });
 
@@ -91,6 +98,9 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
         const modules = {};
         const moduleCache = {};
         
+        // Assets embarqués
+        const assets = ${JSON.stringify(assets)};
+        
         // Mock pour React et ReactDOM
         const React = window.React;
         const ReactDOM = window.ReactDOM;
@@ -100,6 +110,11 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
           if (moduleName === 'react') return React;
           if (moduleName === 'react-dom') return ReactDOM;
           if (moduleName === 'react-dom/client') return { createRoot: ReactDOM.createRoot };
+          
+          // Assets (images, etc.)
+          if (assets[moduleName]) {
+            return assets[moduleName];
+          }
           
           // Modules du projet
           if (moduleCache[moduleName]) return moduleCache[moduleName];
@@ -186,6 +201,24 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
           processedCode = processedCode.replace(
             /import\s+['"][^'"]+\.css['"]/g,
             '// CSS import removed'
+          );
+          
+          // Remplacer les imports d'images par les assets embarqués
+          processedCode = processedCode.replace(
+            /import\s+(\w+)\s+from\s+['"]([^'"]+\.(png|jpg|jpeg|gif|svg|webp|ico))['"]/gi,
+            (match, varName, imagePath) => {
+              // Résoudre le chemin relatif
+              const fromParts = path.split('/').slice(0, -1);
+              const toParts = imagePath.split('/');
+              
+              for (const part of toParts) {
+                if (part === '..') fromParts.pop();
+                else if (part !== '.') fromParts.push(part);
+              }
+              
+              const resolved = fromParts.join('/');
+              return `const ${varName} = require("${resolved}")`;
+            }
           );
           
           // Gérer les exports
