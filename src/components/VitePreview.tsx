@@ -30,17 +30,18 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
     console.log('📦 VitePreview - Fichiers reçus:', Object.keys(projectFiles));
     console.log('📦 VitePreview - Total:', Object.keys(projectFiles).length, 'fichiers');
 
-    const files: Record<string, string> = {};
+    const files: Record<string, { code: string }> = {};
     
-    // Convertir les chemins et contenus - Sandpack préfère les chemins SANS / au début
+    // Convertir les chemins et contenus pour Sandpack
     Object.entries(projectFiles).forEach(([path, content]) => {
-      // Retirer le / du début si présent pour Sandpack
+      // Normaliser le chemin : retirer le / du début si présent
       let normalizedPath = path.startsWith('/') ? path.slice(1) : path;
       
       // Extraire le code si c'est un objet { code: string }
       const fileContent = typeof content === 'string' ? content : content.code;
       
-      files[normalizedPath] = fileContent;
+      // Sandpack attend un objet { code: string } pour chaque fichier
+      files[normalizedPath] = { code: fileContent };
       console.log(`📄 Ajout fichier: ${normalizedPath} (${fileContent.length} chars)`);
     });
 
@@ -49,7 +50,8 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
     // Pour les projets React, s'assurer qu'on a un index.html si nécessaire
     if (isReactProject && !files['index.html'] && !files['public/index.html']) {
       console.log('⚠️ Projet React sans index.html, création');
-      files['public/index.html'] = `<!DOCTYPE html>
+      files['public/index.html'] = { 
+        code: `<!DOCTYPE html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
@@ -59,7 +61,8 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
   <body>
     <div id="root"></div>
   </body>
-</html>`;
+</html>`
+      };
     }
 
     // Pour HTML statique
@@ -67,7 +70,8 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
       console.log('⚠️ Projet HTML statique sans index.html');
       const htmlFiles = Object.entries(projectFiles).filter(([path]) => path.endsWith('.html'));
       if (htmlFiles.length > 0) {
-        files['index.html'] = htmlFiles[0][1];
+        const content = typeof htmlFiles[0][1] === 'string' ? htmlFiles[0][1] : htmlFiles[0][1].code;
+        files['index.html'] = { code: content };
       }
     }
 
