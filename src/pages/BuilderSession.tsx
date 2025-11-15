@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
-import { HybridPreview } from "@/components/HybridPreview";
+import { InteractivePreview } from "@/components/InteractivePreview";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
 import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
@@ -794,9 +794,9 @@ export default function BuilderSession() {
         };
       });
 
-      sonnerToast.info("Déploiement sur Vercel...");
+      sonnerToast.info("Déploiement sur Cloudflare Pages...");
       
-      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-vercel`, {
+      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-cloudflare`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -1218,13 +1218,28 @@ export default function BuilderSession() {
                 isInitialGeneration ? (
                   <GeneratingPreview />
                 ) : (
-                  <HybridPreview 
+                  <InteractivePreview 
                     projectFiles={projectFiles} 
                     isDark={isDark}
                     inspectMode={inspectMode}
-                    onElementSelect={async (elementInfo) => {
-                      console.log('Element selected:', elementInfo);
-                      // À implémenter: ouvrir un dialog pour modifier l'élément
+                    onInspectModeChange={setInspectMode}
+                    onElementModify={async (prompt, elementInfo) => {
+                      // Créer un prompt contextuel avec les infos de l'élément
+                      const contextualPrompt = `Modifier l'élément suivant dans le code :
+
+Type: <${elementInfo.tagName.toLowerCase()}>
+${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
+${elementInfo.classList.length > 0 ? `Classes: ${elementInfo.classList.join(', ')}` : ''}
+Chemin CSS: ${elementInfo.path}
+Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textContent.length > 200 ? '...' : ''}"
+
+Instruction: ${prompt}
+
+Ne modifie que cet élément spécifique, pas le reste du code.`;
+                      
+                      // Soumettre le prompt
+                      setInputValue(contextualPrompt);
+                      setTimeout(() => handleSubmit(), 100);
                     }}
                   />
                 )

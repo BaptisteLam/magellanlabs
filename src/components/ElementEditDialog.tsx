@@ -4,14 +4,7 @@ import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Code2, Tag, FileText } from 'lucide-react';
-// Type ElementInfo défini localement
-export interface ElementInfo {
-  tagName: string;
-  id: string;
-  classList: string[];
-  textContent: string;
-  path: string;
-}
+import type { ElementInfo } from './InteractivePreview';
 
 interface ElementEditDialogProps {
   isOpen: boolean;
