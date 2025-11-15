@@ -113,6 +113,8 @@ export function useAgentAPI() {
                 options.onGenerationEvent?.({ type: 'edit', message: event.path, file: event.path });
                 break;
               case 'complete':
+                setIsStreaming(false);
+                setIsLoading(false);
                 options.onComplete?.();
                 options.onGenerationEvent?.({ type: 'complete', message: 'Changes applied' });
                 break;
