@@ -63,14 +63,26 @@ FLUX DE RÉPONSE:
 5. Finis par {"type":"complete"}
 
 RÈGLES DE CODE:
-- Nouvelle app/site : crée TOUS les fichiers nécessaires (App.tsx, composants, styles, etc.)
+- Nouvelle app/site : crée TOUS les fichiers nécessaires dans cet ordre exact:
+  1. CONFIGURATION : package.json, vite.config.ts, tsconfig.json, index.html
+  2. ENTRY POINTS : src/main.tsx (point d'entrée React)
+  3. COMPOSANTS : src/App.tsx et tous les composants nécessaires
+  4. STYLES : src/index.css avec Tailwind CSS
 - Modification : modifie UNIQUEMENT les fichiers concernés avec leur code COMPLET
+- STRUCTURE MINIMALE OBLIGATOIRE pour un nouveau projet:
+  - package.json (avec react, react-dom, vite, typescript, tailwindcss)
+  - index.html (point d'entrée HTML avec div id root)
+  - src/main.tsx (ReactDOM.createRoot + import App)
+  - src/App.tsx (composant principal)
+  - src/index.css (styles Tailwind)
+  - vite.config.ts (configuration Vite)
+  - tsconfig.json (configuration TypeScript)
 - Utilise React + TypeScript + Tailwind CSS
 - NE JAMAIS générer de boutons de changement de thème flottants ou en position fixe
-- NE JAMAIS générer de boutons "scroll to top" ou "retour en haut"
-- NE PAS ajouter d'éléments UI superposés sauf si explicitement demandé
+- NE JAMAIS générer de boutons scroll to top ou retour en haut
+- NE PAS ajouter d éléments UI superposés sauf si explicitement demandé
 - Code propre, fonctionnel et sans widgets inutiles
-- Pas de markdown, pas de \`\`\`, juste du JSON valide NDJSON
+- Pas de markdown, pas de backticks, juste du JSON valide NDJSON
 
 IMPORTANT:
 - Une ligne = un objet JSON
