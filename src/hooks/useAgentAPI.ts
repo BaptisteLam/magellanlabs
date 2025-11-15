@@ -42,6 +42,15 @@ export function useAgentAPI() {
       options.onGenerationEvent?.({ type: 'read', message: file.path });
     });
 
+    // Timeout de sécurité : force l'arrêt après 60s même sans complete
+    const safetyTimeout = setTimeout(() => {
+      console.warn('⏱️ Timeout: Arrêt forcé après 60s sans événement complete');
+      setIsStreaming(false);
+      setIsLoading(false);
+      options.onComplete?.();
+      options.onGenerationEvent?.({ type: 'complete', message: 'Generation completed (timeout)' });
+    }, 60000);
+
     try {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent`,
@@ -137,6 +146,7 @@ export function useAgentAPI() {
             const event: AIEvent = JSON.parse(dataStr);
             if (event.type === 'complete') {
               console.log('🎉 Complete event received from buffer');
+              clearTimeout(safetyTimeout);
               setIsStreaming(false);
               setIsLoading(false);
               options.onComplete?.();
@@ -150,15 +160,18 @@ export function useAgentAPI() {
 
       // Force complete si le stream se termine sans événement complete
       console.log('🔚 Stream ended, forcing completion');
+      clearTimeout(safetyTimeout);
       setIsStreaming(false);
       setIsLoading(false);
 
     } catch (error: any) {
+      clearTimeout(safetyTimeout);
       if (error.name !== 'AbortError') {
         console.error('Agent API error:', error);
         options.onError?.(error.message);
       }
     } finally {
+      clearTimeout(safetyTimeout);
       setIsLoading(false);
       setIsStreaming(false);
       abortControllerRef.current = null;
