@@ -113,6 +113,7 @@ export function useAgentAPI() {
                 options.onGenerationEvent?.({ type: 'edit', message: event.path, file: event.path });
                 break;
               case 'complete':
+                console.log('🎉 Complete event received');
                 setIsStreaming(false);
                 setIsLoading(false);
                 options.onComplete?.();
@@ -134,12 +135,23 @@ export function useAgentAPI() {
           if (!dataStr) continue;
           try {
             const event: AIEvent = JSON.parse(dataStr);
-            if (event.type === 'complete') options.onComplete?.();
+            if (event.type === 'complete') {
+              console.log('🎉 Complete event received from buffer');
+              setIsStreaming(false);
+              setIsLoading(false);
+              options.onComplete?.();
+              options.onGenerationEvent?.({ type: 'complete', message: 'Changes applied' });
+            }
           } catch (e) {
             console.error('Error parsing final event:', e);
           }
         }
       }
+
+      // Force complete si le stream se termine sans événement complete
+      console.log('🔚 Stream ended, forcing completion');
+      setIsStreaming(false);
+      setIsLoading(false);
 
     } catch (error: any) {
       if (error.name !== 'AbortError') {
