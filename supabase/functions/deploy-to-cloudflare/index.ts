@@ -163,13 +163,12 @@ serve(async (req) => {
           fileBuffer = encoder.encode(file.content).buffer;
         }
         
-        // Calculer le vrai SHA-256 hash
+        // Calculer le vrai SHA-256 hash (64 caractères hex)
         const hashBuffer = await crypto.subtle.digest("SHA-256", fileBuffer);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const fileHash = hashArray
           .map(b => b.toString(16).padStart(2, '0'))
-          .join('')
-          .substring(0, 32); // Tronquer à 32 caractères hex
+          .join(''); // Hash SHA-256 complet (64 caractères)
         
         console.log(`  ✅ ${fileName} -> hash: ${fileHash}`);
         
