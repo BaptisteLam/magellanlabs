@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, X } from 'lucide-react';
+import { ArrowUp, X } from 'lucide-react';
 
 interface ElementInfo {
   tagName: string;
@@ -100,19 +100,18 @@ export function FloatingEditBar({ isOpen, onClose, elementInfo, onModify }: Floa
               onClose();
             }
           }}
-          placeholder="Comment modifier cet élément ?"
+          placeholder="modifier cet element..."
           className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground"
         />
         <button
           onClick={handleSubmit}
           disabled={!prompt.trim()}
-          className="flex items-center justify-center w-8 h-8 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-9 h-9 rounded-full p-0 transition-all hover:scale-105 disabled:opacity-50 border-0 flex items-center justify-center"
           style={{ 
-            backgroundColor: '#03A5C0',
-            color: 'white'
+            backgroundColor: '#03A5C0'
           }}
         >
-          <Send className="w-4 h-4" />
+          <ArrowUp className="w-4 h-4 text-white" />
         </button>
       </div>
     </>
