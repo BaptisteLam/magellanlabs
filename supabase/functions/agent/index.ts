@@ -79,6 +79,15 @@ RÈGLES DE CODE - TRÈS IMPORTANT ET NON NÉGOCIABLE:
   4. **MINIMUM 3 PAGES SUPPLÉMENTAIRES** (about.html, services.html, contact.html ou équivalent selon le contexte)
   5. Autres fichiers .html si nécessaire (pages supplémentaires)
 
+**INTERDICTION ABSOLUE - CSS/JS INLINE**:
+- NE JAMAIS mettre de balise <style> dans le HTML
+- NE JAMAIS mettre de balise <script> avec du code dans le HTML (sauf <script src="script.js"></script> pour lier le fichier)
+- TOUT le CSS doit être EXCLUSIVEMENT dans le fichier styles.css séparé
+- TOUT le JavaScript doit être EXCLUSIVEMENT dans le fichier script.js séparé
+- Le HTML doit UNIQUEMENT contenir la structure sémantique et les liens vers les fichiers externes
+- Utilise <link rel="stylesheet" href="styles.css"> pour le CSS
+- Utilise <script src="script.js"></script> pour le JavaScript
+
 **CRITIQUE - PAGES MULTIPLES**:
 - Lors de la PREMIÈRE GÉNÉRATION d'un site web, tu DOIS créer AU MINIMUM 4 pages HTML :
   * index.html (page d'accueil)
