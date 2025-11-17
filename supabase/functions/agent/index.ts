@@ -89,6 +89,7 @@ QUALITÉ DU CODE:
 - CSS moderne (flexbox, grid, variables CSS, animations, transitions)
 - JavaScript vanilla moderne (ES6+, async/await, fetch API, DOM manipulation)
 - Design responsive et mobile-first
+- **IMPORTANT**: N'utilise JAMAIS de smileys/emojis dans le code HTML/CSS/JS. Utilise toujours des icônes SVG ou des bibliothèques d'icônes (Font Awesome, Lucide, etc.)
 - NE JAMAIS générer de boutons flottants ou en position fixe sauf si demandé
 - Code propre, fonctionnel et sans widgets inutiles
 - Pas de markdown, pas de backticks, juste du JSON valide NDJSON
@@ -141,6 +142,7 @@ RÈGLES DE CODE - TRÈS IMPORTANT:
 - NE JAMAIS générer de boutons scroll to top ou retour en haut
 - NE PAS ajouter d éléments UI superposés sauf si explicitement demandé
 - Code propre, fonctionnel et sans widgets inutiles
+- **IMPORTANT**: N'utilise JAMAIS de smileys/emojis dans le code. Utilise toujours des icônes de lucide-react à la place
 - Pas de markdown, pas de backticks, juste du JSON valide NDJSON
 
 EXEMPLE DE RÉPONSE POUR NOUVEAU PROJET:
