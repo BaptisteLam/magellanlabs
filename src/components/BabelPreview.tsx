@@ -74,11 +74,13 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
       const result = transform(content, {
         filename: path,
         presets: [
+          ['env', { 
+            modules: 'commonjs',
+            loose: true,
+            targets: { esmodules: false }
+          }],
           ['react', { runtime: 'classic' }],
           'typescript'
-        ],
-        plugins: [
-          ['transform-modules-commonjs', { loose: true }]
         ],
         retainLines: false,
       });
@@ -141,101 +143,15 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
         }
         
         ${Object.entries(transpiledModules).map(([path, code]) => {
-          // Remplacer les imports par des require()
+          // Babel avec preset 'env' devrait avoir transformé tous les imports
+          // Mais on garde une sécurité pour les imports externes
           let processedCode = code;
           
-          // Remplacer tous les types d'imports React
+          // Remplacer uniquement les imports externes (node_modules) qui pourraient rester
+          // Les imports relatifs devraient déjà être transformés par Babel
           processedCode = processedCode.replace(
-            /import\s+(?:React(?:\s*,\s*\{[^}]*\})?|\{[^}]*\})\s+from\s+['"]react['"]/g,
-            'const React = require("react")'
-          );
-          
-          // Remplacer import * as React
-          processedCode = processedCode.replace(
-            /import\s+\*\s+as\s+React\s+from\s+['"]react['"]/g,
-            'const React = require("react")'
-          );
-          
-          // Remplacer import ReactDOM
-          processedCode = processedCode.replace(
-            /import\s+ReactDOM\s+from\s+['"]react-dom['"]/g,
-            'const ReactDOM = require("react-dom")'
-          );
-          
-          // Remplacer import { createRoot } from 'react-dom/client'
-          processedCode = processedCode.replace(
-            /import\s+\{([^}]+)\}\s+from\s+['"]react-dom\/client['"]/g,
-            'const { $1 } = require("react-dom/client")'
-          );
-          
-          // Remplacer les imports relatifs
-          processedCode = processedCode.replace(
-            /import\s+(?:\{([^}]+)\}|(\w+))\s+from\s+['"](\..+?)['"]/g,
-            (match, named, defaultImport, importPath) => {
-              // Résoudre le chemin relatif
-              const fromParts = path.split('/').slice(0, -1);
-              const toParts = importPath.split('/');
-              
-              for (const part of toParts) {
-                if (part === '..') fromParts.pop();
-                else if (part !== '.') fromParts.push(part);
-              }
-              
-              let resolved = fromParts.join('/');
-              
-              // Essayer différentes extensions
-              const extensions = ['', '.tsx', '.ts', '.jsx', '.js'];
-              for (const ext of extensions) {
-                if (transpiledModules[resolved + ext]) {
-                  resolved = resolved + ext;
-                  break;
-                }
-              }
-              
-              if (named) {
-                return `const { ${named} } = require("${resolved}")`;
-              } else {
-                return `const ${defaultImport} = require("${resolved}")`;
-              }
-            }
-          );
-          
-          // Remplacer les imports de CSS (les ignorer)
-          processedCode = processedCode.replace(
-            /import\s+['"][^'"]+\.css['"]/g,
-            '// CSS import removed'
-          );
-          
-          // Remplacer les imports d'images par les assets embarqués
-          processedCode = processedCode.replace(
-            /import\s+(\w+)\s+from\s+['"]([^'"]+\.(png|jpg|jpeg|gif|svg|webp|ico))['"]/gi,
-            (match, varName, imagePath) => {
-              // Résoudre le chemin relatif
-              const fromParts = path.split('/').slice(0, -1);
-              const toParts = imagePath.split('/');
-              
-              for (const part of toParts) {
-                if (part === '..') fromParts.pop();
-                else if (part !== '.') fromParts.push(part);
-              }
-              
-              const resolved = fromParts.join('/');
-              return `const ${varName} = require("${resolved}")`;
-            }
-          );
-          
-          // Gérer les exports
-          processedCode = processedCode.replace(
-            /export\s+default\s+/g,
-            'module.exports = '
-          );
-          
-          processedCode = processedCode.replace(
-            /export\s+\{([^}]+)\}/g,
-            (match, exports) => {
-              const exportList = exports.split(',').map(e => e.trim());
-              return exportList.map(exp => `module.exports.${exp} = ${exp};`).join('\\n');
-            }
+            /import\s+.*?from\s+['"](?!\.)[^'"]+['"]/g,
+            '// External import handled by require system'
           );
           
           return `modules["${path}"] = function(module, exports, require) {
