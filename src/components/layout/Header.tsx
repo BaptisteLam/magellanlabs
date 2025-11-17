@@ -96,7 +96,7 @@ const Header = () => {
                   <Button 
                     variant="ghost" 
                     className="relative h-10 w-10 rounded-full hover:bg-accent"
-                    onClick={() => openSettings('profile')}
+                    onClick={() => navigate('/dashboard?section=profile')}
                   >
                     <Avatar className="h-10 w-10">
                       <AvatarImage src="" alt={userEmail} />

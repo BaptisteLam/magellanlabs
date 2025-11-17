@@ -1,6 +1,5 @@
-import { FolderOpen, Settings, User, CreditCard, Plug, LogOut } from 'lucide-react';
+import { FolderOpen, Settings, User, CreditCard, Plug, LogOut, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useSettingsStore } from '@/stores/settingsStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
@@ -16,8 +15,12 @@ const menuItems: { id: SettingsSection; label: string; icon: typeof FolderOpen }
   { id: 'integrations', label: 'Intégrations', icon: Plug },
 ];
 
-export function SettingsSidebar() {
-  const { currentSection, setSection, closeSettings } = useSettingsStore();
+interface SettingsSidebarProps {
+  currentSection: SettingsSection;
+  setSection: (section: SettingsSection) => void;
+}
+
+export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarProps) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -29,12 +32,15 @@ export function SettingsSidebar() {
         description: 'Impossible de se déconnecter',
       });
     } else {
-      closeSettings();
       navigate('/');
       toast({
         title: 'Déconnexion réussie',
       });
     }
+  };
+
+  const handleHome = () => {
+    navigate('/');
   };
 
   return (
@@ -69,7 +75,15 @@ export function SettingsSidebar() {
         </nav>
       </ScrollArea>
 
-      <div className="p-3 border-t border-border/50 flex-shrink-0">
+      <div className="p-3 border-t border-border/50 flex-shrink-0 space-y-2">
+        <button
+          onClick={handleHome}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-[8px] transition-all text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        >
+          <Home className="h-5 w-5" />
+          <span>Accueil</span>
+        </button>
+        
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-[8px] transition-all text-sm font-medium text-destructive hover:bg-destructive/10"
