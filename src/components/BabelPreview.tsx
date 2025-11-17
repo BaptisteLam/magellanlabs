@@ -146,7 +146,7 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
             /import\s+React\s*,\s*\{\s*([^}]+)\}\s*from\s+['"]react['"]/g,
             (match, hooks) => {
               const hookList = hooks.split(',').map(h => h.trim());
-              return \`const React = require("react");\\nconst { \${hookList.join(', ')} } = React;\`;
+              return 'const React = require("react");\\nconst { ' + hookList.join(', ') + ' } = React;';
             }
           );
 
@@ -155,7 +155,7 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
             /import\s+\{\s*([^}]+)\}\s*from\s+['"]react['"]/g,
             (match, hooks) => {
               const hookList = hooks.split(',').map(h => h.trim());
-              return \`const React = require("react");\\nconst { \${hookList.join(', ')} } = React;\`;
+              return 'const React = require("react");\\nconst { ' + hookList.join(', ') + ' } = React;';
             }
           );
 
@@ -189,7 +189,7 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
             (match, imports) => {
               // Pour les bibliothèques externes, créer des mocks vides
               const importList = imports.split(',').map(i => i.trim());
-              return importList.map(imp => \`const \${imp} = () => null; // Mock external import\`).join('\\n');
+              return importList.map(imp => 'const ' + imp + ' = () => null; // Mock external import').join('\\n');
             }
           );
 
@@ -197,7 +197,7 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
           processedCode = processedCode.replace(
             /import\s+(\w+)\s+from\s+['"](?!react|\.)[^'"]+['"]/g,
             (match, varName) => {
-              return \`const \${varName} = {}; // Mock external import\`;
+              return 'const ' + varName + ' = {}; // Mock external import';
             }
           );
 
@@ -226,9 +226,9 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
               }
 
               if (named) {
-                return \`const { \${named} } = require("\${resolved}")\`;
+                return 'const { ' + named + ' } = require("' + resolved + '")';
               } else {
-                return \`const \${defaultImport} = require("\${resolved}")\`;
+                return 'const ' + defaultImport + ' = require("' + resolved + '")';
               }
             }
           );
@@ -253,7 +253,7 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
               }
 
               const resolved = fromParts.join('/');
-              return \`const \${varName} = require("\${resolved}")\`;
+              return 'const ' + varName + ' = require("' + resolved + '")';
             }
           );
 
@@ -267,7 +267,7 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
             /export\s+\{([^}]+)\}/g,
             (match, exports) => {
               const exportList = exports.split(',').map(e => e.trim());
-              return exportList.map(exp => \`module.exports.\${exp} = \${exp};\`).join('\\n');
+              return exportList.map(exp => 'module.exports.' + exp + ' = ' + exp + ';').join('\\n');
             }
           );
           
