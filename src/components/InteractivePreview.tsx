@@ -51,14 +51,20 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
     }
     
     // Vérifier si on a un main.tsx qui importe App.tsx mais pas de App.tsx
-    const hasMainTsx = sandpackFiles['/src/main.tsx'] || sandpackFiles['/main.tsx'];
+    const mainTsxPath = sandpackFiles['/src/main.tsx'] ? '/src/main.tsx' : 
+                        sandpackFiles['/main.tsx'] ? '/main.tsx' : null;
     const hasAppTsx = sandpackFiles['/src/App.tsx'] || sandpackFiles['/App.tsx'];
     
-    if (hasMainTsx && !hasAppTsx) {
+    if (mainTsxPath && !hasAppTsx) {
       console.log('⚠️ main.tsx détecté sans App.tsx - Création automatique de App.tsx');
       
-      // Créer un App.tsx par défaut
-      sandpackFiles['/src/App.tsx'] = {
+      // Déterminer le chemin de App.tsx en fonction de l'emplacement de main.tsx
+      const appTsxPath = mainTsxPath === '/src/main.tsx' ? '/src/App.tsx' : '/App.tsx';
+      
+      console.log(`📁 Création de ${appTsxPath} pour correspondre à ${mainTsxPath}`);
+      
+      // Créer un App.tsx par défaut au même niveau que main.tsx
+      sandpackFiles[appTsxPath] = {
         code: `import { useState } from 'react'
 
 function App() {
