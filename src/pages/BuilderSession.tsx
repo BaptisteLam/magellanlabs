@@ -1427,8 +1427,8 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                           setAiEvents([]);
                           setGenerationEvents([]);
 
-                          const projectContext = projectType === 'website' 
-                            ? 'Generate a static website with HTML, CSS, and vanilla JavaScript files only. No React, no JSX. Use simple HTML structure.'
+                          const projectContext = projectType === 'website'
+                            ? 'CRITICAL: Generate a static website with SEPARATE files: index.html (with <link> and <script> tags ONLY, NO inline CSS/JS), styles.css (all CSS), and script.js (all JavaScript). Files with inline <style> or <script> tags will be REJECTED. Use only vanilla HTML, CSS, and JavaScript - NO React, NO JSX, NO frameworks.'
                             : projectType === 'webapp'
                             ? 'Generate a React web application with TypeScript/JSX. Use React components and modern web technologies.'
                             : 'Generate a mobile-optimized React application with responsive design for mobile devices.';
@@ -1488,9 +1488,55 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                                 console.log('✅ Build complete');
                                 setAiEvents(prev => [...prev, { type: 'complete' }]);
                                 setGenerationEvents(prev => [...prev, { type: 'complete', message: 'Changes applied' }]);
-                                
+
+                                // VALIDATION : Vérifier et extraire CSS/JS si inline
+                                const hasHtml = updatedFiles['index.html'] !== undefined;
+                                const hasCss = updatedFiles['styles.css'] !== undefined;
+                                const hasJs = updatedFiles['script.js'] !== undefined;
+
+                                if (hasHtml && !hasCss && !hasJs) {
+                                  // L'agent a généré du HTML inline, extraire CSS et JS
+                                  console.warn('⚠️ CSS/JS inline détecté, extraction automatique...');
+
+                                  const html = updatedFiles['index.html'];
+
+                                  // Extraire CSS
+                                  let extractedCss = '';
+                                  const styleMatches = html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+                                  for (const match of styleMatches) {
+                                    extractedCss += match[1] + '\n';
+                                  }
+
+                                  // Extraire JS
+                                  let extractedJs = '';
+                                  const scriptMatches = html.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/gi);
+                                  for (const match of scriptMatches) {
+                                    extractedJs += match[1] + '\n';
+                                  }
+
+                                  // Nettoyer le HTML
+                                  let cleanHtml = html
+                                    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                                    .replace(/<script(?![^>]*src=)[^>]*>[\s\S]*?<\/script>/gi, '');
+
+                                  // Ajouter les liens si pas déjà présents
+                                  if (!cleanHtml.includes('styles.css')) {
+                                    cleanHtml = cleanHtml.replace('</head>', '  <link rel="stylesheet" href="styles.css">\n</head>');
+                                  }
+                                  if (!cleanHtml.includes('script.js')) {
+                                    cleanHtml = cleanHtml.replace('</body>', '  <script src="script.js"></script>\n</body>');
+                                  }
+
+                                  // Mettre à jour updatedFiles
+                                  updatedFiles['index.html'] = cleanHtml;
+                                  updatedFiles['styles.css'] = extractedCss || '/* Styles générés automatiquement */\n* { margin: 0; padding: 0; box-sizing: border-box; }';
+                                  updatedFiles['script.js'] = extractedJs || '// Scripts générés automatiquement\ndocument.addEventListener("DOMContentLoaded", () => {\n  console.log("Site chargé");\n});';
+
+                                  console.log('✅ Fichiers CSS et JS extraits et séparés automatiquement');
+                                }
+
                                 setProjectFiles({ ...updatedFiles });
-                                
+
                                 await supabase
                                   .from('build_sessions')
                                   .update({

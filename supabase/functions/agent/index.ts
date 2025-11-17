@@ -78,6 +78,25 @@ RÈGLES DE CODE - TRÈS IMPORTANT:
   4. **MINIMUM 3 PAGES SUPPLÉMENTAIRES** (about.html, services.html, contact.html ou équivalent selon le contexte)
   5. Autres fichiers .html si nécessaire (pages supplémentaires)
 
+**INTERDICTION ABSOLUE - FICHIERS SÉPARÉS OBLIGATOIRES** :
+- ❌ IL EST STRICTEMENT INTERDIT de mettre des balises <style> dans le HTML
+- ❌ IL EST STRICTEMENT INTERDIT de mettre des balises <script> avec du code inline dans le HTML
+- ❌ IL EST STRICTEMENT INTERDIT d'utiliser l'attribut style="" sur les éléments HTML
+- ✅ Chaque fichier HTML doit UNIQUEMENT contenir dans le <head> :
+  <link rel="stylesheet" href="styles.css">
+- ✅ Chaque fichier HTML doit UNIQUEMENT contenir avant </body> :
+  <script src="script.js"></script>
+- ✅ 100% du CSS doit être dans le fichier styles.css (fichier séparé)
+- ✅ 100% du JavaScript doit être dans le fichier script.js (fichier séparé)
+
+**VALIDATION OBLIGATOIRE** :
+Pour CHAQUE nouveau site, tu DOIS envoyer AU MINIMUM 3 événements code_update :
+1. {"type":"code_update","path":"index.html","code":"..."}
+2. {"type":"code_update","path":"styles.css","code":"..."}
+3. {"type":"code_update","path":"script.js","code":"..."}
+Si tu n'envoies pas ces 3 fichiers séparés minimum, le site sera REJETÉ.
+Le HTML qui contient <style> ou <script> inline sera AUTOMATIQUEMENT REJETÉ.
+
 **CRITIQUE - PAGES MULTIPLES**:
 - Lors de la PREMIÈRE GÉNÉRATION d'un site web, tu DOIS créer AU MINIMUM 4 pages HTML :
   * index.html (page d'accueil)
@@ -122,16 +141,42 @@ ANIMATIONS ET DESIGN:
   * Transitions douces pour les changements de couleur
   * Parallax léger sur les images de fond si pertinent
 
-EXEMPLE DE RÉPONSE POUR NOUVEAU SITE WEB:
+**EXEMPLE OBLIGATOIRE - SUIS EXACTEMENT CE FORMAT** :
+TU DOIS ABSOLUMENT suivre ce format EXACT. Aucune autre façon de faire n'est acceptée.
+
 {"type":"message","content":"Je vais créer un site web statique en HTML/CSS/JavaScript..."}
 {"type":"status","content":"Task: Création de la structure HTML"}
-{"type":"code_update","path":"index.html","code":"<!DOCTYPE html><html>...code complet...</html>"}
+{"type":"code_update","path":"index.html","code":"<!DOCTYPE html>
+<html lang='fr'>
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>Mon Site</title>
+  <link rel='stylesheet' href='styles.css'>
+</head>
+<body>
+  <header><h1>Bienvenue</h1></header>
+  <main><p>Contenu principal ici</p></main>
+  <footer><p>&copy; 2025</p></footer>
+  <script src='script.js'></script>
+</body>
+</html>"}
 {"type":"status","content":"Task: Styles CSS"}
-{"type":"code_update","path":"styles.css","code":"* { margin: 0; padding: 0; }..."}
+{"type":"code_update","path":"styles.css","code":"* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Arial, sans-serif; line-height: 1.6; }
+header { background: #333; color: white; padding: 2rem; }
+main { padding: 2rem; }
+footer { background: #333; color: white; padding: 1rem; text-align: center; }"}
 {"type":"status","content":"Task: JavaScript"}
-{"type":"code_update","path":"script.js","code":"document.addEventListener('DOMContentLoaded', () => {...})"}
+{"type":"code_update","path":"script.js","code":"document.addEventListener('DOMContentLoaded', () => {
+  console.log('Site chargé avec succès');
+  // Ton code JavaScript ici
+});"}
 {"type":"message","content":"Site web créé avec succès !"}
-{"type":"complete"}` : `Tu es un expert développeur React/TypeScript qui génère et modifie du code pour des sites web.
+{"type":"complete"}
+
+⚠️ CRITIQUE : Ne dévie JAMAIS de ce format. 3 fichiers séparés = OBLIGATOIRE.
+Tout HTML avec <style> ou <script> inline sera REJETÉ.` : `Tu es un expert développeur React/TypeScript qui génère et modifie du code pour des sites web.
 
 PROJET ACTUEL:
 ${projectContext || 'Projet vide - première génération'}
