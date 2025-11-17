@@ -22,8 +22,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import Analytics from "@/components/Analytics";
 import { AiDiffService } from "@/services/aiDiffService";
 import { useAgentAPI } from "@/hooks/useAgentAPI";
-import type { AIEvent } from '@/types/agent';
+import type { AIEvent, GenerationEvent } from '@/types/agent';
 import AiTaskList from '@/components/chat/AiTaskList';
+import { SimpleAiEvents } from '@/components/chat/SimpleAiEvents';
 import html2canvas from 'html2canvas';
 
 interface Message {
@@ -1307,63 +1308,10 @@ export default function BuilderSession() {
                 </div>
               ))}
 
-
-              {/* Affichage des événements de génération (pensée) - seulement pour la première génération */}
-              {generationEvents.length > 0 && agent.isLoading && isInitialGeneration && (
+              {/* Affichage des événements de génération simples pour les reprompts */}
+              {generationEvents.length > 0 && agent.isLoading && !isInitialGeneration && (
                 <div className="flex flex-col space-y-2 mb-4 px-4">
-                  {generationEvents.map((event, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-muted-foreground text-sm">
-                      {event.type === 'thought' && event.duration !== undefined && event.duration > 0 && (
-                        <div className="flex items-center gap-2">
-                          <Lightbulb className="w-4 h-4 text-[#03A5C0]" />
-                          <span>Thought for {event.duration}s</span>
-                        </div>
-                      )}
-                      
-                      {event.type === 'read' && (
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-[#03A5C0]" />
-                          <span>Read</span>
-                          <span className="px-2 py-0.5 rounded text-xs" style={{
-                            backgroundColor: isDark ? '#181818' : '#f1f5f9',
-                            color: isDark ? '#94a3b8' : '#64748b'
-                          }}>
-                            {event.message}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {event.type === 'edit' && (
-                        <div className="flex items-center gap-2">
-                          <Edit className="w-4 h-4 text-[#03A5C0]" />
-                          <span>Edited</span>
-                          <span className="px-2 py-0.5 rounded text-xs" style={{
-                            backgroundColor: isDark ? '#181818' : '#f1f5f9',
-                            color: isDark ? '#94a3b8' : '#64748b'
-                          }}>
-                            {event.file}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {event.type === 'complete' && (
-                        <div className="flex items-center gap-2 text-green-500">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span>{event.message}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {/* Animation de pensée en cours */}
-                  {!generationEvents.some(e => e.type === 'complete') && (
-                    <div className="flex items-center gap-2 text-muted-foreground text-sm animate-pulse">
-                      <Loader className="w-4 h-4 animate-spin text-[#03A5C0]" />
-                      <span>Thinking...</span>
-                    </div>
-                  )}
+                  <SimpleAiEvents events={generationEvents} isDark={isDark} />
                 </div>
               )}
 
@@ -1387,8 +1335,8 @@ export default function BuilderSession() {
                 </div>
               )}
 
-              {/* AI Task List - Seulement pour la première génération */}
-              {aiEvents.length > 0 && isInitialGeneration && (
+              {/* AI Task List - Seulement pour la toute première génération */}
+              {aiEvents.length > 0 && isInitialGeneration && Object.keys(projectFiles).length === 0 && (
                 <div className="px-4 pb-4">
                   <AiTaskList events={aiEvents} />
                 </div>
@@ -1443,7 +1391,7 @@ export default function BuilderSession() {
               {previewMode === 'mobile' ? (
                 <div className={`w-[375px] h-full flex flex-col shadow-2xl rounded-3xl border overflow-hidden`} style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff', borderColor: isDark ? 'rgb(51, 65, 85)' : '#ffffff' }}>
                   {viewMode === 'preview' ? (
-                    isInitialGeneration ? (
+                    isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
                       <GeneratingPreview />
                     ) : (
                       <InteractivePreview 
@@ -1486,7 +1434,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
               ) : (
                 <>
                   {viewMode === 'preview' ? (
-                    isInitialGeneration ? (
+                    isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
                       <GeneratingPreview />
                     ) : (
                       <InteractivePreview 
