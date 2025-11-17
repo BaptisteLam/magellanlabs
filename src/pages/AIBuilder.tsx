@@ -10,6 +10,7 @@ const AIBuilder = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
+  const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('website');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -43,6 +44,7 @@ const AIBuilder = () => {
           user_id: user?.id || null,
           messages: [{ role: 'user', content: inputValue }],
           project_files: [],
+          project_type: projectType,
         })
         .select()
         .single();
@@ -109,6 +111,8 @@ const AIBuilder = () => {
             showPlaceholderAnimation={true}
             attachedFiles={attachedFiles}
             onRemoveFile={removeFile}
+            projectType={projectType}
+            onProjectTypeChange={setProjectType}
             onFileSelect={async (files) => {
               const newFiles: Array<{ name: string; base64: string; type: string }> = [];
               for (let i = 0; i < files.length; i++) {
