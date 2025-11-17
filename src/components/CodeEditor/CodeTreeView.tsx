@@ -124,21 +124,21 @@ export function CodeTreeView({ files, selectedFile, onFileSelect }: CodeTreeView
       return (
         <div key={node.path}>
           <div
-            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 cursor-pointer select-none"
+            className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted cursor-pointer select-none"
             style={{ paddingLeft: `${depth * 12 + 8}px` }}
             onClick={() => toggleFolder(node.path)}
           >
             {isExpanded ? (
-              <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
             ) : (
-              <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
             )}
             {isExpanded ? (
-              <FolderOpen className="w-4 h-4 text-blue-400" />
+              <FolderOpen className="w-4 h-4 text-primary" />
             ) : (
-              <Folder className="w-4 h-4 text-blue-400" />
+              <Folder className="w-4 h-4 text-primary" />
             )}
-            <span className="text-sm text-slate-700 font-medium">{node.name}</span>
+            <span className="text-sm text-foreground font-medium">{node.name}</span>
           </div>
           {isExpanded && node.children && (
             <div>
@@ -152,14 +152,14 @@ export function CodeTreeView({ files, selectedFile, onFileSelect }: CodeTreeView
     return (
       <div
         key={node.path}
-        className={`flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 cursor-pointer select-none border-l-2 transition-colors ${
-          isSelected ? 'bg-blue-50 border-l-blue-500' : 'border-l-transparent'
+        className={`flex items-center gap-2 px-2 py-1.5 hover:bg-muted cursor-pointer select-none border-l-2 transition-colors ${
+          isSelected ? 'bg-accent border-l-primary' : 'border-l-transparent'
         }`}
         style={{ paddingLeft: `${depth * 12 + 24}px` }}
         onClick={() => onFileSelect(node.path, files[node.path])}
       >
         {getFileIcon(node.extension)}
-        <span className={`text-sm ${isSelected ? 'text-blue-700 font-medium' : 'text-slate-600'}`}>
+        <span className={`text-sm ${isSelected ? 'text-accent-foreground font-medium' : 'text-muted-foreground'}`}>
           {node.name}
         </span>
       </div>
