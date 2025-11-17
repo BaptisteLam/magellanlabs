@@ -50,6 +50,40 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
       };
     }
     
+    // Vérifier si on a un main.tsx qui importe App.tsx mais pas de App.tsx
+    const hasMainTsx = sandpackFiles['/src/main.tsx'] || sandpackFiles['/main.tsx'];
+    const hasAppTsx = sandpackFiles['/src/App.tsx'] || sandpackFiles['/App.tsx'];
+    
+    if (hasMainTsx && !hasAppTsx) {
+      console.log('⚠️ main.tsx détecté sans App.tsx - Création automatique de App.tsx');
+      
+      // Créer un App.tsx par défaut
+      sandpackFiles['/src/App.tsx'] = {
+        code: `import { useState } from 'react'
+
+function App() {
+  const [count, setCount] = useState(0)
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold mb-4">Hello World</h1>
+        <button 
+          onClick={() => setCount((count) => count + 1)}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-full"
+        >
+          count is {count}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default App
+`
+      };
+    }
+    
     // Ajouter package.json si absent OU le mettre à jour
     const existingPackageJson = sandpackFiles['/package.json'];
     let packageJsonContent = {
