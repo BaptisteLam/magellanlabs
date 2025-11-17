@@ -23,118 +23,14 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
-  // Détecter si c'est un projet HTML pur
-  const isHtmlProject = useMemo(() => {
-    return Object.keys(projectFiles).some(path => 
-      path.endsWith('index.html') && 
-      !Object.keys(projectFiles).some(p => p.endsWith('.tsx') || p.endsWith('.jsx'))
-    );
+  // Normaliser les fichiers
+  const normalizedFiles = useMemo(() => {
+    const normalized: Record<string, string> = {};
+    Object.entries(projectFiles).forEach(([path, content]) => {
+      normalized[path] = content;
+    });
+    return normalized;
   }, [projectFiles]);
-
-  // Convertir au format Sandpack
-  const convertToSandpackFormat = (files: Record<string, string>) => {
-    const sandpackFiles: Record<string, { code: string }> = {};
-    
-    for (const [path, content] of Object.entries(files)) {
-      // Normaliser le chemin pour Sandpack
-      let sandpackPath = path;
-      
-      // Ajouter "/" au début si absent
-      if (!sandpackPath.startsWith('/')) {
-        sandpackPath = '/' + sandpackPath;
-      }
-      
-      // Format Sandpack : { code: string }
-      sandpackFiles[sandpackPath] = {
-        code: content
-      };
-    }
-    
-    // Vérifier si on a un main.tsx qui importe App.tsx mais pas de App.tsx
-    const mainTsxPath = sandpackFiles['/src/main.tsx'] ? '/src/main.tsx' : 
-                        sandpackFiles['/main.tsx'] ? '/main.tsx' : null;
-    const hasAppTsx = sandpackFiles['/src/App.tsx'] || sandpackFiles['/App.tsx'];
-    
-    if (mainTsxPath && !hasAppTsx) {
-      console.log('⚠️ main.tsx détecté sans App.tsx - Création automatique de App.tsx');
-      
-      // Déterminer le chemin de App.tsx en fonction de l'emplacement de main.tsx
-      const appTsxPath = mainTsxPath === '/src/main.tsx' ? '/src/App.tsx' : '/App.tsx';
-      
-      console.log(`📁 Création de ${appTsxPath} pour correspondre à ${mainTsxPath}`);
-      
-      // Créer un App.tsx par défaut au même niveau que main.tsx
-      sandpackFiles[appTsxPath] = {
-        code: `import { useState } from 'react'
-
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Hello World</h1>
-        <button 
-          onClick={() => setCount((count) => count + 1)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-full"
-        >
-          count is {count}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-export default App
-`
-      };
-    }
-    
-    // Ajouter package.json si absent OU le mettre à jour
-    const existingPackageJson = sandpackFiles['/package.json'];
-    let packageJsonContent = {
-      name: 'generated-app',
-      version: '1.0.0',
-      dependencies: {
-        'react': '^18.3.1',
-        'react-dom': '^18.3.1',
-        'lucide-react': '^0.263.1'
-      }
-    };
-
-    // Si package.json existe déjà, le parser et ajouter lucide-react
-    if (existingPackageJson) {
-      try {
-        const parsed = JSON.parse(existingPackageJson.code);
-        packageJsonContent = {
-          ...parsed,
-          dependencies: {
-            ...parsed.dependencies,
-            'lucide-react': '^0.263.1'
-          }
-        };
-      } catch (e) {
-        console.error('Error parsing package.json:', e);
-      }
-    }
-
-    sandpackFiles['/package.json'] = {
-      code: JSON.stringify(packageJsonContent, null, 2)
-    };
-    
-    // S'assurer qu'il y a un point d'entrée
-    if (!sandpackFiles['/index.tsx'] && !sandpackFiles['/App.tsx']) {
-      console.error('❌ Aucun point d\'entrée trouvé (index.tsx ou App.tsx)');
-    }
-    
-    console.log('✅ Sandpack files:', Object.keys(sandpackFiles));
-    return sandpackFiles;
-  };
-
-  const sandpackFiles = useMemo(() => 
-    convertToSandpackFormat(projectFiles), 
-    [projectFiles]
-  );
 
   // Gérer la sélection d'élément
   const handleElementSelect = (elementInfo: ElementInfo) => {
@@ -164,7 +60,7 @@ export default App
 
       {/* Preview Hybride (React ou HTML statique) */}
       <HybridPreview 
-        projectFiles={isHtmlProject ? projectFiles : sandpackFiles} 
+        projectFiles={normalizedFiles} 
         isDark={isDark}
         inspectMode={inspectMode}
         onElementSelect={handleElementSelect}
