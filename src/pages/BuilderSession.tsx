@@ -1392,8 +1392,127 @@ Instruction: ${prompt}
 
 Ne modifie que cet élément spécifique, pas le reste du code.`;
                           
-                          setInputValue(contextualPrompt);
-                          setTimeout(() => handleSubmit(), 100);
+                          // Envoyer directement à Claude sans afficher dans le chat
+                          if (!user) {
+                            navigate('/auth');
+                            return;
+                          }
+
+                          const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
+                            const keywords = prompt.toLowerCase().split(/\s+/);
+                            const scored = Object.entries(files).map(([path, content]) => {
+                              let score = 0;
+                              keywords.forEach(k => {
+                                if (path.toLowerCase().includes(k)) score += 50;
+                                if (content.toLowerCase().includes(k)) score += 10;
+                              });
+                              if (path.includes('index.html') || path.includes('App.tsx')) score += 100;
+                              return { path, content, score };
+                            });
+                            
+                            return scored
+                              .sort((a, b) => b.score - a.score)
+                              .slice(0, 5);
+                          };
+
+                          const relevantFilesArray = selectRelevantFiles(contextualPrompt, projectFiles);
+                          const chatHistory = messages.slice(-3).map(m => ({
+                            role: m.role,
+                            content: typeof m.content === 'string' ? m.content : '[message multimédia]'
+                          }));
+
+                          let assistantMessage = '';
+                          const updatedFiles = { ...projectFiles };
+
+                          setAiEvents([]);
+                          setGenerationEvents([]);
+
+                          const projectContext = projectType === 'website' 
+                            ? 'Generate a static website with HTML, CSS, and vanilla JavaScript files only. No React, no JSX. Use simple HTML structure.'
+                            : projectType === 'webapp'
+                            ? 'Generate a React web application with TypeScript/JSX. Use React components and modern web technologies.'
+                            : 'Generate a mobile-optimized React application with responsive design for mobile devices.';
+
+                          await agent.callAgent(
+                            `${projectContext}\n\n${contextualPrompt}`,
+                            projectFiles,
+                            relevantFilesArray,
+                            chatHistory,
+                            sessionId!,
+                            projectType,
+                            {
+                              onStatus: (status) => {
+                                console.log('📊 Status:', status);
+                                setAiEvents(prev => [...prev, { type: 'status', content: status }]);
+                              },
+                              onMessage: (message) => {
+                                assistantMessage += message;
+                                setMessages(prev => {
+                                  const withoutLastAssistant = prev.filter((m, i) => 
+                                    !(i === prev.length - 1 && m.role === 'assistant')
+                                  );
+                                  return [...withoutLastAssistant, { role: 'assistant' as const, content: assistantMessage }];
+                                });
+                              },
+                              onLog: (log) => {
+                                console.log('📝 Log:', log);
+                                setAiEvents(prev => [...prev, { type: 'log', content: log }]);
+                              },
+                              onIntent: (intent) => {
+                                console.log('🎯 Intent:', intent);
+                                setAiEvents(prev => [...prev, intent]);
+                              },
+                              onGenerationEvent: (event) => {
+                                console.log('🔄 Generation:', event);
+                                setGenerationEvents(prev => [...prev, event]);
+                              },
+                              onCodeUpdate: (path, code) => {
+                                console.log('🔄 Hot update:', path);
+                                setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
+                                updatedFiles[path] = code;
+                                
+                                if (!isInitialGenerationRef.current) {
+                                  setProjectFiles(prev => ({ ...prev, [path]: code }));
+                                }
+                                
+                                if (path === 'index.html') {
+                                  setGeneratedHtml(code);
+                                }
+                                
+                                if (selectedFile === path || !selectedFile) {
+                                  setSelectedFile(path);
+                                  setSelectedFileContent(code);
+                                }
+                              },
+                              onComplete: async () => {
+                                console.log('✅ Build complete');
+                                setAiEvents(prev => [...prev, { type: 'complete' }]);
+                                setGenerationEvents(prev => [...prev, { type: 'complete', message: 'Changes applied' }]);
+                                
+                                setProjectFiles({ ...updatedFiles });
+                                
+                                await supabase
+                                  .from('build_sessions')
+                                  .update({
+                                    project_files: updatedFiles,
+                                    updated_at: new Date().toISOString()
+                                  })
+                                  .eq('id', sessionId);
+
+                                await supabase
+                                  .from('chat_messages')
+                                  .insert({
+                                    session_id: sessionId,
+                                    role: 'assistant',
+                                    content: assistantMessage
+                                  });
+                              },
+                              onError: (error) => {
+                                console.error('❌ Error:', error);
+                                sonnerToast.error(error);
+                              }
+                            }
+                          );
                         }}
                       />
                     )
