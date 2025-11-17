@@ -303,6 +303,7 @@ Exemple de flux COMPLET:
           let buffer = ''; // Buffer pour les événements NDJSON de Claude
           let sseBuffer = ''; // Buffer pour les lignes SSE incomplètes
           let hasComplete = false;
+          const generatedFiles = new Map<string, string>(); // Tracker des fichiers générés
 
           while (true) {
             const { done, value } = await reader.read();
@@ -337,6 +338,9 @@ Exemple de flux COMPLET:
                     try {
                       const aiEvent = JSON.parse(eventLine);
                       if (aiEvent.type === 'complete') hasComplete = true;
+                      if (aiEvent.type === 'code_update' && aiEvent.path && aiEvent.code) {
+                        generatedFiles.set(aiEvent.path, aiEvent.code);
+                      }
                       const eventData = `data: ${JSON.stringify(aiEvent)}\n\n`;
                       controller.enqueue(encoder.encode(eventData));
                       console.log('✅ Événement envoyé:', aiEvent.type);
@@ -384,12 +388,71 @@ Exemple de flux COMPLET:
               try {
                 const aiEvent = JSON.parse(eventLine);
                 if (aiEvent.type === 'complete') hasComplete = true;
+                if (aiEvent.type === 'code_update' && aiEvent.path && aiEvent.code) {
+                  generatedFiles.set(aiEvent.path, aiEvent.code);
+                }
                 const eventData = `data: ${JSON.stringify(aiEvent)}\n\n`;
                 controller.enqueue(encoder.encode(eventData));
                 console.log('✅ Événement final envoyé:', aiEvent.type);
               } catch (e) {
                 console.log('⚠️ JSON invalide dans buffer final:', eventLine.substring(0, 100));
               }
+            }
+          }
+
+          // VALIDATION POST-GÉNÉRATION : Vérifier les 3 fichiers obligatoires
+          if (isWebsite && generatedFiles.size > 0) {
+            console.log('📋 Fichiers générés:', Array.from(generatedFiles.keys()));
+            
+            const hasHTML = generatedFiles.has('index.html');
+            const hasCSS = generatedFiles.has('styles.css');
+            const hasJS = generatedFiles.has('script.js');
+            
+            if (!hasCSS || !hasJS) {
+              console.log('⚠️ Fichiers manquants - Tentative d\'extraction...');
+              
+              // Essayer d'extraire CSS/JS inline du HTML
+              const htmlContent = generatedFiles.get('index.html') || '';
+              
+              // Extraire CSS inline
+              if (!hasCSS) {
+                const styleMatch = htmlContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+                if (styleMatch && styleMatch[1].trim()) {
+                  const extractedCSS = styleMatch[1].trim();
+                  generatedFiles.set('styles.css', extractedCSS);
+                  const cssEvent = { type: 'code_update', path: 'styles.css', code: extractedCSS };
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(cssEvent)}\n\n`));
+                  console.log('✅ CSS extrait et envoyé');
+                } else {
+                  // Générer un CSS minimal
+                  const minimalCSS = `/* Styles de base */\n* {\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n}\n\nbody {\n  font-family: system-ui, -apple-system, sans-serif;\n  line-height: 1.6;\n  color: #333;\n}\n`;
+                  generatedFiles.set('styles.css', minimalCSS);
+                  const cssEvent = { type: 'code_update', path: 'styles.css', code: minimalCSS };
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(cssEvent)}\n\n`));
+                  console.log('✅ CSS minimal généré');
+                }
+              }
+              
+              // Extraire JS inline
+              if (!hasJS) {
+                const scriptMatch = htmlContent.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+                if (scriptMatch && scriptMatch[1].trim() && !scriptMatch[0].includes('src=')) {
+                  const extractedJS = scriptMatch[1].trim();
+                  generatedFiles.set('script.js', extractedJS);
+                  const jsEvent = { type: 'code_update', path: 'script.js', code: extractedJS };
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(jsEvent)}\n\n`));
+                  console.log('✅ JS extrait et envoyé');
+                } else {
+                  // Générer un JS minimal
+                  const minimalJS = `// Script principal\nconsole.log('Site chargé avec succès');\n\n// Initialisation au chargement\ndocument.addEventListener('DOMContentLoaded', () => {\n  console.log('DOM prêt');\n});\n`;
+                  generatedFiles.set('script.js', minimalJS);
+                  const jsEvent = { type: 'code_update', path: 'script.js', code: minimalJS };
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(jsEvent)}\n\n`));
+                  console.log('✅ JS minimal généré');
+                }
+              }
+              
+              console.log('✅ Validation complète - Fichiers finaux:', Array.from(generatedFiles.keys()));
             }
           }
 
