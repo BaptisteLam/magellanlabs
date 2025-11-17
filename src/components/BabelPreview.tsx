@@ -183,25 +183,42 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
             'const { $1 } = require("react-dom/client")'
           );
 
-          // 7. Remplacer les imports de bibliothèques externes (lucide-react, etc.) - les ignorer ou mocker
+          // 7. Supprimer les import type (TypeScript)
           processedCode = processedCode.replace(
-            /import\s+\{\s*([^}]+)\}\s*from\s+['"](?!react|\.)[^'"]+['"]/g,
+            /import\s+type\s+\{[^}]+\}\s*from\s+['"][^'"]+['"]/g,
+            '// Type import removed'
+          );
+
+          processedCode = processedCode.replace(
+            /import\s+type\s+\w+\s+from\s+['"][^'"]+['"]/g,
+            '// Type import removed'
+          );
+
+          // 8. Remplacer les imports de bibliothèques externes (lucide-react, react-icons, etc.)
+          // Ne pas exclure react-* car react-icons, react-router etc sont des bibliothèques externes
+          processedCode = processedCode.replace(
+            /import\s+\{\s*([^}]+)\}\s*from\s+['"](?!react['"]|react-dom|\.)[^'"]+['"]/g,
             (match, imports) => {
               // Pour les bibliothèques externes, créer des mocks vides
-              const importList = imports.split(',').map(i => i.trim());
+              const importList = imports.split(',').map(i => {
+                const trimmed = i.trim();
+                // Gérer les alias: import { Foo as Bar }
+                const parts = trimmed.split(/\s+as\s+/);
+                return parts.length > 1 ? parts[1] : parts[0];
+              });
               return importList.map(imp => 'const ' + imp + ' = () => null; // Mock external import').join('\\n');
             }
           );
 
-          // 8. Remplacer les imports par défaut de bibliothèques externes
+          // 9. Remplacer les imports par défaut de bibliothèques externes
           processedCode = processedCode.replace(
-            /import\s+(\w+)\s+from\s+['"](?!react|\.)[^'"]+['"]/g,
+            /import\s+(\w+)\s+from\s+['"](?!react['"]|react-dom|\.)[^'"]+['"]/g,
             (match, varName) => {
               return 'const ' + varName + ' = {}; // Mock external import';
             }
           );
 
-          // 9. Remplacer les imports relatifs
+          // 10. Remplacer les imports relatifs
           processedCode = processedCode.replace(
             /import\s+(?:\{([^}]+)\}|(\w+))\s+from\s+['"](\..+?)['"]/g,
             (match, named, defaultImport, importPath) => {
@@ -233,13 +250,13 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
             }
           );
 
-          // 10. Remplacer les imports de CSS (les ignorer)
+          // 11. Remplacer les imports de CSS (les ignorer)
           processedCode = processedCode.replace(
             /import\s+['"][^'"]+\.css['"]/g,
             '// CSS import removed'
           );
 
-          // 11. Remplacer les imports d'images par les assets embarqués
+          // 12. Remplacer les imports d'images par les assets embarqués
           processedCode = processedCode.replace(
             /import\s+(\w+)\s+from\s+['"]([^'"]+\.(png|jpg|jpeg|gif|svg|webp|ico))['"]/gi,
             (match, varName, imagePath) => {
@@ -257,19 +274,61 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
             }
           );
 
-          // 12. Gérer les exports
+          // 13. Gérer les exports
+
+          // Traquer les named exports pour les exporter à la fin
+          const namedExports: string[] = [];
+
+          // export const foo = ...
+          processedCode = processedCode.replace(
+            /export\s+const\s+(\w+)/g,
+            (match, varName) => {
+              namedExports.push(varName);
+              return 'const ' + varName;
+            }
+          );
+
+          // export function foo() {}
+          processedCode = processedCode.replace(
+            /export\s+function\s+(\w+)/g,
+            (match, funcName) => {
+              namedExports.push(funcName);
+              return 'function ' + funcName;
+            }
+          );
+
+          // export class Foo {}
+          processedCode = processedCode.replace(
+            /export\s+class\s+(\w+)/g,
+            (match, className) => {
+              namedExports.push(className);
+              return 'class ' + className;
+            }
+          );
+
+          // export default
           processedCode = processedCode.replace(
             /export\s+default\s+/g,
             'module.exports = '
           );
 
+          // export { foo, bar }
           processedCode = processedCode.replace(
             /export\s+\{([^}]+)\}/g,
             (match, exports) => {
               const exportList = exports.split(',').map(e => e.trim());
-              return exportList.map(exp => 'module.exports.' + exp + ' = ' + exp + ';').join('\\n');
+              exportList.forEach(exp => namedExports.push(exp));
+              return '// Named exports: ' + exports;
             }
           );
+
+          // Ajouter les named exports à la fin
+          if (namedExports.length > 0) {
+            const exportStatements = namedExports.map(name =>
+              'if (typeof ' + name + ' !== "undefined") module.exports.' + name + ' = ' + name + ';'
+            ).join('\\n');
+            processedCode = processedCode + '\\n' + exportStatements;
+          }
           
           return `modules["${path}"] = function(module, exports, require) {
             ${processedCode}
