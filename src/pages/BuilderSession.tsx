@@ -567,12 +567,12 @@ export default function BuilderSession() {
     setAiEvents([]);
     setGenerationEvents([]);
     
-    // Activer le mode "première génération" si les fichiers sont vides
+    // 🔒 TOUJOURS activer le mode "génération en cours" pour bloquer la preview jusqu'à completion
+    setIsInitialGeneration(true);
+    isInitialGenerationRef.current = true;
+    
+    // Générer automatiquement un nom de projet si les fichiers sont vides
     if (Object.keys(projectFiles).length === 0) {
-      setIsInitialGeneration(true);
-      isInitialGenerationRef.current = true;
-      
-      // Générer automatiquement un nom de projet
       generateProjectName(userPrompt);
     }
 
@@ -618,14 +618,12 @@ export default function BuilderSession() {
           setGenerationEvents(prev => [...prev, event]);
         },
         onCodeUpdate: (path, code) => {
-          console.log('🔄 Hot update:', path);
+          console.log('📦 Accumulating file:', path);
           setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
           updatedFiles[path] = code;
           
-          // Injection instantanée dans la preview SEULEMENT si ce n'est pas une génération initiale
-          if (!isInitialGenerationRef.current) {
-            setProjectFiles(prev => ({ ...prev, [path]: code }));
-          }
+          // ⏸️ NE JAMAIS mettre à jour la preview pendant la génération
+          // Les fichiers seront appliqués tous ensemble dans onComplete
           
           if (path === 'index.html') {
             setGeneratedHtml(code);
@@ -637,18 +635,19 @@ export default function BuilderSession() {
           }
         },
         onComplete: async () => {
-          console.log('✅ Build complete - Hot reload');
+          console.log('✅ Génération terminée - Application de TOUS les fichiers à la preview');
           setAiEvents(prev => [...prev, { type: 'complete' }]);
-          setGenerationEvents(prev => [...prev, { type: 'complete', message: 'Changes applied' }]);
+          setGenerationEvents(prev => [...prev, { type: 'complete', message: 'All files generated successfully' }]);
           
-          // Appliquer tous les fichiers mis à jour (important de le faire AVANT de désactiver isInitialGeneration)
+          // ✅ Appliquer TOUS les fichiers générés à la preview en une seule fois
+          console.log('📦 Fichiers à appliquer:', Object.keys(updatedFiles));
           setProjectFiles({ ...updatedFiles });
           
-          // Désactiver le mode "première génération"
+          // Désactiver le mode "génération en cours"
           setIsInitialGeneration(false);
           isInitialGenerationRef.current = false;
           
-          // Forcer le reload de la preview
+          // Forcer le reload de la preview après application des fichiers
           setTimeout(() => {
             if (viewMode !== 'preview') {
               setViewMode('preview');
@@ -1488,6 +1487,10 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
 
                           setAiEvents([]);
                           setGenerationEvents([]);
+                          
+                          // 🔒 Activer le mode "génération en cours" pour bloquer la preview
+                          setIsInitialGeneration(true);
+                          isInitialGenerationRef.current = true;
 
                           const projectContext = projectType === 'website' 
                             ? 'Generate a static website with HTML, CSS, and vanilla JavaScript files only. No React, no JSX. Use simple HTML structure.'
@@ -1529,13 +1532,12 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                                 setGenerationEvents(prev => [...prev, event]);
                               },
                               onCodeUpdate: (path, code) => {
-                                console.log('🔄 Hot update:', path);
+                                console.log('📦 Accumulating file:', path);
                                 setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
                                 updatedFiles[path] = code;
                                 
-                                if (!isInitialGenerationRef.current) {
-                                  setProjectFiles(prev => ({ ...prev, [path]: code }));
-                                }
+                                // ⏸️ NE JAMAIS mettre à jour la preview pendant la génération
+                                // Les fichiers seront appliqués tous ensemble dans onComplete
                                 
                                 if (path === 'index.html') {
                                   setGeneratedHtml(code);
@@ -1547,11 +1549,17 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                                 }
                               },
                               onComplete: async () => {
-                                console.log('✅ Build complete');
+                                console.log('✅ Génération terminée - Application de TOUS les fichiers à la preview');
                                 setAiEvents(prev => [...prev, { type: 'complete' }]);
-                                setGenerationEvents(prev => [...prev, { type: 'complete', message: 'Changes applied' }]);
+                                setGenerationEvents(prev => [...prev, { type: 'complete', message: 'All files generated successfully' }]);
                                 
+                                // ✅ Appliquer TOUS les fichiers générés à la preview en une seule fois
+                                console.log('📦 Fichiers à appliquer:', Object.keys(updatedFiles));
                                 setProjectFiles({ ...updatedFiles });
+                                
+                                // Désactiver le mode "génération en cours"
+                                setIsInitialGeneration(false);
+                                isInitialGenerationRef.current = false;
                                 
                                 await supabase
                                   .from('build_sessions')
