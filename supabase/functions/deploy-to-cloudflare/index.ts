@@ -140,15 +140,46 @@ serve(async (req) => {
     }
 
     // Function to create fresh FormData (needed because FormData can only be consumed once)
-    function createFormData(files: ProjectFile[]) {
+    async function createFormData(files: ProjectFile[]) {
       const formData = new FormData();
       
       // Create manifest mapping file paths to their hashes
       const manifest: Record<string, string> = {};
       
-      files.forEach((file: ProjectFile, index: number) => {
+      // Function to get proper MIME type based on file extension
+      function getMimeType(fileName: string): string {
+        const ext = fileName.split('.').pop()?.toLowerCase();
+        const mimeTypes: Record<string, string> = {
+          'html': 'text/html',
+          'css': 'text/css',
+          'js': 'application/javascript',
+          'json': 'application/json',
+          'png': 'image/png',
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'gif': 'image/gif',
+          'svg': 'image/svg+xml',
+          'webp': 'image/webp',
+          'ico': 'image/x-icon',
+          'txt': 'text/plain',
+          'xml': 'application/xml',
+          'pdf': 'application/pdf',
+        };
+        return mimeTypes[ext || ''] || 'text/plain';
+      }
+      
+      // Function to calculate SHA-256 hash
+      async function calculateHash(content: string): Promise<string> {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(content);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      }
+      
+      for (const file of files) {
         const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
-        const fileHash = `file-${index}`;
+        const fileHash = await calculateHash(file.content + fileName);
         
         // Add to manifest
         manifest[`/${fileName}`] = fileHash;
@@ -161,10 +192,11 @@ serve(async (req) => {
           const blob = new Blob([binaryData], { type: mimeType });
           formData.append(fileHash, blob, fileName);
         } else {
-          const blob = new Blob([file.content], { type: 'text/plain' });
+          const mimeType = getMimeType(fileName);
+          const blob = new Blob([file.content], { type: mimeType });
           formData.append(fileHash, blob, fileName);
         }
-      });
+      }
       
       // Add manifest as JSON string directly
       formData.append('manifest', JSON.stringify(manifest));
@@ -181,6 +213,7 @@ serve(async (req) => {
     console.log('🚀 Deploying to Cloudflare Pages project:', projectName);
     
     // Deploy to Cloudflare Pages using Direct Upload
+    const formData = await createFormData(modifiedFiles);
     const deployResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
       {
@@ -188,7 +221,7 @@ serve(async (req) => {
         headers: {
           'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
         },
-        body: createFormData(modifiedFiles),
+        body: formData,
       }
     );
 
@@ -226,6 +259,7 @@ serve(async (req) => {
         console.log('✅ Project created, retrying deployment...');
         
         // Retry deployment
+        const retryFormData = await createFormData(modifiedFiles);
         const retryResponse = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
           {
@@ -233,7 +267,7 @@ serve(async (req) => {
             headers: {
               'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
             },
-            body: createFormData(modifiedFiles),
+            body: retryFormData,
           }
         );
         
