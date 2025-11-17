@@ -875,7 +875,58 @@ export default function BuilderSession() {
       }
       
       // Préparer tous les fichiers du projet pour le déploiement
-      const files = Object.entries(projectFiles).map(([name, content]) => {
+      let filesToDeploy: Record<string, string> = { ...projectFiles };
+
+      // 🔧 EXTRACTION AUTOMATIQUE : Si index.html contient du CSS/JS inline, extraire dans des fichiers séparés
+      const indexHtml = filesToDeploy['index.html'];
+      if (indexHtml && (indexHtml.includes('<style') || indexHtml.includes('<script'))) {
+        console.warn('⚠️ Détection de CSS/JS inline dans index.html - Extraction automatique en cours...');
+        
+        // Extraire CSS depuis les balises <style>
+        let extractedCss = '';
+        const styleMatches = indexHtml.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+        for (const match of styleMatches) {
+          extractedCss += match[1] + '\n';
+        }
+        
+        // Extraire JS depuis les balises <script> (sauf les modules externes)
+        let extractedJs = '';
+        const scriptMatches = indexHtml.matchAll(/<script(?![^>]*src=["'])(?![^>]*type=["']module["'])[^>]*>([\s\S]*?)<\/script>/gi);
+        for (const match of scriptMatches) {
+          extractedJs += match[1] + '\n';
+        }
+        
+        // Nettoyer le HTML en supprimant les balises <style> et <script> inline
+        let cleanHtml = indexHtml
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+          .replace(/<script(?![^>]*src=["'])(?![^>]*type=["']module["'])[^>]*>[\s\S]*?<\/script>/gi, '');
+        
+        // Ajouter les liens vers les fichiers séparés si pas déjà présents
+        if (!cleanHtml.includes('href="styles.css"')) {
+          cleanHtml = cleanHtml.replace('</head>', '  <link rel="stylesheet" href="styles.css">\n</head>');
+        }
+        if (!cleanHtml.includes('src="script.js"')) {
+          cleanHtml = cleanHtml.replace('</body>', '  <script src="script.js"></script>\n</body>');
+        }
+        
+        // Remplacer dans les fichiers à déployer
+        filesToDeploy['index.html'] = cleanHtml;
+        
+        // Créer ou fusionner styles.css
+        if (extractedCss.trim()) {
+          filesToDeploy['styles.css'] = (filesToDeploy['styles.css'] || '') + '\n' + extractedCss;
+          console.log('✅ CSS extrait dans styles.css');
+        }
+        
+        // Créer ou fusionner script.js
+        if (extractedJs.trim()) {
+          filesToDeploy['script.js'] = (filesToDeploy['script.js'] || '') + '\n' + extractedJs;
+          console.log('✅ JavaScript extrait dans script.js');
+        }
+      }
+
+      // Transformer en format attendu par l'API
+      const files = Object.entries(filesToDeploy).map(([name, content]) => {
         const extension = name.split('.').pop() || '';
         const type = extension === 'html' ? 'html' : 
                     extension === 'css' ? 'stylesheet' : 
@@ -889,6 +940,17 @@ export default function BuilderSession() {
           type
         };
       });
+
+      // 🔍 VALIDATION : Vérifier qu'on a bien des fichiers CSS et JS séparés pour les sites HTML
+      const hasHtml = files.some(f => f.name.endsWith('.html'));
+      const hasCss = files.some(f => f.name.endsWith('.css'));
+      const hasJs = files.some(f => f.name.endsWith('.js'));
+
+      if (hasHtml && (!hasCss || !hasJs)) {
+        sonnerToast.error("⚠️ Fichiers CSS et JS manquants. Le déploiement nécessite styles.css et script.js séparés pour Cloudflare Pages.");
+        console.error('❌ Validation échouée:', { hasHtml, hasCss, hasJs, files: files.map(f => f.name) });
+        return;
+      }
 
       sonnerToast.info("Déploiement sur Cloudflare Pages...");
       
