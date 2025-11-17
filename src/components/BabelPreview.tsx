@@ -277,7 +277,7 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
           // 13. Gérer les exports
 
           // Traquer les named exports pour les exporter à la fin
-          const namedExports: string[] = [];
+          const namedExports = [];
 
           // export const foo = ...
           processedCode = processedCode.replace(
