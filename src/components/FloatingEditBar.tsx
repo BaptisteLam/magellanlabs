@@ -59,13 +59,16 @@ export function FloatingEditBar({ isOpen, onClose, elementInfo, onModify }: Floa
     const barWidth = 400;
     const margin = 12;
 
-    // Centrer la barre par rapport à l'élément
-    const centerX = left + (width / 2);
-    const barLeft = Math.max(20, Math.min(centerX - (barWidth / 2), window.innerWidth - barWidth - 20));
+    // Centrer la barre exactement sous l'élément
+    const elementCenterX = left + (width / 2);
+    const barLeft = elementCenterX - (barWidth / 2);
+    
+    // S'assurer que la barre reste dans la fenêtre
+    const finalLeft = Math.max(20, Math.min(barLeft, window.innerWidth - barWidth - 20));
 
     return {
       position: 'fixed' as const,
-      left: barLeft,
+      left: finalLeft,
       top: bottom + margin,
       width: barWidth,
     };
@@ -100,7 +103,7 @@ export function FloatingEditBar({ isOpen, onClose, elementInfo, onModify }: Floa
               onClose();
             }
           }}
-          placeholder="modifier cet element..."
+          placeholder="modifier cet élément..."
           className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground"
         />
         <button
