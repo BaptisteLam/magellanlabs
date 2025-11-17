@@ -139,37 +139,41 @@ serve(async (req) => {
       }
     }
 
-    // Create form data for Cloudflare Pages deployment with proper manifest
-    const formData = new FormData();
-    
-    // Create manifest mapping file paths to their hashes
-    const manifest: Record<string, string> = {};
-    
-    modifiedFiles.forEach((file: ProjectFile, index: number) => {
-      const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
-      const fileHash = `file-${index}`;
+    // Function to create fresh FormData (needed because FormData can only be consumed once)
+    function createFormData(files: ProjectFile[]) {
+      const formData = new FormData();
       
-      // Add to manifest
-      manifest[`/${fileName}`] = fileHash;
+      // Create manifest mapping file paths to their hashes
+      const manifest: Record<string, string> = {};
       
-      // Add file to form data with hash as key
-      if (file.content.startsWith('data:')) {
-        const base64Data = file.content.split(',')[1];
-        const mimeType = file.content.split(';')[0].split(':')[1];
-        const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-        const blob = new Blob([binaryData], { type: mimeType });
-        formData.append(fileHash, blob, fileName);
-      } else {
-        const blob = new Blob([file.content], { type: 'text/plain' });
-        formData.append(fileHash, blob, fileName);
-      }
-    });
+      files.forEach((file: ProjectFile, index: number) => {
+        const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
+        const fileHash = `file-${index}`;
+        
+        // Add to manifest
+        manifest[`/${fileName}`] = fileHash;
+        
+        // Add file to form data with hash as key
+        if (file.content.startsWith('data:')) {
+          const base64Data = file.content.split(',')[1];
+          const mimeType = file.content.split(';')[0].split(':')[1];
+          const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+          const blob = new Blob([binaryData], { type: mimeType });
+          formData.append(fileHash, blob, fileName);
+        } else {
+          const blob = new Blob([file.content], { type: 'text/plain' });
+          formData.append(fileHash, blob, fileName);
+        }
+      });
+      
+      // Add manifest as JSON
+      const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      formData.append('manifest', manifestBlob, 'manifest.json');
+      
+      return formData;
+    }
     
-    // Add manifest as JSON
-    const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-    formData.append('manifest', manifestBlob, 'manifest.json');
-    
-    console.log('📋 Manifest created with', Object.keys(manifest).length, 'files');
+    console.log('📋 Creating deployment manifest with', modifiedFiles.length, 'files');
 
     const baseTitle = session.title?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'site';
     const uniqueId = sessionId.slice(0, 8);
@@ -185,7 +189,7 @@ serve(async (req) => {
         headers: {
           'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
         },
-        body: formData,
+        body: createFormData(modifiedFiles),
       }
     );
 
@@ -230,7 +234,7 @@ serve(async (req) => {
             headers: {
               'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
             },
-            body: formData,
+            body: createFormData(modifiedFiles),
           }
         );
         
