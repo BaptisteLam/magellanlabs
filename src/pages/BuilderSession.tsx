@@ -580,7 +580,7 @@ export default function BuilderSession() {
           setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
           updatedFiles[path] = code;
           
-          // Injection instantanée dans le sandbox
+          // Injection instantanée dans la preview
           setProjectFiles(prev => ({ ...prev, [path]: code }));
           
           if (path === 'index.html') {

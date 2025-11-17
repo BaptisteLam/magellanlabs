@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { BabelPreview } from './BabelPreview';
 import { CustomIframePreview } from './CustomIframePreview';
-import { SandpackPreview } from './SandpackPreview';
 
 interface HybridPreviewProps {
   projectFiles: Record<string, string> | Record<string, { code: string }>;
@@ -69,12 +68,14 @@ export function HybridPreview({
     );
   }
 
-  // Pour les sites web statiques, utiliser Sandpack
+  // Pour les sites web statiques, utiliser CustomIframePreview
   if (projectType === 'website') {
     return (
-      <SandpackPreview 
+      <CustomIframePreview 
         projectFiles={normalizedFiles} 
         isDark={isDark}
+        inspectMode={inspectMode}
+        onElementSelect={onElementSelect}
       />
     );
   }
