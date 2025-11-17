@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Download, Paperclip, BarChart3, Lightbulb, FileText, Edit, Loader } from "lucide-react";
+import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Download, Paperclip, BarChart3, Lightbulb, FileText, Edit, Loader, Smartphone, Monitor } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
 import JSZip from "jszip";
@@ -77,6 +77,9 @@ export default function BuilderSession() {
   
   // Mode Inspect pour la preview interactive
   const [inspectMode, setInspectMode] = useState(false);
+  
+  // Mode d'affichage de la preview (desktop/mobile)
+  const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
 
   // Fonction pour générer automatiquement un nom de projet
   const generateProjectName = async (prompt: string) => {
@@ -992,17 +995,34 @@ export default function BuilderSession() {
           <div className="h-6 w-px bg-slate-300" />
 
           <div className="flex items-center gap-2">
-            <Button
-              onClick={() => window.location.reload()}
-              variant="iconOnly"
-              size="sm"
-              className="h-8 text-xs"
-              title="Actualiser la preview"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')}
+                    variant="iconOnly"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    style={{
+                      borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
+                      backgroundColor: 'transparent',
+                      color: isDark ? 'hsl(var(--foreground))' : '#64748b',
+                    }}
+                  >
+                    {previewMode === 'desktop' ? (
+                      <Smartphone className="w-3.5 h-3.5" />
+                    ) : (
+                      <Monitor className="w-3.5 h-3.5" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-xs">
+                    {previewMode === 'desktop' ? 'Mode mobile' : 'Mode desktop'}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
             <Button
               onClick={handleSave}
@@ -1228,23 +1248,24 @@ export default function BuilderSession() {
           </div>
         </ResizablePanel>
         
-        <ResizableHandle withHandle />
+        {previewMode === 'desktop' && <ResizableHandle withHandle />}
         
-          <ResizablePanel defaultSize={70}>
-            <div className="h-full w-full flex flex-col rounded-xl overflow-hidden">
-              {viewMode === 'preview' ? (
-                isInitialGeneration ? (
-                  <GeneratingPreview />
-                ) : (
-                  <InteractivePreview 
-                    projectFiles={projectFiles} 
-                    isDark={isDark}
-                    inspectMode={inspectMode}
-                    onInspectModeChange={setInspectMode}
-                    projectType={projectType}
-                    onElementModify={async (prompt, elementInfo) => {
-                      // Créer un prompt contextuel avec les infos de l'élément
-                      const contextualPrompt = `Modifier l'élément suivant dans le code :
+          <ResizablePanel defaultSize={70} minSize={previewMode === 'mobile' ? 70 : 30}>
+            <div className={`h-full w-full flex ${previewMode === 'mobile' ? 'justify-center items-start bg-slate-100' : 'flex-col'} rounded-xl overflow-hidden`}>
+              {previewMode === 'mobile' ? (
+                <div className="w-[375px] h-full flex flex-col shadow-2xl" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff' }}>
+                  {viewMode === 'preview' ? (
+                    isInitialGeneration ? (
+                      <GeneratingPreview />
+                    ) : (
+                      <InteractivePreview 
+                        projectFiles={projectFiles} 
+                        isDark={isDark}
+                        inspectMode={inspectMode}
+                        onInspectModeChange={setInspectMode}
+                        projectType={projectType}
+                        onElementModify={async (prompt, elementInfo) => {
+                          const contextualPrompt = `Modifier l'élément suivant dans le code :
 
 Type: <${elementInfo.tagName.toLowerCase()}>
 ${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
@@ -1255,76 +1276,120 @@ Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textC
 Instruction: ${prompt}
 
 Ne modifie que cet élément spécifique, pas le reste du code.`;
-                      
-                      // Soumettre le prompt
-                      setInputValue(contextualPrompt);
-                      setTimeout(() => handleSubmit(), 100);
-                    }}
-                  />
-                )
-              ) : viewMode === 'analytics' ? (
-                <Analytics 
-                  isPublished={!!deployedUrl} 
-                  isDark={isDark} 
-                  gaPropertyId={gaPropertyId || undefined}
-                  websiteId={websiteId || undefined}
-                />
+                          
+                          setInputValue(contextualPrompt);
+                          setTimeout(() => handleSubmit(), 100);
+                        }}
+                      />
+                    )
+                  ) : viewMode === 'analytics' ? (
+                    <Analytics 
+                      isPublished={!!deployedUrl} 
+                      isDark={isDark} 
+                      gaPropertyId={gaPropertyId || undefined}
+                      websiteId={websiteId || undefined}
+                    />
+                  ) : (
+                    <div className="p-4 text-center text-slate-500">
+                      Mode code non disponible en mode mobile
+                    </div>
+                  )}
+                </div>
               ) : (
-                <div className="h-full flex bg-white">
-                  {/* TreeView - 20% */}
-                  <div className="w-[20%] min-w-[200px]">
-                    <CodeTreeView
-                      files={projectFiles}
-                      selectedFile={selectedFile}
-                      onFileSelect={(path, content) => {
-                        setSelectedFile(path);
-                        setSelectedFileContent(content);
-                        if (!openFiles.includes(path)) {
-                          setOpenFiles([...openFiles, path]);
-                        }
-                      }}
-                    />
-                  </div>
+                <>
+                  {viewMode === 'preview' ? (
+                    isInitialGeneration ? (
+                      <GeneratingPreview />
+                    ) : (
+                      <InteractivePreview 
+                        projectFiles={projectFiles} 
+                        isDark={isDark}
+                        inspectMode={inspectMode}
+                        onInspectModeChange={setInspectMode}
+                        projectType={projectType}
+                        onElementModify={async (prompt, elementInfo) => {
+                          const contextualPrompt = `Modifier l'élément suivant dans le code :
 
-                  {/* Monaco Editor - 80% */}
-                  <div className="flex-1 flex flex-col">
-                    <FileTabs
-                      openFiles={openFiles}
-                      activeFile={selectedFile}
-                      onTabClick={(path) => {
-                        setSelectedFile(path);
-                        setSelectedFileContent(projectFiles[path]);
-                      }}
-                      onTabClose={(path) => {
-                        const newOpenFiles = openFiles.filter((f) => f !== path);
-                        setOpenFiles(newOpenFiles);
-                        if (selectedFile === path) {
-                          const nextFile = newOpenFiles[newOpenFiles.length - 1] || null;
-                          setSelectedFile(nextFile);
-                          setSelectedFileContent(nextFile ? projectFiles[nextFile] : '');
-                        }
-                      }}
+Type: <${elementInfo.tagName.toLowerCase()}>
+${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
+${elementInfo.classList.length > 0 ? `Classes: ${elementInfo.classList.join(', ')}` : ''}
+Chemin CSS: ${elementInfo.path}
+Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textContent.length > 200 ? '...' : ''}"
+
+Instruction: ${prompt}
+
+Ne modifie que cet élément spécifique, pas le reste du code.`;
+                          
+                          setInputValue(contextualPrompt);
+                          setTimeout(() => handleSubmit(), 100);
+                        }}
+                      />
+                    )
+                  ) : viewMode === 'analytics' ? (
+                    <Analytics 
+                      isPublished={!!deployedUrl} 
+                      isDark={isDark} 
+                      gaPropertyId={gaPropertyId || undefined}
+                      websiteId={websiteId || undefined}
                     />
-                    <div className="flex-1">
-                      {selectedFileContent ? (
-                        <MonacoEditor
-                          value={selectedFileContent}
-                          language={selectedFile?.split('.').pop() || 'plaintext'}
-                          onChange={(value) => {
-                            if (value !== undefined && selectedFile) {
-                              setSelectedFileContent(value);
-                              setProjectFiles((prev) => ({ ...prev, [selectedFile]: value }));
+                  ) : (
+                    <div className="h-full flex bg-white">
+                      {/* TreeView - 20% */}
+                      <div className="w-[20%] min-w-[200px]">
+                        <CodeTreeView
+                          files={projectFiles}
+                          selectedFile={selectedFile}
+                          onFileSelect={(path, content) => {
+                            setSelectedFile(path);
+                            setSelectedFileContent(content);
+                            if (!openFiles.includes(path)) {
+                              setOpenFiles([...openFiles, path]);
                             }
                           }}
                         />
-                      ) : (
-                        <div className="h-full flex items-center justify-center text-gray-500">
-                          Sélectionnez un fichier pour le modifier
+                      </div>
+
+                      {/* Monaco Editor - 80% */}
+                      <div className="flex-1 flex flex-col">
+                        <FileTabs
+                          openFiles={openFiles}
+                          activeFile={selectedFile}
+                          onTabClick={(path) => {
+                            setSelectedFile(path);
+                            setSelectedFileContent(projectFiles[path]);
+                          }}
+                          onTabClose={(path) => {
+                            const newOpenFiles = openFiles.filter((f) => f !== path);
+                            setOpenFiles(newOpenFiles);
+                            if (selectedFile === path) {
+                              const nextFile = newOpenFiles[newOpenFiles.length - 1] || null;
+                              setSelectedFile(nextFile);
+                              setSelectedFileContent(nextFile ? projectFiles[nextFile] : '');
+                            }
+                          }}
+                        />
+                        <div className="flex-1">
+                          {selectedFileContent ? (
+                            <MonacoEditor
+                              value={selectedFileContent}
+                              language={selectedFile?.split('.').pop() || 'plaintext'}
+                              onChange={(value) => {
+                                if (value !== undefined && selectedFile) {
+                                  setSelectedFileContent(value);
+                                  setProjectFiles((prev) => ({ ...prev, [selectedFile]: value }));
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="h-full flex items-center justify-center text-gray-500">
+                              Sélectionnez un fichier pour le modifier
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  )}
+                </>
               )}
             </div>
           </ResizablePanel>
