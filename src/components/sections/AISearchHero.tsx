@@ -14,7 +14,7 @@ import { useThemeStore } from '@/stores/themeStore';
 import PromptBar from '@/components/PromptBar';
 import { CodeTreeView } from '@/components/CodeEditor/CodeTreeView';
 import { MonacoEditor } from '@/components/CodeEditor/MonacoEditor';
-import { VitePreview } from '@/components/VitePreview';
+import { BabelPreview } from '@/components/BabelPreview';
 import { GeneratingPreview } from '@/components/GeneratingPreview';
 
 interface AISearchHeroProps {
@@ -345,7 +345,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
           <ResizablePanel defaultSize={40} minSize={30}>
             {viewMode === 'preview' ? (
               <div className="h-full bg-white">
-                <VitePreview projectFiles={projectFiles} />
+                <BabelPreview projectFiles={projectFiles} />
               </div>
             ) : (
               <div className="h-full flex items-center justify-center text-slate-400">

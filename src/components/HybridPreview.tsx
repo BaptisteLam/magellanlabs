@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { VitePreview } from './VitePreview';
+import { BabelPreview } from './BabelPreview';
 import { CustomIframePreview } from './CustomIframePreview';
 
 interface HybridPreviewProps {
@@ -55,7 +55,7 @@ export function HybridPreview({
 
   if (projectType === 'react') {
     return (
-      <VitePreview 
+      <BabelPreview 
         projectFiles={normalizedFiles} 
         isDark={isDark}
       />
