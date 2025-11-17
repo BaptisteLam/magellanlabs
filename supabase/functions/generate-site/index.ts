@@ -233,15 +233,20 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 // FILE: src/components/[Composant].tsx
 [Au moins 2-3 composants réutilisables]
 
-POUR HTML PUR (Landing pages simples) :
+🚨 POUR HTML PUR (Landing pages simples) - 3 FICHIERS OBLIGATOIRES :
+Tu DOIS IMPÉRATIVEMENT générer ces 3 fichiers séparés :
+
 // FILE: index.html
 [HTML complet avec header, hero, features, footer - minimum 100-150 lignes]
+[UNIQUEMENT des liens: <link rel="stylesheet" href="styles.css"> et <script src="script.js"></script>]
+[❌ INTERDIT: balises <style> ou <script> inline]
 
-// FILE: style.css
-[CSS moderne avec animations, gradients, responsive - minimum 50+ lignes]
+// FILE: styles.css
+[CSS moderne OBLIGATOIRE avec animations, gradients, responsive - minimum 50+ lignes]
 
 // FILE: script.js
-[JavaScript vanilla pour interactions si nécessaire]
+[JavaScript vanilla OBLIGATOIRE pour interactions - minimum 20+ lignes]
+[Exemple minimum: animations scroll, menu mobile, interactions hover]
 
 FORMAT DE SORTIE (OBLIGATOIRE) :
 Chaque fichier DOIT être précédé de :
@@ -261,6 +266,8 @@ EXIGENCES DE QUALITÉ :
 - "Hello World" ou contenu minimaliste
 - Design basique sans style
 - Absence de sections principales
+- ❌ CRITIQUE: Générer uniquement du HTML sans CSS et JS séparés
+- ❌ CRITIQUE: Mettre du CSS/JS inline dans le HTML au lieu de fichiers séparés
 
 Génère maintenant un projet web complet, professionnel et visuellement impressionnant.`;
 
