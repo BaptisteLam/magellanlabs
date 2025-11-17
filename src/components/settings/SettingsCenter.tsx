@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function SettingsCenter() {
-  const { isOpen, closeSettings, currentSection } = useSettingsStore();
+  const { isOpen, closeSettings, currentSection, setSection } = useSettingsStore();
 
   const renderSection = () => {
     switch (currentSection) {
@@ -38,7 +38,7 @@ export function SettingsCenter() {
         )}
       >
         <div className="flex h-full">
-          <SettingsSidebar />
+          <SettingsSidebar currentSection={currentSection} setSection={setSection} />
 
           <ScrollArea className="flex-1">
             <div className="p-8">{renderSection()}</div>
