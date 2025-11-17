@@ -140,46 +140,82 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
         ${Object.entries(transpiledModules).map(([path, code]) => {
           // Remplacer les imports par des require()
           let processedCode = code;
-          
-          // Remplacer tous les types d'imports React
+
+          // 1. Remplacer import React, { useState, useEffect } from 'react'
           processedCode = processedCode.replace(
-            /import\s+(?:React(?:\s*,\s*\{[^}]*\})?|\{[^}]*\})\s+from\s+['"]react['"]/g,
+            /import\s+React\s*,\s*\{\s*([^}]+)\}\s*from\s+['"]react['"]/g,
+            (match, hooks) => {
+              const hookList = hooks.split(',').map(h => h.trim());
+              return \`const React = require("react");\\nconst { \${hookList.join(', ')} } = React;\`;
+            }
+          );
+
+          // 2. Remplacer import { useState, useEffect } from 'react'
+          processedCode = processedCode.replace(
+            /import\s+\{\s*([^}]+)\}\s*from\s+['"]react['"]/g,
+            (match, hooks) => {
+              const hookList = hooks.split(',').map(h => h.trim());
+              return \`const React = require("react");\\nconst { \${hookList.join(', ')} } = React;\`;
+            }
+          );
+
+          // 3. Remplacer import React from 'react'
+          processedCode = processedCode.replace(
+            /import\s+React\s+from\s+['"]react['"]/g,
             'const React = require("react")'
           );
-          
-          // Remplacer import * as React
+
+          // 4. Remplacer import * as React
           processedCode = processedCode.replace(
             /import\s+\*\s+as\s+React\s+from\s+['"]react['"]/g,
             'const React = require("react")'
           );
-          
-          // Remplacer import ReactDOM
+
+          // 5. Remplacer import ReactDOM from 'react-dom' et 'react-dom/client'
           processedCode = processedCode.replace(
-            /import\s+ReactDOM\s+from\s+['"]react-dom['"]/g,
+            /import\s+ReactDOM\s+from\s+['"]react-dom(?:\/client)?['"]/g,
             'const ReactDOM = require("react-dom")'
           );
-          
-          // Remplacer import { createRoot } from 'react-dom/client'
+
+          // 6. Remplacer import { createRoot } from 'react-dom/client'
           processedCode = processedCode.replace(
-            /import\s+\{([^}]+)\}\s+from\s+['"]react-dom\/client['"]/g,
+            /import\s+\{\s*([^}]+)\}\s*from\s+['"]react-dom\/client['"]/g,
             'const { $1 } = require("react-dom/client")'
           );
-          
-          // Remplacer les imports relatifs
+
+          // 7. Remplacer les imports de bibliothèques externes (lucide-react, etc.) - les ignorer ou mocker
+          processedCode = processedCode.replace(
+            /import\s+\{\s*([^}]+)\}\s*from\s+['"](?!react|\.)[^'"]+['"]/g,
+            (match, imports) => {
+              // Pour les bibliothèques externes, créer des mocks vides
+              const importList = imports.split(',').map(i => i.trim());
+              return importList.map(imp => \`const \${imp} = () => null; // Mock external import\`).join('\\n');
+            }
+          );
+
+          // 8. Remplacer les imports par défaut de bibliothèques externes
+          processedCode = processedCode.replace(
+            /import\s+(\w+)\s+from\s+['"](?!react|\.)[^'"]+['"]/g,
+            (match, varName) => {
+              return \`const \${varName} = {}; // Mock external import\`;
+            }
+          );
+
+          // 9. Remplacer les imports relatifs
           processedCode = processedCode.replace(
             /import\s+(?:\{([^}]+)\}|(\w+))\s+from\s+['"](\..+?)['"]/g,
             (match, named, defaultImport, importPath) => {
               // Résoudre le chemin relatif
               const fromParts = path.split('/').slice(0, -1);
               const toParts = importPath.split('/');
-              
+
               for (const part of toParts) {
                 if (part === '..') fromParts.pop();
                 else if (part !== '.') fromParts.push(part);
               }
-              
+
               let resolved = fromParts.join('/');
-              
+
               // Essayer différentes extensions
               const extensions = ['', '.tsx', '.ts', '.jsx', '.js'];
               for (const ext of extensions) {
@@ -188,50 +224,50 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
                   break;
                 }
               }
-              
+
               if (named) {
-                return `const { ${named} } = require("${resolved}")`;
+                return \`const { \${named} } = require("\${resolved}")\`;
               } else {
-                return `const ${defaultImport} = require("${resolved}")`;
+                return \`const \${defaultImport} = require("\${resolved}")\`;
               }
             }
           );
-          
-          // Remplacer les imports de CSS (les ignorer)
+
+          // 10. Remplacer les imports de CSS (les ignorer)
           processedCode = processedCode.replace(
             /import\s+['"][^'"]+\.css['"]/g,
             '// CSS import removed'
           );
-          
-          // Remplacer les imports d'images par les assets embarqués
+
+          // 11. Remplacer les imports d'images par les assets embarqués
           processedCode = processedCode.replace(
             /import\s+(\w+)\s+from\s+['"]([^'"]+\.(png|jpg|jpeg|gif|svg|webp|ico))['"]/gi,
             (match, varName, imagePath) => {
               // Résoudre le chemin relatif
               const fromParts = path.split('/').slice(0, -1);
               const toParts = imagePath.split('/');
-              
+
               for (const part of toParts) {
                 if (part === '..') fromParts.pop();
                 else if (part !== '.') fromParts.push(part);
               }
-              
+
               const resolved = fromParts.join('/');
-              return `const ${varName} = require("${resolved}")`;
+              return \`const \${varName} = require("\${resolved}")\`;
             }
           );
-          
-          // Gérer les exports
+
+          // 12. Gérer les exports
           processedCode = processedCode.replace(
             /export\s+default\s+/g,
             'module.exports = '
           );
-          
+
           processedCode = processedCode.replace(
             /export\s+\{([^}]+)\}/g,
             (match, exports) => {
               const exportList = exports.split(',').map(e => e.trim());
-              return exportList.map(exp => `module.exports.${exp} = ${exp};`).join('\\n');
+              return exportList.map(exp => \`module.exports.\${exp} = \${exp};\`).join('\\n');
             }
           );
           
