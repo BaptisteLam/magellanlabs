@@ -74,15 +74,12 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
       const result = transform(content, {
         filename: path,
         presets: [
-          ['@babel/preset-env', { 
+          ['env', { 
             modules: 'commonjs',
             loose: true
           }],
-          ['@babel/preset-react', { runtime: 'classic' }],
-          '@babel/preset-typescript'
-        ],
-        plugins: [
-          '@babel/plugin-transform-modules-commonjs'
+          ['react', { runtime: 'classic' }],
+          'typescript'
         ],
         retainLines: false,
       });
