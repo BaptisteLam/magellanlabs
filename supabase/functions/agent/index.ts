@@ -72,12 +72,12 @@ RÈGLES DE CODE - TRÈS IMPORTANT ET NON NÉGOCIABLE:
 - **INTERDICTION ABSOLUE**: NE JAMAIS générer uniquement du HTML sans CSS et JS
 - NE JAMAIS utiliser React, JSX, TypeScript ou tout autre framework
 - NE JAMAIS créer de package.json, tsconfig.json ou vite.config.ts
-- Nouveau site web: Tu DOIS IMPÉRATIVEMENT créer ces 3 fichiers simples via code_update:
+- Nouveau site web: Tu DOIS IMPÉRATIVEMENT créer ces fichiers simples via code_update:
   1. **index.html** (structure HTML complète avec <!DOCTYPE html>)
   2. **styles.css** (OBLIGATOIRE - tous les styles CSS avec animations, transitions, responsive, etc. - JAMAIS VIDE)
   3. **script.js** (OBLIGATOIRE - logique JavaScript vanilla pour interactivité - JAMAIS VIDE)
-  4. **MINIMUM 3 PAGES SUPPLÉMENTAIRES** (about.html, services.html, contact.html ou équivalent selon le contexte)
-  5. Autres fichiers .html si nécessaire (pages supplémentaires)
+  4. **EXACTEMENT 2 PAGES SUPPLÉMENTAIRES** (about.html et contact.html ou équivalent selon le contexte)
+  5. **TOTAL: 3 PAGES HTML MAXIMUM** (index.html + 2 autres pages)
 
 **INTERDICTION ABSOLUE - CSS/JS INLINE**:
 - NE JAMAIS mettre de balise <style> dans le HTML
