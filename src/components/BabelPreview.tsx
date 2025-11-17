@@ -75,8 +75,10 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
         filename: path,
         presets: [
           ['react', { runtime: 'classic' }],
-          'typescript',
-          ['env', { modules: 'commonjs' }]
+          'typescript'
+        ],
+        plugins: [
+          ['transform-modules-commonjs', { loose: true }]
         ],
         retainLines: false,
       });
