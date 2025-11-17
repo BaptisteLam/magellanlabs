@@ -8,6 +8,7 @@ interface InteractivePreviewProps {
   onElementModify?: (prompt: string, elementInfo: ElementInfo) => void;
   inspectMode: boolean;
   onInspectModeChange: (mode: boolean) => void;
+  projectType?: 'website' | 'webapp' | 'mobile';
 }
 
 export interface ElementInfo {
@@ -19,7 +20,7 @@ export interface ElementInfo {
   id?: string;
 }
 
-export function InteractivePreview({ projectFiles, isDark = false, onElementModify, inspectMode, onInspectModeChange }: InteractivePreviewProps) {
+export function InteractivePreview({ projectFiles, isDark = false, onElementModify, inspectMode, onInspectModeChange, projectType = 'webapp' }: InteractivePreviewProps) {
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
@@ -64,6 +65,7 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
         isDark={isDark}
         inspectMode={inspectMode}
         onElementSelect={handleElementSelect}
+        projectType={projectType}
       />
 
       {/* Dialog de modification */}

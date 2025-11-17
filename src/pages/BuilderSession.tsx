@@ -57,6 +57,7 @@ export default function BuilderSession() {
   const [currentFavicon, setCurrentFavicon] = useState<string | null>(null);
   const [gaPropertyId, setGaPropertyId] = useState<string | null>(null);
   const [websiteId, setWebsiteId] = useState<string | null>(null);
+  const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('webapp');
   
   // Hook pour la nouvelle API Agent
   const agent = useAgentAPI();
@@ -186,6 +187,11 @@ export default function BuilderSession() {
       }
 
       if (data) {
+        // Charger le type de projet
+        if (data.project_type) {
+          setProjectType(data.project_type as 'website' | 'webapp' | 'mobile');
+        }
+        
         // Parser les fichiers de projet
         try {
           const projectFilesData = data.project_files as any;
@@ -270,6 +276,7 @@ export default function BuilderSession() {
           project_files: filesArray,
           messages: messages as any,
           title: websiteTitle,
+          project_type: projectType,
           updated_at: new Date().toISOString()
         })
         .eq('id', sessionId);
@@ -308,6 +315,7 @@ export default function BuilderSession() {
           project_files: filesArray,
           messages: messagesArray as any,
           title: title,
+          project_type: projectType,
           updated_at: new Date().toISOString()
         })
         .eq('id', sessionId);
@@ -526,9 +534,16 @@ export default function BuilderSession() {
       generateProjectName(userPrompt);
     }
 
+    // Ajouter le type de projet au contexte
+    const projectContext = projectType === 'website' 
+      ? 'Generate a static website with HTML, CSS, and vanilla JavaScript files only. No React, no JSX. Use simple HTML structure.'
+      : projectType === 'webapp'
+      ? 'Generate a React web application with TypeScript/JSX. Use React components and modern web technologies.'
+      : 'Generate a mobile-optimized React application with responsive design for mobile devices.';
+
     // Appeler l'API Agent avec callbacks
     await agent.callAgent(
-      userPrompt,
+      `${projectContext}\n\n${userPrompt}`,
       projectFiles,
       relevantFilesArray,
       chatHistory,
@@ -1180,6 +1195,8 @@ export default function BuilderSession() {
                 modificationMode={true}
                 inspectMode={inspectMode}
                 onInspectToggle={() => setInspectMode(!inspectMode)}
+                projectType={projectType}
+                onProjectTypeChange={setProjectType}
                 attachedFiles={attachedFiles}
                 onRemoveFile={removeFile}
                 onFileSelect={async (files) => {
@@ -1218,6 +1235,7 @@ export default function BuilderSession() {
                     isDark={isDark}
                     inspectMode={inspectMode}
                     onInspectModeChange={setInspectMode}
+                    projectType={projectType}
                     onElementModify={async (prompt, elementInfo) => {
                       // Créer un prompt contextuel avec les infos de l'élément
                       const contextualPrompt = `Modifier l'élément suivant dans le code :

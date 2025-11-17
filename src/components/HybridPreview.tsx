@@ -7,13 +7,15 @@ interface HybridPreviewProps {
   isDark?: boolean;
   inspectMode?: boolean;
   onElementSelect?: (elementInfo: any) => void;
+  projectType?: 'website' | 'webapp' | 'mobile';
 }
 
 export function HybridPreview({ 
   projectFiles, 
   isDark = false,
   inspectMode = false,
-  onElementSelect 
+  onElementSelect,
+  projectType = 'webapp'
 }: HybridPreviewProps) {
   // Normaliser les fichiers
   const normalizedFiles = useMemo(() => {
@@ -24,8 +26,12 @@ export function HybridPreview({
     return normalized;
   }, [projectFiles]);
 
-  // Détecter le type de projet
-  const projectType = useMemo(() => {
+  // Détecter le type de projet - forcer 'static' si projectType === 'website'
+  const projectTypeComputed = useMemo(() => {
+    if (projectType === 'website') {
+      return 'static';
+    }
+    
     const files = Object.keys(projectFiles);
     
     const hasReactFiles = files.some(path => 
@@ -39,7 +45,7 @@ export function HybridPreview({
     console.log('🔍 HybridPreview - Type détecté:', hasReactFiles ? 'React' : 'HTML');
     
     return hasReactFiles ? 'react' : 'static';
-  }, [projectFiles]);
+  }, [projectFiles, projectType]);
 
   // Écouter les messages de sélection d'élément
   useEffect(() => {
@@ -53,7 +59,7 @@ export function HybridPreview({
     return () => window.removeEventListener('message', handleMessage);
   }, [onElementSelect]);
 
-  if (projectType === 'react') {
+  if (projectTypeComputed === 'react') {
     return (
       <BabelPreview 
         projectFiles={normalizedFiles} 
