@@ -22,7 +22,7 @@ serve(async (req) => {
       projectType = 'webapp'
     } = await req.json();
 
-    console.log('🚀 Agent API called:', { message, filesCount: Object.keys(projectFiles).length });
+    console.log('🚀 Agent API called:', { message, filesCount: Object.keys(projectFiles).length, projectType });
 
     if (!ANTHROPIC_API_KEY) {
       throw new Error('ANTHROPIC_API_KEY not configured');

@@ -57,7 +57,7 @@ export default function BuilderSession() {
   const [currentFavicon, setCurrentFavicon] = useState<string | null>(null);
   const [gaPropertyId, setGaPropertyId] = useState<string | null>(null);
   const [websiteId, setWebsiteId] = useState<string | null>(null);
-  const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('webapp');
+  const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('website');
   
   // Hook pour la nouvelle API Agent
   const agent = useAgentAPI();
