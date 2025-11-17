@@ -1271,8 +1271,8 @@ export default function BuilderSession() {
                 </div>
               )}
 
-              {/* AI Task List */}
-              {aiEvents.length > 0 && (
+              {/* AI Task List - Seulement pour la première génération */}
+              {aiEvents.length > 0 && isInitialGeneration && (
                 <div className="px-4 pb-4">
                   <AiTaskList events={aiEvents} />
                 </div>
