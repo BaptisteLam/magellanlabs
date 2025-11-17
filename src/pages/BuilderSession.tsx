@@ -635,11 +635,74 @@ export default function BuilderSession() {
           }
         },
         onComplete: async () => {
-          console.log('✅ Génération terminée - Application de TOUS les fichiers à la preview');
+          console.log('✅ Génération terminée - Validation des fichiers avant affichage');
           setAiEvents(prev => [...prev, { type: 'complete' }]);
-          setGenerationEvents(prev => [...prev, { type: 'complete', message: 'All files generated successfully' }]);
           
-          // ✅ Appliquer TOUS les fichiers générés à la preview en une seule fois
+          // 🔍 VALIDATION CRITIQUE : Vérifier que les fichiers essentiels sont créés et NON VIDES
+          const hasHtml = 'index.html' in updatedFiles;
+          const hasCss = 'styles.css' in updatedFiles;
+          const hasJs = 'script.js' in updatedFiles;
+          
+          const htmlContent = updatedFiles['index.html'] || '';
+          const cssContent = updatedFiles['styles.css'] || '';
+          const jsContent = updatedFiles['script.js'] || '';
+          
+          console.log('📊 Validation fichiers:', {
+            hasHtml, hasCss, hasJs,
+            htmlLength: htmlContent.length,
+            cssLength: cssContent.length,
+            jsLength: jsContent.length
+          });
+          
+          // Vérifier que index.html contient bien les liens vers CSS et JS
+          const hasStyleLink = htmlContent.includes('href="styles.css"') || htmlContent.includes("href='styles.css'");
+          const hasScriptLink = htmlContent.includes('src="script.js"') || htmlContent.includes("src='script.js'");
+          
+          // ⚠️ ERREURS CRITIQUES
+          if (!hasHtml || !hasCss || !hasJs) {
+            const missing = [];
+            if (!hasHtml) missing.push('index.html');
+            if (!hasCss) missing.push('styles.css');
+            if (!hasJs) missing.push('script.js');
+            
+            console.error('❌ FICHIERS MANQUANTS:', missing);
+            sonnerToast.error(`Fichiers manquants: ${missing.join(', ')}. Impossible d'afficher la preview.`);
+            setGenerationEvents(prev => [...prev, { 
+              type: 'error', 
+              message: `Fichiers manquants: ${missing.join(', ')}` 
+            }]);
+            setIsInitialGeneration(false);
+            isInitialGenerationRef.current = false;
+            return;
+          }
+          
+          if (cssContent.length < 50) {
+            console.error('❌ CSS VIDE OU TROP COURT:', cssContent.length, 'caractères');
+            sonnerToast.error('Le fichier CSS est vide ou incomplet. Impossible d\'afficher la preview.');
+            setGenerationEvents(prev => [...prev, { 
+              type: 'error', 
+              message: 'CSS file is empty or too short' 
+            }]);
+            setIsInitialGeneration(false);
+            isInitialGenerationRef.current = false;
+            return;
+          }
+          
+          if (!hasStyleLink || !hasScriptLink) {
+            console.error('❌ LIENS CSS/JS MANQUANTS dans index.html');
+            sonnerToast.error('Les liens CSS/JS ne sont pas présents dans index.html');
+            setGenerationEvents(prev => [...prev, { 
+              type: 'error', 
+              message: 'Missing CSS/JS links in HTML' 
+            }]);
+            setIsInitialGeneration(false);
+            isInitialGenerationRef.current = false;
+            return;
+          }
+          
+          // ✅ VALIDATION RÉUSSIE - Appliquer les fichiers
+          console.log('✅ Validation réussie - Application des fichiers à la preview');
+          setGenerationEvents(prev => [...prev, { type: 'complete', message: 'All files generated successfully' }]);
           console.log('📦 Fichiers à appliquer:', Object.keys(updatedFiles));
           setProjectFiles({ ...updatedFiles });
           
