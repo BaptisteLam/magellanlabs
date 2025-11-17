@@ -5,7 +5,7 @@ import {
   TaskItem,
   TaskItemFile,
 } from '@/components/ui/ai/task';
-import { SiReact, SiTypescript, SiJson, SiJavascript } from '@icons-pack/react-simple-icons';
+import { SiReact, SiTypescript, SiJson, SiJavascript, SiHtml5, SiCss } from '@icons-pack/react-simple-icons';
 import { useEffect, useState } from 'react';
 import { Folder } from 'lucide-react';
 import type { AIEvent } from '@/types/agent';
@@ -14,6 +14,12 @@ import type { AIEvent } from '@/types/agent';
 function getFileIcon(path: string) {
   if (path.endsWith('/')) {
     return { Icon: Folder, color: '#94a3b8' };
+  }
+  if (path.endsWith('.html')) {
+    return { Icon: SiHtml5, color: '#E34F26' };
+  }
+  if (path.endsWith('.css')) {
+    return { Icon: SiCss, color: '#1572B6' };
   }
   if (path.endsWith('.tsx') || path.endsWith('.ts')) {
     return { Icon: SiTypescript, color: '#3178C6' };
@@ -26,9 +32,6 @@ function getFileIcon(path: string) {
   }
   if (path.endsWith('.json')) {
     return { Icon: SiJson, color: '#000000' };
-  }
-  if (path.endsWith('.css')) {
-    return { Icon: SiReact, color: '#1572B6' };
   }
   return { Icon: SiReact, color: '#149ECA' };
 }
