@@ -47,9 +47,9 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
 
     console.log('📦 VitePreview - Fichiers normalisés:', Object.keys(files));
 
-    // Pour les projets React, s'assurer qu'on a un index.html si nécessaire
+    // Pour les projets React, s'assurer qu'on a un index.html avec Tailwind CDN
     if (isReactProject && !files['index.html'] && !files['public/index.html']) {
-      console.log('⚠️ Projet React sans index.html, création');
+      console.log('⚠️ Projet React sans index.html, création avec Tailwind CDN');
       files['public/index.html'] = { 
         code: `<!DOCTYPE html>
 <html lang="fr">
@@ -57,6 +57,7 @@ export function VitePreview({ projectFiles, isDark = false, onConsoleLog }: Vite
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>React App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body>
     <div id="root"></div>
