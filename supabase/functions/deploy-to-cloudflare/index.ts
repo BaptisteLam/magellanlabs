@@ -166,10 +166,9 @@ serve(async (req) => {
         }
       });
       
-      // Add manifest as JSON
-      const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-      formData.append('manifest', manifestBlob, 'manifest.json');
-      
+      // Add manifest as JSON string (not as a blob)
+      formData.append('manifest', JSON.stringify(manifest));
+
       return formData;
     }
     
