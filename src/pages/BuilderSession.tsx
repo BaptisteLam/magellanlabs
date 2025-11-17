@@ -632,22 +632,34 @@ export default function BuilderSession() {
           const newFiles = filesChangedList.filter(path => !projectFiles[path]);
           const modifiedFiles = filesChangedList.filter(path => projectFiles[path]);
           
+          // Pour la première génération, on combine nouveau et modifié
           let recap = assistantMessage ? `${assistantMessage}\n\n` : '';
-          recap += '📋 **Récapitulatif des modifications:**\n\n';
           
-          if (newFiles.length > 0) {
-            recap += `✨ Fichiers créés (${newFiles.length}):\n`;
-            newFiles.forEach(file => {
+          // Si c'est la première génération, on affiche tout comme "créé"
+          if (isInitialGenerationRef.current) {
+            recap += '📋 **Récapitulatif des modifications:**\n\n';
+            recap += `✨ Fichiers créés (${filesChangedList.length}):\n`;
+            filesChangedList.forEach(file => {
               recap += `  • ${file}\n`;
             });
-            recap += '\n';
-          }
-          
-          if (modifiedFiles.length > 0) {
-            recap += `🔄 Fichiers modifiés (${modifiedFiles.length}):\n`;
-            modifiedFiles.forEach(file => {
-              recap += `  • ${file}\n`;
-            });
+          } else {
+            // Pour les modifications, on sépare nouveau et modifié
+            recap += '📋 **Récapitulatif des modifications:**\n\n';
+            
+            if (newFiles.length > 0) {
+              recap += `✨ Fichiers créés (${newFiles.length}):\n`;
+              newFiles.forEach(file => {
+                recap += `  • ${file}\n`;
+              });
+              recap += '\n';
+            }
+            
+            if (modifiedFiles.length > 0) {
+              recap += `🔄 Fichiers modifiés (${modifiedFiles.length}):\n`;
+              modifiedFiles.forEach(file => {
+                recap += `  • ${file}\n`;
+              });
+            }
           }
 
           const finalMessage = recap || '✨ Modifications appliquées !';
@@ -1127,7 +1139,7 @@ export default function BuilderSession() {
                         <div className="flex items-center gap-2 mb-2">
                           <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
                             <Code2 className="w-3 h-3" />
-                            <span>Code généré</span>
+                            <span>Magellan</span>
                           </div>
                         </div>
                         <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
