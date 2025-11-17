@@ -77,12 +77,15 @@ RÈGLES DE CODE - TRÈS IMPORTANT ET NON NÉGOCIABLE:
   * ❌ INTERDIT : Mettre du CSS ou JS dans index.html
   * ✅ OBLIGATOIRE : index.html contient UNIQUEMENT <link rel="stylesheet" href="styles.css"> et <script src="script.js"></script>
   
-- Nouveau site web: Tu DOIS créer ces fichiers via code_update:
-  1. **index.html** (structure HTML complète avec <!DOCTYPE html>, SANS <style> ni <script> inline)
-  2. **styles.css** (OBLIGATOIRE - DESIGN COMPLET PROFESSIONNEL - minimum 200 lignes avec TOUS les styles)
-  3. **script.js** (OBLIGATOIRE - logique JavaScript vanilla complète - minimum 80 lignes)
+- Nouveau site web: Tu DOIS créer ces fichiers via code_update **DANS CET ORDRE EXACT**:
+  1. **styles.css** (OBLIGATOIRE EN PREMIER - DESIGN COMPLET PROFESSIONNEL - minimum 200 lignes avec TOUS les styles)
+  2. **script.js** (OBLIGATOIRE EN DEUXIÈME - logique JavaScript vanilla complète - minimum 80 lignes)
+  3. **index.html** (structure HTML complète avec <!DOCTYPE html>, SANS <style> ni <script> inline)
   4. **Autant de pages HTML supplémentaires que nécessaire** (about.html, services.html, contact.html, etc.)
   5. **AUCUNE LIMITE de nombre de pages** - crée autant de pages que le contexte l'exige
+  
+🚨 **ORDRE OBLIGATOIRE**: styles.css → script.js → index.html → autres pages HTML
+⚠️ Si tu ne suis pas cet ordre, la génération échouera!
 
 **🚨🚨🚨 INTERDICTION CRITIQUE - ZÉRO TOLÉRANCE CSS/JS INLINE 🚨🚨🚨**:
 - ❌ **JAMAIS JAMAIS JAMAIS** de balises <style>...</style> dans AUCUN fichier HTML
@@ -101,10 +104,14 @@ RÈGLES DE CODE - TRÈS IMPORTANT ET NON NÉGOCIABLE:
 - ✅ **OBLIGATOIRE**: TOUT le JavaScript dans script.js (fichier séparé - minimum 50 lignes)
 
 - ⚠️ **CONSÉQUENCE**: Si tu mets du CSS/JS inline, le déploiement échouera → page blanche sur Cloudflare
-- ⚠️ **VÉRIFICATION**: Avant d'envoyer {"type":"complete"}, vérifie que tu as bien envoyé 3 code_update distincts :
-  1. {"type":"code_update","path":"index.html",...} → SANS <style> ni <script> inline
-  2. {"type":"code_update","path":"styles.css",...} → AVEC tout le CSS
-  3. {"type":"code_update","path":"script.js",...} → AVEC tout le JavaScript
+- ⚠️ **VÉRIFICATION OBLIGATOIRE**: Avant d'envoyer {"type":"complete"}, vérifie que tu as bien envoyé ces 3 code_update distincts **DANS CET ORDRE** :
+  1. {"type":"code_update","path":"styles.css",...} → AVEC tout le CSS (MINIMUM 200 lignes)
+  2. {"type":"code_update","path":"script.js",...} → AVEC tout le JavaScript (MINIMUM 80 lignes)
+  3. {"type":"code_update","path":"index.html",...} → SANS <style> ni <script> inline
+  
+🚨 **AUCUN FICHIER MINIMAL NE SERA GÉNÉRÉ AUTOMATIQUEMENT** 🚨
+Si tu oublies styles.css ou script.js, la génération échouera complètement.
+Tu DOIS générer des fichiers CSS/JS complets et professionnels, pas des fichiers quasi-vides!
 
 **PAGES MULTIPLES - AUCUNE LIMITE**:
 - Lors de la PREMIÈRE GÉNÉRATION d'un site web, crée AU MINIMUM 3-4 pages HTML pertinentes :
@@ -447,51 +454,53 @@ Exemple de flux COMPLET:
             const hasJS = generatedFiles.has('script.js');
             
             if (!hasCSS || !hasJS) {
-              console.log('⚠️ Fichiers manquants - Tentative d\'extraction...');
+              console.log('❌ ERREUR CRITIQUE: Fichiers CSS/JS manquants!');
               
-              // Essayer d'extraire CSS/JS inline du HTML
+              // Essayer d'extraire CSS/JS inline du HTML si présent
               const htmlContent = generatedFiles.get('index.html') || '';
               
-              // Extraire CSS inline
+              // Extraire CSS inline UNIQUEMENT si présent
               if (!hasCSS) {
                 const styleMatch = htmlContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-                if (styleMatch && styleMatch[1].trim()) {
+                if (styleMatch && styleMatch[1].trim().length > 100) {
                   const extractedCSS = styleMatch[1].trim();
                   generatedFiles.set('styles.css', extractedCSS);
                   const cssEvent = { type: 'code_update', path: 'styles.css', code: extractedCSS };
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify(cssEvent)}\n\n`));
-                  console.log('✅ CSS extrait et envoyé');
+                  console.log(`✅ CSS extrait du HTML inline (${extractedCSS.length} caractères)`);
                 } else {
-                  // Générer un CSS minimal
-                  const minimalCSS = `/* Styles de base */\n* {\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n}\n\nbody {\n  font-family: system-ui, -apple-system, sans-serif;\n  line-height: 1.6;\n  color: #333;\n}\n`;
-                  generatedFiles.set('styles.css', minimalCSS);
-                  const cssEvent = { type: 'code_update', path: 'styles.css', code: minimalCSS };
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(cssEvent)}\n\n`));
-                  console.log('✅ CSS minimal généré');
+                  // ERREUR: Pas de CSS généré et rien à extraire
+                  const errorEvent = { 
+                    type: 'error', 
+                    message: 'Le fichier styles.css n\'a pas été généré. Veuillez réessayer.' 
+                  };
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`));
+                  console.error('❌ Aucun CSS généré par Claude!');
                 }
               }
               
-              // Extraire JS inline
+              // Extraire JS inline UNIQUEMENT si présent
               if (!hasJS) {
                 const scriptMatch = htmlContent.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
-                if (scriptMatch && scriptMatch[1].trim() && !scriptMatch[0].includes('src=')) {
+                if (scriptMatch && scriptMatch[1].trim() && !scriptMatch[0].includes('src=') && scriptMatch[1].trim().length > 50) {
                   const extractedJS = scriptMatch[1].trim();
                   generatedFiles.set('script.js', extractedJS);
                   const jsEvent = { type: 'code_update', path: 'script.js', code: extractedJS };
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify(jsEvent)}\n\n`));
-                  console.log('✅ JS extrait et envoyé');
+                  console.log(`✅ JS extrait du HTML inline (${extractedJS.length} caractères)`);
                 } else {
-                  // Générer un JS minimal
-                  const minimalJS = `// Script principal\nconsole.log('Site chargé avec succès');\n\n// Initialisation au chargement\ndocument.addEventListener('DOMContentLoaded', () => {\n  console.log('DOM prêt');\n});\n`;
-                  generatedFiles.set('script.js', minimalJS);
-                  const jsEvent = { type: 'code_update', path: 'script.js', code: minimalJS };
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(jsEvent)}\n\n`));
-                  console.log('✅ JS minimal généré');
+                  // ERREUR: Pas de JS généré et rien à extraire
+                  const errorEvent = { 
+                    type: 'error', 
+                    message: 'Le fichier script.js n\'a pas été généré. Veuillez réessayer.' 
+                  };
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`));
+                  console.error('❌ Aucun JS généré par Claude!');
                 }
               }
-              
-              console.log('✅ Validation complète - Fichiers finaux:', Array.from(generatedFiles.keys()));
             }
+            
+            console.log('✅ Validation complète - Fichiers finaux:', Array.from(generatedFiles.keys()));
           }
 
           // S'assurer qu'un événement complete est TOUJOURS envoyé
