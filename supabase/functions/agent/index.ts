@@ -94,6 +94,25 @@ QUALITÉ DU CODE:
 - Code propre, fonctionnel et sans widgets inutiles
 - Pas de markdown, pas de backticks, juste du JSON valide NDJSON
 
+JAVASCRIPT OBLIGATOIRE:
+- **CRITIQUE**: TOUS les sites web doivent inclure du JavaScript pour l'interactivité
+- Ajoute TOUJOURS au minimum : navigation mobile, animations au scroll, interactions utilisateur
+- Utilise JavaScript pour : effets au survol, animations d'apparition, menus interactifs, formulaires dynamiques
+- Le fichier script.js NE DOIT JAMAIS être vide ou minimal
+
+ANIMATIONS ET DESIGN:
+- **OBLIGATOIRE**: Tous les sites doivent avoir des animations sobres et élégantes
+- Utilise CSS pour : transitions fluides (0.3s ease), animations au scroll, hover effects subtils
+- Animations recommandées : fade-in au scroll, slide-in pour les éléments, scale sur les images au hover
+- Utilise @keyframes pour les animations d'entrée des éléments
+- Ajoute des transitions sur les liens, boutons, cartes (transform, opacity, box-shadow)
+- Les animations doivent être SOBRES : pas trop rapides, pas trop lentes, élégantes et professionnelles
+- Exemple d'animations CSS à inclure : 
+  * Fade-in progressif pour les sections au chargement
+  * Scale subtil (1.05) au hover sur les cartes/boutons
+  * Transitions douces pour les changements de couleur
+  * Parallax léger sur les images de fond si pertinent
+
 EXEMPLE DE RÉPONSE POUR NOUVEAU SITE WEB:
 {"type":"message","content":"Je vais créer un site web statique en HTML/CSS/JavaScript..."}
 {"type":"status","content":"Task: Création de la structure HTML"}
@@ -144,6 +163,24 @@ RÈGLES DE CODE - TRÈS IMPORTANT:
 - Code propre, fonctionnel et sans widgets inutiles
 - **IMPORTANT**: N'utilise JAMAIS de smileys/emojis dans le code. Utilise toujours des icônes de lucide-react à la place
 - Pas de markdown, pas de backticks, juste du JSON valide NDJSON
+
+INTERACTIVITÉ JAVASCRIPT/TYPESCRIPT OBLIGATOIRE:
+- **CRITIQUE**: Tous les sites doivent être interactifs avec du code TypeScript/JavaScript riche
+- Ajoute TOUJOURS : gestion d'état (useState, useEffect), interactions utilisateur, animations
+- Utilise les hooks React pour créer des expériences dynamiques et réactives
+- Les composants doivent avoir de la logique, pas seulement de l'affichage statique
+
+ANIMATIONS ET DESIGN:
+- **OBLIGATOIRE**: Tous les sites doivent avoir des animations sobres et élégantes
+- Utilise Tailwind pour les transitions : transition-all duration-300 ease-in-out
+- Animations recommandées : hover:scale-105, hover:shadow-lg, animate-fade-in
+- Ajoute des animations personnalisées dans index.css avec @keyframes si nécessaire
+- Les animations doivent être SOBRES : élégantes, fluides et professionnelles
+- Exemple d'animations Tailwind à inclure :
+  * hover:scale-105 sur les cartes et boutons
+  * transition-transform duration-300 pour les changements fluides
+  * opacity animations pour les apparitions d'éléments
+  * group-hover pour des effets sophistiqués sur les containers
 
 EXEMPLE DE RÉPONSE POUR NOUVEAU PROJET:
 {"type":"message","content":"Je vais créer une application React complète..."}
