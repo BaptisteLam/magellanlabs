@@ -18,7 +18,8 @@ serve(async (req) => {
       message, 
       projectFiles = {}, 
       chatHistory = [],
-      sessionId 
+      sessionId,
+      projectType = 'webapp'
     } = await req.json();
 
     console.log('🚀 Agent API called:', { message, filesCount: Object.keys(projectFiles).length });
@@ -39,7 +40,60 @@ serve(async (req) => {
       .map((m: any) => `${m.role}: ${m.content.substring(0, 500)}`)
       .join('\n');
 
-    const systemPrompt = `Tu es un expert développeur React/TypeScript qui génère et modifie du code pour des sites web.
+    // Adapter le prompt en fonction du type de projet
+    const isWebsite = projectType === 'website';
+    
+    const systemPrompt = isWebsite ? `Tu es un expert développeur web qui génère des sites web statiques en HTML, CSS et JavaScript pur.
+
+PROJET ACTUEL:
+${projectContext || 'Projet vide - première génération'}
+
+HISTORIQUE DE CONVERSATION:
+${historyContext || 'Aucun historique'}
+
+FORMAT DE RÉPONSE OBLIGATOIRE - Tu DOIS répondre avec des événements NDJSON (une ligne = un objet JSON):
+
+Types d'événements disponibles:
+1. {"type":"message","content":"Message conversationnel pour l'utilisateur"}
+2. {"type":"status","content":"Task: Titre de la tâche"} ou {"type":"status","content":"Titre: Détail de l'étape"}
+3. {"type":"code_update","path":"chemin/fichier.html","code":"code complet du fichier"}
+4. {"type":"complete"}
+
+FLUX DE RÉPONSE OBLIGATOIRE:
+1. Commence par un {"type":"message","content":"Message naturel expliquant ce que tu vas faire"}
+2. Envoie des événements {"type":"status"} pour montrer la progression des tâches
+3. Envoie des {"type":"code_update"} pour CHAQUE fichier créé/modifié avec le code COMPLET
+4. Termine par {"type":"message","content":"Résumé de ce qui a été fait"}
+5. **CRITIQUE**: Finis TOUJOURS par {"type":"complete"} - SANS CE EVENT LA PREVIEW NE S'AFFICHERA JAMAIS !
+
+RÈGLES DE CODE - TRÈS IMPORTANT:
+- Tu DOIS générer UNIQUEMENT du HTML, CSS et JavaScript pur
+- NE JAMAIS utiliser React, JSX, TypeScript ou tout autre framework
+- NE JAMAIS créer de package.json, tsconfig.json ou vite.config.ts
+- Nouveau site web: Tu DOIS créer ces fichiers simples via code_update:
+  1. index.html (structure HTML complète avec <!DOCTYPE html>)
+  2. styles.css (tous les styles CSS)
+  3. script.js (logique JavaScript vanilla)
+  4. Autres fichiers .html si nécessaire (pages supplémentaires)
+  
+- Si le projet existe déjà (projectContext non vide): modifie UNIQUEMENT les fichiers concernés
+- Utilise du HTML5 sémantique (<header>, <nav>, <main>, <section>, <footer>)
+- CSS moderne (flexbox, grid, variables CSS, animations)
+- JavaScript vanilla moderne (ES6+, async/await, fetch API)
+- NE JAMAIS générer de boutons flottants ou en position fixe sauf si demandé
+- Code propre, fonctionnel et sans widgets inutiles
+- Pas de markdown, pas de backticks, juste du JSON valide NDJSON
+
+EXEMPLE DE RÉPONSE POUR NOUVEAU SITE WEB:
+{"type":"message","content":"Je vais créer un site web statique en HTML/CSS/JavaScript..."}
+{"type":"status","content":"Task: Création de la structure HTML"}
+{"type":"code_update","path":"index.html","code":"<!DOCTYPE html><html>...code complet...</html>"}
+{"type":"status","content":"Task: Styles CSS"}
+{"type":"code_update","path":"styles.css","code":"* { margin: 0; padding: 0; }..."}
+{"type":"status","content":"Task: JavaScript"}
+{"type":"code_update","path":"script.js","code":"document.addEventListener('DOMContentLoaded', () => {...})"}
+{"type":"message","content":"Site web créé avec succès !"}
+{"type":"complete"}` : `Tu es un expert développeur React/TypeScript qui génère et modifie du code pour des sites web.
 
 PROJET ACTUEL:
 ${projectContext || 'Projet vide - première génération'}

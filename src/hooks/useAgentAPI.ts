@@ -24,6 +24,7 @@ export function useAgentAPI() {
     relevantFiles: Array<{ path: string; content: string }>,
     chatHistory: Array<{ role: string; content: string }>,
     sessionId: string,
+    projectType: string = 'webapp',
     options: UseAgentAPIOptions = {}
   ) => {
     setIsLoading(true);
@@ -66,6 +67,7 @@ export function useAgentAPI() {
             relevantFiles,
             chatHistory,
             sessionId,
+            projectType,
           }),
           signal: abortController.signal,
         }

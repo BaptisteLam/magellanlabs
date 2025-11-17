@@ -548,6 +548,7 @@ export default function BuilderSession() {
       relevantFilesArray,
       chatHistory,
       sessionId!,
+      projectType,
       {
         onStatus: (status) => {
           console.log('📊 Status:', status);
