@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
-import JSZip from 'https://esm.sh/jszip@3.10.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -140,33 +139,51 @@ serve(async (req) => {
       }
     }
 
-    // Function to create ZIP file from project files
-    async function createZipBlob(files: ProjectFile[]): Promise<Blob> {
-      const zip = new JSZip();
-      
-      console.log('📦 Creating ZIP with', files.length, 'files');
+    // Function to create FormData with SHA-256 hashes for Direct Upload
+    async function createFormData(files: ProjectFile[]) {
+      console.log('🔐 Creating FormData with SHA-256 hashes for', files.length, 'files');
+      const formData = new FormData();
+      const manifest: Record<string, string> = {};
       
       for (const file of files) {
         const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
         
-        // Handle base64 encoded files (images, etc.)
+        // Convertir le contenu en ArrayBuffer
+        let fileBuffer: ArrayBuffer;
         if (file.content.startsWith('data:')) {
           const base64Data = file.content.split(',')[1];
-          const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-          zip.file(fileName, binaryData);
-          console.log('  ✅ Added binary file:', fileName);
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          fileBuffer = bytes.buffer;
         } else {
-          // Text files (HTML, CSS, JS, etc.)
-          zip.file(fileName, file.content);
-          console.log('  ✅ Added text file:', fileName);
+          const encoder = new TextEncoder();
+          fileBuffer = encoder.encode(file.content).buffer;
         }
+        
+        // Calculer le vrai SHA-256 hash
+        const hashBuffer = await crypto.subtle.digest("SHA-256", fileBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const fileHash = hashArray
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('')
+          .substring(0, 32); // Tronquer à 32 caractères hex
+        
+        console.log(`  ✅ ${fileName} -> hash: ${fileHash}`);
+        
+        // Ajouter au manifest
+        manifest[`/${fileName}`] = fileHash;
+        
+        // Ajouter au FormData
+        const blob = new Blob([fileBuffer]);
+        formData.append(fileHash, blob, fileName);
       }
       
-      // Generate ZIP as blob
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      console.log('✅ ZIP created, size:', zipBlob.size, 'bytes');
-      
-      return zipBlob;
+      formData.append('manifest', JSON.stringify(manifest));
+      console.log('✅ FormData created with manifest:', Object.keys(manifest).length, 'files');
+      return formData;
     }
     
     const baseTitle = session.title?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'site';
@@ -175,12 +192,8 @@ serve(async (req) => {
     
     console.log('🚀 Deploying to Cloudflare Pages project:', projectName);
     
-    // Create ZIP from project files
-    const zipBlob = await createZipBlob(modifiedFiles);
-    
-    // Deploy to Cloudflare Pages using ZIP upload
-    const formData = new FormData();
-    formData.append('file', zipBlob, 'build.zip');
+    // Create FormData with SHA-256 hashes for Direct Upload
+    const formData = await createFormData(modifiedFiles);
     
     const deployResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
@@ -226,10 +239,8 @@ serve(async (req) => {
         
         console.log('✅ Project created, retrying deployment...');
         
-        // Retry deployment with ZIP
-        const retryZipBlob = await createZipBlob(modifiedFiles);
-        const retryFormData = new FormData();
-        retryFormData.append('file', retryZipBlob, 'build.zip');
+        // Retry deployment with Direct Upload
+        const retryFormData = await createFormData(modifiedFiles);
         
         const retryResponse = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
