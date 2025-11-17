@@ -78,14 +78,18 @@ RÈGLES DE CODE - TRÈS IMPORTANT ET NON NÉGOCIABLE:
   4. **EXACTEMENT 2 PAGES SUPPLÉMENTAIRES** (about.html et contact.html ou équivalent selon le contexte)
   5. **TOTAL: 3 PAGES HTML MAXIMUM** (index.html + 2 autres pages)
 
-**INTERDICTION ABSOLUE - CSS/JS INLINE**:
-- NE JAMAIS mettre de balise <style> dans le HTML
-- NE JAMAIS mettre de balise <script> avec du code dans le HTML (sauf <script src="script.js"></script> pour lier le fichier)
-- TOUT le CSS doit être EXCLUSIVEMENT dans le fichier styles.css séparé
-- TOUT le JavaScript doit être EXCLUSIVEMENT dans le fichier script.js séparé
-- Le HTML doit UNIQUEMENT contenir la structure sémantique et les liens vers les fichiers externes
-- Utilise <link rel="stylesheet" href="styles.css"> pour le CSS
-- Utilise <script src="script.js"></script> pour le JavaScript
+**🚨 INTERDICTION ABSOLUE - CSS/JS INLINE 🚨**:
+- ❌ NE JAMAIS mettre de balises <style>...</style> dans le HTML
+- ❌ NE JAMAIS mettre de balises <script> avec du code inline dans le HTML
+- ❌ NE JAMAIS écrire du CSS directement dans le HTML (pas de style="...")
+- ❌ NE JAMAIS écrire du JavaScript directement dans le HTML (pas de onclick="...")
+- ✅ Le fichier index.html doit UNIQUEMENT contenir :
+  * <link rel="stylesheet" href="styles.css"> dans le <head>
+  * <script src="script.js"></script> avant </body>
+- ✅ TOUT le CSS doit être dans styles.css (fichier séparé OBLIGATOIRE)
+- ✅ TOUT le JavaScript doit être dans script.js (fichier séparé OBLIGATOIRE)
+- ⚠️ CRITIQUE : Si tu mets du CSS ou JS dans le HTML, le déploiement Cloudflare échouera avec une page blanche
+- ⚠️ VÉRIFIE TOUJOURS que tu génères 3 fichiers distincts : index.html, styles.css, script.js
 
 **CRITIQUE - PAGES MULTIPLES**:
 - Lors de la PREMIÈRE GÉNÉRATION d'un site web, tu DOIS créer AU MINIMUM 4 pages HTML :
