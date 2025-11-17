@@ -75,7 +75,16 @@ RÈGLES DE CODE - TRÈS IMPORTANT:
   1. index.html (structure HTML complète avec <!DOCTYPE html>)
   2. styles.css (tous les styles CSS avec animations, transitions, etc.)
   3. script.js (logique JavaScript vanilla pour interactivité)
-  4. Autres fichiers .html si nécessaire (pages supplémentaires)
+  4. **MINIMUM 3 PAGES SUPPLÉMENTAIRES** (about.html, services.html, contact.html ou équivalent selon le contexte)
+  5. Autres fichiers .html si nécessaire (pages supplémentaires)
+
+**CRITIQUE - PAGES MULTIPLES**:
+- Lors de la PREMIÈRE GÉNÉRATION d'un site web, tu DOIS créer AU MINIMUM 4 pages HTML :
+  * index.html (page d'accueil)
+  * + 3 autres pages pertinentes (ex: about.html, services.html, contact.html)
+- Chaque page doit avoir du contenu réel et complet, pas des pages vides
+- Ajoute une navigation cohérente entre toutes les pages
+- Les pages supplémentaires doivent être liées depuis la navigation de index.html
 
 IMAGES ET RESSOURCES:
 - Tu peux télécharger et utiliser des images libres de droit depuis Unsplash, Pexels, etc.
@@ -150,10 +159,19 @@ RÈGLES DE CODE - TRÈS IMPORTANT:
   1. package.json (avec react, react-dom, vite, typescript, tailwindcss, @types/react, @types/react-dom)
   2. index.html (point d'entrée avec <div id="root"></div>)
   3. src/main.tsx (point d'entrée: import ReactDOM, createRoot, render <App />)
-  4. src/App.tsx (composant principal de l'application)
+  4. src/App.tsx (composant principal avec React Router et routes)
   5. src/index.css (styles Tailwind: @tailwind base/components/utilities)
   6. vite.config.ts (export default defineConfig avec react plugin)
   7. tsconfig.json (configuration TypeScript avec jsx: react-jsx)
+  8. **MINIMUM 3 PAGES/COMPONENTS SUPPLÉMENTAIRES** (Home, About, Services, Contact ou équivalent)
+
+**CRITIQUE - PAGES MULTIPLES**:
+- Lors de la PREMIÈRE GÉNÉRATION d'une webapp, tu DOIS créer AU MINIMUM 4 pages/composants :
+  * Page Home (composant principal)
+  * + 3 autres pages pertinentes (ex: About, Services, Contact)
+- Utilise React Router (react-router-dom) pour la navigation entre les pages
+- Chaque page doit avoir du contenu réel et complet, pas des composants vides
+- Configure les routes dans App.tsx avec des liens de navigation fonctionnels
   
 - Si le projet existe déjà (projectContext non vide): modifie UNIQUEMENT les fichiers concernés
 - Utilise React + TypeScript + Tailwind CSS
@@ -238,7 +256,7 @@ Exemple de flux COMPLET:
             },
             body: JSON.stringify({
               model: 'claude-sonnet-4-5',
-              max_tokens: 8000,
+              max_tokens: 16384,
               stream: true,
               system: systemPrompt,
               messages: [
