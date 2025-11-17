@@ -1058,9 +1058,7 @@ export default function BuilderSession() {
                     </div>
                   ) : (
                     <div className="flex items-start gap-3">
-                      <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                        <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-4 h-4" />
-                      </div>
+                      <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
