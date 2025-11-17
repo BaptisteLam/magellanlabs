@@ -24,6 +24,32 @@ import { AiDiffService } from "@/services/aiDiffService";
 import { useAgentAPI } from "@/hooks/useAgentAPI";
 import type { AIEvent } from '@/types/agent';
 import AiTaskList from '@/components/chat/AiTaskList';
+import html2canvas from 'html2canvas';
+import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Download, Paperclip, BarChart3, Lightbulb, FileText, Edit, Loader, Smartphone, Monitor } from "lucide-react";
+import { useThemeStore } from '@/stores/themeStore';
+import { toast as sonnerToast } from "sonner";
+import JSZip from "jszip";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { FileTree } from "@/components/FileTree";
+import { InteractivePreview } from "@/components/InteractivePreview";
+import { GeneratingPreview } from "@/components/GeneratingPreview";
+import { FakeUrlBar } from "@/components/FakeUrlBar";
+import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
+import { FileTabs } from "@/components/CodeEditor/FileTabs";
+import { MonacoEditor } from "@/components/CodeEditor/MonacoEditor";
+import PromptBar from "@/components/PromptBar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import Analytics from "@/components/Analytics";
+import { AiDiffService } from "@/services/aiDiffService";
+import { useAgentAPI } from "@/hooks/useAgentAPI";
+import type { AIEvent } from '@/types/agent';
+import AiTaskList from '@/components/chat/AiTaskList';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -274,6 +300,58 @@ export default function BuilderSession() {
               path.endsWith('.js') ? 'javascript' : 'text'
       }));
 
+      // Capturer le screenshot avec html2canvas
+      let thumbnailUrl: string | null = null;
+      try {
+        // Trouver l'iframe de preview
+        const iframe = document.querySelector('iframe[title="Preview"]') as HTMLIFrameElement;
+        if (iframe && iframe.contentDocument) {
+          console.log('📸 Capturing screenshot with html2canvas...');
+          
+          // Attendre un peu que le contenu soit bien chargé
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const canvas = await html2canvas(iframe.contentDocument.body, {
+            allowTaint: true,
+            useCORS: true,
+            scale: 1,
+            width: 1200,
+            height: 630,
+            windowWidth: 1200,
+            windowHeight: 900
+          });
+          
+          // Convertir le canvas en blob
+          const blob = await new Promise<Blob>((resolve) => {
+            canvas.toBlob((blob) => resolve(blob!), 'image/png', 0.9);
+          });
+          
+          // Uploader vers Supabase Storage
+          const fileName = `${sessionId}-${Date.now()}.png`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('screenshots')
+            .upload(fileName, blob, {
+              contentType: 'image/png',
+              upsert: true
+            });
+          
+          if (uploadError) {
+            console.error('Error uploading screenshot:', uploadError);
+          } else {
+            // Obtenir l'URL publique
+            const { data: { publicUrl } } = supabase.storage
+              .from('screenshots')
+              .getPublicUrl(fileName);
+            
+            thumbnailUrl = publicUrl;
+            console.log('✅ Screenshot uploaded:', publicUrl);
+          }
+        }
+      } catch (screenshotError) {
+        console.error('Error generating screenshot:', screenshotError);
+        // Ne pas bloquer la sauvegarde si le screenshot échoue
+      }
+
       const { error } = await supabase
         .from('build_sessions')
         .update({
@@ -281,28 +359,12 @@ export default function BuilderSession() {
           messages: messages as any,
           title: websiteTitle,
           project_type: projectType,
+          thumbnail_url: thumbnailUrl,
           updated_at: new Date().toISOString()
         })
         .eq('id', sessionId);
 
       if (error) throw error;
-
-      // Générer automatiquement le screenshot avec l'URL de preview
-      try {
-        // Utiliser la route de preview publique du projet
-        const previewUrl = `https://eee485e0-bfba-4de6-bf6b-6774c5d5122a.lovableproject.com/preview/${sessionId}`;
-        
-        await supabase.functions.invoke('generate-screenshot', {
-          body: {
-            sessionId: sessionId,
-            url: previewUrl
-          }
-        });
-        console.log('Screenshot generation started for:', previewUrl);
-      } catch (screenshotError) {
-        console.error('Error generating screenshot:', screenshotError);
-        // Ne pas bloquer la sauvegarde si le screenshot échoue
-      }
     } catch (error) {
       console.error('Error saving session:', error);
     }
