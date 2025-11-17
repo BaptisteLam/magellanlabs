@@ -76,6 +76,9 @@ export default function BuilderSession() {
   // Mode Inspect pour la preview interactive
   const [inspectMode, setInspectMode] = useState(false);
 
+  // Type de projet (website ou react)
+  const [projectType, setProjectType] = useState<'website' | 'react'>('website');
+
   // Fonction pour générer automatiquement un nom de projet
   const generateProjectName = async (prompt: string) => {
     try {
@@ -243,6 +246,7 @@ export default function BuilderSession() {
           setMessages(parsedMessages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
         }
         setWebsiteTitle(data.title || '');
+        setProjectType(data.project_type || 'website');
       }
     } catch (error) {
       console.error('Error loading session:', error);
@@ -533,6 +537,7 @@ export default function BuilderSession() {
       relevantFilesArray,
       chatHistory,
       sessionId!,
+      projectType,
       {
         onStatus: (status) => {
           console.log('📊 Status:', status);

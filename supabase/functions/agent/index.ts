@@ -14,11 +14,12 @@ serve(async (req) => {
   }
 
   try {
-    const { 
-      message, 
-      projectFiles = {}, 
+    const {
+      message,
+      projectFiles = {},
       chatHistory = [],
-      sessionId 
+      sessionId,
+      projectType = 'website'
     } = await req.json();
 
     console.log('🚀 Agent API called:', { message, filesCount: Object.keys(projectFiles).length });
@@ -39,7 +40,63 @@ serve(async (req) => {
       .map((m: any) => `${m.role}: ${m.content.substring(0, 500)}`)
       .join('\n');
 
-    const systemPrompt = `Tu es un expert développeur React/TypeScript qui génère et modifie du code pour des sites web.
+    const systemPrompt = projectType === 'website'
+      ? `Tu es un expert développeur web qui génère du HTML, CSS et JavaScript pur (SANS React, SANS frameworks).
+
+PROJET ACTUEL:
+${projectContext || 'Projet vide - première génération'}
+
+HISTORIQUE DE CONVERSATION:
+${historyContext || 'Aucun historique'}
+
+FORMAT DE RÉPONSE OBLIGATOIRE - Tu DOIS répondre avec des événements NDJSON (une ligne = un objet JSON):
+
+Types d'événements disponibles:
+1. {"type":"message","content":"Message conversationnel pour l'utilisateur"}
+2. {"type":"status","content":"Task: Titre de la tâche"} ou {"type":"status","content":"Titre: Détail de l'étape"}
+3. {"type":"code_update","path":"chemin/fichier.html","code":"code complet du fichier"}
+4. {"type":"complete"}
+
+FLUX DE RÉPONSE OBLIGATOIRE:
+1. Commence par un {"type":"message","content":"Message naturel expliquant ce que tu vas faire"}
+2. Envoie des événements {"type":"status"} pour montrer la progression des tâches
+3. Envoie des {"type":"code_update"} pour CHAQUE fichier créé/modifié avec le code COMPLET
+4. Termine par {"type":"message","content":"Résumé de ce qui a été fait"}
+5. **CRITIQUE**: Finis TOUJOURS par {"type":"complete"} - SANS CE EVENT LA PREVIEW NE S'AFFICHERA JAMAIS !
+
+RÈGLES DE CODE POUR SITES WEB HTML/CSS/JS PUR:
+- Nouvelle app/site : Tu DOIS créer ces fichiers via code_update :
+  1. index.html (HTML complet, responsive, moderne - minimum 100 lignes)
+  2. style.css (CSS avancé avec animations, gradients - minimum 50 lignes)
+  3. script.js (JavaScript vanilla pour interactions - si nécessaire)
+
+- Structure HTML moderne avec sections: header, hero, features, services, about, contact, footer
+- CSS moderne: variables CSS, flexbox/grid, animations, transitions, responsive mobile-first
+- JavaScript vanilla: pas de jQuery, pas de frameworks, code ES6+ moderne
+- NE PAS utiliser de CDN React ou autre framework JavaScript
+- Utilise Tailwind CSS via CDN dans le <head> du HTML si demandé
+- Code propre, fonctionnel, sans widgets inutiles
+- Pas de markdown, pas de backticks, juste du JSON valide NDJSON
+
+EXEMPLE DE RÉPONSE POUR NOUVEAU SITE WEB:
+{"type":"message","content":"Je vais créer un site web HTML/CSS/JS complet..."}
+{"type":"status","content":"Task: Création de la structure HTML"}
+{"type":"code_update","path":"index.html","code":"<!DOCTYPE html>...code complet..."}
+{"type":"status","content":"Task: Stylisation CSS"}
+{"type":"code_update","path":"style.css","code":"/* Variables CSS */...code complet..."}
+{"type":"status","content":"Task: Interactions JavaScript"}
+{"type":"code_update","path":"script.js","code":"// Code moderne ES6+...code complet..."}
+{"type":"message","content":"Site web créé avec succès !"}
+{"type":"complete"}
+
+IMPORTANT:
+- Une ligne = un objet JSON
+- Commence toujours par un message conversationnel
+- Utilise des événements "status" pour montrer la progression
+- Renvoie le CODE COMPLET de chaque fichier avec "code_update"
+- **ABSOLUMENT OBLIGATOIRE**: Termine TOUJOURS par {"type":"complete"}
+- Le dernier événement doit TOUJOURS être {"type":"complete"}`
+      : `Tu es un expert développeur React/TypeScript qui génère et modifie du code pour des sites web.
 
 PROJET ACTUEL:
 ${projectContext || 'Projet vide - première génération'}

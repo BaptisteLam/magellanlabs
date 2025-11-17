@@ -10,6 +10,7 @@ const AIBuilder = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
+  const [projectType, setProjectType] = useState<'website' | 'react'>('website');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -43,6 +44,7 @@ const AIBuilder = () => {
           user_id: user?.id || null,
           messages: [{ role: 'user', content: inputValue }],
           project_files: [],
+          project_type: projectType,
         })
         .select()
         .single();
@@ -98,6 +100,32 @@ const AIBuilder = () => {
         <p className="text-lg md:text-xl text-slate-600 font-light mb-10">
           Décris ton activité en une phrase... l'IA s'occupe du reste.
         </p>
+
+        {/* Project Type Selector */}
+        <div className="max-w-2xl mx-auto mb-6">
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => setProjectType('website')}
+              className={`px-6 py-3 rounded-lg border-2 transition-all ${
+                projectType === 'website'
+                  ? 'border-[#014AAD] bg-[#014AAD]/10 text-[#014AAD] font-semibold'
+                  : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
+              }`}
+            >
+              📄 Site web (HTML/CSS/JS)
+            </button>
+            <button
+              onClick={() => setProjectType('react')}
+              className={`px-6 py-3 rounded-lg border-2 transition-all ${
+                projectType === 'react'
+                  ? 'border-[#014AAD] bg-[#014AAD]/10 text-[#014AAD] font-semibold'
+                  : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
+              }`}
+            >
+              ⚛️ Application React
+            </button>
+          </div>
+        </div>
 
         {/* AI Input Area */}
         <div className="max-w-2xl mx-auto">
