@@ -70,6 +70,7 @@ export default function BuilderSession() {
   
   // Flag pour savoir si on est en première génération
   const [isInitialGeneration, setIsInitialGeneration] = useState(false);
+  const isInitialGenerationRef = useRef(false);
   
   // Flag pour éviter de traiter le prompt initial plusieurs fois
   const [initialPromptProcessed, setInitialPromptProcessed] = useState(false);
@@ -529,6 +530,7 @@ export default function BuilderSession() {
     // Activer le mode "première génération" si les fichiers sont vides
     if (Object.keys(projectFiles).length === 0) {
       setIsInitialGeneration(true);
+      isInitialGenerationRef.current = true;
       
       // Générer automatiquement un nom de projet
       generateProjectName(userPrompt);
@@ -580,8 +582,10 @@ export default function BuilderSession() {
           setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
           updatedFiles[path] = code;
           
-          // Injection instantanée dans la preview
-          setProjectFiles(prev => ({ ...prev, [path]: code }));
+          // Injection instantanée dans la preview SEULEMENT si ce n'est pas une génération initiale
+          if (!isInitialGenerationRef.current) {
+            setProjectFiles(prev => ({ ...prev, [path]: code }));
+          }
           
           if (path === 'index.html') {
             setGeneratedHtml(code);
@@ -597,11 +601,12 @@ export default function BuilderSession() {
           setAiEvents(prev => [...prev, { type: 'complete' }]);
           setGenerationEvents(prev => [...prev, { type: 'complete', message: 'Changes applied' }]);
           
+          // Appliquer tous les fichiers mis à jour (important de le faire AVANT de désactiver isInitialGeneration)
+          setProjectFiles({ ...updatedFiles });
+          
           // Désactiver le mode "première génération"
           setIsInitialGeneration(false);
-          
-          // Appliquer tous les fichiers mis à jour
-          setProjectFiles({ ...updatedFiles });
+          isInitialGenerationRef.current = false;
           
           // Forcer le reload de la preview
           setTimeout(() => {
