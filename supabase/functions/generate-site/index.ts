@@ -63,20 +63,10 @@ function parseGeneratedCode(code: string): ProjectFile[] {
     }
   }
   
-  // Format 3: HTML standalone sans markers
+  // Format 3: HTML standalone - REJETER si pas de CSS et JS
   if (files.length === 0 && (code.includes('<!DOCTYPE html>') || code.includes('<html'))) {
-    let htmlContent = code;
-    
-    // Retirer tous les code blocks markdown
-    htmlContent = htmlContent.replace(/```html\n?/g, '');
-    htmlContent = htmlContent.replace(/```\n?/g, '');
-    htmlContent = htmlContent.trim();
-    
-    files.push({
-      path: 'index.html',
-      content: htmlContent,
-      type: 'html'
-    });
+    console.error('❌ ERREUR: Génération HTML uniquement détectée - CSS et JS requis!');
+    throw new Error('La génération doit OBLIGATOIREMENT inclure HTML, CSS ET JavaScript. Impossible de créer uniquement du HTML.');
   }
   
   return files;

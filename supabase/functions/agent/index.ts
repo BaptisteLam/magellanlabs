@@ -66,15 +66,16 @@ FLUX DE RÉPONSE OBLIGATOIRE:
 4. Termine par {"type":"message","content":"Résumé de ce qui a été fait"}
 5. **CRITIQUE**: Finis TOUJOURS par {"type":"complete"} - SANS CE EVENT LA PREVIEW NE S'AFFICHERA JAMAIS !
 
-RÈGLES DE CODE - TRÈS IMPORTANT:
+RÈGLES DE CODE - TRÈS IMPORTANT ET NON NÉGOCIABLE:
 - Tu DOIS générer UNIQUEMENT du HTML, CSS et JavaScript vanilla pur
-- TOUJOURS créer/modifier ces 3 types de fichiers : HTML, CSS ET JavaScript
+- **OBLIGATOIRE**: Tu DOIS TOUJOURS créer/modifier CES 3 TYPES DE FICHIERS : HTML, CSS ET JavaScript
+- **INTERDICTION ABSOLUE**: NE JAMAIS générer uniquement du HTML sans CSS et JS
 - NE JAMAIS utiliser React, JSX, TypeScript ou tout autre framework
 - NE JAMAIS créer de package.json, tsconfig.json ou vite.config.ts
-- Nouveau site web: Tu DOIS créer ces fichiers simples via code_update:
-  1. index.html (structure HTML complète avec <!DOCTYPE html>)
-  2. styles.css (tous les styles CSS avec animations, transitions, etc.)
-  3. script.js (logique JavaScript vanilla pour interactivité)
+- Nouveau site web: Tu DOIS IMPÉRATIVEMENT créer ces 3 fichiers simples via code_update:
+  1. **index.html** (structure HTML complète avec <!DOCTYPE html>)
+  2. **styles.css** (OBLIGATOIRE - tous les styles CSS avec animations, transitions, responsive, etc. - JAMAIS VIDE)
+  3. **script.js** (OBLIGATOIRE - logique JavaScript vanilla pour interactivité - JAMAIS VIDE)
   4. **MINIMUM 3 PAGES SUPPLÉMENTAIRES** (about.html, services.html, contact.html ou équivalent selon le contexte)
   5. Autres fichiers .html si nécessaire (pages supplémentaires)
 
@@ -103,11 +104,25 @@ QUALITÉ DU CODE:
 - Code propre, fonctionnel et sans widgets inutiles
 - Pas de markdown, pas de backticks, juste du JSON valide NDJSON
 
-JAVASCRIPT OBLIGATOIRE:
+**FICHIERS OBLIGATOIRES - RÈGLES STRICTES**:
+- **styles.css** EST OBLIGATOIRE et DOIT contenir (MINIMUM 100 lignes) :
+  * Reset CSS complet (*, body, box-sizing, etc.)
+  * Variables CSS personnalisées dans :root (couleurs, espacements, fonts, etc.)
+  * Styles détaillés pour TOUS les éléments HTML utilisés (header, nav, sections, footer, etc.)
+  * Media queries complètes pour le responsive (mobile, tablet, desktop)
+  * Au moins 3-5 animations personnalisées avec @keyframes
+  * Transitions et effets hover pour TOUS les éléments interactifs
+  * Styles de grilles et flexbox
+- **script.js** EST OBLIGATOIRE et DOIT contenir (MINIMUM 50 lignes) :
+  * DOMContentLoaded event listener
+  * Au moins 3-5 fonctions d'interactivité (menu, scroll, animations, formulaires, etc.)
+  * Event listeners pour les interactions utilisateur
+  * Logique de navigation si plusieurs pages
+  * Animations JavaScript ou manipulations DOM
+  * JAMAIS un fichier vide ou avec juste console.log
 - **CRITIQUE**: TOUS les sites web doivent inclure du JavaScript pour l'interactivité
 - Ajoute TOUJOURS au minimum : navigation mobile, animations au scroll, interactions utilisateur
 - Utilise JavaScript pour : effets au survol, animations d'apparition, menus interactifs, formulaires dynamiques
-- Le fichier script.js NE DOIT JAMAIS être vide ou minimal
 
 ANIMATIONS ET DESIGN:
 - **OBLIGATOIRE**: Tous les sites doivent avoir des animations sobres et élégantes
