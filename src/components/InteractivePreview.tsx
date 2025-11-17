@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { HybridPreview } from './HybridPreview';
-import { ElementEditDialog } from './ElementEditDialog';
+import { FloatingEditBar } from './FloatingEditBar';
 
 interface InteractivePreviewProps {
   projectFiles: Record<string, string>;
@@ -18,6 +18,14 @@ export interface ElementInfo {
   path: string;
   innerHTML: string;
   id?: string;
+  boundingRect?: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    bottom: number;
+    right: number;
+  };
 }
 
 export function InteractivePreview({ projectFiles, isDark = false, onElementModify, inspectMode, onInspectModeChange, projectType = 'webapp' }: InteractivePreviewProps) {
@@ -68,8 +76,8 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
         projectType={projectType}
       />
 
-      {/* Dialog de modification */}
-      <ElementEditDialog
+      {/* Barre d'édition flottante */}
+      <FloatingEditBar
         isOpen={showEditDialog}
         onClose={() => {
           setShowEditDialog(false);

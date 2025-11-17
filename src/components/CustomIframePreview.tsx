@@ -102,17 +102,39 @@ export function CustomIframePreview({
         const target = e.target;
         if (target === document.body || target === document.documentElement) return;
         
+        // Filtrer les éléments non pertinents
+        const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
+        if (!selectableTags.includes(target.tagName)) return;
+        
         removeHighlight();
         
-        target.style.outline = '2px solid #03A5C0';
-        target.style.outlineOffset = '2px';
+        // Créer un overlay au lieu d'un outline
+        const rect = target.getBoundingClientRect();
+        const overlay = document.createElement('div');
+        overlay.id = '__inspect_overlay__';
+        overlay.style.cssText = \`
+          position: fixed;
+          left: \${rect.left}px;
+          top: \${rect.top}px;
+          width: \${rect.width}px;
+          height: \${rect.height}px;
+          border: 2px solid #03A5C0;
+          border-radius: 4px;
+          box-shadow: 0 0 0 4px rgba(3, 165, 192, 0.2);
+          pointer-events: none;
+          z-index: 999999;
+          transition: all 150ms ease-in-out;
+        \`;
+        document.body.appendChild(overlay);
         currentHighlight = target;
       }
       
       function removeHighlight() {
+        const overlay = document.getElementById('__inspect_overlay__');
+        if (overlay) {
+          overlay.remove();
+        }
         if (currentHighlight) {
-          currentHighlight.style.outline = '';
-          currentHighlight.style.outlineOffset = '';
           currentHighlight = null;
         }
       }
@@ -124,6 +146,7 @@ export function CustomIframePreview({
         e.stopPropagation();
         
         const target = e.target;
+        const rect = target.getBoundingClientRect();
         
         window.parent.postMessage({
           type: 'element-selected',
@@ -133,7 +156,15 @@ export function CustomIframePreview({
             classList: Array.from(target.classList),
             path: getElementPath(target),
             innerHTML: target.innerHTML,
-            id: target.id || undefined
+            id: target.id || undefined,
+            boundingRect: {
+              left: rect.left,
+              top: rect.top,
+              width: rect.width,
+              height: rect.height,
+              bottom: rect.bottom,
+              right: rect.right
+            }
           }
         }, '*');
       }
