@@ -31,6 +31,16 @@ export function CustomIframePreview({
       .map(([_, content]) => content)
       .join('\n');
 
+    console.log('📦 CSS collecté:', cssFiles.length, 'caractères');
+    
+    // Collecter tous les JS
+    const jsFiles = Object.entries(projectFiles)
+      .filter(([path]) => path.endsWith('.js'))
+      .map(([_, content]) => content)
+      .join('\n');
+
+    console.log('📦 JS collecté:', jsFiles.length, 'caractères');
+
     // Vérifier si c'est un projet React/TypeScript
     const isReactProject = Object.keys(projectFiles).some(path => 
       path.endsWith('.tsx') || path.endsWith('.jsx') || path.includes('App.tsx') || path.includes('main.tsx')
@@ -192,24 +202,39 @@ export function CustomIframePreview({
     </script>
     `;
 
-    // Injecter CSS et script dans le HTML
+    // Injecter CSS et JS dans le HTML
     let finalHTML = htmlContent;
     
-    // Ajouter les CSS dans le <head>
+    // ✅ AJOUTER LE CSS DANS LE <HEAD>
     if (cssFiles) {
+      console.log('✅ Injection CSS dans <head>');
       const styleTag = `<style>${cssFiles}</style>`;
       if (finalHTML.includes('</head>')) {
         finalHTML = finalHTML.replace('</head>', `${styleTag}</head>`);
       } else {
         finalHTML = finalHTML.replace('<head>', `<head>${styleTag}`);
       }
+    } else {
+      console.warn('⚠️ Aucun CSS à injecter');
     }
     
-    // Ajouter le script d'inspection juste avant </body>
-    if (finalHTML.includes('</body>')) {
-      finalHTML = finalHTML.replace('</body>', `${inspectionScript}</body>`);
+    // ✅ AJOUTER LE JAVASCRIPT AVANT LE SCRIPT D'INSPECTION
+    if (jsFiles) {
+      console.log('✅ Injection JS dans <body>');
+      const scriptTag = `<script>${jsFiles}</script>`;
+      if (finalHTML.includes('</body>')) {
+        finalHTML = finalHTML.replace('</body>', `${scriptTag}${inspectionScript}</body>`);
+      } else {
+        finalHTML += scriptTag + inspectionScript;
+      }
     } else {
-      finalHTML += inspectionScript;
+      console.warn('⚠️ Aucun JS à injecter');
+      // Ajouter quand même le script d'inspection
+      if (finalHTML.includes('</body>')) {
+        finalHTML = finalHTML.replace('</body>', `${inspectionScript}</body>`);
+      } else {
+        finalHTML += inspectionScript;
+      }
     }
 
     return finalHTML;
