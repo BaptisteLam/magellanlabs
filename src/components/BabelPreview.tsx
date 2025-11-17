@@ -138,12 +138,81 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
         }
         
         ${Object.entries(transpiledModules).map(([path, code]) => {
-          // Babel avec preset 'env' devrait avoir transformé tous les imports
-          // Mais on garde une sécurité pour les imports externes
           let processedCode = code;
           
+          // 1. import React from 'react' → const React = require('react')
+          processedCode = processedCode.replace(
+            /import\s+(\w+)\s+from\s+['"]([^'"]+)['"]/g,
+            'const $1 = require("$2")'
+          );
+          
+          // 2. import { Component } from 'react' → const { Component } = require('react')
+          processedCode = processedCode.replace(
+            /import\s+\{([^}]+)\}\s+from\s+['"]([^'"]+)['"]/g,
+            'const {$1} = require("$2")'
+          );
+          
+          // 3. import * as Name from 'module' → const Name = require('module')
+          processedCode = processedCode.replace(
+            /import\s+\*\s+as\s+(\w+)\s+from\s+['"]([^'"]+)['"]/g,
+            'const $1 = require("$2")'
+          );
+          
+          // 4. Normaliser les chemins relatifs
+          processedCode = processedCode.replace(
+            /require\(["'](\.[^"']+)["']\)/g,
+            (match, relativePath) => {
+              const dir = path.split('/').slice(0, -1).join('/');
+              let resolved = relativePath;
+              
+              if (relativePath.startsWith('./')) {
+                resolved = dir + '/' + relativePath.substring(2);
+              } else if (relativePath.startsWith('../')) {
+                const parts = dir.split('/');
+                let upCount = 0;
+                let rest = relativePath;
+                while (rest.startsWith('../')) {
+                  upCount++;
+                  rest = rest.substring(3);
+                }
+                resolved = parts.slice(0, -upCount).join('/') + '/' + rest;
+              }
+              
+              if (!resolved.match(/\.(tsx?|jsx?)$/)) {
+                const extensions = ['.tsx', '.ts', '.jsx', '.js'];
+                for (const ext of extensions) {
+                  if (transpiledModules[resolved + ext]) {
+                    resolved += ext;
+                    break;
+                  }
+                }
+              }
+              
+              return `require("${resolved}")`;
+            }
+          );
+          
+          // 5. Transformer les exports
+          processedCode = processedCode.replace(
+            /export\s+default\s+/g,
+            'module.exports = '
+          );
+          
+          processedCode = processedCode.replace(
+            /export\s+\{([^}]+)\}/g,
+            (match, exports) => {
+              const items = exports.split(',').map(e => e.trim());
+              return items.map(item => `exports.${item} = ${item};`).join('\n');
+            }
+          );
+          
+          processedCode = processedCode.replace(
+            /export\s+(const|let|var|function|class)\s+(\w+)/g,
+            '$1 $2'
+          );
+          
           return `modules["${path}"] = function(module, exports, require) {
-            ${code}
+            ${processedCode}
           };`;
         }).join('\\n')}
         
