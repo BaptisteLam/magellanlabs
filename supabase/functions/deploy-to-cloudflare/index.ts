@@ -353,7 +353,7 @@ serve(async (req) => {
         url: deploymentUrl,
         projectName: projectName,
         websiteId: websiteId || null,
-        state: deployResult.result?.latest_stage?.status || 'active',
+        state: 'active',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
