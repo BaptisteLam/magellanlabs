@@ -39,11 +39,6 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
       // Normaliser le chemin pour Sandpack
       let sandpackPath = path;
       
-      // Retirer "src/" du début
-      if (sandpackPath.startsWith('src/')) {
-        sandpackPath = sandpackPath.replace('src/', '');
-      }
-      
       // Ajouter "/" au début si absent
       if (!sandpackPath.startsWith('/')) {
         sandpackPath = '/' + sandpackPath;
