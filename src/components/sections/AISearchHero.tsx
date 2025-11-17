@@ -343,15 +343,9 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
           <ResizableHandle withHandle />
           
           <ResizablePanel defaultSize={40} minSize={30}>
-            {viewMode === 'preview' ? (
-              <div className="h-full bg-white">
-                <BabelPreview projectFiles={projectFiles} />
-              </div>
-            ) : (
-              <div className="h-full flex items-center justify-center text-slate-400">
-                Preview disponible en mode Preview
-              </div>
-            )}
+            <div className="h-full bg-white">
+              <BabelPreview projectFiles={projectFiles} isDark={isDark} />
+            </div>
           </ResizablePanel>
         </ResizablePanelGroup>
 
