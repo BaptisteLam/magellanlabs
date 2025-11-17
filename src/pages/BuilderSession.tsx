@@ -68,7 +68,7 @@ export default function BuilderSession() {
   const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
   
   // Événements de génération pour l'affichage de pensée
-  const [generationEvents, setGenerationEvents] = useState<Array<{ type: string; message: string; duration?: number; file?: string }>>([]);
+  const [generationEvents, setGenerationEvents] = useState<GenerationEvent[]>([]);
   
   // Flag pour savoir si on est en première génération
   const [isInitialGeneration, setIsInitialGeneration] = useState(false);
