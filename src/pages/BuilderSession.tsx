@@ -287,21 +287,21 @@ export default function BuilderSession() {
 
       if (error) throw error;
 
-      // Générer automatiquement le screenshot
-      if (generatedHtml) {
-        try {
-          await supabase.functions.invoke('generate-screenshot', {
-            body: {
-              projectId: sessionId,
-              htmlContent: generatedHtml,
-              table: 'build_sessions'
-            }
-          });
-          console.log('Screenshot generation started');
-        } catch (screenshotError) {
-          console.error('Error generating screenshot:', screenshotError);
-          // Ne pas bloquer la sauvegarde si le screenshot échoue
-        }
+      // Générer automatiquement le screenshot avec l'URL de preview
+      try {
+        // Utiliser la route de preview publique du projet
+        const previewUrl = `https://eee485e0-bfba-4de6-bf6b-6774c5d5122a.lovableproject.com/preview/${sessionId}`;
+        
+        await supabase.functions.invoke('generate-screenshot', {
+          body: {
+            sessionId: sessionId,
+            url: previewUrl
+          }
+        });
+        console.log('Screenshot generation started for:', previewUrl);
+      } catch (screenshotError) {
+        console.error('Error generating screenshot:', screenshotError);
+        // Ne pas bloquer la sauvegarde si le screenshot échoue
       }
     } catch (error) {
       console.error('Error saving session:', error);
