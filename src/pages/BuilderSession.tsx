@@ -1274,7 +1274,7 @@ export default function BuilderSession() {
         {previewMode === 'desktop' && <ResizableHandle withHandle />}
         
           <ResizablePanel defaultSize={70} minSize={previewMode === 'mobile' ? 70 : 30}>
-            <div className={`h-full w-full flex ${previewMode === 'mobile' ? `justify-center items-start ${isDark ? 'bg-slate-900' : 'bg-slate-100'}` : 'flex-col'} rounded-xl overflow-hidden`}>
+            <div className={`h-full w-full flex ${previewMode === 'mobile' ? 'justify-center items-start' : 'flex-col'} rounded-xl overflow-hidden`} style={previewMode === 'mobile' ? { backgroundColor: '#181818' } : undefined}>
               {previewMode === 'mobile' ? (
                 <div className={`w-[375px] h-full flex flex-col shadow-2xl rounded-3xl border overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-300'}`} style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff' }}>
                   {viewMode === 'preview' ? (
