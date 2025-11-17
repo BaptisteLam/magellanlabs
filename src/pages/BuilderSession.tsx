@@ -700,22 +700,9 @@ export default function BuilderSession() {
             return;
           }
           
-          // ✅ VALIDATION RÉUSSIE - Appliquer les fichiers
-          console.log('✅ Validation réussie - Application des fichiers à la preview');
+          // ✅ VALIDATION RÉUSSIE
+          console.log('✅ Validation réussie - Préparation de la sauvegarde');
           setGenerationEvents(prev => [...prev, { type: 'complete', message: 'All files generated successfully' }]);
-          console.log('📦 Fichiers à appliquer:', Object.keys(updatedFiles));
-          setProjectFiles({ ...updatedFiles });
-          
-          // Désactiver le mode "génération en cours"
-          setIsInitialGeneration(false);
-          isInitialGenerationRef.current = false;
-          
-          // Forcer le reload de la preview après application des fichiers
-          setTimeout(() => {
-            if (viewMode !== 'preview') {
-              setViewMode('preview');
-            }
-          }, 100);
           
           // Sauvegarder les fichiers
           const filesArray = Object.entries(updatedFiles).map(([path, content]) => ({
@@ -780,6 +767,21 @@ export default function BuilderSession() {
               updated_at: new Date().toISOString()
             })
             .eq('id', sessionId);
+
+          // ✅ MAINTENANT on peut appliquer les fichiers à la preview
+          console.log('📦 Application des fichiers à la preview:', Object.keys(updatedFiles));
+          setProjectFiles({ ...updatedFiles });
+          
+          // Désactiver le mode "génération en cours"
+          setIsInitialGeneration(false);
+          isInitialGenerationRef.current = false;
+          
+          // Forcer le passage en mode preview
+          setTimeout(() => {
+            if (viewMode !== 'preview') {
+              setViewMode('preview');
+            }
+          }, 100);
 
           sonnerToast.success('Modifications terminées !');
         },
