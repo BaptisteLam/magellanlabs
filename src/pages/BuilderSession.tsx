@@ -726,42 +726,32 @@ export default function BuilderSession() {
                   path.endsWith('.js') ? 'javascript' : 'text'
           }));
 
-          // Créer le récapitulatif des fichiers créés/modifiés
+          // Créer un message de conclusion simple
           const filesChangedList = Object.keys(updatedFiles);
           const newFiles = filesChangedList.filter(path => !projectFiles[path]);
           const modifiedFiles = filesChangedList.filter(path => projectFiles[path]);
           
-          // Pour la première génération, on combine nouveau et modifié
-          let recap = assistantMessage ? `${assistantMessage}\n\n` : '';
+          let finalMessage = '';
           
-          // Si c'est la première génération, on affiche tout comme "créé"
+          // Si c'est la première génération
           if (isInitialGenerationRef.current) {
-            recap += '📋 **Récapitulatif des modifications:**\n\n';
-            recap += `✨ Fichiers créés (${filesChangedList.length}):\n`;
-            filesChangedList.forEach(file => {
-              recap += `  • ${file}\n`;
-            });
-          } else {
-            // Pour les modifications, on sépare nouveau et modifié
-            recap += '📋 **Récapitulatif des modifications:**\n\n';
-            
             if (newFiles.length > 0) {
-              recap += `✨ Fichiers créés (${newFiles.length}):\n`;
-              newFiles.forEach(file => {
-                recap += `  • ${file}\n`;
-              });
-              recap += '\n';
+              finalMessage = `J'ai créé votre site avec ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} !`;
+            } else {
+              finalMessage = '✨ Votre site est prêt !';
             }
-            
-            if (modifiedFiles.length > 0) {
-              recap += `🔄 Fichiers modifiés (${modifiedFiles.length}):\n`;
-              modifiedFiles.forEach(file => {
-                recap += `  • ${file}\n`;
-              });
+          } else {
+            // Pour les modifications
+            if (newFiles.length > 0 && modifiedFiles.length > 0) {
+              finalMessage = `J'ai créé ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} et modifié ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}.`;
+            } else if (newFiles.length > 0) {
+              finalMessage = `J'ai créé ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''}.`;
+            } else if (modifiedFiles.length > 0) {
+              finalMessage = `J'ai modifié ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}.`;
+            } else {
+              finalMessage = '✨ Modifications appliquées !';
             }
           }
-
-          const finalMessage = recap || '✨ Modifications appliquées !';
           const updatedMessages = [...newMessages, { role: 'assistant' as const, content: finalMessage }];
           
           // Sauvegarder automatiquement le projet avec le nom généré
