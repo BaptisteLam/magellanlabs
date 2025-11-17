@@ -1120,8 +1120,8 @@ export default function BuilderSession() {
               ))}
 
 
-              {/* Affichage des événements de génération (pensée) */}
-              {generationEvents.length > 0 && agent.isLoading && (
+              {/* Affichage des événements de génération (pensée) - seulement pour la première génération */}
+              {generationEvents.length > 0 && agent.isLoading && isInitialGeneration && (
                 <div className="flex flex-col space-y-2 mb-4 px-4">
                   {generationEvents.map((event, idx) => (
                     <div key={idx} className="flex items-center gap-2 text-muted-foreground text-sm">
