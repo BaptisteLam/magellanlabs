@@ -36,6 +36,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('website');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -190,6 +191,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
           user_id: user.id,
           title: 'Nouveau projet',
           project_files: [],
+          project_type: projectType,
           messages: [{ role: 'user', content: prompt }]
         })
         .select()
@@ -443,6 +445,8 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
             attachedFiles={attachedFiles}
             onRemoveFile={removeFile}
             onFileSelect={handleFileSelect}
+            projectType={projectType}
+            onProjectTypeChange={setProjectType}
           />
         </div>
       </div>
