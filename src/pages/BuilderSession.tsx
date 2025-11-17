@@ -627,7 +627,30 @@ export default function BuilderSession() {
                   path.endsWith('.js') ? 'javascript' : 'text'
           }));
 
-          const finalMessage = assistantMessage || '✨ Modifications appliquées !';
+          // Créer le récapitulatif des fichiers créés/modifiés
+          const filesChangedList = Object.keys(updatedFiles);
+          const newFiles = filesChangedList.filter(path => !projectFiles[path]);
+          const modifiedFiles = filesChangedList.filter(path => projectFiles[path]);
+          
+          let recap = assistantMessage ? `${assistantMessage}\n\n` : '';
+          recap += '📋 **Récapitulatif des modifications:**\n\n';
+          
+          if (newFiles.length > 0) {
+            recap += `✨ Fichiers créés (${newFiles.length}):\n`;
+            newFiles.forEach(file => {
+              recap += `  • ${file}\n`;
+            });
+            recap += '\n';
+          }
+          
+          if (modifiedFiles.length > 0) {
+            recap += `🔄 Fichiers modifiés (${modifiedFiles.length}):\n`;
+            modifiedFiles.forEach(file => {
+              recap += `  • ${file}\n`;
+            });
+          }
+
+          const finalMessage = recap || '✨ Modifications appliquées !';
           const updatedMessages = [...newMessages, { role: 'assistant' as const, content: finalMessage }];
           
           // Sauvegarder automatiquement le projet avec le nom généré
@@ -1107,9 +1130,9 @@ export default function BuilderSession() {
                             <span>Code généré</span>
                           </div>
                         </div>
-                        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
                           {typeof msg.content === 'string' 
-                            ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || 'Site généré')
+                            ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
                             : 'Contenu généré'
                           }
                         </p>
