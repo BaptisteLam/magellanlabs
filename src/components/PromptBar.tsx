@@ -33,6 +33,8 @@ interface PromptBarProps {
   modificationMode?: boolean;
   inspectMode?: boolean;
   onInspectToggle?: () => void;
+  projectType?: 'website' | 'webapp' | 'mobile';
+  onProjectTypeChange?: (type: 'website' | 'webapp' | 'mobile') => void;
 }
 
 const PromptBar = ({ 
@@ -48,12 +50,19 @@ const PromptBar = ({
   showConfigButtons = true,
   modificationMode = false,
   inspectMode = false,
-  onInspectToggle
+  onInspectToggle,
+  projectType = 'website',
+  onProjectTypeChange
 }: PromptBarProps) => {
   const { isDark } = useThemeStore();
   const [selectedModel, setSelectedModel] = useState<'sonnet' | 'grok'>('sonnet');
-  const [selectedType, setSelectedType] = useState<'website' | 'webapp' | 'mobile'>('website');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleTypeChange = (type: 'website' | 'webapp' | 'mobile') => {
+    if (onProjectTypeChange) {
+      onProjectTypeChange(type);
+    }
+  };
 
   const handleFileClick = () => {
     fileInputRef.current?.click();
@@ -297,9 +306,9 @@ const PromptBar = ({
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      onClick={() => setSelectedType('website')}
+                      onClick={() => handleTypeChange('website')}
                       className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
-                      style={iconButtonStyle(selectedType === 'website')}
+                      style={iconButtonStyle(projectType === 'website')}
                     >
                       <Globe className="w-4 h-4" />
                     </Button>
@@ -315,9 +324,9 @@ const PromptBar = ({
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      onClick={() => setSelectedType('webapp')}
+                      onClick={() => handleTypeChange('webapp')}
                       className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
-                      style={iconButtonStyle(selectedType === 'webapp')}
+                      style={iconButtonStyle(projectType === 'webapp')}
                     >
                       <Monitor className="w-4 h-4" />
                     </Button>
@@ -333,9 +342,9 @@ const PromptBar = ({
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      onClick={() => setSelectedType('mobile')}
+                      onClick={() => handleTypeChange('mobile')}
                       className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
-                      style={iconButtonStyle(selectedType === 'mobile')}
+                      style={iconButtonStyle(projectType === 'mobile')}
                     >
                       <Smartphone className="w-4 h-4" />
                     </Button>

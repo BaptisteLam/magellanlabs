@@ -164,14 +164,20 @@ export function MyProjects() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProjects.map((project) => (
-            <Card key={project.id} className="overflow-hidden hover:border-[#03A5C0]/50 transition-colors rounded-[8px]">
+            <Card key={project.id} className="overflow-hidden hover:border-[#03A5C0]/50 transition-colors rounded-[8px] relative">
               {project.thumbnail_url && (
-                <div className="aspect-video bg-muted">
+                <div className="aspect-video bg-muted relative">
                   <img
                     src={project.thumbnail_url}
                     alt={project.title}
                     className="w-full h-full object-cover"
                   />
+                  {/* Icône du type de projet en haut à droite */}
+                  <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1.5">
+                    {project.type === 'website' && <Globe className="w-4 h-4 text-[#03A5C0]" />}
+                    {project.type === 'app' && <FileCode className="w-4 h-4 text-[#03A5C0]" />}
+                    {project.type === 'builder' && <FileCode className="w-4 h-4 text-[#03A5C0]" />}
+                  </div>
                 </div>
               )}
               <CardContent className="p-4 space-y-3">
