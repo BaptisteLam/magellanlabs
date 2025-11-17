@@ -169,9 +169,9 @@ export function CodeTreeView({ files, selectedFile, onFileSelect }: CodeTreeView
   const tree = buildTree();
 
   return (
-    <div className="h-full overflow-y-auto bg-white border-r border-slate-200">
-      <div className="px-3 py-2 border-b border-slate-200 bg-slate-50">
-        <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Files</h3>
+    <div className="h-full overflow-y-auto bg-background border-r border-border">
+      <div className="px-3 py-2 border-b border-border bg-muted/30">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Files</h3>
       </div>
       <div className="py-1">
         {tree.map((node) => renderNode(node))}
