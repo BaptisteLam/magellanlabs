@@ -146,15 +146,8 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
           // Mais on garde une sécurité pour les imports externes
           let processedCode = code;
           
-          // Remplacer uniquement les imports externes (node_modules) qui pourraient rester
-          // Les imports relatifs devraient déjà être transformés par Babel
-          processedCode = processedCode.replace(
-            /import\s+.*?from\s+['"](?!\.)[^'"]+['"]/g,
-            '// External import handled by require system'
-          );
-          
           return `modules["${path}"] = function(module, exports, require) {
-            ${processedCode}
+            ${code}
           };`;
         }).join('\\n')}
         
