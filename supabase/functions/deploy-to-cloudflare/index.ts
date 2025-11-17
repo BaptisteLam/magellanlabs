@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import JSZip from 'https://esm.sh/jszip@3.10.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -139,81 +140,48 @@ serve(async (req) => {
       }
     }
 
-    // Function to create fresh FormData (needed because FormData can only be consumed once)
-    async function createFormData(files: ProjectFile[]) {
-      const formData = new FormData();
+    // Function to create ZIP file from project files
+    async function createZipBlob(files: ProjectFile[]): Promise<Blob> {
+      const zip = new JSZip();
       
-      // Create manifest mapping file paths to their hashes
-      const manifest: Record<string, string> = {};
-      
-      // Function to get proper MIME type based on file extension
-      function getMimeType(fileName: string): string {
-        const ext = fileName.split('.').pop()?.toLowerCase();
-        const mimeTypes: Record<string, string> = {
-          'html': 'text/html',
-          'css': 'text/css',
-          'js': 'application/javascript',
-          'json': 'application/json',
-          'png': 'image/png',
-          'jpg': 'image/jpeg',
-          'jpeg': 'image/jpeg',
-          'gif': 'image/gif',
-          'svg': 'image/svg+xml',
-          'webp': 'image/webp',
-          'ico': 'image/x-icon',
-          'txt': 'text/plain',
-          'xml': 'application/xml',
-          'pdf': 'application/pdf',
-        };
-        return mimeTypes[ext || ''] || 'text/plain';
-      }
-      
-      // Function to calculate SHA-256 hash
-      async function calculateHash(content: string): Promise<string> {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(content);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      }
+      console.log('📦 Creating ZIP with', files.length, 'files');
       
       for (const file of files) {
         const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
-        const fileHash = await calculateHash(file.content + fileName);
         
-        // Add to manifest
-        manifest[`/${fileName}`] = fileHash;
-        
-        // Add file to form data with hash as key
+        // Handle base64 encoded files (images, etc.)
         if (file.content.startsWith('data:')) {
           const base64Data = file.content.split(',')[1];
-          const mimeType = file.content.split(';')[0].split(':')[1];
           const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-          const blob = new Blob([binaryData], { type: mimeType });
-          formData.append(fileHash, blob, fileName);
+          zip.file(fileName, binaryData);
+          console.log('  ✅ Added binary file:', fileName);
         } else {
-          const mimeType = getMimeType(fileName);
-          const blob = new Blob([file.content], { type: mimeType });
-          formData.append(fileHash, blob, fileName);
+          // Text files (HTML, CSS, JS, etc.)
+          zip.file(fileName, file.content);
+          console.log('  ✅ Added text file:', fileName);
         }
       }
       
-      // Add manifest as JSON string directly
-      formData.append('manifest', JSON.stringify(manifest));
+      // Generate ZIP as blob
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      console.log('✅ ZIP created, size:', zipBlob.size, 'bytes');
       
-      return formData;
+      return zipBlob;
     }
     
-    console.log('📋 Creating deployment manifest with', modifiedFiles.length, 'files');
-
     const baseTitle = session.title?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'site';
     const uniqueId = sessionId.slice(0, 8);
     const projectName = session.cloudflare_project_name || `${baseTitle}-${uniqueId}`;
     
     console.log('🚀 Deploying to Cloudflare Pages project:', projectName);
     
-    // Deploy to Cloudflare Pages using Direct Upload
-    const formData = await createFormData(modifiedFiles);
+    // Create ZIP from project files
+    const zipBlob = await createZipBlob(modifiedFiles);
+    
+    // Deploy to Cloudflare Pages using ZIP upload
+    const formData = new FormData();
+    formData.append('file', zipBlob, 'build.zip');
+    
     const deployResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
       {
@@ -258,8 +226,11 @@ serve(async (req) => {
         
         console.log('✅ Project created, retrying deployment...');
         
-        // Retry deployment
-        const retryFormData = await createFormData(modifiedFiles);
+        // Retry deployment with ZIP
+        const retryZipBlob = await createZipBlob(modifiedFiles);
+        const retryFormData = new FormData();
+        retryFormData.append('file', retryZipBlob, 'build.zip');
+        
         const retryResponse = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
           {
