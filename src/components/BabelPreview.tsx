@@ -71,14 +71,15 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
         if (path.match(/\.(tsx?|jsx?)$/)) {
           try {
             console.log(`⚙️ Transpilation de ${path}...`);
-            const result = transform(content, {
-              filename: path,
-              presets: [
-                ['react', { runtime: 'classic' }],
-                'typescript'
-              ],
-              retainLines: false,
-            });
+      const result = transform(content, {
+        filename: path,
+        presets: [
+          ['react', { runtime: 'classic' }],
+          'typescript',
+          ['env', { modules: 'commonjs' }]
+        ],
+        retainLines: false,
+      });
             
             if (result.code) {
               transpiledModules[path] = result.code;
