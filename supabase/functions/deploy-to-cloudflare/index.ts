@@ -346,8 +346,7 @@ serve(async (req) => {
     const { data: existingWebsite } = await supabaseAdmin
       .from('websites')
       .select('id')
-      .eq('user_id', user.id)
-      .eq('title', session.title)
+      .eq('build_session_id', sessionId)
       .maybeSingle();
     
     let websiteId: string;
@@ -361,6 +360,7 @@ serve(async (req) => {
           cloudflare_url: deploymentUrl,
           cloudflare_project_name: projectName,
           html_content: htmlContent,
+          title: session.title || 'Sans titre',
           updated_at: new Date().toISOString(),
         })
         .eq('id', existingWebsite.id);
@@ -379,6 +379,7 @@ serve(async (req) => {
           cloudflare_url: deploymentUrl,
           cloudflare_project_name: projectName,
           html_content: htmlContent,
+          build_session_id: sessionId,
         })
         .select('id')
         .single();
