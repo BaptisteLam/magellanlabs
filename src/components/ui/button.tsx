@@ -20,7 +20,7 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         iconOnly: "bg-transparent hover:bg-transparent hover:text-[#03A5C0] transition-colors border-0 shadow-none",
         magellan: "rounded-full border border-transparent bg-transparent text-muted-foreground hover:border-[rgb(3,165,192)] hover:bg-[rgba(3,165,192,0.1)] hover:text-[rgb(3,165,192)] transition-all",
-        "magellan-active": "rounded-full border border-[rgb(3,165,192)] bg-[rgba(3,165,192,0.2)] text-[rgb(3,165,192)] hover:bg-[rgba(3,165,192,0.2)] transition-all",
+        "magellan-active": "rounded-full border border-[rgb(3,165,192)] bg-[rgba(3,165,192,0.1)] text-[rgb(3,165,192)] hover:bg-[rgba(3,165,192,0.1)] transition-all",
         "magellan-danger": "rounded-full border border-transparent bg-transparent text-muted-foreground hover:border-destructive hover:bg-destructive/10 hover:text-destructive transition-all",
       },
       size: {
