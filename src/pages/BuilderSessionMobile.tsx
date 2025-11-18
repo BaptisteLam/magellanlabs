@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
 import { InteractivePreview } from "@/components/InteractivePreview";
+import { ExpoSnackPreview } from "@/components/ExpoSnackPreview";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
 import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
@@ -578,11 +579,41 @@ export default function BuilderSession() {
     }
 
     // Ajouter le type de projet au contexte
-    const projectContext = projectType === 'website' 
-      ? 'Generate a static website with HTML, CSS, and vanilla JavaScript files only. No React, no JSX. Use simple HTML structure.'
-      : projectType === 'webapp'
-      ? 'Generate a React web application with TypeScript/JSX. Use React components and modern web technologies.'
-      : 'Generate a mobile-optimized React application with responsive design for mobile devices.';
+    // Pour le mode mobile, toujours forcer React Native/Expo
+    const projectContext = `Generate a REACT NATIVE application using Expo for mobile devices.
+    
+IMPORTANT REQUIREMENTS:
+- Use React Native components (View, Text, ScrollView, TouchableOpacity, Image, etc.)
+- Use StyleSheet from 'react-native' for all styling
+- DO NOT use HTML tags or CSS
+- Create an App.js file as the main entry point
+- Use functional components with React hooks
+- Follow React Native best practices
+- Make the app responsive for mobile screens
+- Include proper imports from 'react-native'
+
+Example structure:
+\`\`\`javascript
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+
+export default function App() {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Your App</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+});
+\`\`\`
+
+Now generate the mobile app based on this request:`;
 
     // Appeler l'API Agent avec callbacks
     await agent.callAgent(
@@ -639,89 +670,52 @@ export default function BuilderSession() {
           console.log('✅ Génération terminée - Validation des fichiers avant affichage');
           setAiEvents(prev => [...prev, { type: 'complete' }]);
           
-          // 🔍 VALIDATION CRITIQUE : Vérifier que les fichiers essentiels sont créés et NON VIDES
-          const hasHtml = 'index.html' in updatedFiles;
-          const hasCss = 'styles.css' in updatedFiles;
-          const hasJs = 'script.js' in updatedFiles;
+          // 🔍 VALIDATION CRITIQUE : Pour React Native, vérifier App.js
+          const hasAppJs = 'App.js' in updatedFiles || 'App.jsx' in updatedFiles || 'App.tsx' in updatedFiles;
+          const appFile = updatedFiles['App.js'] || updatedFiles['App.jsx'] || updatedFiles['App.tsx'] || '';
           
-          const htmlContent = updatedFiles['index.html'] || '';
-          const cssContent = updatedFiles['styles.css'] || '';
-          const jsContent = updatedFiles['script.js'] || '';
-          
-          console.log('📊 Validation fichiers:', {
-            hasHtml, hasCss, hasJs,
-            htmlLength: htmlContent.length,
-            cssLength: cssContent.length,
-            jsLength: jsContent.length
+          console.log('📊 Validation fichiers React Native:', {
+            hasAppJs,
+            appFileLength: appFile.length,
+            files: Object.keys(updatedFiles)
           });
           
-          // Vérifier que index.html contient bien les liens vers CSS et JS
-          const hasStyleLink = htmlContent.includes('href="styles.css"') || htmlContent.includes("href='styles.css'");
-          const hasScriptLink = htmlContent.includes('src="script.js"') || htmlContent.includes("src='script.js'");
-          
-          // ⚠️ ERREURS CRITIQUES - Validation stricte de tous les fichiers
-          if (!hasHtml || !hasCss || !hasJs) {
-            const missing = [];
-            if (!hasHtml) missing.push('index.html');
-            if (!hasCss) missing.push('styles.css');
-            if (!hasJs) missing.push('script.js');
-            
-            console.error('❌ FICHIERS MANQUANTS:', missing);
-            sonnerToast.error(`Fichiers manquants: ${missing.join(', ')}. Impossible d'afficher la preview.`);
+          // ⚠️ ERREURS CRITIQUES - Validation stricte pour React Native
+          if (!hasAppJs) {
+            console.error('❌ FICHIER App.js MANQUANT');
+            sonnerToast.error('Fichier App.js manquant. Impossible d\'afficher la preview mobile.');
             setGenerationEvents(prev => [...prev, { 
               type: 'error', 
-              message: `Fichiers manquants: ${missing.join(', ')}` 
+              message: 'App.js file is missing' 
             }]);
             setIsInitialGeneration(false);
             isInitialGenerationRef.current = false;
             return;
           }
           
-          // Validation du contenu HTML (doit être substantiel)
-          if (htmlContent.length < 200) {
-            console.error('❌ HTML VIDE OU TROP COURT:', htmlContent.length, 'caractères');
-            sonnerToast.error('Le fichier HTML est vide ou incomplet. Impossible d\'afficher la preview.');
+          // Validation du contenu App.js (doit être substantiel)
+          if (appFile.length < 100) {
+            console.error('❌ App.js VIDE OU TROP COURT:', appFile.length, 'caractères');
+            sonnerToast.error('Le fichier App.js est vide ou incomplet. Impossible d\'afficher la preview.');
             setGenerationEvents(prev => [...prev, { 
               type: 'error', 
-              message: 'HTML file is empty or too short' 
+              message: 'App.js file is empty or too short' 
             }]);
             setIsInitialGeneration(false);
             isInitialGenerationRef.current = false;
             return;
           }
           
-          // Validation du contenu CSS (doit être substantiel)
-          if (cssContent.length < 100) {
-            console.error('❌ CSS VIDE OU TROP COURT:', cssContent.length, 'caractères');
-            sonnerToast.error('Le fichier CSS est vide ou incomplet. Impossible d\'afficher la preview.');
-            setGenerationEvents(prev => [...prev, { 
-              type: 'error', 
-              message: 'CSS file is empty or too short' 
-            }]);
-            setIsInitialGeneration(false);
-            isInitialGenerationRef.current = false;
-            return;
-          }
+          // Vérifier que le code React Native est valide
+          const hasReactImport = appFile.includes('react');
+          const hasReactNativeImport = appFile.includes('react-native');
           
-          // Validation du contenu JS (doit exister, peut être court si pas de logique)
-          if (jsContent.length < 10) {
-            console.error('❌ JS VIDE OU TROP COURT:', jsContent.length, 'caractères');
-            sonnerToast.error('Le fichier JavaScript est vide ou incomplet. Impossible d\'afficher la preview.');
+          if (!hasReactImport || !hasReactNativeImport) {
+            console.error('❌ App.js INVALIDE: imports React/React Native manquants');
+            sonnerToast.error('Le fichier App.js ne contient pas les imports React Native nécessaires.');
             setGenerationEvents(prev => [...prev, { 
               type: 'error', 
-              message: 'JS file is empty or too short' 
-            }]);
-            setIsInitialGeneration(false);
-            isInitialGenerationRef.current = false;
-            return;
-          }
-          
-          if (!hasStyleLink || !hasScriptLink) {
-            console.error('❌ LIENS CSS/JS MANQUANTS dans index.html');
-            sonnerToast.error('Les liens CSS/JS ne sont pas présents dans index.html');
-            setGenerationEvents(prev => [...prev, { 
-              type: 'error', 
-              message: 'Missing CSS/JS links in HTML' 
+              message: 'Invalid React Native code: missing imports' 
             }]);
             setIsInitialGeneration(false);
             isInitialGenerationRef.current = false;
@@ -730,7 +724,7 @@ export default function BuilderSession() {
           
           // ✅ VALIDATION RÉUSSIE
           console.log('✅ Validation réussie - Préparation de la sauvegarde');
-          setGenerationEvents(prev => [...prev, { type: 'complete', message: 'All files generated successfully' }]);
+          setGenerationEvents(prev => [...prev, { type: 'complete', message: 'React Native app generated successfully' }]);
           
           // Sauvegarder les fichiers
           const filesArray = Object.entries(updatedFiles).map(([path, content]) => ({
@@ -751,9 +745,9 @@ export default function BuilderSession() {
           // Si c'est la première génération
           if (isInitialGenerationRef.current) {
             if (newFiles.length > 0) {
-              finalMessage = `J'ai créé votre site avec ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} !`;
+              finalMessage = `J'ai créé votre application mobile avec ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} !`;
             } else {
-              finalMessage = '✨ Votre site est prêt !';
+              finalMessage = '✨ Votre application mobile est prête !';
             }
           } else {
             // Pour les modifications
@@ -1390,28 +1384,9 @@ export default function BuilderSession() {
                     isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
                       <GeneratingPreview />
                     ) : (
-                      <InteractivePreview 
-                        projectFiles={projectFiles} 
+                      <ExpoSnackPreview 
+                        files={projectFiles} 
                         isDark={isDark}
-                        inspectMode={inspectMode}
-                        onInspectModeChange={setInspectMode}
-                        projectType={projectType}
-                        onElementModify={async (prompt, elementInfo) => {
-                          const contextualPrompt = `Modifier l'élément suivant dans le code :
-
-Type: <${elementInfo.tagName.toLowerCase()}>
-${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
-${elementInfo.classList.length > 0 ? `Classes: ${elementInfo.classList.join(', ')}` : ''}
-Chemin CSS: ${elementInfo.path}
-Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textContent.length > 200 ? '...' : ''}"
-
-Instruction: ${prompt}
-
-Ne modifie que cet élément spécifique, pas le reste du code.`;
-                          
-                          setInputValue(contextualPrompt);
-                          setTimeout(() => handleSubmit(), 100);
-                        }}
                       />
                     )
                   ) : viewMode === 'analytics' ? (
