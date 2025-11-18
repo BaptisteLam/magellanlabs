@@ -201,8 +201,12 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         throw new Error('Erreur lors de la création de la session');
       }
 
-      // Rediriger immédiatement vers la session builder (sans le prompt dans l'URL)
-      navigate(`/builder/${session.id}`);
+      // Rediriger vers la session builder appropriée selon le type de projet
+      if (projectType === 'mobile') {
+        navigate(`/builder/mobile/${session.id}`);
+      } else {
+        navigate(`/builder/${session.id}`);
+      }
       setInputValue('');
       setAttachedFiles([]);
       setIsLoading(false);
