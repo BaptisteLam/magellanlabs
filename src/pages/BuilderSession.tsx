@@ -110,6 +110,31 @@ export default function BuilderSession() {
     checkAuth();
   }, [sessionId]);
 
+  // Sauvegarde automatique périodique toutes les 30 secondes
+  useEffect(() => {
+    if (!sessionId || Object.keys(projectFiles).length === 0) return;
+    
+    const autoSaveInterval = setInterval(() => {
+      console.log('💾 Auto-sauvegarde périodique...');
+      saveSession();
+    }, 30000); // 30 secondes
+
+    return () => clearInterval(autoSaveInterval);
+  }, [sessionId, projectFiles, messages, websiteTitle]);
+
+  // Sauvegarde avant fermeture de la page
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (sessionId && Object.keys(projectFiles).length > 0) {
+        console.log('💾 Sauvegarde avant fermeture...');
+        saveSession();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [sessionId, projectFiles, messages, websiteTitle]);
+
   // Traiter le prompt initial IMMÉDIATEMENT après chargement session
   useEffect(() => {
     const processInitialPrompt = async () => {
