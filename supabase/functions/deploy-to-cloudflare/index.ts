@@ -145,8 +145,45 @@ serve(async (req) => {
       const formData = new FormData();
       const manifest: Record<string, string> = {};
       
+      // Vérifications critiques
+      const hasIndexHtml = files.some(f => f.name === 'index.html' || f.name === '/index.html');
+      const hasRoutesJson = files.some(f => f.name === '_routes.json' || f.name === '/_routes.json');
+      
+      console.log('📋 Vérifications:');
+      console.log('  ✅ index.html présent:', hasIndexHtml);
+      console.log('  ℹ️ _routes.json présent:', hasRoutesJson);
+      
+      if (!hasIndexHtml) {
+        console.warn('⚠️ ATTENTION: index.html manquant - le site ne s\'affichera pas!');
+      }
+      
+      // Ajouter _routes.json si absent
+      if (!hasRoutesJson) {
+        const routesConfig = {
+          version: 1,
+          include: ['/*'],
+          exclude: []
+        };
+        const routesContent = JSON.stringify(routesConfig, null, 2);
+        const encoder = new TextEncoder();
+        const routesBuffer = encoder.encode(routesContent).buffer;
+        const routesHash = await crypto.subtle.digest("SHA-256", routesBuffer);
+        const routesHashArray = Array.from(new Uint8Array(routesHash));
+        const routesHashHex = routesHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        manifest['/_routes.json'] = routesHashHex;
+        formData.append(routesHashHex, new Blob([routesBuffer]), '_routes.json');
+        console.log('  ✅ _routes.json auto-généré');
+      }
+      
       for (const file of files) {
-        const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
+        // Normaliser le nom de fichier (enlever / au début, garder la structure)
+        let fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
+        
+        // Vérifier que les fichiers sont à la racine (pas de sous-dossiers)
+        if (fileName.includes('/') && !fileName.startsWith('_')) {
+          console.warn(`⚠️ Fichier dans sous-dossier: ${fileName} - Cloudflare Pages préfère les fichiers à la racine`);
+        }
         
         // Convertir le contenu en ArrayBuffer
         let fileBuffer: ArrayBuffer;
@@ -170,9 +207,9 @@ serve(async (req) => {
           .map(b => b.toString(16).padStart(2, '0'))
           .join(''); // Hash SHA-256 complet (64 caractères)
         
-        console.log(`  ✅ ${fileName} -> hash: ${fileHash}`);
+        console.log(`  ✅ ${fileName} -> hash: ${fileHash.substring(0, 16)}...`);
         
-        // Ajouter au manifest
+        // Ajouter au manifest avec / au début
         manifest[`/${fileName}`] = fileHash;
         
         // Ajouter au FormData
@@ -182,6 +219,7 @@ serve(async (req) => {
       
       formData.append('manifest', JSON.stringify(manifest));
       console.log('✅ FormData created with manifest:', Object.keys(manifest).length, 'files');
+      console.log('📦 Manifest:', JSON.stringify(manifest, null, 2));
       return formData;
     }
     
