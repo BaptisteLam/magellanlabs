@@ -43,14 +43,14 @@ export function useAgentAPI() {
       options.onGenerationEvent?.({ type: 'read', message: file.path });
     });
 
-    // Timeout de sécurité : force l'arrêt après 90s même sans complete
+    // Timeout de sécurité : force l'arrêt après 120s même sans complete
     const safetyTimeout = setTimeout(() => {
-      console.warn('⏱️ Timeout: Arrêt forcé après 90s sans événement complete');
+      console.warn('⏱️ Timeout: Arrêt forcé après 120s sans événement complete');
       setIsStreaming(false);
       setIsLoading(false);
       options.onComplete?.();
       options.onGenerationEvent?.({ type: 'complete', message: 'Generation completed (timeout)' });
-    }, 90000);
+    }, 120000);
 
     try {
       const response = await fetch(
