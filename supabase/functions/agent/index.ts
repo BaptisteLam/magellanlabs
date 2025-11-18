@@ -122,6 +122,19 @@ Tu DOIS générer des fichiers CSS/JS complets et professionnels, pas des fichie
 - Chaque page doit avoir du contenu réel, complet et unique (pas de copier-coller)
 - Chaque page HTML doit contenir : <link rel="stylesheet" href="styles.css"> et <script src="script.js"></script>
 
+**FICHIER _routes.json - OBLIGATOIRE POUR CLOUDFLARE**:
+- **OBLIGATOIRE**: À CHAQUE génération de site, tu DOIS créer un fichier **_routes.json** pour Cloudflare
+- Ce fichier doit être envoyé via un événement code_update avec le JSON suivant:
+  * version: 1
+  * include: toutes les routes ["/*"]
+  * exclude: fichiers CSS, JS, images (/*.css, /*.js, /*.png, /*.jpg, etc.)
+- Ce fichier indique à Cloudflare quelles routes doivent être servies et lesquelles sont des fichiers statiques
+- **ORDRE DE GÉNÉRATION**: Envoie _routes.json APRÈS les fichiers HTML/CSS/JS mais AVANT complete
+- Exemple de contenu _routes.json:
+  * Toujours mettre version 1
+  * Include toutes les pages HTML avec /*
+  * Exclude tous les types de fichiers statiques (CSS, JS, images, fonts)
+
 **NAVIGATION ET LIENS - RÈGLES CRITIQUES**:
 - **INTERDIT ABSOLU**: NE JAMAIS utiliser de domaines externes dans les liens de navigation (pas de builtbymagellan.com, exemple.com, etc.)
 - **OBLIGATOIRE**: TOUS les liens entre pages doivent être des chemins relatifs simples
