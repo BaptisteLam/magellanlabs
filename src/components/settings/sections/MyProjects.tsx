@@ -135,9 +135,10 @@ export function MyProjects() {
             closeSettings();
             navigate('/');
           }}
-          className="bg-transparent text-[#4cc9f0] border border-[#4cc9f0] hover:bg-[#4cc9f0]/10 rounded-full px-4 py-1.5 leading-none cursor-pointer"
+          variant="magellan"
+          size="sm"
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4" />
           Nouveau projet
         </Button>
       </div>
