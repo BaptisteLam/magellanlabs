@@ -80,6 +80,35 @@ export function CustomIframePreview({
       let inspectMode = false;
       let currentHighlight = null;
       
+      // Intercepter tous les clics sur les liens
+      document.addEventListener('click', function(e) {
+        const target = e.target.closest('a');
+        if (target && target.href) {
+          const href = target.getAttribute('href');
+          
+          // Empêcher navigation vers pages externes ou Magellan
+          if (href && (href.startsWith('http') || href.startsWith('/') || href.includes('magellan'))) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Afficher message d'erreur
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:#000;padding:2rem;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:999999;max-width:400px;text-align:center;font-family:system-ui;';
+            errorDiv.innerHTML = \`
+              <h3 style="margin:0 0 1rem;color:#ef4444;font-size:1.25rem;">❌ Page non disponible</h3>
+              <p style="margin:0 0 1rem;color:#666;">Cette page n'existe pas encore dans votre projet.</p>
+              <p style="margin:0 0 1.5rem;font-size:0.9rem;color:#666;">Vous devez d'abord créer cette page pour y accéder.</p>
+              <button onclick="this.parentElement.remove()" style="background:#03A5C0;color:#fff;border:none;padding:0.5rem 1.5rem;border-radius:6px;cursor:pointer;font-weight:500;">Fermer</button>
+            \`;
+            document.body.appendChild(errorDiv);
+            
+            // Supprimer après 5 secondes
+            setTimeout(() => errorDiv.remove(), 5000);
+            return false;
+          }
+        }
+      }, true);
+      
       window.addEventListener('message', (e) => {
         if (e.data.type === 'toggle-inspect') {
           inspectMode = e.data.enabled;
