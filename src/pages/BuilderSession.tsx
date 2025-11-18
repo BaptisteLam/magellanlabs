@@ -1335,8 +1335,8 @@ export default function BuilderSession() {
                 </div>
               )}
 
-              {/* AI Task List - Seulement pour la toute première génération */}
-              {aiEvents.length > 0 && isInitialGeneration && Object.keys(projectFiles).length === 0 && (
+              {/* AI Task List - Affichage pendant toute génération */}
+              {aiEvents.length > 0 && agent.isLoading && (
                 <div className="px-4 pb-4">
                   <AiTaskList events={aiEvents} />
                 </div>
