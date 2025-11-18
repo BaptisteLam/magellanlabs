@@ -221,11 +221,12 @@ export function MyProjects() {
 
                 <div className="flex gap-2">
                   <Button 
+                    variant="magellan"
                     size="sm" 
                     onClick={() => handleEditProject(project)} 
-                    className="flex-1 bg-transparent text-[#4cc9f0] border border-[#4cc9f0] hover:bg-[#4cc9f0]/10 rounded-full py-1.5 px-4 leading-none"
+                    className="flex-1"
                   >
-                    <Edit className="h-4 w-4 mr-1" />
+                    <Edit className="h-4 w-4" />
                     Éditer
                   </Button>
                   {project.status === 'published' && (
