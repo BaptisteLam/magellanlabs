@@ -47,9 +47,9 @@ export const ExpoSnackPreview = ({ files, isDark = false }: ExpoSnackPreviewProp
 
         console.log('📦 Fichiers Snack préparés:', Object.keys(snackFiles));
 
-        // Créer un Snack via l'API Expo avec timeout
+        // Créer un Snack via l'API Expo avec timeout étendu (260s)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 260000); // 260s timeout
 
         const response = await fetch('https://snack.expo.dev/--/api/v2/snacks', {
           method: 'POST',
