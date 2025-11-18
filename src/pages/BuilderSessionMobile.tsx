@@ -1161,7 +1161,7 @@ Now generate the mobile app based on this request:`;
             onClick={() => navigate('/dashboard')}
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:bg-[#03A5C0] hover:text-white transition-colors"
+            className="h-8 w-8 hover:text-[#03A5C0] transition-colors"
             title="Dashboard"
           >
             <Home className="w-4 h-4" />
