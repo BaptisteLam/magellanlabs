@@ -105,31 +105,60 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog }: Bab
         const React = window.React;
         const ReactDOM = window.ReactDOM;
         
-        // Intercepter clics sur liens pour empêcher navigation vers pages manquantes
+        // Intercepter TOUS les clics sur liens pour isoler la preview
         document.addEventListener('click', function(e) {
           const target = e.target.closest('a');
           if (target && target.href) {
-            const href = target.getAttribute('href');
+            e.preventDefault();
+            e.stopPropagation();
+            const href = target.getAttribute('href') || '';
             
-            // Vérifier si c'est un lien externe ou vers Magellan
-            if (href && (href.startsWith('http') || href.includes('magellan'))) {
-              e.preventDefault();
-              e.stopPropagation();
-              
-              // Afficher message d'erreur
+            // Bloquer TOUS les liens externes (http, https, mailto, tel, etc.)
+            if (href.startsWith('http') || href.startsWith('//') || href.includes('magellan') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+              // Afficher message d'erreur pour liens externes
               const errorDiv = document.createElement('div');
               errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:#000;padding:2rem;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:999999;max-width:400px;text-align:center;font-family:system-ui;';
               errorDiv.innerHTML = \`
-                <h3 style="margin:0 0 1rem;color:#ef4444;font-size:1.25rem;">❌ Page non disponible</h3>
-                <p style="margin:0 0 1rem;color:#666;">Cette page n'existe pas encore dans votre projet.</p>
-                <p style="margin:0 0 1.5rem;font-size:0.9rem;color:#666;">Vous devez d'abord créer cette page pour y accéder.</p>
-                <button onclick="this.parentElement.remove()" style="background:#03A5C0;color:#fff;border:none;padding:0.5rem 1.5rem;border-radius:6px;cursor:pointer;font-weight:500;">Fermer</button>
+                <h3 style="margin:0 0 1rem 0;font-size:1.25rem;color:#dc2626;">🚫 Lien externe bloqué</h3>
+                <p style="margin:0 0 1rem 0;color:#666;">Les liens externes sont désactivés dans la preview.</p>
+                <button onclick="this.parentElement.remove()" style="background:rgb(3,165,192);color:#fff;border:none;padding:0.5rem 1.5rem;border-radius:9999px;cursor:pointer;font-size:1rem;font-weight:500;">Fermer</button>
               \`;
               document.body.appendChild(errorDiv);
-              
-              setTimeout(() => errorDiv.remove(), 5000);
+              setTimeout(() => errorDiv.remove(), 3000);
               return false;
             }
+            
+            // Pour les liens internes (comme #section)
+            if (href.startsWith('#')) {
+              // Laisser l'ancre fonctionner normalement
+              e.preventDefault();
+              const targetId = href.substring(1);
+              const element = document.getElementById(targetId);
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+              }
+              return false;
+            }
+            
+            // Pour les autres liens internes (pages du site)
+            const pathname = href.replace(/^\//, '');
+            
+            // Si c'est la page d'accueil ou vide
+            if (!pathname || pathname === 'index.html' || pathname === '/') {
+              return false;
+            }
+            
+            // Pour toute autre page, afficher un message
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:#000;padding:2rem;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:999999;max-width:400px;text-align:center;font-family:system-ui;';
+            errorDiv.innerHTML = \`
+              <h3 style="margin:0 0 1rem 0;font-size:1.25rem;color:#f59e0b;">⚠️ Page introuvable</h3>
+              <p style="margin:0 0 1rem 0;color:#666;">La page "\${pathname}" n'existe pas encore dans ce projet.</p>
+              <button onclick="this.parentElement.remove()" style="background:rgb(3,165,192);color:#fff;border:none;padding:0.5rem 1.5rem;border-radius:9999px;cursor:pointer;font-size:1rem;font-weight:500;">Fermer</button>
+            \`;
+            document.body.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 3000);
+            return false;
           }
         }, true);
         
