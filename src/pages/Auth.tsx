@@ -218,15 +218,20 @@ export default function Auth() {
                   disabled={loading}
                 />
               </div>
-              <Button type="submit" className="w-full bg-[#03A5C0] hover:bg-[#03A5C0]/90 text-white" disabled={loading}>
+              <Button 
+                type="submit" 
+                className="inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-sm gap-2 transition-all border rounded-full px-4 py-0" 
+                style={{ borderColor: 'rgb(3,165,192)', backgroundColor: 'rgba(3,165,192,0.1)', color: 'rgb(3,165,192)' }}
+                disabled={loading}
+              >
                 {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     {isLogin ? "Connexion..." : "Inscription..."}
                   </>
                 ) : (
                   <>
-                    <Mail className="mr-2 h-4 w-4" />
+                    <Mail className="h-4 w-4" />
                     {isLogin ? "Se connecter" : "S'inscrire"}
                   </>
                 )}
