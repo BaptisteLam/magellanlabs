@@ -194,12 +194,13 @@ serve(async (req) => {
       console.log('     Config:', JSON.stringify(routesConfig, null, 2));
       
       for (const file of files) {
-        // Normaliser le nom de fichier (enlever / au début, garder la structure)
+        // Normaliser le nom de fichier - toujours enlever / au début
         let fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
         
-        // Vérifier que les fichiers sont à la racine (pas de sous-dossiers)
-        if (fileName.includes('/') && !fileName.startsWith('_')) {
-          console.warn(`⚠️ Fichier dans sous-dossier: ${fileName} - Cloudflare Pages préfère les fichiers à la racine`);
+        // IMPORTANT: Cloudflare Pages exige que tous les fichiers soient à la racine
+        // Les fichiers dans des sous-dossiers doivent avoir leur chemin complet
+        if (fileName.includes('/')) {
+          console.log(`  📁 Fichier avec chemin: ${fileName}`);
         }
         
         // Convertir le contenu en ArrayBuffer
@@ -217,19 +218,21 @@ serve(async (req) => {
           fileBuffer = encoder.encode(file.content).buffer;
         }
         
-        // Calculer le vrai SHA-256 hash (64 caractères hex)
+        // Calculer le SHA-256 hash complet (64 caractères hex)
         const hashBuffer = await crypto.subtle.digest("SHA-256", fileBuffer);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const fileHash = hashArray
           .map(b => b.toString(16).padStart(2, '0'))
-          .join(''); // Hash SHA-256 complet (64 caractères)
+          .join('');
         
-        console.log(`  ✅ ${fileName} -> hash: ${fileHash.substring(0, 16)}...`);
+        console.log(`  ✅ ${fileName}`);
+        console.log(`     Hash: ${fileHash}`);
+        console.log(`     Size: ${fileBuffer.byteLength} bytes`);
         
-        // Ajouter au manifest avec / au début
+        // CRITICAL: Le manifest doit avoir "/" au début, le nom de fichier dans FormData NON
         manifest[`/${fileName}`] = fileHash;
         
-        // Ajouter au FormData
+        // Ajouter au FormData - IMPORTANT: utiliser le hash comme clé, nom de fichier comme filename
         const blob = new Blob([fileBuffer]);
         formData.append(fileHash, blob, fileName);
       }
