@@ -225,6 +225,7 @@ export function MyProjects() {
                     size="sm" 
                     onClick={() => handleEditProject(project)} 
                     className="flex-1"
+                    style={{ borderRadius: '9999px' }}
                   >
                     <Edit className="h-4 w-4" />
                     Éditer
