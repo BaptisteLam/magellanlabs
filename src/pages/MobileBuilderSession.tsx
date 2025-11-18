@@ -3,24 +3,20 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Home, X, Moon, Sun, Download, Smartphone } from "lucide-react";
+import { Save, Home, Moon, Sun, Download, Smartphone } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
 import JSZip from "jszip";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileTree } from "@/components/FileTree";
-import { MobilePreview } from "@/components/MobilePreview";
-import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
-import { FileTabs } from "@/components/CodeEditor/FileTabs";
-import { MonacoEditor } from "@/components/CodeEditor/MonacoEditor";
 import PromptBar from "@/components/PromptBar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAgentAPI } from "@/hooks/useAgentAPI";
 import type { AIEvent, GenerationEvent } from '@/types/agent';
 import AiTaskList from '@/components/chat/AiTaskList';
 import { SimpleAiEvents } from '@/components/chat/SimpleAiEvents';
+import { MobilePreview } from "@/components/MobilePreview";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -39,11 +35,7 @@ export default function MobileBuilderSession() {
   const [appTitle, setAppTitle] = useState('');
   const [sessionLoading, setSessionLoading] = useState(true);
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [projectFiles, setProjectFiles] = useState<Record<string, string>>({});
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [selectedFileContent, setSelectedFileContent] = useState<string>('');
-  const [openFiles, setOpenFiles] = useState<string[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const agent = useAgentAPI();
@@ -90,214 +82,248 @@ export default function MobileBuilderSession() {
         const filesObj = data.project_files as Record<string, any> || {};
         const hasAppJson = 'app.json' in filesObj;
         const hasPackageJson = 'package.json' in filesObj;
+        const hasNoFiles = Object.keys(filesObj).length === 0;
 
-        if (hasAppJson && hasPackageJson && Object.keys(filesObj).length > 2) {
-          setIsInitialGeneration(false);
-          isInitialGenerationRef.current = false;
-        } else {
+        if (hasNoFiles || (!hasAppJson && !hasPackageJson)) {
+          console.log('🚀 Démarrage génération initiale mobile');
           setIsInitialGeneration(true);
           isInitialGenerationRef.current = true;
-
-          const messagesData = data.messages as any;
-          const messagesArray = Array.isArray(messagesData) ? messagesData : [];
-          const userMessages = messagesArray.filter((m: any) => m.role === 'user');
-          
-          if (userMessages.length > 0) {
-            const lastUserMessage = userMessages[userMessages.length - 1];
-            const prompt = typeof lastUserMessage.content === 'string' 
-              ? lastUserMessage.content 
-              : (Array.isArray(lastUserMessage.content) ? lastUserMessage.content.map((c: any) => c.text || '').join(' ') : '');
-
-            setTimeout(() => {
-              handleAgentGeneration(prompt, filesObj, messagesArray);
-            }, 100);
-          }
+          await handleAgentGeneration(
+            Array.isArray(messagesData) && messagesData.length > 0 
+              ? (typeof messagesData[0].content === 'string' ? messagesData[0].content : 'Créer une application mobile')
+              : 'Créer une application mobile'
+          );
         }
       }
+
+      setSessionLoading(false);
     } catch (error) {
       console.error('Error loading session:', error);
-      sonnerToast.error("Erreur lors du chargement de la session");
-    } finally {
+      sonnerToast.error('Erreur lors du chargement de la session');
       setSessionLoading(false);
     }
   };
 
-  const handleAgentGeneration = async (
-    prompt: string,
-    currentFiles: Record<string, any>,
-    currentMessages: any[]
-  ) => {
+  const handleAgentGeneration = async (prompt: string) => {
     if (!sessionId) return;
+
+    const contextualPrompt = prompt;
+    const relevantFilesArray = Object.entries(projectFiles).map(([path, content]) => ({
+      path,
+      content: content as string
+    })).slice(0, 5);
+
+    const chatHistory = messages.slice(-3).map(m => ({
+      role: m.role,
+      content: typeof m.content === 'string' ? m.content : '[message multimédia]'
+    }));
+
+    let assistantMessage = '';
+    const updatedFiles = { ...projectFiles };
 
     setAiEvents([]);
     setGenerationEvents([]);
+    
+    setIsInitialGeneration(true);
+    isInitialGenerationRef.current = true;
 
-    const relevantFiles: Array<{path: string, content: string}> = Object.entries(currentFiles)
-      .filter(([path]) => 
-        path.endsWith('.tsx') || 
-        path.endsWith('.ts') || 
-        path === 'app.json' || 
-        path === 'package.json'
-      )
-      .map(([path, content]) => ({ 
-        path, 
-        content: typeof content === 'string' ? content : JSON.stringify(content) 
-      }));
+    const projectContext = 'Generate a React Native/Expo mobile application with TypeScript. Use Expo Router for navigation and NativeWind for styling.';
 
-    const relevantFilesObj = relevantFiles.reduce((acc, { path, content }) => ({ 
-      ...acc, 
-      [path]: content 
-    }), {} as Record<string, string>);
+    await agent.callAgent(
+      `${projectContext}\n\n${contextualPrompt}`,
+      projectFiles,
+      relevantFilesArray,
+      chatHistory,
+      sessionId!,
+      'mobile',
+      {
+        onStatus: (status) => {
+          console.log('📊 Status:', status);
+          setAiEvents(prev => [...prev, { type: 'status', content: status }]);
+        },
+        onMessage: (message) => {
+          assistantMessage += message;
+          setMessages(prev => {
+            const withoutLastAssistant = prev.filter((m, i) => 
+              !(i === prev.length - 1 && m.role === 'assistant')
+            );
+            return [...withoutLastAssistant, { role: 'assistant' as const, content: assistantMessage }];
+          });
+        },
+        onLog: (log) => {
+          console.log('📝 Log:', log);
+          setAiEvents(prev => [...prev, { type: 'log', content: log }]);
+        },
+        onIntent: (intent) => {
+          console.log('🎯 Intent:', intent);
+          setAiEvents(prev => [...prev, intent]);
+        },
+        onGenerationEvent: (event) => {
+          console.log('🔄 Generation:', event);
+          setGenerationEvents(prev => [...prev, event]);
+        },
+        onCodeUpdate: (path, code) => {
+          console.log('📦 Accumulating file:', path);
+          setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
+          updatedFiles[path] = code;
+        },
+        onComplete: async () => {
+          console.log('✅ Génération terminée');
+          
+          const hasAppJson = 'app.json' in updatedFiles;
+          const hasPackageJson = 'package.json' in updatedFiles;
 
-    try {
-      await agent.callAgent(
-        prompt,
-        relevantFilesObj,
-        [],
-        currentMessages as any[],
-        sessionId,
-        'mobile',
-        {
-          onStatus: (status) => {
-            setAiEvents(prev => [...prev, { type: 'status', content: status }]);
-          },
-          onMessage: (msg) => {
-            setAiEvents(prev => [...prev, { type: 'message', content: msg }]);
-          },
-          onCodeUpdate: async (path, code) => {
-            setProjectFiles(prev => ({ ...prev, [path]: code }));
-            setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
-
-            await supabase
-              .from('build_sessions')
-              .update({ 
-                project_files: { ...currentFiles, [path]: code },
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', sessionId);
-          },
-          onComplete: async () => {
-            setAiEvents(prev => [...prev, { type: 'complete' }]);
+          if (!hasAppJson || !hasPackageJson) {
+            console.error('❌ FICHIERS EXPO MANQUANTS');
+            sonnerToast.error('Les fichiers Expo essentiels sont manquants');
+            setGenerationEvents(prev => [...prev, { 
+              type: 'error', 
+              message: 'Missing Expo configuration files' 
+            }]);
             setIsInitialGeneration(false);
             isInitialGenerationRef.current = false;
-            
-            const { data } = await supabase
-              .from('build_sessions')
-              .select('project_files')
-              .eq('id', sessionId)
-              .single();
-
-            if (data) {
-              setProjectFiles(data.project_files as Record<string, any> || {});
-            }
-          },
-          onGenerationEvent: (event) => {
-            setGenerationEvents(prev => [...prev, event]);
+            return;
           }
+          
+          console.log('✅ Validation réussie - Application de TOUS les fichiers');
+          setGenerationEvents(prev => [...prev, { type: 'complete', message: 'All files generated successfully' }]);
+          
+          console.log('📦 Fichiers à appliquer:', Object.keys(updatedFiles));
+          setProjectFiles({ ...updatedFiles });
+          
+          setIsInitialGeneration(false);
+          isInitialGenerationRef.current = false;
+          
+          await supabase
+            .from('build_sessions')
+            .update({
+              project_files: updatedFiles,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', sessionId);
+
+          await supabase
+            .from('chat_messages')
+            .insert({
+              session_id: sessionId,
+              role: 'assistant',
+              content: assistantMessage
+            });
+        },
+        onError: (error) => {
+          console.error('❌ Error:', error);
+          sonnerToast.error(error);
+          setIsInitialGeneration(false);
+          isInitialGenerationRef.current = false;
         }
-      );
-    } catch (error) {
-      console.error('Agent generation error:', error);
-      sonnerToast.error("Erreur lors de la génération");
-      setIsInitialGeneration(false);
-      isInitialGenerationRef.current = false;
-    }
+      }
+    );
   };
 
   const handleModifyPrompt = async () => {
-    if (!inputValue.trim() || !sessionId) return;
+    if (!inputValue.trim() || agent.isLoading) return;
 
     const userMessage: Message = {
       role: 'user',
-      content: inputValue
+      content: attachedFiles.length > 0
+        ? [
+            { type: 'text', text: inputValue },
+            ...attachedFiles.map(file => ({
+              type: 'image_url',
+              image_url: { url: file.base64 }
+            }))
+          ]
+        : inputValue
     };
 
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
-
-    await supabase
-      .from('build_sessions')
-      .update({ 
-        messages: updatedMessages as any,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', sessionId);
-
+    setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setAttachedFiles([]);
 
-    await handleAgentGeneration(inputValue, projectFiles, updatedMessages);
+    await supabase
+      .from('chat_messages')
+      .insert({
+        session_id: sessionId,
+        role: 'user',
+        content: inputValue
+      });
+
+    await handleAgentGeneration(inputValue);
   };
 
-  const handleFileSelect = (path: string, content: string) => {
-    setSelectedFile(path);
-    setSelectedFileContent(typeof content === 'string' ? content : JSON.stringify(content, null, 2));
-    if (!openFiles.includes(path)) {
-      setOpenFiles([...openFiles, path]);
-    }
+  const removeFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleTabClick = (path: string) => {
-    const content = projectFiles[path];
-    setSelectedFile(path);
-    setSelectedFileContent(typeof content === 'string' ? content : JSON.stringify(content, null, 2));
-  };
+  const onFileSelectFromBar = (files: File[]) => {
+    if (!files || files.length === 0) return;
 
-  const handleTabClose = (path: string) => {
-    const newOpenFiles = openFiles.filter(f => f !== path);
-    setOpenFiles(newOpenFiles);
-    if (selectedFile === path && newOpenFiles.length > 0) {
-      const newSelected = newOpenFiles[newOpenFiles.length - 1];
-      setSelectedFile(newSelected);
-      setSelectedFileContent(typeof projectFiles[newSelected] === 'string' 
-        ? projectFiles[newSelected] 
-        : JSON.stringify(projectFiles[newSelected], null, 2));
-    } else if (newOpenFiles.length === 0) {
-      setSelectedFile(null);
-      setSelectedFileContent('');
-    }
+    files.forEach(file => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setAttachedFiles(prev => [...prev, {
+            name: file.name,
+            base64: reader.result as string,
+            type: file.type
+          }]);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
   };
 
   const handleDownload = async () => {
     const zip = new JSZip();
+
     Object.entries(projectFiles).forEach(([path, content]) => {
-      const fileContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-      zip.file(path, fileContent);
+      zip.file(path, content);
     });
 
     const blob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(blob);
+    const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `${appTitle || 'mobile-app'}.zip`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
     sonnerToast.success('Application téléchargée avec succès');
   };
 
   const handleSave = () => {
-    setShowSaveDialog(true);
+    if (!appTitle.trim()) {
+      setShowSaveDialog(true);
+      return;
+    }
+    confirmSave();
   };
 
   const confirmSave = async () => {
-    if (!appTitle.trim() || !sessionId) {
-      sonnerToast.error("Veuillez entrer un titre");
+    if (!appTitle.trim()) {
+      sonnerToast.error('Veuillez donner un nom à votre application');
       return;
     }
 
     setIsSaving(true);
+
     try {
-      await supabase
+      const { error } = await supabase
         .from('build_sessions')
-        .update({ 
+        .update({
           title: appTitle,
+          project_files: projectFiles,
           updated_at: new Date().toISOString()
         })
         .eq('id', sessionId);
 
-      sonnerToast.success('Application sauvegardée');
+      if (error) throw error;
+
+      sonnerToast.success('Application sauvegardée avec succès');
       setShowSaveDialog(false);
-      setTimeout(() => navigate('/dashboard'), 1000);
+      navigate('/dashboard');
     } catch (error) {
       console.error('Error saving:', error);
       sonnerToast.error('Erreur lors de la sauvegarde');
@@ -306,52 +332,17 @@ export default function MobileBuilderSession() {
     }
   };
 
-  const removeFile = (index: number) => {
-    setAttachedFiles(attachedFiles.filter((_, i) => i !== index));
-  };
-
-  const onFileSelectFromBar = (files: File[]) => {
-    const newFiles: Array<{ name: string; base64: string; type: string }> = [];
-    let processed = 0;
-    
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const base64 = e.target?.result as string;
-          newFiles.push({ name: file.name, base64, type: file.type });
-          processed++;
-          if (processed === files.length) {
-            setAttachedFiles([...attachedFiles, ...newFiles]);
-          }
-        };
-        reader.readAsDataURL(file);
-      } else {
-        processed++;
-      }
-    }
-  };
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, aiEvents]);
 
   if (sessionLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background">
+      <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Chargement de la session...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (isInitialGeneration) {
-    return (
-      <div className="w-full h-screen flex items-center justify-center bg-background">
-        <MobilePreview 
-          files={{}} 
-          sessionId={sessionId || ''} 
-          isGenerating={true}
-        />
       </div>
     );
   }
@@ -368,12 +359,16 @@ export default function MobileBuilderSession() {
               onClick={() => navigate('/')}
               className="gap-2"
             >
-              <Home className="w-4 h-4" />
+              <Home className="h-4 w-4" />
               Accueil
             </Button>
+            
             <div className="h-6 w-px bg-border" />
-            <Smartphone className="w-5 h-5 text-primary" />
-            <span className="font-medium text-sm">{appTitle || 'Mobile App'}</span>
+            
+            <span className="text-sm font-medium flex items-center gap-2">
+              <Smartphone className="h-4 w-4" />
+              {appTitle || 'Application Mobile'}
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -384,10 +379,12 @@ export default function MobileBuilderSession() {
                   size="sm"
                   onClick={toggleTheme}
                 >
-                  {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Basculer thème</TooltipContent>
+              <TooltipContent>
+                {isDark ? 'Mode clair' : 'Mode sombre'}
+              </TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -397,97 +394,98 @@ export default function MobileBuilderSession() {
                   size="sm"
                   onClick={handleDownload}
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Télécharger le code</TooltipContent>
+              <TooltipContent>Télécharger le projet</TooltipContent>
             </Tooltip>
 
             <Button
-              size="sm"
               onClick={handleSave}
+              disabled={isSaving}
+              size="sm"
               className="gap-2"
             >
-              <Save className="w-4 h-4" />
-              Sauvegarder
+              <Save className="h-4 w-4" />
+              {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
             </Button>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 overflow-hidden">
           <ResizablePanelGroup direction="horizontal">
-            {/* File Tree */}
-            <ResizablePanel defaultSize={20} minSize={15}>
-              <div className={`h-full overflow-auto ${isDark ? 'bg-slate-900' : 'bg-gray-50'}`}>
-                <CodeTreeView
-                  files={projectFiles}
-                  onFileSelect={handleFileSelect}
-                  selectedFile={selectedFile}
-                />
-              </div>
-            </ResizablePanel>
-
-            <ResizableHandle />
-
-            {/* Code Editor */}
-            <ResizablePanel defaultSize={40} minSize={30}>
-              <div className="h-full flex flex-col">
-                {openFiles.length > 0 && (
-                  <FileTabs
-                    openFiles={openFiles}
-                    activeFile={selectedFile}
-                    onTabClick={handleTabClick}
-                    onTabClose={handleTabClose}
-                  />
-                )}
-                <div className="flex-1">
-                  <MonacoEditor
-                    value={selectedFileContent}
-                    onChange={setSelectedFileContent}
-                    language={selectedFile?.endsWith('.json') ? 'json' : 
-                             selectedFile?.endsWith('.tsx') ? 'tsx' : 
-                             selectedFile?.endsWith('.ts') ? 'ts' : 'typescript'}
-                  />
-                </div>
-              </div>
-            </ResizablePanel>
-
-            <ResizableHandle />
-
-            {/* Preview/Chat */}
+            {/* Chat Panel - Left */}
             <ResizablePanel defaultSize={40} minSize={30}>
               <div className={`h-full flex flex-col ${isDark ? 'bg-slate-900' : 'bg-gray-50'}`}>
-                {/* Mobile Preview */}
-                <div className="flex-1 overflow-hidden border-b">
-                  <MobilePreview 
-                    files={projectFiles} 
-                    sessionId={sessionId || ''} 
-                    isGenerating={agent.isLoading || isInitialGeneration}
+                {/* Chat Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {messages.length === 0 && aiEvents.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      <Smartphone className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-sm">Commencez à créer votre application mobile</p>
+                    </div>
+                  ) : (
+                    <>
+                      {messages.map((msg, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-3 rounded-lg ${
+                            msg.role === 'user'
+                              ? isDark ? 'bg-slate-800 ml-8' : 'bg-white ml-8'
+                              : isDark ? 'bg-slate-800/50 mr-8' : 'bg-gray-100 mr-8'
+                          }`}
+                        >
+                          <div className="text-xs font-medium mb-1 opacity-70">
+                            {msg.role === 'user' ? 'Vous' : 'Assistant'}
+                          </div>
+                          <div className="text-sm whitespace-pre-wrap">
+                            {typeof msg.content === 'string' ? msg.content : '[message multimédia]'}
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {aiEvents.length > 0 && (
+                        <div className="space-y-2">
+                          <AiTaskList events={aiEvents} />
+                          <SimpleAiEvents 
+                            events={aiEvents.filter(e => e.type === 'message' || e.type === 'status') as any} 
+                            isDark={isDark} 
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+
+                {/* Prompt Bar */}
+                <div className="p-3 border-t">
+                  <PromptBar
+                    inputValue={inputValue}
+                    setInputValue={setInputValue}
+                    onSubmit={handleModifyPrompt}
+                    onFileSelect={onFileSelectFromBar}
+                    attachedFiles={attachedFiles}
+                    onRemoveFile={removeFile}
+                    isLoading={agent.isLoading}
+                    modificationMode={true}
+                    projectType="mobile"
                   />
                 </div>
+              </div>
+            </ResizablePanel>
 
-                {/* Chat */}
-                <div className="h-1/3 flex flex-col border-t">
-                  <div className="flex-1 overflow-y-auto p-4">
-                    <SimpleAiEvents events={aiEvents.filter(e => e.type === 'message' || e.type === 'status') as any} isDark={isDark} />
-                    <div ref={chatEndRef} />
-                  </div>
+            <ResizableHandle />
 
-                  <div className="p-3 border-t">
-                    <PromptBar
-                      inputValue={inputValue}
-                      setInputValue={setInputValue}
-                      onSubmit={handleModifyPrompt}
-                      onFileSelect={onFileSelectFromBar}
-                      attachedFiles={attachedFiles}
-                      onRemoveFile={removeFile}
-                      isLoading={agent.isLoading}
-                      modificationMode={true}
-                      projectType="mobile"
-                    />
-                  </div>
-                </div>
+            {/* Preview Panel - Right */}
+            <ResizablePanel defaultSize={60} minSize={40}>
+              <div className="h-full bg-background">
+                <MobilePreview 
+                  files={projectFiles} 
+                  sessionId={sessionId || ''} 
+                  isGenerating={agent.isLoading || isInitialGeneration}
+                />
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
@@ -502,8 +500,8 @@ export default function MobileBuilderSession() {
                 Donnez un nom à votre application pour la retrouver facilement.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
                 <Label htmlFor="title">Nom de l'application</Label>
                 <Input
                   id="title"
@@ -514,30 +512,17 @@ export default function MobileBuilderSession() {
               </div>
             </div>
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowSaveDialog(false)}
-              >
+              <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
                 Annuler
               </Button>
-              <Button
-                onClick={confirmSave}
-                disabled={isSaving || !appTitle.trim()}
-              >
+              <Button onClick={confirmSave} disabled={isSaving}>
                 {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          accept="image/*"
-          multiple
-        />
       </div>
     </TooltipProvider>
   );
 }
+
