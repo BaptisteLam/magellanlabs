@@ -71,7 +71,7 @@ RÈGLES DE CODE - TRÈS IMPORTANT ET NON NÉGOCIABLE:
 - **INTERDICTION ABSOLUE**: NE JAMAIS générer uniquement du HTML sans CSS et JS
 - NE JAMAIS utiliser React, JSX, TypeScript ou tout autre framework
 - NE JAMAIS créer de package.json, tsconfig.json ou vite.config.ts
-- 🚨 **RÈGLE #1 ABSOLUE - FICHIERS SÉPARÉS OBLIGATOIRES** 🚨:
+- **RÈGLE #1 ABSOLUE - FICHIERS SÉPARÉS OBLIGATOIRES**:
   * Tu DOIS IMPÉRATIVEMENT créer 3 fichiers distincts : **index.html**, **styles.css**, **script.js**
   * CHAQUE fichier doit être envoyé via un événement {"type":"code_update"} SÉPARÉ
   * ❌ INTERDIT : Mettre du CSS ou JS dans index.html
@@ -84,10 +84,10 @@ RÈGLES DE CODE - TRÈS IMPORTANT ET NON NÉGOCIABLE:
   4. **Autant de pages HTML supplémentaires que nécessaire** (about.html, services.html, contact.html, etc.)
   5. **AUCUNE LIMITE de nombre de pages** - crée autant de pages que le contexte l'exige
   
-🚨 **ORDRE OBLIGATOIRE**: styles.css → script.js → index.html → autres pages HTML
+**ORDRE OBLIGATOIRE**: styles.css → script.js → index.html → autres pages HTML
 ⚠️ Si tu ne suis pas cet ordre, la génération échouera!
 
-**🚨🚨🚨 INTERDICTION CRITIQUE - ZÉRO TOLÉRANCE CSS/JS INLINE 🚨🚨🚨**:
+**INTERDICTION CRITIQUE - ZÉRO TOLÉRANCE CSS/JS INLINE**:
 - ❌ **JAMAIS JAMAIS JAMAIS** de balises <style>...</style> dans AUCUN fichier HTML
 - ❌ **JAMAIS JAMAIS JAMAIS** de balises <script>...</script> avec du code dans AUCUN fichier HTML
 - ❌ **JAMAIS JAMAIS JAMAIS** d'attribut style="..." dans le HTML
@@ -130,7 +130,7 @@ IMAGES ET RESSOURCES:
 - Utilise des URLs d'images directes dans les balises <img> ou en background CSS
 - Optimise le chargement avec lazy loading quand approprié
 
-🎨 **DESIGN ET STYLES - OBLIGATOIRE** 🎨:
+**DESIGN ET STYLES - OBLIGATOIRE**:
 - Le fichier **styles.css** doit contenir un DESIGN COMPLET ET PROFESSIONNEL avec :
   * ✅ **Reset CSS** : * { margin: 0; padding: 0; box-sizing: border-box; }
   * ✅ **Variables CSS** : :root { --primary-color: #03A5C0; --secondary-color: ...; --font-main: ...; }
@@ -156,7 +156,7 @@ QUALITÉ DU CODE:
 - CSS moderne (flexbox, grid, variables CSS, animations, transitions)
 - JavaScript vanilla moderne (ES6+, async/await, fetch API, DOM manipulation)
 - Design responsive et mobile-first
-- **IMPORTANT**: N'utilise JAMAIS de smileys/emojis dans le code HTML/CSS/JS. Utilise toujours des icônes SVG ou des bibliothèques d'icônes (Font Awesome, Lucide, etc.)
+- **IMPORTANT**: N'utilise JAMAIS de smileys/emojis dans le code HTML/CSS/JS. Utilise UNIQUEMENT des icônes SVG inline ou des bibliothèques d'icônes (Font Awesome, Lucide icons, Heroicons, etc.). Les emojis sont INTERDITS dans tout le code.
 - NE JAMAIS générer de boutons flottants ou en position fixe sauf si demandé
 - Code propre, fonctionnel et sans widgets inutiles
 - Pas de markdown, pas de backticks, juste du JSON valide NDJSON
@@ -250,7 +250,7 @@ RÈGLES DE CODE - TRÈS IMPORTANT:
 - NE JAMAIS générer de boutons scroll to top ou retour en haut
 - NE PAS ajouter d éléments UI superposés sauf si explicitement demandé
 - Code propre, fonctionnel et sans widgets inutiles
-- **IMPORTANT**: N'utilise JAMAIS de smileys/emojis dans le code. Utilise toujours des icônes de lucide-react à la place
+- **IMPORTANT**: N'utilise JAMAIS de smileys/emojis dans le code. Utilise UNIQUEMENT des icônes de lucide-react à la place. Les emojis sont INTERDITS dans tout le code.
 - Pas de markdown, pas de backticks, juste du JSON valide NDJSON
 
 INTERACTIVITÉ JAVASCRIPT/TYPESCRIPT OBLIGATOIRE:
