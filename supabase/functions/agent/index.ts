@@ -121,8 +121,19 @@ Tu DOIS générer des fichiers CSS/JS complets et professionnels, pas des fichie
 - Tu peux créer 5, 10, 20 pages ou plus si le contexte le demande (respecte juste les limites de tokens Claude)
 - Chaque page doit avoir du contenu réel, complet et unique (pas de copier-coller)
 - Chaque page HTML doit contenir : <link rel="stylesheet" href="styles.css"> et <script src="script.js"></script>
+
+**NAVIGATION ET LIENS - RÈGLES CRITIQUES**:
+- **INTERDIT ABSOLU**: NE JAMAIS utiliser de domaines externes dans les liens de navigation (pas de builtbymagellan.com, exemple.com, etc.)
+- **OBLIGATOIRE**: TOUS les liens entre pages doivent être des chemins relatifs simples
+  * ✅ CORRECT: <a href="about.html">À propos</a>
+  * ✅ CORRECT: <a href="services.html">Services</a>
+  * ✅ CORRECT: <a href="contact.html">Contact</a>
+  * ✅ CORRECT: <a href="index.html">Accueil</a>
+  * ❌ INTERDIT: <a href="https://builtbymagellan.com/about.html">
+  * ❌ INTERDIT: <a href="http://exemple.com/services">
 - Ajoute une navigation cohérente entre toutes les pages dans le <nav>
 - Toutes les pages doivent être liées depuis la navigation de index.html
+- La preview doit fonctionner comme un site local avec navigation interne fluide
 
 IMAGES ET RESSOURCES:
 - Tu peux télécharger et utiliser des images libres de droit depuis Unsplash, Pexels, etc.
