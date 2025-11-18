@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getMobilePrompt } from './prompts/mobile-builder.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 
@@ -42,10 +43,14 @@ serve(async (req) => {
 
     // Adapter le prompt en fonction du type de projet
     const isWebsite = projectType === 'website';
+    const isMobile = projectType === 'mobile';
     
-    const systemPrompt = isWebsite ? `Tu es un expert développeur web qui génère des sites web statiques en HTML, CSS et JavaScript pur.
-
-PROJET ACTUEL:
+    let systemPrompt: string;
+    
+    if (isMobile) {
+      systemPrompt = getMobilePrompt(projectContext, historyContext, message);
+    } else if (isWebsite) {
+      systemPrompt = `Tu es un expert développeur web qui génère des sites web statiques en HTML, CSS et JavaScript pur.
 ${projectContext || 'Projet vide - première génération'}
 
 HISTORIQUE DE CONVERSATION:
@@ -227,7 +232,9 @@ EXEMPLE DE RÉPONSE POUR NOUVEAU SITE WEB:
 {"type":"status","content":"Task: JavaScript"}
 {"type":"code_update","path":"script.js","code":"document.addEventListener('DOMContentLoaded', () => {...})"}
 {"type":"message","content":"Site web créé avec succès !"}
-{"type":"complete"}` : `Tu es un expert développeur React/TypeScript qui génère et modifie du code pour des sites web.
+{"type":"complete"}`;
+    } else {
+      systemPrompt = `Tu es un expert développeur React/TypeScript qui génère et modifie du code pour des sites web.
 
 PROJET ACTUEL:
 ${projectContext || 'Projet vide - première génération'}
@@ -331,6 +338,8 @@ Exemple de flux COMPLET:
 {"type":"status","content":"Styling components: Applying Tailwind CSS"}
 {"type":"message","content":"Le site est créé et prêt."}
 {"type":"complete"}`;
+    }
+
 
     // Créer un stream de réponse
     const stream = new ReadableStream({
