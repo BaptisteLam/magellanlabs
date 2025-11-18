@@ -582,25 +582,52 @@ export default function BuilderSession() {
     // Pour le mode mobile, toujours forcer React Native/Expo
     const projectContext = `Generate a REACT NATIVE application using Expo for mobile devices.
     
-IMPORTANT REQUIREMENTS:
-- Use React Native components (View, Text, ScrollView, TouchableOpacity, Image, etc.)
-- Use StyleSheet from 'react-native' for all styling
-- DO NOT use HTML tags or CSS
-- Create an App.js file as the main entry point
-- Use functional components with React hooks
-- Follow React Native best practices
-- Make the app responsive for mobile screens
-- Include proper imports from 'react-native'
+INSTRUCTIONS CRITIQUES - STRUCTURE DE FICHIERS:
+1. Tu DOIS générer ces fichiers dans cet ordre exact:
+   a. package.json - Contient toutes les dépendances Expo/React Native
+   b. App.js - Point d'entrée principal de l'application
+   c. (optionnel) components/*.js - Composants réutilisables si nécessaire
 
-Example structure:
-\`\`\`javascript
+2. CONTENU OBLIGATOIRE du package.json:
+{
+  "name": "magellan-mobile-app",
+  "version": "1.0.0",
+  "main": "App.js",
+  "dependencies": {
+    "expo": "~50.0.0",
+    "expo-status-bar": "~1.11.1",
+    "react": "18.2.0",
+    "react-native": "0.73.0"
+  }
+}
+
+3. CONTENU OBLIGATOIRE du App.js:
+- Import React et composants React Native (View, Text, ScrollView, StyleSheet, etc.)
+- Export default function App()
+- Utilise StyleSheet.create() pour tous les styles
+- Composants React Native UNIQUEMENT (pas de HTML/JSX web)
+
+4. COMPOSANTS REACT NATIVE autorisés:
+   View, Text, ScrollView, Image, TouchableOpacity, TextInput, FlatList, StatusBar
+
+5. STYLES:
+   - TOUJOURS utiliser StyleSheet.create()
+   - Pas de CSS inline complexe
+   - Propriétés React Native uniquement (flex, padding, margin, backgroundColor, etc.)
+
+EXEMPLE DE STRUCTURE COMPLÈTE:
+// App.js
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 
 export default function App() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Your App</Text>
+      <StatusBar style="auto" />
+      <ScrollView style={styles.scrollView}>
+        <Text style={styles.title}>Mon Application</Text>
+      </ScrollView>
     </View>
   );
 }
@@ -610,8 +637,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  scrollView: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    padding: 20,
+  },
 });
-\`\`\`
 
 Now generate the mobile app based on this request:`;
 
@@ -1377,31 +1411,186 @@ Now generate the mobile app based on this request:`;
         </ResizablePanel>
         
         
-          <ResizablePanel defaultSize={70} minSize={70}>
-            <div className="h-full w-full flex justify-center items-start rounded-xl overflow-hidden" style={{ backgroundColor: isDark ? '#181818' : '#ffffff' }}>
-                <div className="w-[375px] h-full flex flex-col shadow-2xl rounded-3xl border overflow-hidden" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff', borderColor: isDark ? 'rgb(51, 65, 85)' : '#ffffff' }}>
-                  {viewMode === 'preview' ? (
-                    isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
+          {/* Panel principal - Desktop en mode code, Mobile en mode preview */}
+          <ResizablePanel 
+            defaultSize={70} 
+            minSize={viewMode === 'code' ? 70 : 70}
+          >
+            <div className="h-full flex flex-col" style={{ 
+              backgroundColor: isDark ? '#0A0A0A' : '#F8F9FA'
+            }}>
+              {viewMode === 'preview' ? (
+                // Mode Preview - Affichage Mobile
+                <div className="h-full w-full flex justify-center items-start overflow-hidden" style={{ backgroundColor: isDark ? '#181818' : '#ffffff' }}>
+                  <div className="w-[375px] h-full flex flex-col shadow-2xl rounded-3xl border overflow-hidden" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff', borderColor: isDark ? 'rgb(51, 65, 85)' : '#ffffff' }}>
+                    {isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
                       <GeneratingPreview />
                     ) : (
                       <ExpoSnackPreview 
                         files={projectFiles} 
                         isDark={isDark}
                       />
-                    )
-                  ) : viewMode === 'analytics' ? (
-                    <Analytics 
-                      isPublished={!!deployedUrl} 
-                      isDark={isDark} 
-                      gaPropertyId={gaPropertyId || undefined}
-                      websiteId={websiteId || undefined}
-                    />
-                  ) : (
-                    <div className="p-4 text-center text-slate-500">
-                      Mode code non disponible en mode mobile
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
+              ) : viewMode === 'analytics' ? (
+                // Mode Analytics
+                <div className="h-full overflow-auto">
+                  <Analytics 
+                    isPublished={!!deployedUrl} 
+                    isDark={isDark} 
+                    gaPropertyId={gaPropertyId || undefined}
+                    websiteId={websiteId || undefined}
+                  />
+                </div>
+              ) : (
+                // Mode Code - Affichage Desktop Full Width
+                <div className="h-full flex flex-col">
+                  {/* Top Bar */}
+                  <div 
+                    className="border-b px-4 py-2 flex items-center justify-between"
+                    style={{
+                      backgroundColor: isDark ? '#1A1A1B' : '#FFFFFF',
+                      borderColor: isDark ? '#2A2A2B' : '#E2E8F0'
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Code2 
+                        className="w-4 h-4"
+                        style={{ color: '#03A5C0' }}
+                      />
+                      <span 
+                        className="text-sm font-medium"
+                        style={{ color: isDark ? '#E2E8F0' : '#1E293B' }}
+                      >
+                        Éditeur de Code
+                      </span>
+                    </div>
+                    
+                    {selectedFile && (
+                      <Button
+                        onClick={() => {
+                          if (selectedFile) {
+                            setProjectFiles({
+                              ...projectFiles,
+                              [selectedFile]: selectedFileContent
+                            });
+                            sonnerToast.success('Fichier enregistré !');
+                          }
+                        }}
+                        size="sm"
+                        style={{
+                          borderColor: '#03A5C0',
+                          backgroundColor: 'rgba(3,165,192,0.1)',
+                          color: '#03A5C0'
+                        }}
+                        className="text-sm gap-2 transition-all border rounded-full px-4 py-0 font-medium"
+                      >
+                        <Save className="w-3 h-3" />
+                        Sauvegarder
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Code Editor Area */}
+                  <div className="flex-1 flex overflow-hidden">
+                    {/* File Tree Sidebar */}
+                    <div 
+                      className="w-64 border-r flex flex-col"
+                      style={{
+                        backgroundColor: isDark ? '#0F0F10' : '#F8F9FA',
+                        borderColor: isDark ? '#2A2A2B' : '#E2E8F0'
+                      }}
+                    >
+                      <div 
+                        className="px-4 py-3 border-b"
+                        style={{
+                          backgroundColor: isDark ? '#1A1A1B' : '#FFFFFF',
+                          borderColor: isDark ? '#2A2A2B' : '#E2E8F0'
+                        }}
+                      >
+                        <h3 
+                          className="text-sm font-semibold"
+                          style={{ color: isDark ? '#E2E8F0' : '#1E293B' }}
+                        >
+                          Fichiers
+                        </h3>
+                      </div>
+                      <div className="flex-1 overflow-y-auto">
+                        <CodeTreeView
+                          files={projectFiles}
+                          selectedFile={selectedFile}
+                          onFileSelect={(path, content) => {
+                            setSelectedFile(path);
+                            setSelectedFileContent(content);
+                            if (!openFiles.includes(path)) {
+                              setOpenFiles([...openFiles, path]);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Editor Area */}
+                    <div className="flex-1 flex flex-col">
+                      {/* File Tabs */}
+                      {openFiles.length > 0 && (
+                        <FileTabs
+                          openFiles={openFiles}
+                          activeFile={selectedFile}
+                          onTabClick={(path) => {
+                            setSelectedFile(path);
+                            setSelectedFileContent(projectFiles[path] || '');
+                          }}
+                          onTabClose={(path) => {
+                            setOpenFiles(openFiles.filter(f => f !== path));
+                            if (selectedFile === path) {
+                              const remainingFiles = openFiles.filter(f => f !== path);
+                              if (remainingFiles.length > 0) {
+                                const newSelectedFile = remainingFiles[remainingFiles.length - 1];
+                                setSelectedFile(newSelectedFile);
+                                setSelectedFileContent(projectFiles[newSelectedFile] || '');
+                              } else {
+                                setSelectedFile(null);
+                                setSelectedFileContent('');
+                              }
+                            }
+                          }}
+                        />
+                      )}
+
+                      {/* Monaco Editor */}
+                      <div className="flex-1">
+                        {selectedFile ? (
+                          <MonacoEditor
+                            value={selectedFileContent}
+                            language={selectedFile.split('.').pop() || 'txt'}
+                            onChange={(value) => setSelectedFileContent(value || '')}
+                          />
+                        ) : (
+                          <div 
+                            className="h-full flex items-center justify-center"
+                            style={{ backgroundColor: isDark ? '#0A0A0A' : '#FFFFFF' }}
+                          >
+                            <div className="text-center">
+                              <FileText 
+                                className="w-12 h-12 mx-auto mb-4 opacity-30"
+                                style={{ color: isDark ? '#64748B' : '#94A3B8' }}
+                              />
+                              <p 
+                                className="text-sm"
+                                style={{ color: isDark ? '#64748B' : '#94A3B8' }}
+                              >
+                                Sélectionnez un fichier pour commencer
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </ResizablePanel>
       </ResizablePanelGroup>
