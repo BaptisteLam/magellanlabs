@@ -1,4 +1,4 @@
-import { FolderOpen, Settings, User, CreditCard, Plug, LogOut, Home } from 'lucide-react';
+import { FolderOpen, Settings, User, CreditCard, Plug, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -60,11 +60,8 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
               <Button
                 key={item.id}
                 onClick={() => setSection(item.id)}
-                variant={isActive ? "magellan" : "ghost"}
-                className={cn(
-                  'w-full justify-start gap-3',
-                  !isActive && 'text-muted-foreground hover:text-[#03A5C0] border border-transparent hover:border-[#03A5C0]'
-                )}
+                variant={isActive ? "magellan-active" : "magellan"}
+                className="w-full justify-start gap-3"
               >
                 <Icon className="h-5 w-5" />
                 <span>{item.label}</span>
@@ -74,22 +71,15 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
         </nav>
       </ScrollArea>
 
-      <div className="p-4 border-t border-border/30 flex-shrink-0 space-y-2">
-        <button
-          onClick={handleHome}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-        >
-          <Home className="h-5 w-5" />
-          <span>Accueil</span>
-        </button>
-        
-        <button
+      <div className="p-4 border-t border-border/30 flex-shrink-0">
+        <Button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium text-destructive hover:bg-destructive/10"
+          variant="magellan-danger"
+          className="w-full justify-start gap-3"
         >
           <LogOut className="h-5 w-5" />
           <span>Déconnexion</span>
-        </button>
+        </Button>
       </div>
     </div>
   );
