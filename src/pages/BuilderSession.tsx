@@ -659,7 +659,7 @@ export default function BuilderSession() {
           const hasStyleLink = htmlContent.includes('href="styles.css"') || htmlContent.includes("href='styles.css'");
           const hasScriptLink = htmlContent.includes('src="script.js"') || htmlContent.includes("src='script.js'");
           
-          // ⚠️ ERREURS CRITIQUES
+          // ⚠️ ERREURS CRITIQUES - Validation stricte de tous les fichiers
           if (!hasHtml || !hasCss || !hasJs) {
             const missing = [];
             if (!hasHtml) missing.push('index.html');
@@ -677,12 +677,39 @@ export default function BuilderSession() {
             return;
           }
           
-          if (cssContent.length < 50) {
+          // Validation du contenu HTML (doit être substantiel)
+          if (htmlContent.length < 200) {
+            console.error('❌ HTML VIDE OU TROP COURT:', htmlContent.length, 'caractères');
+            sonnerToast.error('Le fichier HTML est vide ou incomplet. Impossible d\'afficher la preview.');
+            setGenerationEvents(prev => [...prev, { 
+              type: 'error', 
+              message: 'HTML file is empty or too short' 
+            }]);
+            setIsInitialGeneration(false);
+            isInitialGenerationRef.current = false;
+            return;
+          }
+          
+          // Validation du contenu CSS (doit être substantiel)
+          if (cssContent.length < 100) {
             console.error('❌ CSS VIDE OU TROP COURT:', cssContent.length, 'caractères');
             sonnerToast.error('Le fichier CSS est vide ou incomplet. Impossible d\'afficher la preview.');
             setGenerationEvents(prev => [...prev, { 
               type: 'error', 
               message: 'CSS file is empty or too short' 
+            }]);
+            setIsInitialGeneration(false);
+            isInitialGenerationRef.current = false;
+            return;
+          }
+          
+          // Validation du contenu JS (doit exister, peut être court si pas de logique)
+          if (jsContent.length < 10) {
+            console.error('❌ JS VIDE OU TROP COURT:', jsContent.length, 'caractères');
+            sonnerToast.error('Le fichier JavaScript est vide ou incomplet. Impossible d\'afficher la preview.');
+            setGenerationEvents(prev => [...prev, { 
+              type: 'error', 
+              message: 'JS file is empty or too short' 
             }]);
             setIsInitialGeneration(false);
             isInitialGenerationRef.current = false;
