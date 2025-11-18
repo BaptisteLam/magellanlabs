@@ -19,7 +19,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         iconOnly: "bg-transparent hover:bg-transparent hover:text-[#03A5C0] transition-colors border-0 shadow-none",
-        magellan: "rounded-full border border-[rgb(3,165,192)] bg-[rgba(3,165,192,0.1)] text-[rgb(3,165,192)] hover:bg-[rgb(3,165,192)] hover:text-white transition-all",
+        magellan: "rounded-full border border-[rgb(3,165,192)] bg-transparent text-[rgb(3,165,192)] hover:bg-[rgba(3,165,192,0.1)] active:bg-[rgba(3,165,192,0.1)] transition-all",
       },
       size: {
         default: "h-10 px-4 py-2",
