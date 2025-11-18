@@ -168,36 +168,51 @@ const styles = StyleSheet.create({
         sandbox="allow-forms allow-modals allow-popups allow-scripts allow-same-origin"
       />
       
-      {/* QR Code à droite */}
+      {/* QR Code à droite avec instructions */}
       <div 
         className="absolute right-4 top-4 p-4 rounded-lg shadow-lg"
         style={{
           backgroundColor: isDark ? '#1F1F20' : '#FFFFFF',
           borderWidth: 1,
           borderColor: isDark ? '#2A2A2B' : '#E2E8F0',
+          maxWidth: '220px'
         }}
       >
-        <div className="flex flex-col items-center gap-2">
-          <p 
-            className="text-xs font-medium text-center"
-            style={{ color: isDark ? '#E2E8F0' : '#475569' }}
+        <div className="flex flex-col items-center gap-3">
+          <h3 
+            className="text-sm font-semibold text-center"
+            style={{ color: '#03A5C0', marginBottom: 4 }}
           >
-            Scanner pour tester
-          </p>
-          <div className="p-2 bg-white rounded">
+            Scanner le QR code pour tester
+          </h3>
+          
+          <div className="p-2 bg-white rounded shadow-sm">
             <QRCodeSVG 
               value={snackUrl}
-              size={120}
+              size={140}
               level="M"
               includeMargin={false}
             />
           </div>
-          <p 
-            className="text-xs text-center"
-            style={{ color: isDark ? '#94A3B8' : '#64748B' }}
+          
+          <div 
+            className="text-xs text-left w-full"
+            style={{ 
+              color: isDark ? '#94A3B8' : '#64748B',
+              lineHeight: '1.5'
+            }}
           >
-            Expo Go
-          </p>
+            <p style={{ fontWeight: 600, marginBottom: 6, color: isDark ? '#E2E8F0' : '#475569' }}>
+              Pour tester sur votre appareil :
+            </p>
+            <ol style={{ paddingLeft: '1rem', margin: 0 }}>
+              <li style={{ marginBottom: 4 }}>Ouvrez l'app Appareil photo</li>
+              <li>Scannez le QR code ci-dessus</li>
+            </ol>
+            <p style={{ marginTop: 8, fontSize: '0.7rem', fontStyle: 'italic', textAlign: 'center' }}>
+              Nécessite Expo Go
+            </p>
+          </div>
         </div>
       </div>
     </div>
