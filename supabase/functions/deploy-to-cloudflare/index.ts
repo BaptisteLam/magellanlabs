@@ -157,41 +157,45 @@ serve(async (req) => {
         console.warn('⚠️ ATTENTION: index.html manquant - le site ne s\'affichera pas!');
       }
       
-      // Toujours générer _routes.json pour éviter les problèmes Cloudflare
-      const routesConfig = {
-        version: 1,
-        include: ["/*"],
-        exclude: [
-          "/*.css",
-          "/*.js",
-          "/*.png",
-          "/*.jpg",
-          "/*.jpeg",
-          "/*.gif",
-          "/*.svg",
-          "/*.ico",
-          "/*.woff",
-          "/*.woff2",
-          "/*.ttf",
-          "/*.eot",
-          "/images/*",
-          "/css/*",
-          "/js/*",
-          "/assets/*"
-        ]
-      };
-      
-      const routesContent = JSON.stringify(routesConfig, null, 2);
-      const encoder = new TextEncoder();
-      const routesBuffer = encoder.encode(routesContent).buffer;
-      const routesHash = await crypto.subtle.digest("SHA-256", routesBuffer);
-      const routesHashArray = Array.from(new Uint8Array(routesHash));
-      const routesHashHex = routesHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      
-      manifest['/_routes.json'] = routesHashHex;
-      formData.append(routesHashHex, new Blob([routesBuffer]), '_routes.json');
-      console.log('  ✅ _routes.json auto-généré avec exclusions pour fichiers statiques');
-      console.log('     Config:', JSON.stringify(routesConfig, null, 2));
+      // Générer _routes.json seulement si Claude ne l'a pas déjà généré
+      if (!hasRoutesJson) {
+        const routesConfig = {
+          version: 1,
+          include: ["/*"],
+          exclude: [
+            "/*.css",
+            "/*.js",
+            "/*.png",
+            "/*.jpg",
+            "/*.jpeg",
+            "/*.gif",
+            "/*.svg",
+            "/*.ico",
+            "/*.woff",
+            "/*.woff2",
+            "/*.ttf",
+            "/*.eot",
+            "/images/*",
+            "/css/*",
+            "/js/*",
+            "/assets/*"
+          ]
+        };
+        
+        const routesContent = JSON.stringify(routesConfig, null, 2);
+        const encoder = new TextEncoder();
+        const routesBuffer = encoder.encode(routesContent).buffer;
+        const routesHash = await crypto.subtle.digest("SHA-256", routesBuffer);
+        const routesHashArray = Array.from(new Uint8Array(routesHash));
+        const routesHashHex = routesHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        manifest['/_routes.json'] = routesHashHex;
+        formData.append(routesHashHex, new Blob([routesBuffer]), '_routes.json');
+        console.log('  ⚠️ _routes.json manquant - auto-généré en fallback');
+        console.log('     Config:', JSON.stringify(routesConfig, null, 2));
+      } else {
+        console.log('  ✅ _routes.json fourni par Claude - utilisation de celui-ci');
+      }
       
       for (const file of files) {
         // Normaliser le nom de fichier - toujours enlever / au début
