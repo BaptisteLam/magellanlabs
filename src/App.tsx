@@ -14,6 +14,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import AIBuilder from "./pages/AIBuilder";
 import BuilderSession from "./pages/BuilderSession";
+import BuilderSessionMobile from "./pages/BuilderSessionMobile";
 import SessionPreview from "./pages/SessionPreview";
 import ScrollToTop from "./components/ScrollToTop";
 import { SettingsCenter } from "./components/settings/SettingsCenter";
@@ -47,6 +48,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/builder" element={<AIBuilder />} />
             <Route path="/builder/:sessionId" element={<BuilderSession />} />
+            <Route path="/builder/mobile/:sessionId" element={<BuilderSessionMobile />} />
             <Route path="/preview/:sessionId" element={<SessionPreview />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
