@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
-import { GeneratingPreview } from "@/components/GeneratingPreview";
+import { MobilePreview } from "@/components/MobilePreview";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
 import { FileTabs } from "@/components/CodeEditor/FileTabs";
 import { MonacoEditor } from "@/components/CodeEditor/MonacoEditor";
@@ -345,7 +345,15 @@ export default function MobileBuilderSession() {
   }
 
   if (isInitialGeneration) {
-    return <GeneratingPreview />;
+    return (
+      <div className="w-full h-screen flex items-center justify-center bg-background">
+        <MobilePreview 
+          files={{}} 
+          sessionId={sessionId || ''} 
+          isGenerating={true}
+        />
+      </div>
+    );
   }
 
   return (
@@ -450,17 +458,13 @@ export default function MobileBuilderSession() {
             {/* Preview/Chat */}
             <ResizablePanel defaultSize={40} minSize={30}>
               <div className={`h-full flex flex-col ${isDark ? 'bg-slate-900' : 'bg-gray-50'}`}>
-                {/* Preview placeholder */}
-                <div className="flex-1 flex items-center justify-center border-b">
-                  <div className="text-center p-8">
-                    <Smartphone className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      L'aperçu mobile nécessite Expo Go ou un émulateur
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Téléchargez le code et suivez les instructions du README
-                    </p>
-                  </div>
+                {/* Mobile Preview */}
+                <div className="flex-1 overflow-hidden border-b">
+                  <MobilePreview 
+                    files={projectFiles} 
+                    sessionId={sessionId || ''} 
+                    isGenerating={agent.isLoading || isInitialGeneration}
+                  />
                 </div>
 
                 {/* Chat */}
