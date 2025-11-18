@@ -44,13 +44,13 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
   };
 
   return (
-    <div className="w-64 bg-sidebar border-r border-border/50 flex flex-col h-full">
-      <div className="p-6 flex-shrink-0">
+    <div className="h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl flex flex-col shadow-lg">
+      <div className="p-6 flex-shrink-0 border-b border-border/30">
         <h2 className="text-lg font-semibold text-foreground">Paramètres</h2>
       </div>
 
       <ScrollArea className="flex-1">
-        <nav className="px-3 space-y-1 pb-3">
+        <nav className="px-4 space-y-1 py-4">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentSection === item.id;
@@ -60,11 +60,11 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
                 key={item.id}
                 onClick={() => setSection(item.id)}
                 className={cn(
-                  'w-full flex items-center gap-3 px-3 py-1.5 rounded-[8px] transition-all',
+                  'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all',
                   'text-sm font-medium',
                   isActive
-                    ? 'border-[1px] border-[#03A5C0]/50 bg-[#03A5C0]/10 text-[#03A5C0]'
-                    : 'text-muted-foreground hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] border-[1px] border-transparent'
+                    ? 'border border-[#03A5C0]/50 bg-[#03A5C0]/10 text-[#03A5C0]'
+                    : 'text-muted-foreground hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] border border-transparent'
                 )}
               >
                 <Icon className="h-5 w-5" />
@@ -75,10 +75,10 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
         </nav>
       </ScrollArea>
 
-      <div className="p-3 border-t border-border/50 flex-shrink-0 space-y-2">
+      <div className="p-4 border-t border-border/30 flex-shrink-0 space-y-2">
         <button
           onClick={handleHome}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-[8px] transition-all text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
         >
           <Home className="h-5 w-5" />
           <span>Accueil</span>
@@ -86,7 +86,7 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
         
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-[8px] transition-all text-sm font-medium text-destructive hover:bg-destructive/10"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium text-destructive hover:bg-destructive/10"
         >
           <LogOut className="h-5 w-5" />
           <span>Déconnexion</span>
