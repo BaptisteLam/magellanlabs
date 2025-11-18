@@ -157,24 +157,41 @@ serve(async (req) => {
         console.warn('⚠️ ATTENTION: index.html manquant - le site ne s\'affichera pas!');
       }
       
-      // Ajouter _routes.json si absent
-      if (!hasRoutesJson) {
-        const routesConfig = {
-          version: 1,
-          include: ['/*'],
-          exclude: []
-        };
-        const routesContent = JSON.stringify(routesConfig, null, 2);
-        const encoder = new TextEncoder();
-        const routesBuffer = encoder.encode(routesContent).buffer;
-        const routesHash = await crypto.subtle.digest("SHA-256", routesBuffer);
-        const routesHashArray = Array.from(new Uint8Array(routesHash));
-        const routesHashHex = routesHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        manifest['/_routes.json'] = routesHashHex;
-        formData.append(routesHashHex, new Blob([routesBuffer]), '_routes.json');
-        console.log('  ✅ _routes.json auto-généré');
-      }
+      // Toujours générer _routes.json pour éviter les problèmes Cloudflare
+      const routesConfig = {
+        version: 1,
+        include: ["/*"],
+        exclude: [
+          "/*.css",
+          "/*.js",
+          "/*.png",
+          "/*.jpg",
+          "/*.jpeg",
+          "/*.gif",
+          "/*.svg",
+          "/*.ico",
+          "/*.woff",
+          "/*.woff2",
+          "/*.ttf",
+          "/*.eot",
+          "/images/*",
+          "/css/*",
+          "/js/*",
+          "/assets/*"
+        ]
+      };
+      
+      const routesContent = JSON.stringify(routesConfig, null, 2);
+      const encoder = new TextEncoder();
+      const routesBuffer = encoder.encode(routesContent).buffer;
+      const routesHash = await crypto.subtle.digest("SHA-256", routesBuffer);
+      const routesHashArray = Array.from(new Uint8Array(routesHash));
+      const routesHashHex = routesHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      manifest['/_routes.json'] = routesHashHex;
+      formData.append(routesHashHex, new Blob([routesBuffer]), '_routes.json');
+      console.log('  ✅ _routes.json auto-généré avec exclusions pour fichiers statiques');
+      console.log('     Config:', JSON.stringify(routesConfig, null, 2));
       
       for (const file of files) {
         // Normaliser le nom de fichier (enlever / au début, garder la structure)
