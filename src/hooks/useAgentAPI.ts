@@ -43,14 +43,14 @@ export function useAgentAPI() {
       options.onGenerationEvent?.({ type: 'read', message: file.path });
     });
 
-    // Timeout de sécurité : force l'arrêt après 60s même sans complete
+    // Timeout de sécurité : force l'arrêt après 90s même sans complete
     const safetyTimeout = setTimeout(() => {
-      console.warn('⏱️ Timeout: Arrêt forcé après 60s sans événement complete');
+      console.warn('⏱️ Timeout: Arrêt forcé après 90s sans événement complete');
       setIsStreaming(false);
       setIsLoading(false);
       options.onComplete?.();
       options.onGenerationEvent?.({ type: 'complete', message: 'Generation completed (timeout)' });
-    }, 60000);
+    }, 90000);
 
     try {
       const response = await fetch(
@@ -125,6 +125,7 @@ export function useAgentAPI() {
                 break;
               case 'complete':
                 console.log('🎉 Complete event received');
+                clearTimeout(safetyTimeout);
                 setIsStreaming(false);
                 setIsLoading(false);
                 options.onComplete?.();
@@ -160,11 +161,10 @@ export function useAgentAPI() {
         }
       }
 
-      // Force complete si le stream se termine sans événement complete
-      console.log('🔚 Stream ended, forcing completion');
+      // NE PAS forcer la complétion ici - attendre l'événement 'complete' explicite
+      // ou le timeout de sécurité
+      console.log('🔚 Stream ended naturally');
       clearTimeout(safetyTimeout);
-      setIsStreaming(false);
-      setIsLoading(false);
 
     } catch (error: any) {
       clearTimeout(safetyTimeout);
