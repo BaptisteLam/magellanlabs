@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 
 type SettingsSection = 'projects' | 'general' | 'profile' | 'subscription' | 'integrations';
 
@@ -56,20 +57,18 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
             const isActive = currentSection === item.id;
 
             return (
-              <button
+              <Button
                 key={item.id}
                 onClick={() => setSection(item.id)}
+                variant={isActive ? "magellan" : "ghost"}
                 className={cn(
-                  'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all',
-                  'text-sm font-medium',
-                  isActive
-                    ? 'border border-[#03A5C0]/50 bg-[#03A5C0]/10 text-[#03A5C0]'
-                    : 'text-muted-foreground hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] border border-transparent'
+                  'w-full justify-start gap-3',
+                  !isActive && 'text-muted-foreground hover:text-[#03A5C0] border border-transparent hover:border-[#03A5C0]'
                 )}
               >
                 <Icon className="h-5 w-5" />
                 <span>{item.label}</span>
-              </button>
+              </Button>
             );
           })}
         </nav>
