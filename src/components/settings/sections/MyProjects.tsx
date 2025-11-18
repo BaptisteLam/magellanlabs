@@ -137,6 +137,7 @@ export function MyProjects() {
           }}
           variant="magellan"
           size="sm"
+          style={{ borderRadius: '9999px' }}
         >
           <Plus className="h-4 w-4" />
           Nouveau projet
