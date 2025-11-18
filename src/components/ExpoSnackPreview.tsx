@@ -15,17 +15,21 @@ export const ExpoSnackPreview = ({ files, isDark = false }: ExpoSnackPreviewProp
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 3;
+    
     const createSnack = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
+        console.log('📱 Création du Snack Expo avec', Object.keys(files).length, 'fichiers');
+        
         // Convertir les fichiers en format Expo Snack
         const snackFiles: Record<string, { type: string; contents: string }> = {};
         
         // Si on a des fichiers HTML/CSS/JS, les convertir en App.js React Native
         if (files['index.html'] || files['App.tsx'] || files['App.jsx']) {
-          // Générer un fichier App.js React Native basique
           const appCode = files['App.tsx'] || files['App.jsx'] || generateReactNativeFromHtml(files['index.html'] || '');
           snackFiles['App.js'] = {
             type: 'CODE',
@@ -41,7 +45,12 @@ export const ExpoSnackPreview = ({ files, isDark = false }: ExpoSnackPreviewProp
           });
         }
 
-        // Créer un Snack via l'API Expo
+        console.log('📦 Fichiers Snack préparés:', Object.keys(snackFiles));
+
+        // Créer un Snack via l'API Expo avec timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
         const response = await fetch('https://snack.expo.dev/--/api/v2/snacks', {
           method: 'POST',
           headers: {
@@ -58,23 +67,48 @@ export const ExpoSnackPreview = ({ files, isDark = false }: ExpoSnackPreviewProp
               'react-native-web': '*'
             }
           }),
+          signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-          throw new Error('Erreur lors de la création du Snack');
+          const errorText = await response.text();
+          console.error('❌ Erreur API Expo:', response.status, errorText);
+          throw new Error(`Erreur API Expo (${response.status})`);
         }
 
         const data = await response.json();
         const newSnackId = data.id;
+        
+        if (!newSnackId) {
+          throw new Error('ID Snack invalide reçu de l\'API');
+        }
+        
         setSnackId(newSnackId);
         
         const url = `https://snack.expo.dev/@snack/${newSnackId}`;
         setSnackUrl(url);
         
-        console.log('✅ Snack créé:', url);
+        console.log('✅ Snack créé avec succès:', url);
       } catch (err) {
-        console.error('Erreur création Snack:', err);
-        setError('Impossible de créer la preview mobile');
+        console.error('❌ Erreur création Snack:', err);
+        
+        // Retry logic
+        if (retryCount < maxRetries && err instanceof Error && err.name !== 'AbortError') {
+          retryCount++;
+          console.log(`🔄 Tentative ${retryCount}/${maxRetries}...`);
+          setTimeout(() => createSnack(), 2000 * retryCount);
+          return;
+        }
+        
+        const errorMessage = err instanceof Error && err.name === 'AbortError'
+          ? 'Timeout: L\'API Expo met trop de temps à répondre'
+          : err instanceof Error 
+            ? err.message 
+            : 'Erreur inconnue';
+            
+        setError(`Impossible de créer la preview mobile: ${errorMessage}`);
       } finally {
         setIsLoading(false);
       }
@@ -142,16 +176,31 @@ const styles = StyleSheet.create({
   if (error || !snackId) {
     return (
       <div 
-        className="w-full h-full flex items-center justify-center"
+        className="w-full h-full flex items-center justify-center p-8"
         style={{ backgroundColor: isDark ? '#0A0A0A' : '#F8F9FA' }}
       >
-        <div className="text-center">
-          <p style={{ color: isDark ? '#EF4444' : '#DC2626', marginBottom: 8 }}>
+        <div className="text-center max-w-md">
+          <p style={{ color: isDark ? '#EF4444' : '#DC2626', marginBottom: 12, fontSize: 16, fontWeight: 600 }}>
             {error || 'Erreur de chargement'}
           </p>
-          <p style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 14 }}>
-            Veuillez réessayer
+          <p style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 14, marginBottom: 16, lineHeight: 1.6 }}>
+            La création de la preview mobile a échoué. Cela peut être dû à un problème de connexion ou à l'API Expo.
           </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#03A5C0',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: 14,
+              fontWeight: 500
+            }}
+          >
+            Réessayer
+          </button>
         </div>
       </div>
     );
