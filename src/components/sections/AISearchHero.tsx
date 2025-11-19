@@ -462,34 +462,28 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
                   setInputValue('✓ Projet connecté à Figma');
                   sonnerToast.success('Connexion Figma simulée');
                 }}
-                className="inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 transition-all border rounded-lg"
+                className="transition-all hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 style={{
-                  borderColor: 'rgb(3,165,192)',
-                  backgroundColor: 'rgba(3,165,192,0.1)',
-                  width: '80px',
-                  height: '40px',
-                  padding: '8px'
+                  filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))',
+                  opacity: 0.85
                 }}
                 title="Connecter Figma"
               >
-                <img src="/src/assets/figma-logo.svg" alt="Figma" className="w-full h-full object-contain" />
+                <img src="/src/assets/figma-button.svg" alt="Figma" className="h-8" />
               </button>
               <button
                 onClick={() => {
                   setInputValue('✓ Projet connecté à Supabase');
                   sonnerToast.success('Connexion Supabase simulée');
                 }}
-                className="inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 transition-all border rounded-lg"
+                className="transition-all hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 style={{
-                  borderColor: 'rgb(3,165,192)',
-                  backgroundColor: 'rgba(3,165,192,0.1)',
-                  width: '80px',
-                  height: '40px',
-                  padding: '8px'
+                  filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))',
+                  opacity: 0.85
                 }}
                 title="Connecter Supabase"
               >
-                <img src="/src/assets/supabase-logo.svg" alt="Supabase" className="w-full h-full object-contain" />
+                <img src="/src/assets/supabase-button.svg" alt="Supabase" className="h-8" />
               </button>
             </div>
           </div>
