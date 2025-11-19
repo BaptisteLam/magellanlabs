@@ -19,14 +19,13 @@ export function CollapsedAiTasks({ events, isDark = false }: CollapsedAiTasksPro
     <div className="relative flex w-full flex-col">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="gap-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input hover:bg-accent hover:border-accent rounded-md absolute right-0 top-0 z-10 flex h-6 items-center justify-center bg-background px-1.5 py-1 text-base font-normal transition-all duration-300 ease-out md:text-sm"
+        className="absolute right-0 top-0 z-10 flex h-6 items-center justify-center px-2 py-1 text-xs font-normal transition-all duration-200 ease-out hover:opacity-70"
         aria-label={isExpanded ? "Collapse tool uses" : "Expand tool uses"}
         style={{
-          borderColor: isDark ? '#333' : '#e2e8f0',
-          backgroundColor: isDark ? '#1F1F20' : '#ffffff'
+          color: isDark ? '#94a3b8' : '#64748b'
         }}
       >
-        {isExpanded ? 'Hide all' : 'Show all'}
+        {isExpanded ? 'masquer' : 'voir'}
       </button>
       
       <div 

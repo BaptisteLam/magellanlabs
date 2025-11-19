@@ -1340,8 +1340,9 @@ Now generate the mobile app based on this request:`;
                           }
                         </p>
                         
-                        {/* AI Tasks regroupées après que le message soit complet */}
-                        {msg.metadata && typeof msg.metadata === 'object' && 'generation_events' in msg.metadata && (
+                        {/* AI Tasks regroupées - uniquement pour les messages avec generation_events ET qui sont le dernier message assistant */}
+                        {msg.metadata && typeof msg.metadata === 'object' && 'generation_events' in msg.metadata && 
+                         idx === messages.filter(m => m.role === 'assistant').length + messages.filter(m => m.role === 'user').length - 1 && (
                           <div className="mt-3">
                             <CollapsedAiTasks 
                               events={msg.metadata.generation_events as GenerationEvent[]} 
@@ -1350,14 +1351,16 @@ Now generate the mobile app based on this request:`;
                           </div>
                         )}
                         
-                        <MessageActions
-                          content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
-                          messageIndex={idx}
-                          isLatestMessage={idx === messages.length - 1}
-                          tokenCount={msg.metadata && typeof msg.metadata === 'object' && 'total_tokens' in msg.metadata 
-                            ? (msg.metadata.total_tokens as number) 
-                            : msg.token_count}
-                          onRestore={async (messageIdx) => {
+                        {/* MessageActions - uniquement pour le dernier message assistant (récap final) */}
+                        {idx === messages.filter(m => m.role === 'assistant').length + messages.filter(m => m.role === 'user').length - 1 && (
+                          <MessageActions
+                            content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
+                            messageIndex={idx}
+                            isLatestMessage={idx === messages.length - 1}
+                            tokenCount={msg.metadata && typeof msg.metadata === 'object' && 'total_tokens' in msg.metadata 
+                              ? (msg.metadata.total_tokens as number) 
+                              : msg.token_count}
+                            onRestore={async (messageIdx) => {
                             // Restaurer à cette version
                             const targetMessage = messages[messageIdx];
                             if (!targetMessage.id || !sessionId) return;
@@ -1409,11 +1412,12 @@ Now generate the mobile app based on this request:`;
                               }
                             } catch (error) {
                               console.error('Erreur lors de la restauration:', error);
-                              sonnerToast.error('Erreur lors de la restauration');
+                                sonnerToast.error('Erreur lors de la restauration');
                             }
                           }}
                           isDark={isDark}
-                        />
+                          />
+                        )}
                       </div>
                     </div>
                   )}
