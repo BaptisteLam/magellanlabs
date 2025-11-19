@@ -162,24 +162,7 @@ serve(async (req) => {
         const routesConfig = {
           version: 1,
           include: ["/*"],
-          exclude: [
-            "/*.css",
-            "/*.js",
-            "/*.png",
-            "/*.jpg",
-            "/*.jpeg",
-            "/*.gif",
-            "/*.svg",
-            "/*.ico",
-            "/*.woff",
-            "/*.woff2",
-            "/*.ttf",
-            "/*.eot",
-            "/images/*",
-            "/css/*",
-            "/js/*",
-            "/assets/*"
-          ]
+          exclude: []  // Ne rien exclure pour permettre à Cloudflare de servir tous les fichiers statiques
         };
         
         const routesContent = JSON.stringify(routesConfig, null, 2);
@@ -191,7 +174,7 @@ serve(async (req) => {
         
         manifest['/_routes.json'] = routesHashHex;
         formData.append(routesHashHex, new Blob([routesBuffer]), '_routes.json');
-        console.log('  ⚠️ _routes.json manquant - auto-généré en fallback');
+        console.log('  ✅ _routes.json auto-généré avec exclude: [] pour servir tous les assets');
         console.log('     Config:', JSON.stringify(routesConfig, null, 2));
       } else {
         console.log('  ✅ _routes.json fourni par Claude - utilisation de celui-ci');
