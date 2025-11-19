@@ -1363,37 +1363,10 @@ Now generate the mobile app based on this request:`;
                 </div>
               ))}
 
-              {/* Affichage des événements de génération simples pour les reprompts */}
+              {/* Affichage des événements de génération simples - toujours sauf premier prompt */}
               {generationEvents.length > 0 && agent.isLoading && !isInitialGeneration && (
                 <div className="flex flex-col space-y-2 mb-4 px-4">
                   <SimpleAiEvents events={generationEvents} isDark={isDark} />
-                </div>
-              )}
-
-              {/* Affichage du streaming en temps réel */}
-              {agent.isStreaming && (
-                <div className="flex items-start gap-3">
-                  <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                    <svg className={`w-4 h-4 ${isDark ? 'text-slate-300' : 'text-slate-600'}`} fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
-                      <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs animate-pulse ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                        <Pencil className="w-3 h-3" />
-                        <span>Génération en cours...</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* AI Task List - Affichage pendant toute génération */}
-              {aiEvents.length > 0 && agent.isLoading && (
-                <div className="px-4 pb-4">
-                  <AiTaskList events={aiEvents} />
                 </div>
               )}
               
