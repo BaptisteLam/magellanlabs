@@ -1342,6 +1342,45 @@ Now generate the mobile app based on this request:`;
             
             {/* Chat input */}
             <div className="border-t p-4" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff', borderTopColor: isDark ? '#1F1F20' : 'rgb(226, 232, 240)' }}>
+              {/* Connexion buttons */}
+              <div className="mb-4 flex flex-col items-center gap-3">
+                <p className="text-xs text-muted-foreground">Connecter</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setInputValue('✓ Projet connecté à Figma');
+                      sonnerToast.success('Connexion Figma simulée');
+                    }}
+                    className="inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-sm gap-2 transition-all border rounded-full px-4 py-0"
+                    style={{
+                      borderColor: 'rgb(3,165,192)',
+                      backgroundColor: 'rgba(3,165,192,0.1)',
+                      color: 'rgb(3,165,192)',
+                      height: '32px'
+                    }}
+                  >
+                    <img src="/src/assets/figma-logo.svg" alt="Figma" className="w-4 h-4" />
+                    Figma
+                  </button>
+                  <button
+                    onClick={() => {
+                      setInputValue('✓ Projet connecté à Supabase');
+                      sonnerToast.success('Connexion Supabase simulée');
+                    }}
+                    className="inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-sm gap-2 transition-all border rounded-full px-4 py-0"
+                    style={{
+                      borderColor: 'rgb(3,165,192)',
+                      backgroundColor: 'rgba(3,165,192,0.1)',
+                      color: 'rgb(3,165,192)',
+                      height: '32px'
+                    }}
+                  >
+                    <img src="/src/assets/supabase-logo.svg" alt="Supabase" className="w-4 h-4" />
+                    Supabase
+                  </button>
+                </div>
+              </div>
+              
               <PromptBar
                 inputValue={inputValue}
                 setInputValue={setInputValue}
