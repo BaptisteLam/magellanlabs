@@ -455,39 +455,39 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
           
           {/* Connexion buttons */}
           <div className="mt-6 flex flex-col items-center gap-3">
-            <p className="text-xs text-muted-foreground">Connecter</p>
+            <p style={{ fontSize: '13px' }} className="text-muted-foreground">Connecter</p>
             <div className="flex gap-3">
               <button
                 onClick={() => {
                   setInputValue('✓ Projet connecté à Figma');
                   sonnerToast.success('Connexion Figma simulée');
                 }}
-                className="inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-sm gap-2 transition-all border rounded-full px-4 py-0"
+                className="inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 transition-all border rounded-full p-2"
                 style={{
                   borderColor: 'rgb(3,165,192)',
                   backgroundColor: 'rgba(3,165,192,0.1)',
-                  color: 'rgb(3,165,192)',
-                  height: '32px'
+                  width: '40px',
+                  height: '40px'
                 }}
+                title="Connecter Figma"
               >
-                <img src="/src/assets/figma-logo.svg" alt="Figma" className="w-4 h-4" />
-                Figma
+                <img src="/src/assets/figma-logo.svg" alt="Figma" className="w-5 h-5" />
               </button>
               <button
                 onClick={() => {
                   setInputValue('✓ Projet connecté à Supabase');
                   sonnerToast.success('Connexion Supabase simulée');
                 }}
-                className="inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-sm gap-2 transition-all border rounded-full px-4 py-0"
+                className="inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 transition-all border rounded-full p-2"
                 style={{
                   borderColor: 'rgb(3,165,192)',
                   backgroundColor: 'rgba(3,165,192,0.1)',
-                  color: 'rgb(3,165,192)',
-                  height: '32px'
+                  width: '40px',
+                  height: '40px'
                 }}
+                title="Connecter Supabase"
               >
-                <img src="/src/assets/supabase-logo.svg" alt="Supabase" className="w-4 h-4" />
-                Supabase
+                <img src="/src/assets/supabase-logo.svg" alt="Supabase" className="w-5 h-5" />
               </button>
             </div>
           </div>
