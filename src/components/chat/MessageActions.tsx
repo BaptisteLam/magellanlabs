@@ -47,9 +47,9 @@ export function MessageActions({
                 variant="ghost"
                 size="sm"
                 onClick={handleRestore}
-                className="h-6 w-6 p-0 hover:bg-[#03A5C0]/10"
+                className="h-4 w-4 p-0 hover:bg-[#03A5C0]/10"
               >
-                <Undo2 className="h-3 w-3" style={{ color: '#03A5C0' }} />
+                <Undo2 className="h-2.5 w-2.5" style={{ color: '#03A5C0' }} />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -65,9 +65,9 @@ export function MessageActions({
               variant="ghost"
               size="sm"
               onClick={handleCopy}
-              className="h-6 w-6 p-0 hover:bg-[#03A5C0]/10"
+              className="h-4 w-4 p-0 hover:bg-[#03A5C0]/10"
             >
-              <Copy className="h-3 w-3" style={{ color: '#03A5C0' }} />
+              <Copy className="h-2.5 w-2.5" style={{ color: '#03A5C0' }} />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -81,9 +81,9 @@ export function MessageActions({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-2 gap-1 hover:bg-[#03A5C0]/10 cursor-default"
+              className="h-4 px-1.5 gap-0.5 hover:bg-[#03A5C0]/10 cursor-default"
             >
-              <Coins className="h-3 w-3" style={{ color: '#03A5C0' }} />
+              <Coins className="h-2.5 w-2.5" style={{ color: '#03A5C0' }} />
               <span className="text-xs" style={{ color: '#03A5C0', fontSize: '12px' }}>
                 {tokenCount || 0}
               </span>
