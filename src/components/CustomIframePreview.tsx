@@ -320,9 +320,22 @@ export function CustomIframePreview({
         doc.open();
         doc.write(generatedHTML);
         doc.close();
+        
+        // Attendre que l'iframe soit chargée puis réappliquer le mode inspect
+        const sendInspectMode = () => {
+          if (iframeRef.current?.contentWindow) {
+            iframeRef.current.contentWindow.postMessage({
+              type: 'toggle-inspect',
+              enabled: inspectMode
+            }, '*');
+          }
+        };
+        
+        // Envoyer le message après un court délai pour s'assurer que le script est chargé
+        setTimeout(sendInspectMode, 100);
       }
     }
-  }, [generatedHTML]);
+  }, [generatedHTML, inspectMode]);
 
   return (
     <iframe
