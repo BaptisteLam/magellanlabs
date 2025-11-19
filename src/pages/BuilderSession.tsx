@@ -1278,10 +1278,31 @@ export default function BuilderSession() {
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p className="text-xs">
-                    {previewMode === 'desktop' ? 'Mode mobile' : 'Mode desktop'}
-                  </p>
+                <TooltipContent side="top">
+                  <p>{previewMode === 'desktop' ? 'Mode mobile' : 'Mode desktop'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => setInspectMode(!inspectMode)}
+                    variant="iconOnly"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    style={{
+                      borderColor: inspectMode ? '#03A5C0' : (isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)'),
+                      backgroundColor: inspectMode ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
+                      color: inspectMode ? '#03A5C0' : (isDark ? 'hsl(var(--foreground))' : '#64748b'),
+                    }}
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>{inspectMode ? 'Désactiver le mode édition' : 'Activer le mode édition'}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
