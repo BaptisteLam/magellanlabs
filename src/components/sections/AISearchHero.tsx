@@ -465,11 +465,12 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
                 className="transition-all hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 style={{
                   filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))',
-                  opacity: 0.85
+                  opacity: 0.85,
+                  mixBlendMode: 'multiply'
                 }}
                 title="Connecter Figma"
               >
-                <img src="/src/assets/figma-button.svg" alt="Figma" className="h-8" />
+                <img src="/src/assets/figma-button.svg" alt="Figma" className="h-10" />
               </button>
               <button
                 onClick={() => {
@@ -479,11 +480,12 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
                 className="transition-all hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 style={{
                   filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))',
-                  opacity: 0.85
+                  opacity: 0.85,
+                  mixBlendMode: 'multiply'
                 }}
                 title="Connecter Supabase"
               >
-                <img src="/src/assets/supabase-button.svg" alt="Supabase" className="h-8" />
+                <img src="/src/assets/supabase-button.svg" alt="Supabase" className="h-10" />
               </button>
             </div>
           </div>
