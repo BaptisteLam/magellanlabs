@@ -25,11 +25,14 @@ import { useAgentAPI } from "@/hooks/useAgentAPI";
 import type { AIEvent, GenerationEvent } from '@/types/agent';
 import AiTaskList from '@/components/chat/AiTaskList';
 import { SimpleAiEvents } from '@/components/chat/SimpleAiEvents';
+import { MessageActions } from '@/components/chat/MessageActions';
 import html2canvas from 'html2canvas';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+  token_count?: number;
+  id?: string;
 }
 
 export default function BuilderSession() {
@@ -271,7 +274,9 @@ export default function BuilderSession() {
         if (!chatError && chatMessages && chatMessages.length > 0) {
           const loadedMessages: Message[] = chatMessages.map(msg => ({
             role: msg.role as 'user' | 'assistant',
-            content: msg.content
+            content: msg.content,
+            token_count: msg.token_count || undefined,
+            id: msg.id
           }));
           setMessages(loadedMessages);
         } else {
@@ -799,24 +804,40 @@ export default function BuilderSession() {
             console.log('💾 Sauvegarde automatique du projet:', websiteTitle);
             await saveSessionWithTitle(websiteTitle, filesArray, updatedMessages);
           }
-          setMessages(updatedMessages);
+          
 
-          // Sauvegarder dans chat_messages
-          await supabase
+          // Sauvegarder dans chat_messages avec token_count et project_files
+          const { data: insertedMessage } = await supabase
             .from('chat_messages')
             .insert({
               session_id: sessionId,
               role: 'assistant',
               content: finalMessage,
-              metadata: { files_updated: Object.keys(updatedFiles).length }
-            });
+              token_count: assistantMessage.length, // Estimation simple basée sur la longueur
+              metadata: { 
+                files_updated: Object.keys(updatedFiles).length,
+                project_files: updatedFiles // Sauvegarder l'état des fichiers à ce moment
+              }
+            })
+            .select()
+            .single();
+
+          // Mettre à jour le message avec l'ID et token_count
+          const messageWithId = { 
+            role: 'assistant' as const, 
+            content: finalMessage,
+            token_count: assistantMessage.length,
+            id: insertedMessage?.id
+          };
+          const updatedMessagesWithId = [...newMessages, messageWithId];
+          setMessages(updatedMessagesWithId);
 
           // Mettre à jour build_sessions pour rétrocompatibilité
           await supabase
             .from('build_sessions')
             .update({
-              project_files: filesArray,
-              messages: updatedMessages as any,
+              project_files: updatedFiles,
+              messages: updatedMessagesWithId as any,
               updated_at: new Date().toISOString()
             })
             .eq('id', sessionId);
@@ -1354,6 +1375,45 @@ export default function BuilderSession() {
                             : 'Contenu généré'
                           }
                         </p>
+                        <MessageActions
+                          content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
+                          messageIndex={idx}
+                          isLatestMessage={idx === messages.length - 1}
+                          tokenCount={msg.token_count}
+                          onRestore={async (messageIdx) => {
+                            // Restaurer à cette version
+                            const targetMessage = messages[messageIdx];
+                            if (!targetMessage.id || !sessionId) return;
+                            
+                            // Charger l'état des fichiers à ce moment-là
+                            const { data: chatMessage } = await supabase
+                              .from('chat_messages')
+                              .select('metadata')
+                              .eq('id', targetMessage.id)
+                              .single();
+                            
+                            if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
+                              const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                              setProjectFiles(restoredFiles);
+                              
+                              // Tronquer l'historique des messages
+                              const truncatedMessages = messages.slice(0, messageIdx + 1);
+                              setMessages(truncatedMessages);
+                              
+                              // Mettre à jour la session
+                              await supabase
+                                .from('build_sessions')
+                                .update({
+                                  project_files: restoredFiles,
+                                  updated_at: new Date().toISOString()
+                                })
+                                .eq('id', sessionId);
+                              
+                              sonnerToast.success('Version restaurée');
+                            }
+                          }}
+                          isDark={isDark}
+                        />
                       </div>
                     </div>
                   )}
