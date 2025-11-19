@@ -19,4 +19,5 @@ export type AIEvent =
   | IntentAnalysis
   | { type: "code_update"; path: string; code: string }
   | { type: "complete" }
+  | { type: "tokens"; input_tokens: number; output_tokens: number; total_tokens: number }
   | GenerationEvent;

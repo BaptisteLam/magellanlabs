@@ -834,27 +834,30 @@ Now generate the mobile app based on this request:`;
           }
           
 
-          // Sauvegarder dans chat_messages avec token_count et project_files
+          // Sauvegarder dans chat_messages avec token_count exact et project_files
           const { data: insertedMessage } = await supabase
             .from('chat_messages')
             .insert({
               session_id: sessionId,
               role: 'assistant',
               content: finalMessage,
-              token_count: assistantMessage.length, // Estimation simple basée sur la longueur
+              token_count: agent.tokenUsage.total, // Utiliser les tokens exacts de Claude
               metadata: { 
                 files_updated: Object.keys(updatedFiles).length,
-                project_files: updatedFiles // Sauvegarder l'état des fichiers à ce moment
+                project_files: updatedFiles, // Sauvegarder l'état des fichiers à ce moment
+                input_tokens: agent.tokenUsage.input,
+                output_tokens: agent.tokenUsage.output,
+                total_tokens: agent.tokenUsage.total
               }
             })
             .select()
             .single();
 
-          // Mettre à jour le message avec l'ID et token_count
+          // Mettre à jour le message avec l'ID et token_count exact
           const messageWithId = { 
             role: 'assistant' as const, 
             content: finalMessage,
-            token_count: assistantMessage.length,
+            token_count: agent.tokenUsage.total,
             id: insertedMessage?.id
           };
           const updatedMessagesWithId = [...newMessages, messageWithId];
@@ -1328,31 +1331,54 @@ Now generate the mobile app based on this request:`;
                             const targetMessage = messages[messageIdx];
                             if (!targetMessage.id || !sessionId) return;
                             
-                            // Charger l'état des fichiers à ce moment-là
-                            const { data: chatMessage } = await supabase
-                              .from('chat_messages')
-                              .select('metadata')
-                              .eq('id', targetMessage.id)
-                              .single();
-                            
-                            if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
-                              const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
-                              setProjectFiles(restoredFiles);
+                            try {
+                              // Charger l'état des fichiers à ce moment-là
+                              const { data: chatMessage } = await supabase
+                                .from('chat_messages')
+                                .select('metadata')
+                                .eq('id', targetMessage.id)
+                                .single();
                               
-                              // Tronquer l'historique des messages
-                              const truncatedMessages = messages.slice(0, messageIdx + 1);
-                              setMessages(truncatedMessages);
-                              
-                              // Mettre à jour la session
-                              await supabase
-                                .from('build_sessions')
-                                .update({
-                                  project_files: restoredFiles,
-                                  updated_at: new Date().toISOString()
-                                })
-                                .eq('id', sessionId);
-                              
-                              sonnerToast.success('Version restaurée');
+                              if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
+                                const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                                
+                                // Restaurer les fichiers
+                                setProjectFiles(restoredFiles);
+                                
+                                // Restaurer la preview si c'est une app web
+                                if (restoredFiles['index.html']) {
+                                  setGeneratedHtml(restoredFiles['index.html']);
+                                }
+                                
+                                // Restaurer le premier fichier dans l'éditeur
+                                const firstFile = Object.keys(restoredFiles)[0];
+                                if (firstFile) {
+                                  setSelectedFile(firstFile);
+                                  setSelectedFileContent(restoredFiles[firstFile]);
+                                  setOpenFiles([firstFile]);
+                                }
+                                
+                                // Tronquer l'historique des messages
+                                const truncatedMessages = messages.slice(0, messageIdx + 1);
+                                setMessages(truncatedMessages);
+                                
+                                // Mettre à jour la session
+                                await supabase
+                                  .from('build_sessions')
+                                  .update({
+                                    project_files: restoredFiles,
+                                    messages: truncatedMessages as any,
+                                    updated_at: new Date().toISOString()
+                                  })
+                                  .eq('id', sessionId);
+                                
+                                sonnerToast.success('Version restaurée avec succès !');
+                              } else {
+                                sonnerToast.error('Impossible de restaurer cette version (fichiers non sauvegardés)');
+                              }
+                            } catch (error) {
+                              console.error('Erreur lors de la restauration:', error);
+                              sonnerToast.error('Erreur lors de la restauration');
                             }
                           }}
                           isDark={isDark}
