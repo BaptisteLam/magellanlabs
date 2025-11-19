@@ -26,6 +26,7 @@ import { useAgentAPI } from "@/hooks/useAgentAPI";
 import type { AIEvent, GenerationEvent } from '@/types/agent';
 import AiTaskList from '@/components/chat/AiTaskList';
 import { SimpleAiEvents } from '@/components/chat/SimpleAiEvents';
+import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
 import html2canvas from 'html2canvas';
 
@@ -34,6 +35,13 @@ interface Message {
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
   token_count?: number;
   id?: string;
+  metadata?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    total_tokens?: number;
+    project_files?: Record<string, string>;
+    generation_events?: GenerationEvent[];
+  };
 }
 
 export default function BuilderSession() {
@@ -73,6 +81,7 @@ export default function BuilderSession() {
   
   // Événements de génération pour l'affichage de pensée
   const [generationEvents, setGenerationEvents] = useState<GenerationEvent[]>([]);
+  const [currentMessageEvents, setCurrentMessageEvents] = useState<GenerationEvent[]>([]);
   
   // Flag pour savoir si on est en première génération
   const [isInitialGeneration, setIsInitialGeneration] = useState(false);
@@ -597,7 +606,7 @@ export default function BuilderSession() {
 
     // Réinitialiser les événements pour une nouvelle requête
     setAiEvents([]);
-    setGenerationEvents([]);
+    setCurrentMessageEvents([]);
     
     // 🔒 TOUJOURS activer le mode "génération en cours" pour bloquer la preview jusqu'à completion
     setIsInitialGeneration(true);
@@ -712,6 +721,7 @@ Now generate the mobile app based on this request:`;
         onGenerationEvent: (event) => {
           console.log('🔄 Generation:', event);
           setGenerationEvents(prev => [...prev, event]);
+          setCurrentMessageEvents(prev => [...prev, event]);
         },
         onCodeUpdate: (path, code) => {
           console.log('📦 Accumulating file:', path);
@@ -847,7 +857,8 @@ Now generate the mobile app based on this request:`;
                 project_files: updatedFiles, // Sauvegarder l'état des fichiers à ce moment
                 input_tokens: agent.tokenUsage.input,
                 output_tokens: agent.tokenUsage.output,
-                total_tokens: agent.tokenUsage.total
+                total_tokens: agent.tokenUsage.total,
+                generation_events: currentMessageEvents // Sauvegarder les events pour affichage groupé
               }
             })
             .select()
@@ -858,7 +869,14 @@ Now generate the mobile app based on this request:`;
             role: 'assistant' as const, 
             content: finalMessage,
             token_count: agent.tokenUsage.total,
-            id: insertedMessage?.id
+            id: insertedMessage?.id,
+            metadata: {
+              input_tokens: agent.tokenUsage.input,
+              output_tokens: agent.tokenUsage.output,
+              total_tokens: agent.tokenUsage.total,
+              project_files: updatedFiles,
+              generation_events: currentMessageEvents
+            }
           };
           const updatedMessagesWithId = [...newMessages, messageWithId];
           setMessages(updatedMessagesWithId);
@@ -1321,11 +1339,24 @@ Now generate the mobile app based on this request:`;
                             : 'Contenu généré'
                           }
                         </p>
+                        
+                        {/* AI Tasks regroupées après que le message soit complet */}
+                        {msg.metadata && typeof msg.metadata === 'object' && 'generation_events' in msg.metadata && (
+                          <div className="mt-3">
+                            <CollapsedAiTasks 
+                              events={msg.metadata.generation_events as GenerationEvent[]} 
+                              isDark={isDark} 
+                            />
+                          </div>
+                        )}
+                        
                         <MessageActions
                           content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
                           messageIndex={idx}
                           isLatestMessage={idx === messages.length - 1}
-                          tokenCount={msg.token_count}
+                          tokenCount={msg.metadata && typeof msg.metadata === 'object' && 'total_tokens' in msg.metadata 
+                            ? (msg.metadata.total_tokens as number) 
+                            : msg.token_count}
                           onRestore={async (messageIdx) => {
                             // Restaurer à cette version
                             const targetMessage = messages[messageIdx];
@@ -1389,10 +1420,13 @@ Now generate the mobile app based on this request:`;
                 </div>
               ))}
 
-              {/* Affichage des événements de génération simples - toujours sauf premier prompt */}
-              {generationEvents.length > 0 && agent.isLoading && !isInitialGeneration && (
-                <div className="flex flex-col space-y-2 mb-4 px-4">
-                  <SimpleAiEvents events={generationEvents} isDark={isDark} />
+              {/* Affichage des événements de génération en cours - toujours sauf premier prompt */}
+              {currentMessageEvents.length > 0 && agent.isLoading && !isInitialGeneration && (
+                <div className="flex items-start gap-3 mb-4">
+                  <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <SimpleAiEvents events={currentMessageEvents} isDark={isDark} />
+                  </div>
                 </div>
               )}
               
