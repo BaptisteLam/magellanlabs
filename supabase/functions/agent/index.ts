@@ -373,6 +373,8 @@ Exemple de flux COMPLET:
           let sseBuffer = ''; // Buffer pour les lignes SSE incomplètes
           let hasComplete = false;
           const generatedFiles = new Map<string, string>(); // Tracker des fichiers générés
+          let totalInputTokens = 0;
+          let totalOutputTokens = 0;
 
           while (true) {
             const { done, value } = await reader.read();
@@ -393,6 +395,17 @@ Exemple de flux COMPLET:
 
               try {
                 const event = JSON.parse(data);
+                
+                // Capturer les tokens d'utilisation
+                if (event.type === 'message_start' && event.message?.usage) {
+                  totalInputTokens = event.message.usage.input_tokens || 0;
+                  console.log('📊 Input tokens:', totalInputTokens);
+                }
+                
+                if (event.type === 'message_delta' && event.usage) {
+                  totalOutputTokens = event.usage.output_tokens || 0;
+                  console.log('📊 Output tokens:', totalOutputTokens);
+                }
                 
                 if (event.type === 'content_block_delta' && event.delta?.text) {
                   buffer += event.delta.text;
@@ -536,6 +549,17 @@ Exemple de flux COMPLET:
           } else {
             console.log('✅ Événement complete déjà reçu');
           }
+          
+          // Envoyer l'événement avec les tokens utilisés
+          const totalTokens = totalInputTokens + totalOutputTokens;
+          console.log('📊 Total tokens:', { input: totalInputTokens, output: totalOutputTokens, total: totalTokens });
+          const tokenEvent = { 
+            type: 'tokens', 
+            input_tokens: totalInputTokens,
+            output_tokens: totalOutputTokens,
+            total_tokens: totalTokens
+          };
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(tokenEvent)}\n\n`));
 
           controller.close();
           

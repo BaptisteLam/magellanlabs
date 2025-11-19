@@ -16,6 +16,7 @@ interface UseAgentAPIOptions {
 export function useAgentAPI() {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [tokenUsage, setTokenUsage] = useState({ input: 0, output: 0, total: 0 });
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const callAgent = async (
@@ -131,6 +132,16 @@ export function useAgentAPI() {
                 options.onComplete?.();
                 options.onGenerationEvent?.({ type: 'complete', message: 'Changes applied' });
                 break;
+              case 'tokens':
+                // Capturer les tokens d'utilisation
+                const tokens = {
+                  input: (event as any).input_tokens || 0,
+                  output: (event as any).output_tokens || 0,
+                  total: (event as any).total_tokens || 0
+                };
+                setTokenUsage(tokens);
+                console.log('📊 Tokens utilisés:', tokens);
+                break;
             }
           } catch (e) {
             console.error('Error parsing event:', e);
@@ -193,5 +204,6 @@ export function useAgentAPI() {
     abort,
     isLoading,
     isStreaming,
+    tokenUsage,
   };
 }
