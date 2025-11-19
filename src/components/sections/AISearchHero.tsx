@@ -12,6 +12,10 @@ import { Label } from '@/components/ui/label';
 import trinityLogoLoading from '@/assets/trinity-logo-loading.png';
 import { useThemeStore } from '@/stores/themeStore';
 import PromptBar from '@/components/PromptBar';
+import figmaDark from '@/assets/figma-dark.png';
+import figmaLight from '@/assets/figma-light.png';
+import supabaseDark from '@/assets/supabase-dark.png';
+import supabaseLight from '@/assets/supabase-light.png';
 import { CodeTreeView } from '@/components/CodeEditor/CodeTreeView';
 import { MonacoEditor } from '@/components/CodeEditor/MonacoEditor';
 import { BabelPreview } from '@/components/BabelPreview';
@@ -470,7 +474,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
                 }}
                 title="Connecter Figma"
               >
-                <img src="/src/assets/figma-button.svg" alt="Figma" className="h-10" />
+                <img src={isDark ? figmaDark : figmaLight} alt="Figma" className="h-10" />
               </button>
               <button
                 onClick={() => {
@@ -485,7 +489,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
                 }}
                 title="Connecter Supabase"
               >
-                <img src="/src/assets/supabase-button.svg" alt="Supabase" className="h-10" />
+                <img src={isDark ? supabaseDark : supabaseLight} alt="Supabase" className="h-10" />
               </button>
             </div>
           </div>
