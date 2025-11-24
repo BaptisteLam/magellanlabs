@@ -323,222 +323,95 @@ serve(async (req) => {
       })
       .eq('id', sessionId);
     
-    // ============= ÉTAPE 2: DÉPLOIEMENT SUR CLOUDFLARE =============
-    console.log('🚀 Starting Cloudflare Pages deployment...');
-
-    // Inject GA4 script if configured
-    let modifiedFiles = [...projectFiles];
-    if (GA_MEASUREMENT_ID) {
-      console.log('📊 Injecting GA4 tracking script...');
-      
-      const gaScript = `
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', '${GA_MEASUREMENT_ID}', {
-    'page_path': window.location.pathname,
-    'custom_map': {'dimension1': 'hostname'}
-  });
-  gtag('event', 'page_view', {
-    'hostname': window.location.hostname
-  });
-</script>`;
-      
-      const htmlFileIndex = modifiedFiles.findIndex((f: ProjectFile) => f.name === 'index.html');
-      if (htmlFileIndex !== -1) {
-        const originalHtml = modifiedFiles[htmlFileIndex].content;
-        
-        let updatedHtml = originalHtml;
-        if (originalHtml.includes('</head>')) {
-          updatedHtml = originalHtml.replace('</head>', `${gaScript}\n</head>`);
-        } else if (originalHtml.includes('<body')) {
-          updatedHtml = originalHtml.replace('<body', `${gaScript}\n<body`);
-        } else {
-          updatedHtml = gaScript + '\n' + originalHtml;
-        }
-        
-        modifiedFiles[htmlFileIndex] = {
-          ...modifiedFiles[htmlFileIndex],
-          content: updatedHtml
-        };
-      }
-    }
-
-    // Function to create FormData with SHA-256 hashes for Direct Upload
-    async function createFormData(files: ProjectFile[]) {
-      console.log('🔐 Creating FormData with SHA-256 hashes for', files.length, 'files');
-      const formData = new FormData();
-      const manifest: Record<string, string> = {};
-      
-      // Vérifications critiques
-      const hasIndexHtml = files.some(f => f.name === 'index.html' || f.name === '/index.html');
-      const hasRoutesJson = files.some(f => f.name === '_routes.json' || f.name === '/_routes.json');
-      
-      console.log('📋 Vérifications:');
-      console.log('  ✅ index.html présent:', hasIndexHtml);
-      console.log('  ℹ️ _routes.json présent:', hasRoutesJson);
-      
-      if (!hasIndexHtml) {
-        console.warn('⚠️ ATTENTION: index.html manquant - le site ne s\'affichera pas!');
-      }
-      
-      // Générer _routes.json seulement si Claude ne l'a pas déjà généré
-      if (!hasRoutesJson) {
-        const routesConfig = {
-          version: 1,
-          include: ["/*"],
-          exclude: []  // Ne rien exclure pour permettre à Cloudflare de servir tous les fichiers statiques
-        };
-        
-        const routesContent = JSON.stringify(routesConfig, null, 2);
-        const encoder = new TextEncoder();
-        const routesBuffer = encoder.encode(routesContent).buffer;
-        const routesHash = await crypto.subtle.digest("SHA-256", routesBuffer);
-        const routesHashArray = Array.from(new Uint8Array(routesHash));
-        const routesHashHex = routesHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        manifest['/_routes.json'] = routesHashHex;
-        formData.append(routesHashHex, new Blob([routesBuffer]), '_routes.json');
-        console.log('  ✅ _routes.json auto-généré avec exclude: [] pour servir tous les assets');
-        console.log('     Config:', JSON.stringify(routesConfig, null, 2));
-      } else {
-        console.log('  ✅ _routes.json fourni par Claude - utilisation de celui-ci');
-      }
-      
-      for (const file of files) {
-        // Normaliser le nom de fichier - toujours enlever / au début
-        let fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
-        
-        // IMPORTANT: Cloudflare Pages exige que tous les fichiers soient à la racine
-        // Les fichiers dans des sous-dossiers doivent avoir leur chemin complet
-        if (fileName.includes('/')) {
-          console.log(`  📁 Fichier avec chemin: ${fileName}`);
-        }
-        
-        // Convertir le contenu en ArrayBuffer
-        let fileBuffer: ArrayBuffer;
-        if (file.content.startsWith('data:')) {
-          const base64Data = file.content.split(',')[1];
-          const binaryString = atob(base64Data);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          fileBuffer = bytes.buffer;
-        } else {
-          const encoder = new TextEncoder();
-          fileBuffer = encoder.encode(file.content).buffer;
-        }
-        
-        // Calculer le SHA-256 hash complet (64 caractères hex)
-        const hashBuffer = await crypto.subtle.digest("SHA-256", fileBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const fileHash = hashArray
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-        
-        console.log(`  ✅ ${fileName}`);
-        console.log(`     Hash: ${fileHash}`);
-        console.log(`     Size: ${fileBuffer.byteLength} bytes`);
-        
-        // CRITICAL: Le manifest doit avoir "/" au début, le nom de fichier dans FormData NON
-        manifest[`/${fileName}`] = fileHash;
-        
-        // Ajouter au FormData - IMPORTANT: utiliser le hash comme clé, nom de fichier comme filename
-        const blob = new Blob([fileBuffer]);
-        formData.append(fileHash, blob, fileName);
-      }
-      
-      formData.append('manifest', JSON.stringify(manifest));
-      console.log('✅ FormData created with manifest:', Object.keys(manifest).length, 'files');
-      console.log('📦 Manifest:', JSON.stringify(manifest, null, 2));
-      return formData;
-    }
+    // ============= ÉTAPE 2: CONNEXION GITHUB → CLOUDFLARE =============
+    console.log('🚀 Connecting GitHub repository to Cloudflare Pages...');
     
     const projectName = session.cloudflare_project_name || `${baseTitle}-${uniqueId}`;
     
-    console.log('🚀 Deploying to Cloudflare Pages project:', projectName);
-    
-    // Create FormData with SHA-256 hashes for Direct Upload
-    const formData = await createFormData(modifiedFiles);
-    
-    const deployResponse = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
+    // Vérifier si le projet Cloudflare existe
+    const checkProjectResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}`,
       {
-        method: 'POST',
         headers: {
           'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
         },
-        body: formData,
       }
     );
-
-    let deployResult;
     
-    if (!deployResponse.ok) {
-      const errorText = await deployResponse.text();
-      console.error('❌ Deployment failed:', errorText);
+    let deploymentUrl: string;
+    
+    if (!checkProjectResponse.ok && checkProjectResponse.status === 404) {
+      // Projet n'existe pas, le créer avec connexion GitHub
+      console.log('📝 Creating new Cloudflare Pages project connected to GitHub...');
       
-      // If project doesn't exist, create it first
-      if (deployResponse.status === 404) {
-        console.log('📝 Creating new Cloudflare Pages project...');
-        
-        const createProjectResponse = await fetch(
-          `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
-              'Content-Type': 'application/json',
+      const createProjectResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: projectName,
+            production_branch: 'main',
+            source: {
+              type: 'github',
+              config: {
+                owner: owner,
+                repo_name: repoName,
+                production_branch: 'main',
+                pr_comments_enabled: false,
+                deployments_enabled: true,
+              },
             },
-            body: JSON.stringify({
-              name: projectName,
-              production_branch: 'main',
-            }),
-          }
-        );
-        
-        if (!createProjectResponse.ok) {
-          const createError = await createProjectResponse.text();
-          console.error('❌ Failed to create project:', createError);
-          throw new Error(`Failed to create Cloudflare Pages project: ${createError}`);
-        }
-        
-        console.log('✅ Project created, retrying deployment...');
-        
-        // Retry deployment with Direct Upload
-        const retryFormData = await createFormData(modifiedFiles);
-        
-        const retryResponse = await fetch(
-          `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+            build_config: {
+              build_command: '',
+              destination_dir: '/',
+              root_dir: '/',
             },
-            body: retryFormData,
-          }
-        );
-        
-        if (!retryResponse.ok) {
-          const retryError = await retryResponse.text();
-          throw new Error(`Deployment failed after project creation: ${retryError}`);
+          }),
         }
-        
-        deployResult = await retryResponse.json();
-      } else {
-        throw new Error(`Deployment failed: ${errorText}`);
+      );
+      
+      if (!createProjectResponse.ok) {
+        const createError = await createProjectResponse.text();
+        console.error('❌ Failed to create Cloudflare project:', createError);
+        throw new Error(`Failed to create Cloudflare Pages project: ${createError}`);
       }
+      
+      const projectData = await createProjectResponse.json();
+      deploymentUrl = `https://${projectName}.pages.dev`;
+      console.log('✅ Cloudflare Pages project created and connected to GitHub');
     } else {
-      deployResult = await deployResponse.json();
+      // Projet existe, déclencher un nouveau déploiement depuis GitHub
+      console.log('🔄 Triggering deployment from GitHub...');
+      
+      const deployResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            branch: 'main',
+          }),
+        }
+      );
+      
+      if (!deployResponse.ok) {
+        const deployError = await deployResponse.text();
+        console.error('❌ Failed to trigger deployment:', deployError);
+        throw new Error(`Failed to trigger deployment: ${deployError}`);
+      }
+      
+      const deployData = await deployResponse.json();
+      deploymentUrl = deployData.result?.url || `https://${projectName}.pages.dev`;
+      console.log('✅ Deployment triggered from GitHub');
     }
-
-    console.log('✅ Deployed to Cloudflare Pages:', deployResult);
-
-    const deploymentUrl = deployResult.result?.url || `https://${projectName}.pages.dev`;
+    
 
     // Update session
     const { error: updateError } = await supabaseAdmin
@@ -556,7 +429,7 @@ serve(async (req) => {
     // Create or update website entry
     console.log('📝 Creating/updating website entry...');
     
-    const htmlFile = modifiedFiles.find((f: ProjectFile) => f.name === 'index.html');
+    const htmlFile = projectFiles.find((f: ProjectFile) => f.name === 'index.html');
     const htmlContent = htmlFile?.content || '';
     
     const { data: existingWebsite } = await supabaseAdmin
@@ -657,7 +530,7 @@ serve(async (req) => {
         url: deploymentUrl,
         projectName: projectName,
         websiteId: websiteId || null,
-        state: deployResult.result?.latest_stage?.status || 'active',
+        state: 'active',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
