@@ -33,6 +33,15 @@ interface Message {
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
   token_count?: number;
   id?: string;
+  metadata?: {
+    type?: 'intro' | 'recap';
+    generation_events?: any[];
+    files_updated?: number;
+    new_files?: string[];
+    modified_files?: string[];
+    project_files?: Record<string, string>;
+    [key: string]: any;
+  };
 }
 
 export default function BuilderSession() {
@@ -771,73 +780,110 @@ export default function BuilderSession() {
                   path.endsWith('.js') ? 'javascript' : 'text'
           }));
 
-          // Créer un message de conclusion simple
+          // Créer les messages pour la conversation
           const filesChangedList = Object.keys(updatedFiles);
           const newFiles = filesChangedList.filter(path => !projectFiles[path]);
           const modifiedFiles = filesChangedList.filter(path => projectFiles[path]);
           
-          let finalMessage = '';
+          // Message d'introduction
+          let introMessage = '';
+          if (isInitialGenerationRef.current) {
+            introMessage = "Je vais créer votre site...";
+          } else {
+            if (newFiles.length > 0 && modifiedFiles.length > 0) {
+              introMessage = `Je vais créer ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} et modifier ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}...`;
+            } else if (newFiles.length > 0) {
+              introMessage = `Je vais créer ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''}...`;
+            } else if (modifiedFiles.length > 0) {
+              introMessage = `Je vais modifier ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}...`;
+            } else {
+              introMessage = 'Je vais appliquer les modifications...';
+            }
+          }
           
-          // Si c'est la première génération
+          // Message de récapitulatif
+          let recapMessage = '';
           if (isInitialGenerationRef.current) {
             if (newFiles.length > 0) {
-              finalMessage = `J'ai créé votre site avec ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} !`;
+              recapMessage = `✅ J'ai créé votre site avec ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} : ${newFiles.join(', ')}`;
             } else {
-              finalMessage = '✨ Votre site est prêt !';
+              recapMessage = '✅ Votre site est prêt !';
             }
           } else {
-            // Pour les modifications
             if (newFiles.length > 0 && modifiedFiles.length > 0) {
-              finalMessage = `J'ai créé ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} et modifié ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}.`;
+              recapMessage = `✅ J'ai créé ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} (${newFiles.join(', ')}) et modifié ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''} (${modifiedFiles.join(', ')}).`;
             } else if (newFiles.length > 0) {
-              finalMessage = `J'ai créé ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''}.`;
+              recapMessage = `✅ J'ai créé ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} : ${newFiles.join(', ')}`;
             } else if (modifiedFiles.length > 0) {
-              finalMessage = `J'ai modifié ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}.`;
+              recapMessage = `✅ J'ai modifié ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''} : ${modifiedFiles.join(', ')}`;
             } else {
-              finalMessage = '✨ Modifications appliquées !';
+              recapMessage = '✅ Modifications appliquées !';
             }
           }
-          const updatedMessages = [...newMessages, { role: 'assistant' as const, content: finalMessage }];
-          
-          // Sauvegarder automatiquement le projet avec le nom généré
-          if (websiteTitle && websiteTitle !== 'Sans titre') {
-            console.log('💾 Sauvegarde automatique du projet:', websiteTitle);
-            await saveSessionWithTitle(websiteTitle, filesArray, updatedMessages);
-          }
-          
 
-          // Sauvegarder dans chat_messages avec token_count et project_files
-          const { data: insertedMessage } = await supabase
+          // Sauvegarder le message d'introduction
+          await supabase
             .from('chat_messages')
             .insert({
               session_id: sessionId,
               role: 'assistant',
-              content: finalMessage,
-              token_count: assistantMessage.length, // Estimation simple basée sur la longueur
+              content: introMessage,
               metadata: { 
+                type: 'intro' as const,
+                generation_events: aiEvents
+              }
+            });
+
+          // Sauvegarder le message de récapitulatif avec les détails
+          const { data: insertedRecap } = await supabase
+            .from('chat_messages')
+            .insert({
+              session_id: sessionId,
+              role: 'assistant',
+              content: recapMessage,
+              token_count: assistantMessage.length,
+              metadata: { 
+                type: 'recap' as const,
                 files_updated: Object.keys(updatedFiles).length,
-                project_files: updatedFiles // Sauvegarder l'état des fichiers à ce moment
+                new_files: newFiles,
+                modified_files: modifiedFiles,
+                project_files: updatedFiles,
+                generation_events: aiEvents
               }
             })
             .select()
             .single();
 
-          // Mettre à jour le message avec l'ID et token_count
-          const messageWithId = { 
-            role: 'assistant' as const, 
-            content: finalMessage,
-            token_count: assistantMessage.length,
-            id: insertedMessage?.id
-          };
-          const updatedMessagesWithId = [...newMessages, messageWithId];
-          setMessages(updatedMessagesWithId);
+          // Mettre à jour les messages dans l'interface (intro + tasks + recap)
+          const updatedMessagesWithDetails: Message[] = [
+            ...newMessages,
+            { 
+              role: 'assistant' as const, 
+              content: introMessage,
+              metadata: { type: 'intro' as const, generation_events: aiEvents }
+            },
+            { 
+              role: 'assistant' as const, 
+              content: recapMessage,
+              token_count: assistantMessage.length,
+              id: insertedRecap?.id,
+              metadata: { type: 'recap' as const, generation_events: aiEvents }
+            }
+          ];
+          setMessages(updatedMessagesWithDetails);
+          
+          // Sauvegarder automatiquement le projet avec le nom généré
+          if (websiteTitle && websiteTitle !== 'Sans titre') {
+            console.log('💾 Sauvegarde automatique du projet:', websiteTitle);
+            await saveSessionWithTitle(websiteTitle, filesArray, updatedMessagesWithDetails);
+          }
 
           // Mettre à jour build_sessions pour rétrocompatibilité
           await supabase
             .from('build_sessions')
             .update({
               project_files: updatedFiles,
-              messages: updatedMessagesWithId as any,
+              messages: updatedMessagesWithDetails as any,
               updated_at: new Date().toISOString()
             })
             .eq('id', sessionId);
@@ -1381,61 +1427,136 @@ export default function BuilderSession() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-start gap-3">
-                      <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                            <Code2 className="w-3 h-3" />
-                            <span>Magellan</span>
+                    <div className="space-y-3">
+                      {/* Message d'introduction si présent */}
+                      {msg.metadata?.type === 'intro' && (
+                        <div className="flex items-start gap-3">
+                          <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                                <Code2 className="w-3 h-3" />
+                                <span>Magellan</span>
+                              </div>
+                            </div>
+                            <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
+                              {typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
+                            </p>
                           </div>
                         </div>
-                        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
-                          {typeof msg.content === 'string' 
-                            ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
-                            : 'Contenu généré'
-                          }
-                        </p>
-                        <MessageActions
-                          content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
-                          messageIndex={idx}
-                          isLatestMessage={idx === messages.length - 1}
-                          tokenCount={msg.token_count}
-                          onRestore={async (messageIdx) => {
-                            // Restaurer à cette version
-                            const targetMessage = messages[messageIdx];
-                            if (!targetMessage.id || !sessionId) return;
+                      )}
+                      
+                      {/* AI Tasks si événements présents */}
+                      {msg.metadata?.generation_events && (
+                        <div className="ml-10">
+                          <AiTaskList events={msg.metadata.generation_events} />
+                        </div>
+                      )}
+                      
+                      {/* Message de récapitulatif si présent */}
+                      {msg.metadata?.type === 'recap' && (
+                        <div className="flex items-start gap-3">
+                          <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
+                              {typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
+                            </p>
                             
-                            // Charger l'état des fichiers à ce moment-là
-                            const { data: chatMessage } = await supabase
-                              .from('chat_messages')
-                              .select('metadata')
-                              .eq('id', targetMessage.id)
-                              .single();
-                            
-                            if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
-                              const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
-                              setProjectFiles(restoredFiles);
-                              
-                              // Tronquer l'historique des messages
-                              const truncatedMessages = messages.slice(0, messageIdx + 1);
-                              setMessages(truncatedMessages);
-                              
-                              // Mettre à jour la session
-                              await supabase
-                                .from('build_sessions')
-                                .update({
-                                  project_files: restoredFiles,
-                                  updated_at: new Date().toISOString()
-                                })
-                                .eq('id', sessionId);
-                              
-                              sonnerToast.success('Version restaurée');
-                            }
-                          }}
-                          isDark={isDark}
-                        />
-                      </div>
+                            {/* Boutons d'action sous le récap */}
+                            <MessageActions
+                              content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
+                              messageIndex={idx}
+                              isLatestMessage={idx === messages.length - 1}
+                              tokenCount={msg.token_count}
+                              onRestore={async (messageIdx) => {
+                                const targetMessage = messages[messageIdx];
+                                if (!targetMessage.id || !sessionId) return;
+                                
+                                const { data: chatMessage } = await supabase
+                                  .from('chat_messages')
+                                  .select('metadata')
+                                  .eq('id', targetMessage.id)
+                                  .single();
+                                
+                                if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
+                                  const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                                  setProjectFiles(restoredFiles);
+                                  
+                                  const truncatedMessages = messages.slice(0, messageIdx + 1);
+                                  setMessages(truncatedMessages);
+                                  
+                                  await supabase
+                                    .from('build_sessions')
+                                    .update({
+                                      project_files: restoredFiles,
+                                      updated_at: new Date().toISOString()
+                                    })
+                                    .eq('id', sessionId);
+                                  
+                                  sonnerToast.success('Version restaurée');
+                                }
+                              }}
+                              isDark={isDark}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Message simple (ancien format) si pas de type défini */}
+                      {!msg.metadata?.type && (
+                        <div className="flex items-start gap-3">
+                          <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                                <Code2 className="w-3 h-3" />
+                                <span>Magellan</span>
+                              </div>
+                            </div>
+                            <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
+                              {typeof msg.content === 'string' 
+                                ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
+                                : 'Contenu généré'
+                              }
+                            </p>
+                            <MessageActions
+                              content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
+                              messageIndex={idx}
+                              isLatestMessage={idx === messages.length - 1}
+                              tokenCount={msg.token_count}
+                              onRestore={async (messageIdx) => {
+                                const targetMessage = messages[messageIdx];
+                                if (!targetMessage.id || !sessionId) return;
+                                
+                                const { data: chatMessage } = await supabase
+                                  .from('chat_messages')
+                                  .select('metadata')
+                                  .eq('id', targetMessage.id)
+                                  .single();
+                                
+                                if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
+                                  const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                                  setProjectFiles(restoredFiles);
+                                  
+                                  const truncatedMessages = messages.slice(0, messageIdx + 1);
+                                  setMessages(truncatedMessages);
+                                  
+                                  await supabase
+                                    .from('build_sessions')
+                                    .update({
+                                      project_files: restoredFiles,
+                                      updated_at: new Date().toISOString()
+                                    })
+                                    .eq('id', sessionId);
+                                  
+                                  sonnerToast.success('Version restaurée');
+                                }
+                              }}
+                              isDark={isDark}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
