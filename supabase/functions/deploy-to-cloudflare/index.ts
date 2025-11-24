@@ -112,41 +112,6 @@ serve(async (req) => {
     
     let githubRepoUrl = session.github_repo_url;
     
-    // Si le repo n'existe pas encore, le créer
-    if (!session.github_repo_name) {
-      console.log('🔨 Creating new GitHub repository:', repoName);
-      
-      const createRepoResponse = await fetch('https://api.github.com/user/repos', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${GITHUB_TOKEN}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: repoName,
-          description: `Website: ${session.title || 'Sans titre'}`,
-          private: false,
-          auto_init: false,
-        }),
-      });
-      
-      if (!createRepoResponse.ok) {
-        const errorText = await createRepoResponse.text();
-        console.error('❌ Failed to create GitHub repo:', errorText);
-        throw new Error(`Failed to create GitHub repository: ${errorText}`);
-      }
-      
-      const repoData = await createRepoResponse.json();
-      githubRepoUrl = repoData.html_url;
-      console.log('✅ GitHub repository created:', githubRepoUrl);
-    } else {
-      console.log('📂 Using existing GitHub repository:', githubRepoUrl);
-    }
-    
-    // Pusher les fichiers vers GitHub
-    console.log('📤 Pushing files to GitHub...');
-    
     // Récupérer l'utilisateur GitHub pour connaître le owner
     const userResponse = await fetch('https://api.github.com/user', {
       headers: {
@@ -161,6 +126,40 @@ serve(async (req) => {
     
     const githubUser = await userResponse.json();
     const owner = githubUser.login;
+    
+    // Toujours essayer de créer le repo (si il existe déjà, on aura un 422)
+    console.log('🔨 Attempting to create GitHub repository:', repoName);
+    
+    const createRepoResponse = await fetch('https://api.github.com/user/repos', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: repoName,
+        description: `Website: ${session.title || 'Sans titre'}`,
+        private: false,
+        auto_init: false,
+      }),
+    });
+    
+    if (createRepoResponse.ok) {
+      const repoData = await createRepoResponse.json();
+      githubRepoUrl = repoData.html_url;
+      console.log('✅ New GitHub repository created:', githubRepoUrl);
+    } else if (createRepoResponse.status === 422) {
+      // Le repo existe déjà, c'est OK, on va juste pusher dessus
+      githubRepoUrl = `https://github.com/${owner}/${repoName}`;
+      console.log('📂 Repository already exists, will update it:', githubRepoUrl);
+    } else {
+      const errorText = await createRepoResponse.text();
+      console.error('❌ Failed to create GitHub repo:', errorText);
+      throw new Error(`Failed to create GitHub repository: ${errorText}`);
+    }
+    
+    console.log('📤 Pushing files to GitHub...');
     
     // Créer un commit avec tous les fichiers
     // 1. Obtenir la référence de la branche main (ou créer si nécessaire)
