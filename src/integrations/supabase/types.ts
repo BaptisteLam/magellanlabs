@@ -19,6 +19,8 @@ export type Database = {
           cloudflare_deployment_url: string | null
           cloudflare_project_name: string | null
           created_at: string
+          github_repo_name: string | null
+          github_repo_url: string | null
           id: string
           messages: Json | null
           netlify_deployment_url: string | null
@@ -35,6 +37,8 @@ export type Database = {
           cloudflare_deployment_url?: string | null
           cloudflare_project_name?: string | null
           created_at?: string
+          github_repo_name?: string | null
+          github_repo_url?: string | null
           id?: string
           messages?: Json | null
           netlify_deployment_url?: string | null
@@ -51,6 +55,8 @@ export type Database = {
           cloudflare_deployment_url?: string | null
           cloudflare_project_name?: string | null
           created_at?: string
+          github_repo_name?: string | null
+          github_repo_url?: string | null
           id?: string
           messages?: Json | null
           netlify_deployment_url?: string | null
