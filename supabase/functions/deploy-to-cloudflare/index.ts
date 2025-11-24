@@ -165,6 +165,8 @@ serve(async (req) => {
     // Créer un commit avec tous les fichiers
     // 1. Obtenir la référence de la branche main (ou créer si nécessaire)
     let sha: string | null = null;
+    let isEmptyRepo = false;
+    
     try {
       const refResponse = await fetch(
         `https://api.github.com/repos/${owner}/${repoName}/git/refs/heads/main`,
@@ -179,9 +181,13 @@ serve(async (req) => {
       if (refResponse.ok) {
         const refData = await refResponse.json();
         sha = refData.object.sha;
+      } else if (refResponse.status === 404) {
+        console.log('Branch main does not exist yet - empty repository');
+        isEmptyRepo = true;
       }
     } catch (e) {
-      console.log('Branch main does not exist yet, will create it');
+      console.log('Error checking branch, assuming empty repository:', e);
+      isEmptyRepo = true;
     }
     
     // 2. Créer les blobs pour chaque fichier
@@ -235,7 +241,8 @@ serve(async (req) => {
       tree: blobs,
     };
     
-    if (sha) {
+    // Ne pas utiliser base_tree si le repo est vide
+    if (sha && !isEmptyRepo) {
       createTreeBody.base_tree = sha;
     }
     
@@ -265,7 +272,8 @@ serve(async (req) => {
       tree: treeData.sha,
     };
     
-    if (sha) {
+    // Ne pas utiliser parents si le repo est vide (premier commit)
+    if (sha && !isEmptyRepo) {
       commitBody.parents = [sha];
     }
     
@@ -289,23 +297,44 @@ serve(async (req) => {
     
     const commitData = await commitResponse.json();
     
-    // 5. Mettre à jour la référence main (ou la créer)
-    const updateRefResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repoName}/git/refs/heads/main`,
-      {
-        method: sha ? 'PATCH' : 'POST',
-        headers: {
-          'Authorization': `Bearer ${GITHUB_TOKEN}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(
-          sha 
-            ? { sha: commitData.sha, force: true }
-            : { ref: 'refs/heads/main', sha: commitData.sha }
-        ),
-      }
-    );
+    // 5. Créer ou mettre à jour la référence main
+    let updateRefResponse;
+    
+    if (isEmptyRepo || !sha) {
+      // Créer la référence pour la première fois
+      updateRefResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repoName}/git/refs`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ref: 'refs/heads/main',
+            sha: commitData.sha
+          }),
+        }
+      );
+    } else {
+      // Mettre à jour la référence existante
+      updateRefResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repoName}/git/refs/heads/main`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sha: commitData.sha,
+            force: true
+          }),
+        }
+      );
+    }
     
     if (!updateRefResponse.ok) {
       const errorText = await updateRefResponse.text();
