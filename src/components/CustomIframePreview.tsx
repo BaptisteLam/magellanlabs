@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 
 interface CustomIframePreviewProps {
   projectFiles: Record<string, string>;
@@ -14,11 +14,12 @@ export function CustomIframePreview({
   onElementSelect 
 }: CustomIframePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [currentFile, setCurrentFile] = useState<string>('index.html');
 
   // Générer le HTML complet avec script d'inspection intégré
   const generatedHTML = useMemo(() => {
+    console.log('📦 CustomIframePreview - currentFile:', currentFile);
     console.log('📦 CustomIframePreview - projectFiles:', Object.keys(projectFiles));
-    console.log('📦 CustomIframePreview - nombre de fichiers:', Object.keys(projectFiles).length);
     
     if (!projectFiles || Object.keys(projectFiles).length === 0) {
       console.log('⚠️ Aucun fichier de projet');
@@ -48,9 +49,11 @@ export function CustomIframePreview({
     
     console.log('📦 Type de projet:', isReactProject ? 'React/TypeScript' : 'HTML statique');
     
-    // Trouver le fichier HTML principal ou créer un template
+    // Trouver le fichier HTML demandé
     let htmlContent = '';
-    const htmlFile = Object.entries(projectFiles).find(([path]) => path.endsWith('.html'));
+    const htmlFile = Object.entries(projectFiles).find(([path]) => 
+      path === currentFile || path.endsWith('/' + currentFile)
+    );
     
     if (htmlFile) {
       console.log('✅ Fichier HTML trouvé:', htmlFile[0]);
@@ -110,21 +113,17 @@ export function CustomIframePreview({
             return true;
           }
           
-          // Pour les autres liens internes
+          // Pour les autres liens internes (navigation multi-pages)
           const pathname = href.replace(/^\//, '');
-          if (pathname && pathname !== 'index.html' && pathname !== '/') {
+          if (pathname && pathname !== '' && pathname !== '/') {
             e.preventDefault();
             e.stopPropagation();
             
-            const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:#000;padding:2rem;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:999999;max-width:400px;text-align:center;font-family:system-ui;';
-            errorDiv.innerHTML = \`
-              <h3 style="margin:0 0 1rem 0;font-size:1.25rem;color:#f59e0b;">⚠️ Page introuvable</h3>
-              <p style="margin:0 0 1rem 0;color:#666;">La page "\${pathname}" n'existe pas encore dans ce projet.</p>
-              <button onclick="this.parentElement.remove()" style="background:rgb(3,165,192);color:#fff;border:none;padding:0.5rem 1.5rem;border-radius:9999px;cursor:pointer;font-size:1rem;font-weight:500;">Fermer</button>
-            \`;
-            document.body.appendChild(errorDiv);
-            setTimeout(() => errorDiv.remove(), 3000);
+            // Envoyer un message au parent pour charger le fichier
+            window.parent.postMessage({
+              type: 'navigate',
+              file: pathname
+            }, '*');
             return false;
           }
         }
@@ -294,7 +293,7 @@ export function CustomIframePreview({
     }
 
     return finalHTML;
-  }, [projectFiles]);
+  }, [projectFiles, currentFile]);
 
   // Écouter les messages de l'iframe
   useEffect(() => {
@@ -302,11 +301,28 @@ export function CustomIframePreview({
       if (event.data.type === 'element-selected' && onElementSelect) {
         onElementSelect(event.data.data);
       }
+      
+      // Gérer la navigation multi-pages
+      if (event.data.type === 'navigate') {
+        const filename = event.data.file;
+        console.log('🔄 Navigation vers:', filename);
+        
+        // Vérifier si le fichier existe
+        const fileExists = Object.keys(projectFiles).some(path => 
+          path === filename || path.endsWith('/' + filename)
+        );
+        
+        if (fileExists) {
+          setCurrentFile(filename);
+        } else {
+          console.error('❌ Fichier non trouvé:', filename);
+        }
+      }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onElementSelect]);
+  }, [onElementSelect, projectFiles]);
 
   // Envoyer l'état d'inspection à l'iframe
   useEffect(() => {
