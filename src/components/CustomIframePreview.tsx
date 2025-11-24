@@ -131,21 +131,27 @@ export function CustomIframePreview({
       }, true);
       
       window.addEventListener('message', (e) => {
+        console.log('📨 Message reçu dans iframe:', e.data);
         if (e.data.type === 'toggle-inspect') {
+          console.log('🔍 Toggle inspect mode:', e.data.enabled);
           inspectMode = e.data.enabled;
           if (inspectMode) {
+            console.log('✅ Activation du mode inspection');
             activateInspection();
           } else {
+            console.log('❌ Désactivation du mode inspection');
             deactivateInspection();
           }
         }
       });
       
       function activateInspection() {
+        console.log('🎯 activateInspection appelée');
         document.body.style.cursor = 'crosshair';
         document.addEventListener('click', handleElementClick, true);
         document.addEventListener('mouseover', highlightElement, true);
         document.addEventListener('mouseout', removeHighlight, true);
+        console.log('✅ Event listeners ajoutés');
       }
       
       function deactivateInspection() {
@@ -304,11 +310,15 @@ export function CustomIframePreview({
 
   // Envoyer l'état d'inspection à l'iframe
   useEffect(() => {
+    console.log('📤 Envoi du mode inspection:', inspectMode);
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage({
         type: 'toggle-inspect',
         enabled: inspectMode
       }, '*');
+      console.log('✅ Message envoyé');
+    } else {
+      console.log('❌ Iframe contentWindow non disponible');
     }
   }, [inspectMode]);
 
