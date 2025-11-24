@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
-import { InteractivePreview } from "@/components/InteractivePreview";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
 import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
@@ -27,6 +26,7 @@ import AiTaskList from '@/components/chat/AiTaskList';
 import { SimpleAiEvents } from '@/components/chat/SimpleAiEvents';
 import { MessageActions } from '@/components/chat/MessageActions';
 import html2canvas from 'html2canvas';
+import { Sandpack } from "@codesandbox/sandpack-react";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -44,7 +44,7 @@ interface Message {
   };
 }
 
-export default function BuilderSession() {
+export default function BuilderAppSession() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useThemeStore();
@@ -71,7 +71,7 @@ export default function BuilderSession() {
   const [currentFavicon, setCurrentFavicon] = useState<string | null>(null);
   const [gaPropertyId, setGaPropertyId] = useState<string | null>(null);
   const [websiteId, setWebsiteId] = useState<string | null>(null);
-  const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('website');
+  const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('webapp');
   
   // Hook pour la nouvelle API Agent
   const agent = useAgentAPI();
