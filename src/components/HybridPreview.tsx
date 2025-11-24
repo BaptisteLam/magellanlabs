@@ -64,6 +64,8 @@ export function HybridPreview({
       <BabelPreview 
         projectFiles={normalizedFiles} 
         isDark={isDark}
+        inspectMode={inspectMode}
+        onElementSelect={onElementSelect}
       />
     );
   }
