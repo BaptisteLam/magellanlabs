@@ -1677,24 +1677,20 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                     isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
                       <GeneratingPreview />
                     ) : (
-                      <InteractivePreview 
-                        projectFiles={projectFiles} 
-                        isDark={isDark}
-                        inspectMode={inspectMode}
-                        onInspectModeChange={setInspectMode}
-                        projectType={projectType}
-                        onElementModify={async (prompt, elementInfo) => {
-                          const contextualPrompt = `Modifier l'élément suivant dans le code :
-
-Type: <${elementInfo.tagName.toLowerCase()}>
-${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
-${elementInfo.classList.length > 0 ? `Classes: ${elementInfo.classList.join(', ')}` : ''}
-Chemin CSS: ${elementInfo.path}
-Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textContent.length > 200 ? '...' : ''}"
-
-Instruction: ${prompt}
-
-Ne modifie que cet élément spécifique, pas le reste du code.`;
+                      <Sandpack 
+                        template="react-ts"
+                        theme={isDark ? "dark" : "light"}
+                        files={projectFiles}
+                        options={{
+                          showNavigator: false,
+                          showTabs: true,
+                          showLineNumbers: true,
+                          editorHeight: "100%",
+                          editorWidthPercentage: 0,
+                        }}
+                      />
+                    )
+                  )
                           
                           // Envoyer directement à Claude sans afficher dans le chat
                           if (!user) {
