@@ -1446,14 +1446,14 @@ export default function BuilderSession() {
                         </div>
                       )}
                       
-                      {/* AI Tasks si événements présents */}
-                      {msg.metadata?.generation_events && (
+                      {/* AI Tasks - affichés seulement si on a un message intro juste avant */}
+                      {msg.metadata?.type === 'intro' && msg.metadata?.generation_events && (
                         <div className="ml-10">
                           <AiTaskList events={msg.metadata.generation_events} />
                         </div>
                       )}
                       
-                      {/* Message de récapitulatif si présent */}
+                      {/* Message de récapitulatif - avec boutons uniquement ici */}
                       {msg.metadata?.type === 'recap' && (
                         <div className="flex items-start gap-3">
                           <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
@@ -1462,7 +1462,7 @@ export default function BuilderSession() {
                               {typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
                             </p>
                             
-                            {/* Boutons d'action sous le récap */}
+                            {/* Boutons d'action UNIQUEMENT sous le récap */}
                             <MessageActions
                               content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
                               messageIndex={idx}
@@ -1502,7 +1502,7 @@ export default function BuilderSession() {
                         </div>
                       )}
                       
-                      {/* Message simple (ancien format) si pas de type défini */}
+                      {/* Message simple (ancien format) - pour compatibilité */}
                       {!msg.metadata?.type && (
                         <div className="flex items-start gap-3">
                           <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
