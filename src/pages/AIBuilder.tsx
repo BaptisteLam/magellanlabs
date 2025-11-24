@@ -51,8 +51,9 @@ const AIBuilder = () => {
 
       if (sessionError) throw sessionError;
 
-      // Rediriger IMMÉDIATEMENT vers la session (génération en arrière-plan)
-      navigate(`/builder/${sessionData.id}`, { state: { initialPrompt: inputValue } });
+      // Rediriger vers la bonne route selon le type de projet
+      const route = projectType === 'webapp' ? `/builder/app/${sessionData.id}` : `/builder/${sessionData.id}`;
+      navigate(route, { state: { initialPrompt: inputValue } });
     } catch (error) {
       console.error('Error:', error);
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
