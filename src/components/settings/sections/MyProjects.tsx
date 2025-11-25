@@ -57,6 +57,7 @@ export function MyProjects() {
         .map((s) => ({
           id: s.id,
           title: s.title || 'Sans titre',
+          thumbnail_url: s.thumbnail_url,
           status: 'draft' as const,
           created_at: s.created_at,
           type: 'builder' as const,
