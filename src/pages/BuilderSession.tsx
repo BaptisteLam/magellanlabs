@@ -19,7 +19,7 @@ import { FileTabs } from "@/components/CodeEditor/FileTabs";
 import { MonacoEditor } from "@/components/CodeEditor/MonacoEditor";
 import PromptBar from "@/components/PromptBar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import Analytics from "@/components/Analytics";
+import CloudflareAnalytics from "@/components/CloudflareAnalytics";
 import { AiDiffService } from "@/services/aiDiffService";
 import { useAgentAPI } from "@/hooks/useAgentAPI";
 import type { AIEvent, GenerationEvent } from '@/types/agent';
@@ -1654,11 +1654,9 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                       </>
                     )
                   ) : viewMode === 'analytics' ? (
-                    <Analytics 
-                      isPublished={!!deployedUrl} 
-                      isDark={isDark} 
-                      gaPropertyId={gaPropertyId || undefined}
-                      websiteId={websiteId || undefined}
+                    <CloudflareAnalytics 
+                      sessionId={sessionId!}
+                      isDark={isDark}
                     />
                   ) : (
                     <div className="p-4 text-center text-slate-500">
@@ -1927,11 +1925,9 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                       </>
                     )
                   ) : viewMode === 'analytics' ? (
-                    <Analytics 
-                      isPublished={!!deployedUrl} 
-                      isDark={isDark} 
-                      gaPropertyId={gaPropertyId || undefined}
-                      websiteId={websiteId || undefined}
+                    <CloudflareAnalytics 
+                      sessionId={sessionId!}
+                      isDark={isDark}
                     />
                   ) : (
                     <div className="h-full flex bg-white">

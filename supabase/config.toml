@@ -35,3 +35,6 @@ verify_jwt = true
 
 [functions.generate-project-name]
 verify_jwt = true
+
+[functions.get-cloudflare-analytics]
+verify_jwt = true
