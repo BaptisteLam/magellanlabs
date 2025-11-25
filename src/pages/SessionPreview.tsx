@@ -21,7 +21,19 @@ export default function SessionPreview() {
         if (error) throw error;
 
         if (data) {
-          const files = data.project_files as any[];
+          const projectFilesData = data.project_files as any;
+          
+          // Support des deux formats: array ET object
+          let files: any[] = [];
+          if (Array.isArray(projectFilesData)) {
+            files = projectFilesData;
+          } else if (typeof projectFilesData === 'object' && projectFilesData !== null) {
+            // Convertir object en array
+            files = Object.entries(projectFilesData).map(([path, content]) => ({
+              path,
+              content
+            }));
+          }
           
           // Pour les sites web statiques, trouver index.html
           if (data.project_type === 'website') {

@@ -238,36 +238,48 @@ export default function BuilderSession() {
         try {
           const projectFilesData = data.project_files as any;
           
-          if (projectFilesData && Array.isArray(projectFilesData) && projectFilesData.length > 0) {
-            // Nouveau format: array de fichiers
-            const filesMap: Record<string, string> = {};
-            projectFilesData.forEach((file: any) => {
-              if (file.path && file.content) {
-                filesMap[file.path] = file.content;
-              }
-            });
+          if (projectFilesData) {
+            let filesMap: Record<string, string> = {};
             
-            setProjectFiles(filesMap);
-            setGeneratedHtml(projectFilesData.find((f: any) => f.path === 'index.html')?.content || '');
-            
-            // Charger le favicon s'il existe
-            const faviconFile = Object.keys(filesMap).find(path => path.startsWith('public/favicon.'));
-            if (faviconFile) {
-              setCurrentFavicon(filesMap[faviconFile]);
+            // Support des deux formats: array ET object
+            if (Array.isArray(projectFilesData) && projectFilesData.length > 0) {
+              // Format array: [{path, content}, ...]
+              projectFilesData.forEach((file: any) => {
+                if (file.path && file.content) {
+                  filesMap[file.path] = file.content;
+                }
+              });
+            } else if (typeof projectFilesData === 'object' && Object.keys(projectFilesData).length > 0) {
+              // Format object: {path: content, ...}
+              filesMap = projectFilesData;
             }
             
-            const firstFile = Object.keys(filesMap)[0];
-            if (firstFile) {
-              setSelectedFile(firstFile);
-              setSelectedFileContent(filesMap[firstFile]);
+            if (Object.keys(filesMap).length > 0) {
+              setProjectFiles(filesMap);
+              setGeneratedHtml(filesMap['index.html'] || '');
+              
+              // Charger le favicon s'il existe
+              const faviconFile = Object.keys(filesMap).find(path => path.startsWith('public/favicon.'));
+              if (faviconFile) {
+                setCurrentFavicon(filesMap[faviconFile]);
+              }
+              
+              const firstFile = Object.keys(filesMap)[0];
+              if (firstFile) {
+                setSelectedFile(firstFile);
+                setSelectedFileContent(filesMap[firstFile]);
+              }
+            } else {
+              setProjectFiles({});
+              setGeneratedHtml('');
             }
           } else {
             // Fallback: projet vide
             setProjectFiles({});
             setGeneratedHtml('');
           }
-        } catch {
-          // Fallback si parsing échoue
+        } catch (err) {
+          console.error('Erreur parsing project_files:', err);
           setProjectFiles({});
           setGeneratedHtml('');
         }
@@ -408,6 +420,17 @@ export default function BuilderSession() {
     }
   };
 
+  // Helper: convertir Record<string, string> en array pour Supabase
+  const convertFilesToArray = (filesObject: Record<string, string>) => {
+    return Object.entries(filesObject).map(([path, content]) => ({
+      path,
+      content,
+      type: path.endsWith('.html') ? 'html' : 
+            path.endsWith('.css') ? 'stylesheet' : 
+            path.endsWith('.js') ? 'javascript' : 'text'
+    }));
+  };
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -491,11 +514,12 @@ export default function BuilderSession() {
 
       // Sauvegarder dans la base de données
       if (sessionId) {
+        const updatedProjectFiles = { ...projectFiles, [faviconPath]: base64 };
         await supabase
           .from('build_sessions')
           .update({ 
             generated_html: updatedIndexHtml,
-            project_files: { ...projectFiles, [faviconPath]: base64 }
+            project_files: convertFilesToArray(updatedProjectFiles)
           })
           .eq('id', sessionId);
       }
@@ -879,11 +903,11 @@ Now generate the mobile app based on this request:`;
           const updatedMessagesWithId = [...newMessages, messageWithId];
           setMessages(updatedMessagesWithId);
 
-          // Mettre à jour build_sessions pour rétrocompatibilité
+          // Mettre à jour build_sessions avec format array
           await supabase
             .from('build_sessions')
             .update({
-              project_files: updatedFiles,
+              project_files: convertFilesToArray(updatedFiles),
               messages: updatedMessagesWithId as any,
               updated_at: new Date().toISOString()
             })
@@ -1398,7 +1422,7 @@ Now generate the mobile app based on this request:`;
                                 await supabase
                                   .from('build_sessions')
                                   .update({
-                                    project_files: restoredFiles,
+                                    project_files: convertFilesToArray(restoredFiles),
                                     messages: truncatedMessages as any,
                                     updated_at: new Date().toISOString()
                                   })
