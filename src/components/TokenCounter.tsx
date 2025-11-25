@@ -57,7 +57,7 @@ export function TokenCounter({ isDark, userId }: TokenCounterProps) {
 
   const formatTokenCount = (count: number): string => {
     if (count >= 1000000) {
-      return `${(count / 1000000).toFixed(1)}M`;
+      return `${Math.floor(count / 1000000)}M`;
     } else if (count >= 1000) {
       return `${Math.floor(count / 1000)}k`;
     }
