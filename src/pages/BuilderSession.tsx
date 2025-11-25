@@ -858,21 +858,24 @@ export default function BuilderSession() {
               }
             });
 
-          // Sauvegarder le message de récapitulatif avec les détails
+          // Sauvegarder le message de récapitulatif avec les détails et tokens réels de Claude
           const { data: insertedRecap } = await supabase
             .from('chat_messages')
             .insert({
               session_id: sessionId,
               role: 'assistant',
               content: recapMessage,
-              token_count: assistantMessage.length,
+              token_count: agent.tokenUsage.total, // Tokens réels de Claude
               metadata: { 
                 type: 'recap' as const,
                 files_updated: Object.keys(updatedFiles).length,
                 new_files: newFiles,
                 modified_files: modifiedFiles,
                 project_files: updatedFiles,
-                generation_events: aiEvents
+                generation_events: aiEvents,
+                input_tokens: agent.tokenUsage.input,
+                output_tokens: agent.tokenUsage.output,
+                total_tokens: agent.tokenUsage.total
               }
             })
             .select()
@@ -889,9 +892,15 @@ export default function BuilderSession() {
             { 
               role: 'assistant' as const, 
               content: recapMessage,
-              token_count: assistantMessage.length,
+              token_count: agent.tokenUsage.total,
               id: insertedRecap?.id,
-              metadata: { type: 'recap' as const, generation_events: aiEvents }
+              metadata: { 
+                type: 'recap' as const, 
+                generation_events: aiEvents,
+                input_tokens: agent.tokenUsage.input,
+                output_tokens: agent.tokenUsage.output,
+                total_tokens: agent.tokenUsage.total
+              }
             }
           ];
           setMessages(updatedMessagesWithDetails);
