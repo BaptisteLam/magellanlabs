@@ -121,9 +121,11 @@ export function CustomIframePreview({
         
         let isInspectMode = false;
         let hoveredElement = null;
+        let mouseMoveHandler = null;
+        let clickHandler = null;
         
         function init() {
-          console.log('🔍 Magellan Inspect: Initialisation');
+          console.log('🔍 Magellan Inspect: Initialisation immédiate');
           
           // Écouter les messages du parent
           window.addEventListener('message', (e) => {
@@ -140,13 +142,14 @@ export function CustomIframePreview({
             }
           });
           
-          console.log('✅ Event listener installé');
+          console.log('✅ Event listener message installé et prêt');
         }
         
         function activateInspection() {
           console.log('✅ Activation du mode inspection');
           document.body.style.cursor = 'crosshair';
           showAllOutlines();
+          attachEventListeners();
         }
         
         function deactivateInspection() {
@@ -158,6 +161,86 @@ export function CustomIframePreview({
             hoveredElement = null;
           }
           hideAllOutlines();
+          detachEventListeners();
+        }
+        
+        function attachEventListeners() {
+          console.log('🔗 Attachement des event listeners');
+          
+          // Handler pour mousemove
+          mouseMoveHandler = (e) => {
+            const target = e.target;
+            if (target === hoveredElement) return;
+            if (target === document.body || target === document.documentElement) return;
+            
+            const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
+            if (!selectableTags.includes(target.tagName)) return;
+            
+            if (hoveredElement) {
+              hoveredElement.classList.remove('magellan-inspect-highlight');
+              hoveredElement.removeAttribute('data-magellan-tag');
+            }
+            
+            hoveredElement = target;
+            const elementType = getElementDescription(target);
+            target.setAttribute('data-magellan-tag', elementType);
+            target.classList.add('magellan-inspect-highlight');
+          };
+          
+          // Handler pour click
+          clickHandler = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
+            const target = e.target;
+            if (target === document.body || target === document.documentElement) return;
+            
+            console.log('🎯 Élément cliqué:', target.tagName);
+            
+            const rect = target.getBoundingClientRect();
+            const elementInfo = {
+              tagName: target.tagName,
+              textContent: target.textContent?.substring(0, 200) || '',
+              classList: Array.from(target.classList).filter(c => !c.startsWith('magellan-inspect')),
+              path: getElementPath(target),
+              innerHTML: target.innerHTML,
+              id: target.id || undefined,
+              boundingRect: {
+                left: rect.left,
+                top: rect.top,
+                width: rect.width,
+                height: rect.height,
+                bottom: rect.bottom,
+                right: rect.right
+              }
+            };
+            
+            console.log('📤 Envoi des infos au parent:', elementInfo);
+            window.parent.postMessage({
+              type: 'element-selected',
+              data: elementInfo
+            }, '*');
+            
+            return false;
+          };
+          
+          document.addEventListener('mousemove', mouseMoveHandler, true);
+          document.addEventListener('click', clickHandler, true);
+          console.log('✅ Event listeners attachés');
+        }
+        
+        function detachEventListeners() {
+          console.log('🔓 Détachement des event listeners');
+          if (mouseMoveHandler) {
+            document.removeEventListener('mousemove', mouseMoveHandler, true);
+            mouseMoveHandler = null;
+          }
+          if (clickHandler) {
+            document.removeEventListener('click', clickHandler, true);
+            clickHandler = null;
+          }
+          console.log('✅ Event listeners détachés');
         }
         
         function showAllOutlines() {
@@ -218,72 +301,6 @@ export function CustomIframePreview({
           return path.join(' > ');
         }
         
-        // Détection des éléments au survol avec mousemove (plus réactif que mouseover)
-        document.addEventListener('mousemove', (e) => {
-          if (!isInspectMode) return;
-          
-          const target = e.target;
-          if (target === hoveredElement) return; // Même élément, ne rien faire
-          if (target === document.body || target === document.documentElement) return;
-          
-          // Filtrer les éléments sélectionnables
-          const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
-          if (!selectableTags.includes(target.tagName)) return;
-          
-          // Retirer le highlight précédent
-          if (hoveredElement) {
-            hoveredElement.classList.remove('magellan-inspect-highlight');
-            hoveredElement.removeAttribute('data-magellan-tag');
-          }
-          
-          // Ajouter le nouveau highlight
-          hoveredElement = target;
-          const elementType = getElementDescription(target);
-          target.setAttribute('data-magellan-tag', elementType);
-          target.classList.add('magellan-inspect-highlight');
-        }, true);
-        
-        // Sélection au clic
-        document.addEventListener('click', (e) => {
-          if (!isInspectMode) return;
-          
-          // Arrêter la propagation pour éviter les conflits
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          
-          const target = e.target;
-          if (target === document.body || target === document.documentElement) return;
-          
-          console.log('🎯 Élément cliqué:', target.tagName);
-          
-          const rect = target.getBoundingClientRect();
-          const elementInfo = {
-            tagName: target.tagName,
-            textContent: target.textContent?.substring(0, 200) || '',
-            classList: Array.from(target.classList).filter(c => !c.startsWith('magellan-inspect')),
-            path: getElementPath(target),
-            innerHTML: target.innerHTML,
-            id: target.id || undefined,
-            boundingRect: {
-              left: rect.left,
-              top: rect.top,
-              width: rect.width,
-              height: rect.height,
-              bottom: rect.bottom,
-              right: rect.right
-            }
-          };
-          
-          console.log('📤 Envoi des infos au parent:', elementInfo);
-          window.parent.postMessage({
-            type: 'element-selected',
-            data: elementInfo
-          }, '*');
-          
-          return false;
-        }, true);
-        
         // Intercepter les clics sur liens (APRÈS le click handler d'inspection)
         document.addEventListener('click', function(e) {
           const target = e.target.closest('a');
@@ -325,12 +342,9 @@ export function CustomIframePreview({
           }
         });
         
-        // Attendre que le DOM soit prêt avant d'initialiser
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', init);
-        } else {
-          init();
-        }
+        // Appeler init() IMMÉDIATEMENT pour que l'event listener soit prêt
+        init();
+        console.log('🎬 Script d\'inspection initialisé immédiatement');
       })();
     </script>
     `;
