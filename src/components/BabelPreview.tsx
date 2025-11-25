@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo, useState } from 'react';
 import { transform } from '@babel/standalone';
+import { generate404Page } from '@/lib/generate404Page';
 
 interface BabelPreviewProps {
   projectFiles: Record<string, string>;
@@ -13,11 +14,17 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspe
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [show404, setShow404] = useState(false);
 
   // Générer le HTML avec transpilation Babel
   const generatedHTML = useMemo(() => {
     try {
       setError(null);
+      
+      // Si on doit afficher la page 404
+      if (show404) {
+        return generate404Page(isDark);
+      }
       
       if (!projectFiles || Object.keys(projectFiles).length === 0) {
         return null;
@@ -151,16 +158,10 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspe
               return false;
             }
             
-            // Pour toute autre page, afficher un message
-            const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:#000;padding:2rem;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:999999;max-width:400px;text-align:center;font-family:system-ui;';
-            errorDiv.innerHTML = \`
-              <h3 style="margin:0 0 1rem 0;font-size:1.25rem;color:#f59e0b;">⚠️ Page introuvable</h3>
-              <p style="margin:0 0 1rem 0;color:#666;">La page "\${pathname}" n'existe pas encore dans ce projet.</p>
-              <button onclick="this.parentElement.remove()" style="background:rgb(3,165,192);color:#fff;border:none;padding:0.5rem 1.5rem;border-radius:9999px;cursor:pointer;font-size:1rem;font-weight:500;">Fermer</button>
-            \`;
-            document.body.appendChild(errorDiv);
-            setTimeout(() => errorDiv.remove(), 3000);
+            // Pour toute autre page, poster un message pour afficher la 404
+            window.parent.postMessage({
+              type: 'navigate-404'
+            }, '*');
             return false;
           }
         }, true);
@@ -563,7 +564,7 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspe
       setError(errorMsg);
       return null;
     }
-  }, [projectFiles, isDark]);
+  }, [projectFiles, isDark, show404]);
 
   // Intercepter les messages de l'iframe
   useEffect(() => {
@@ -578,10 +579,23 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspe
         onElementSelect(event.data.data);
       }
       
+      // Gérer la navigation vers la page 404
+      if (event.data.type === 'navigate-404') {
+        console.log('🚫 Navigation vers page 404');
+        setShow404(true);
+      }
+      
+      // Gérer la navigation depuis la page 404 vers l'accueil
+      if (event.data.type === 'navigate' && event.data.file === 'index.html') {
+        console.log('🏠 Retour à l\'accueil depuis la 404');
+        setShow404(false);
+      }
+      
       // Gérer le rechargement de la preview
       if (event.data.type === 'reload') {
         console.log('🔄 Rechargement de la preview Babel...');
         setReloadKey(prev => prev + 1);
+        setShow404(false);
       }
     };
 
