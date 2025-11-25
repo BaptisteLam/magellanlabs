@@ -125,23 +125,37 @@ export function generate404Page(isDark: boolean = false): string {
   </div>
   
   <script>
-    // Navigation isolée dans la preview uniquement
+    // Navigation isolée dans la preview uniquement - retour à index.html
     function navigateToHome() {
+      // Empêcher toute navigation externe
+      event.preventDefault();
+      event.stopPropagation();
+      
+      console.log('🏠 Retour à l\'accueil de la preview (index.html)');
+      
+      // Envoyer message au parent pour charger index.html dans la preview
       window.parent.postMessage({
         type: 'navigate',
         file: 'index.html'
       }, '*');
+      
+      return false;
     }
     
-    // Bloquer tous les liens externes pour garantir l'isolation
+    // Bloquer TOUS les liens externes pour garantir l'isolation complète
     document.addEventListener('click', function(e) {
       const link = e.target.closest('a');
       if (link && link.href) {
         const href = link.getAttribute('href');
-        if (href && (href.startsWith('http') || href.startsWith('//'))) {
+        // Bloquer http, https, mailto, tel, et tout ce qui pourrait sortir de la preview
+        if (href && (href.startsWith('http') || href.startsWith('//') || href.startsWith('mailto:') || href.startsWith('tel:'))) {
           e.preventDefault();
           e.stopPropagation();
-          console.log('🚫 Lien externe bloqué:', href);
+          console.log('🚫 Lien externe bloqué dans 404:', href);
+          
+          // Afficher un message d'erreur
+          alert('❌ Les liens externes sont bloqués. La preview est complètement isolée.');
+          return false;
         }
       }
     }, true);
