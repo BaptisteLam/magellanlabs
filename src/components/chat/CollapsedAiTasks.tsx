@@ -78,46 +78,69 @@ export function CollapsedAiTasks({ events, isDark = false, isLoading = false, au
             </div>
           ) : (
             <div className="pt-2 space-y-1">
-              {events.map((event, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-sm" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
-                  {event.type === 'thought' && (
-                    <>
-                      <span className="text-base">💡</span>
-                      <span>
-                        {event.duration ? `Thought for ${event.duration}s` : event.message}
-                      </span>
-                    </>
-                  )}
-                  {event.type === 'read' && (
-                    <>
-                      <span className="text-base">📄</span>
-                      <span>Read {event.file || event.message}</span>
-                    </>
-                  )}
-                  {event.type === 'edit' && (
-                    <>
-                      <span className="text-base">✏️</span>
-                      <span>Edited {event.file || event.message}</span>
-                    </>
-                  )}
-                  {event.type === 'complete' && (
-                    <>
-                      <span className="text-base">✅</span>
-                      <span>{event.message}</span>
-                    </>
-                  )}
-                  {event.type === 'error' && (
-                    <>
-                      <span className="text-base">❌</span>
-                      <span className="text-red-500">{event.message}</span>
-                    </>
-                  )}
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex items-center gap-2 text-sm" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
+              {events.map((event, idx) => {
+                // Déterminer si c'est le dernier événement non-complete (donc en cours)
+                const isLastNonComplete = idx === events.length - 1 && event.type !== 'complete' && event.type !== 'error';
+                const isActive = isLoading && isLastNonComplete;
+                
+                return (
+                  <div 
+                    key={idx} 
+                    className={`flex items-start gap-2 text-sm px-2 py-1.5 rounded-md transition-all duration-300 ${
+                      isActive 
+                        ? 'bg-[#03A5C0]/10 border border-[#03A5C0]/30 animate-pulse' 
+                        : ''
+                    }`}
+                    style={{ 
+                      color: isDark ? '#94a3b8' : '#64748b'
+                    }}
+                  >
+                    {event.type === 'thought' && (
+                      <>
+                        <span className="text-base flex-shrink-0">💡</span>
+                        <span className={isActive ? 'font-medium' : ''}>
+                          {event.duration ? `Thought for ${event.duration}s` : event.message}
+                        </span>
+                      </>
+                    )}
+                    {event.type === 'read' && (
+                      <>
+                        <span className="text-base flex-shrink-0">📄</span>
+                        <span className={isActive ? 'font-medium' : ''}>
+                          Read {event.file || event.message}
+                        </span>
+                      </>
+                    )}
+                    {event.type === 'edit' && (
+                      <>
+                        <span className="text-base flex-shrink-0">✏️</span>
+                        <span className={isActive ? 'font-medium' : ''}>
+                          Edited {event.file || event.message}
+                        </span>
+                      </>
+                    )}
+                    {event.type === 'complete' && (
+                      <>
+                        <span className="text-base flex-shrink-0">✅</span>
+                        <span>{event.message}</span>
+                      </>
+                    )}
+                    {event.type === 'error' && (
+                      <>
+                        <span className="text-base flex-shrink-0">❌</span>
+                        <span className="text-red-500">{event.message}</span>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+              {isLoading && events.length === 0 && (
+                <div 
+                  className="flex items-center gap-2 text-sm px-2 py-1.5 rounded-md bg-[#03A5C0]/10 border border-[#03A5C0]/30 animate-pulse" 
+                  style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+                >
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Thinking...</span>
+                  <span className="font-medium">Thinking...</span>
                 </div>
               )}
             </div>
