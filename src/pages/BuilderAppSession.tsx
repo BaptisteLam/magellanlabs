@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
-import { Sandpack } from "@codesandbox/sandpack-react";
+import { InteractivePreview } from "@/components/InteractivePreview";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
 import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
@@ -1694,25 +1694,29 @@ export default function BuilderSession() {
                           onTitleChange={setWebsiteTitle}
                           cloudflareProjectName={cloudflareProjectName || undefined}
                         />
-                        <div className="w-full h-full">
-                          <Sandpack
-                            theme={isDark ? "dark" : "light"}
-                            template="react-ts"
-                            files={Object.fromEntries(
-                              Object.entries(projectFiles).map(([path, content]) => [
-                                path.startsWith('/') ? path : `/${path}`,
-                                { code: content }
-                              ])
-                            )}
-                            options={{
-                              showNavigator: false,
-                              showTabs: false,
-                              showLineNumbers: true,
-                              editorHeight: "100%",
-                              editorWidthPercentage: 0,
-                            }}
-                          />
-                        </div>
+                        <InteractivePreview
+                          projectFiles={projectFiles}
+                          isDark={isDark}
+                          inspectMode={inspectMode}
+                          onInspectModeChange={setInspectMode}
+                          projectType={projectType}
+                          onElementModify={async (prompt, elementInfo) => {
+                            const contextualPrompt = `Modifier l'élément suivant dans le code :
+
+Type: <${elementInfo.tagName.toLowerCase()}>
+${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
+${elementInfo.classList.length > 0 ? `Classes: ${elementInfo.classList.join(', ')}` : ''}
+Chemin CSS: ${elementInfo.path}
+Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textContent.length > 200 ? '...' : ''}"
+
+Instruction: ${prompt}
+
+Ne modifie que cet élément spécifique, pas le reste du code.`;
+
+                            setInputValue(contextualPrompt);
+                            setTimeout(() => handleSubmit(), 100);
+                          }}
+                        />
                       </>
                     )
                   ) : viewMode === 'analytics' ? (
@@ -1740,25 +1744,29 @@ export default function BuilderSession() {
                           onTitleChange={setWebsiteTitle}
                           cloudflareProjectName={cloudflareProjectName || undefined}
                         />
-                        <div className="w-full h-full">
-                          <Sandpack
-                            theme={isDark ? "dark" : "light"}
-                            template="react-ts"
-                            files={Object.fromEntries(
-                              Object.entries(projectFiles).map(([path, content]) => [
-                                path.startsWith('/') ? path : `/${path}`,
-                                { code: content }
-                              ])
-                            )}
-                            options={{
-                              showNavigator: false,
-                              showTabs: false,
-                              showLineNumbers: true,
-                              editorHeight: "100%",
-                              editorWidthPercentage: 0,
-                            }}
-                          />
-                        </div>
+                        <InteractivePreview
+                          projectFiles={projectFiles}
+                          isDark={isDark}
+                          inspectMode={inspectMode}
+                          onInspectModeChange={setInspectMode}
+                          projectType={projectType}
+                          onElementModify={async (prompt, elementInfo) => {
+                            const contextualPrompt = `Modifier l'élément suivant dans le code :
+
+Type: <${elementInfo.tagName.toLowerCase()}>
+${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
+${elementInfo.classList.length > 0 ? `Classes: ${elementInfo.classList.join(', ')}` : ''}
+Chemin CSS: ${elementInfo.path}
+Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textContent.length > 200 ? '...' : ''}"
+
+Instruction: ${prompt}
+
+Ne modifie que cet élément spécifique, pas le reste du code.`;
+
+                            setInputValue(contextualPrompt);
+                            setTimeout(() => handleSubmit(), 100);
+                          }}
+                        />
                       </>
                     )
                   ) : viewMode === 'analytics' ? (
