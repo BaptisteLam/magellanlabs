@@ -593,6 +593,27 @@ export default function BuilderSession() {
     setInputValue('');
     setAttachedFiles([]);
 
+    // Créer immédiatement le message d'intro avec CollapsedAiTasks
+    const introMessage: Message = {
+      role: 'assistant',
+      content: "Je vais analyser votre demande et effectuer les modifications nécessaires...",
+      metadata: {
+        type: 'intro',
+        generation_events: []
+      }
+    };
+    
+    setMessages(prev => [...prev, introMessage]);
+    
+    await supabase
+      .from('chat_messages')
+      .insert([{
+        session_id: sessionId,
+        role: 'assistant',
+        content: typeof introMessage.content === 'string' ? introMessage.content : 'Analyzing...',
+        metadata: introMessage.metadata
+      }]);
+
     // Préparer les fichiers pertinents
     const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
       const keywords = prompt.toLowerCase().split(/\s+/);
@@ -680,6 +701,19 @@ export default function BuilderSession() {
         onGenerationEvent: (event) => {
           console.log('🔄 Generation:', event);
           setGenerationEvents(prev => [...prev, event]);
+          
+          // Mettre à jour le message intro avec les nouveaux événements
+          setMessages(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage && lastMessage.metadata?.type === 'intro') {
+              return prev.map((msg, idx) => 
+                idx === prev.length - 1
+                  ? { ...msg, metadata: { ...msg.metadata, generation_events: [...(msg.metadata.generation_events || []), event] } }
+                  : msg
+              );
+            }
+            return prev;
+          });
         },
         onCodeUpdate: (path, code) => {
           console.log('📦 Accumulating file:', path);
@@ -701,6 +735,19 @@ export default function BuilderSession() {
         onComplete: async () => {
           console.log('✅ Génération terminée - Validation des fichiers avant affichage');
           setAiEvents(prev => [...prev, { type: 'complete' }]);
+          
+          // Ajouter l'événement complete au message intro
+          setMessages(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage && lastMessage.metadata?.type === 'intro') {
+              return prev.map((msg, idx) => 
+                idx === prev.length - 1
+                  ? { ...msg, metadata: { ...msg.metadata, generation_events: [...(msg.metadata.generation_events || []), { type: 'complete' as const, message: 'Generation completed' }] } }
+                  : msg
+              );
+            }
+            return prev;
+          });
           
           // 🔍 VALIDATION CRITIQUE : Vérifier que les fichiers essentiels sont créés et NON VIDES
           const hasHtml = 'index.html' in updatedFiles;
@@ -845,23 +892,11 @@ export default function BuilderSession() {
             }
           }
 
-          // Sauvegarder le message d'introduction
-          await supabase
-            .from('chat_messages')
-            .insert({
-              session_id: sessionId,
-              role: 'assistant',
-              content: introMessage,
-              metadata: { 
-                type: 'intro' as const,
-                generation_events: aiEvents
-              }
-            });
 
           // Sauvegarder le message de récapitulatif avec les détails et tokens réels de Claude
           const { data: insertedRecap } = await supabase
             .from('chat_messages')
-            .insert({
+            .insert([{
               session_id: sessionId,
               role: 'assistant',
               content: recapMessage,
@@ -877,18 +912,13 @@ export default function BuilderSession() {
                 output_tokens: agent.tokenUsage.output,
                 total_tokens: agent.tokenUsage.total
               }
-            })
+            }])
             .select()
             .single();
 
-          // Mettre à jour les messages dans l'interface (intro + tasks + recap)
-          const updatedMessagesWithDetails: Message[] = [
-            ...newMessages,
-            { 
-              role: 'assistant' as const, 
-              content: introMessage,
-              metadata: { type: 'intro' as const, generation_events: aiEvents }
-            },
+          // Ajouter le message récap à l'interface
+          setMessages(prev => [
+            ...prev,
             { 
               role: 'assistant' as const, 
               content: recapMessage,
@@ -896,19 +926,22 @@ export default function BuilderSession() {
               id: insertedRecap?.id,
               metadata: { 
                 type: 'recap' as const, 
+                files_updated: Object.keys(updatedFiles).length,
+                new_files: newFiles,
+                modified_files: modifiedFiles,
+                project_files: updatedFiles,
                 generation_events: aiEvents,
                 input_tokens: agent.tokenUsage.input,
                 output_tokens: agent.tokenUsage.output,
                 total_tokens: agent.tokenUsage.total
               }
             }
-          ];
-          setMessages(updatedMessagesWithDetails);
+          ]);
           
           // Sauvegarder automatiquement le projet avec le nom généré
           if (websiteTitle && websiteTitle !== 'Sans titre') {
             console.log('💾 Sauvegarde automatique du projet:', websiteTitle);
-            await saveSessionWithTitle(websiteTitle, filesArray, updatedMessagesWithDetails);
+            await saveSessionWithTitle(websiteTitle, filesArray, messages);
           }
 
           // Mettre à jour build_sessions pour rétrocompatibilité
@@ -916,7 +949,7 @@ export default function BuilderSession() {
             .from('build_sessions')
             .update({
               project_files: updatedFiles,
-              messages: updatedMessagesWithDetails as any,
+              messages: messages as any,
               updated_at: new Date().toISOString()
             })
             .eq('id', sessionId);
@@ -1441,7 +1474,12 @@ export default function BuilderSession() {
                       {/* AI Tasks - affichés après le message intro */}
                       {msg.metadata?.type === 'intro' && msg.metadata?.generation_events && (
                         <div>
-                          <CollapsedAiTasks events={msg.metadata.generation_events} isDark={isDark} />
+                          <CollapsedAiTasks 
+                            events={msg.metadata.generation_events} 
+                            isDark={isDark} 
+                            autoExpand={true}
+                            isLoading={idx === messages.length - 1 && agent.isLoading}
+                          />
                         </div>
                       )}
                       
