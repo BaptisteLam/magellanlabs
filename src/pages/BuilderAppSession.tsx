@@ -23,8 +23,7 @@ import CloudflareAnalytics from "@/components/CloudflareAnalytics";
 import { AiDiffService } from "@/services/aiDiffService";
 import { useAgentAPI } from "@/hooks/useAgentAPI";
 import type { AIEvent, GenerationEvent } from '@/types/agent';
-import AiTaskList from '@/components/chat/AiTaskList';
-import { SimpleAiEvents } from '@/components/chat/SimpleAiEvents';
+import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
 import html2canvas from 'html2canvas';
 import { TokenCounter } from '@/components/TokenCounter';
@@ -1490,7 +1489,7 @@ export default function BuilderSession() {
                       {/* AI Tasks - affichés après le message intro */}
                       {msg.metadata?.type === 'intro' && msg.metadata?.generation_events && (
                         <div>
-                          <AiTaskList events={msg.metadata.generation_events} />
+                          <CollapsedAiTasks events={msg.metadata.generation_events} isDark={isDark} />
                         </div>
                       )}
                       
@@ -1600,10 +1599,10 @@ export default function BuilderSession() {
                 </div>
               ))}
 
-              {/* Affichage des événements de génération simples pour les reprompts */}
-              {generationEvents.length > 0 && agent.isLoading && !isInitialGeneration && (
+              {/* Affichage des événements de génération pour les reprompts */}
+              {(generationEvents.length > 0 || agent.isLoading) && !isInitialGeneration && (
                 <div className="flex flex-col space-y-2 mb-4 px-4">
-                  <SimpleAiEvents events={generationEvents} isDark={isDark} />
+                  <CollapsedAiTasks events={generationEvents} isDark={isDark} isLoading={agent.isLoading} />
                 </div>
               )}
 
@@ -1627,12 +1626,6 @@ export default function BuilderSession() {
                 </div>
               )}
 
-              {/* AI Task List - Affichage pendant toute génération */}
-              {aiEvents.length > 0 && agent.isLoading && (
-                <div className="px-4 pb-4">
-                  <AiTaskList events={aiEvents} />
-                </div>
-              )}
               
               <div ref={chatEndRef} />
             </div>

@@ -24,8 +24,6 @@ import CloudflareAnalytics from "@/components/CloudflareAnalytics";
 import { AiDiffService } from "@/services/aiDiffService";
 import { useAgentAPI } from "@/hooks/useAgentAPI";
 import type { AIEvent, GenerationEvent } from '@/types/agent';
-import AiTaskList from '@/components/chat/AiTaskList';
-import { SimpleAiEvents } from '@/components/chat/SimpleAiEvents';
 import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
 import html2canvas from 'html2canvas';
@@ -1425,11 +1423,11 @@ Now generate the mobile app based on this request:`;
               ))}
 
               {/* Affichage des événements de génération en cours - toujours sauf premier prompt */}
-              {currentMessageEvents.length > 0 && agent.isLoading && !isInitialGeneration && (
+              {!isInitialGeneration && (
                 <div className="flex items-start gap-3 mb-4">
                   <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <SimpleAiEvents events={currentMessageEvents} isDark={isDark} />
+                    <CollapsedAiTasks events={currentMessageEvents} isDark={isDark} isLoading={agent.isLoading} />
                   </div>
                 </div>
               )}
