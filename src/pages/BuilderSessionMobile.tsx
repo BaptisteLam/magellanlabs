@@ -27,6 +27,7 @@ import type { AIEvent, GenerationEvent } from '@/types/agent';
 import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
 import html2canvas from 'html2canvas';
+import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -353,56 +354,47 @@ export default function BuilderSession() {
               path.endsWith('.js') ? 'javascript' : 'text'
       }));
 
-      // Capturer le screenshot avec html2canvas
+      // Capturer le thumbnail directement depuis generatedHtml
       let thumbnailUrl: string | null = null;
       try {
-        // Trouver l'iframe de preview
-        const iframe = document.querySelector('iframe[title="Preview"]') as HTMLIFrameElement;
-        if (iframe && iframe.contentDocument) {
-          console.log('📸 Capturing screenshot with html2canvas...');
+        console.log('📸 Capture du thumbnail depuis generatedHtml...');
+        
+        const htmlContent = generatedHtml || projectFiles['index.html'] || '';
+        
+        if (htmlContent) {
+          // Utiliser notre helper pour capturer le thumbnail
+          const blob = await capturePreviewThumbnail(htmlContent);
           
-          // Attendre un peu que le contenu soit bien chargé
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          const canvas = await html2canvas(iframe.contentDocument.body, {
-            allowTaint: true,
-            useCORS: true,
-            scale: 1,
-            width: 1200,
-            height: 630,
-            windowWidth: 1200,
-            windowHeight: 900
-          });
-          
-          // Convertir le canvas en blob
-          const blob = await new Promise<Blob>((resolve) => {
-            canvas.toBlob((blob) => resolve(blob!), 'image/png', 0.9);
-          });
-          
-          // Uploader vers Supabase Storage
-          const fileName = `${sessionId}-${Date.now()}.png`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('screenshots')
-            .upload(fileName, blob, {
-              contentType: 'image/png',
-              upsert: true
-            });
-          
-          if (uploadError) {
-            console.error('Error uploading screenshot:', uploadError);
-          } else {
-            // Obtenir l'URL publique
-            const { data: { publicUrl } } = supabase.storage
+          if (blob) {
+            // Uploader vers Supabase Storage
+            const fileName = `${sessionId}-${Date.now()}.png`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
               .from('screenshots')
-              .getPublicUrl(fileName);
+              .upload(fileName, blob, {
+                contentType: 'image/png',
+                upsert: true
+              });
             
-            thumbnailUrl = publicUrl;
-            console.log('✅ Screenshot uploaded:', publicUrl);
+            if (uploadError) {
+              console.error('❌ Error uploading screenshot:', uploadError);
+            } else {
+              // Obtenir l'URL publique
+              const { data: { publicUrl } } = supabase.storage
+                .from('screenshots')
+                .getPublicUrl(fileName);
+              
+              thumbnailUrl = publicUrl;
+              console.log('✅ Thumbnail uploaded:', publicUrl);
+            }
+          } else {
+            console.warn('⚠️ Thumbnail capture returned null');
           }
+        } else {
+          console.warn('⚠️ No HTML content available for thumbnail capture');
         }
       } catch (screenshotError) {
-        console.error('Error generating screenshot:', screenshotError);
-        // Ne pas bloquer la sauvegarde si le screenshot échoue
+        console.error('❌ Error generating thumbnail:', screenshotError);
+        // Ne pas bloquer la sauvegarde si le thumbnail échoue
       }
 
       const { error } = await supabase
