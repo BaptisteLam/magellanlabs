@@ -18,7 +18,7 @@ import supabaseDark from '@/assets/supabase-dark.png';
 import supabaseLight from '@/assets/supabase-light.png';
 import { CodeTreeView } from '@/components/CodeEditor/CodeTreeView';
 import { MonacoEditor } from '@/components/CodeEditor/MonacoEditor';
-import { BabelPreview } from '@/components/BabelPreview';
+import { CustomIframePreview } from '@/components/CustomIframePreview';
 import { GeneratingPreview } from '@/components/GeneratingPreview';
 
 interface AISearchHeroProps {
@@ -354,7 +354,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
           
           <ResizablePanel defaultSize={40} minSize={30}>
             <div className="h-full bg-white">
-              <BabelPreview projectFiles={projectFiles} isDark={isDark} />
+              <CustomIframePreview projectFiles={projectFiles} isDark={isDark} />
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
