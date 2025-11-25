@@ -331,8 +331,9 @@ export default function BuilderSession() {
           const loadedMessages: Message[] = chatMessages.map(msg => ({
             role: msg.role as 'user' | 'assistant',
             content: msg.content,
-            token_count: msg.token_count || undefined,
-            id: msg.id
+            token_count: msg.token_count ?? undefined,
+            id: msg.id,
+            metadata: msg.metadata as any
           }));
           setMessages(loadedMessages);
         } else {
@@ -1569,7 +1570,9 @@ export default function BuilderSession() {
                             content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
                             messageIndex={idx}
                             isLatestMessage={idx === messages.length - 1}
-                            tokenCount={msg.token_count}
+                            tokenCount={msg.metadata && typeof msg.metadata === 'object' && 'total_tokens' in msg.metadata
+                              ? (msg.metadata.total_tokens as number)
+                              : msg.token_count}
                             onRestore={async (messageIdx) => {
                               const targetMessage = messages[messageIdx];
                               if (!targetMessage.id || !sessionId) return;
