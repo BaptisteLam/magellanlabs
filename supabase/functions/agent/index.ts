@@ -606,17 +606,7 @@ Exemple de flux COMPLET:
             console.log('✅ Validation complète - Fichiers finaux:', Array.from(generatedFiles.keys()));
           }
 
-          // S'assurer qu'un événement complete est TOUJOURS envoyé
-          if (!hasComplete) {
-            const completeEvent = { type: 'complete' };
-            const completeData = `data: ${JSON.stringify(completeEvent)}\n\n`;
-            controller.enqueue(encoder.encode(completeData));
-            console.log('🏁 Événement complete forcé envoyé');
-          } else {
-            console.log('✅ Événement complete déjà reçu');
-          }
-          
-          // Envoyer l'événement avec les tokens utilisés
+          // Envoyer l'événement avec les tokens utilisés AVANT complete
           const totalTokens = totalInputTokens + totalOutputTokens;
           console.log('📊 Total tokens:', { input: totalInputTokens, output: totalOutputTokens, total: totalTokens });
           const tokenEvent = { 
@@ -626,6 +616,16 @@ Exemple de flux COMPLET:
             total_tokens: totalTokens
           };
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(tokenEvent)}\n\n`));
+
+          // S'assurer qu'un événement complete est TOUJOURS envoyé APRÈS les tokens
+          if (!hasComplete) {
+            const completeEvent = { type: 'complete' };
+            const completeData = `data: ${JSON.stringify(completeEvent)}\n\n`;
+            controller.enqueue(encoder.encode(completeData));
+            console.log('🏁 Événement complete forcé envoyé');
+          } else {
+            console.log('✅ Événement complete déjà reçu');
+          }
 
           controller.close();
           
