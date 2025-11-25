@@ -72,6 +72,7 @@ export default function BuilderSession() {
   const [gaPropertyId, setGaPropertyId] = useState<string | null>(null);
   const [websiteId, setWebsiteId] = useState<string | null>(null);
   const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('webapp');
+  const [cloudflareProjectName, setCloudflareProjectName] = useState<string | null>(null);
   
   // Hook pour la nouvelle API Agent
   const agent = useAgentAPI();
@@ -230,6 +231,11 @@ export default function BuilderSession() {
       }
 
       if (data) {
+        // Charger le nom du projet Cloudflare
+        if (data.cloudflare_project_name) {
+          setCloudflareProjectName(data.cloudflare_project_name);
+        }
+        
         // Charger le type de projet
         if (data.project_type) {
           setProjectType(data.project_type as 'website' | 'webapp' | 'mobile');
@@ -1674,6 +1680,7 @@ export default function BuilderSession() {
                           isDark={isDark}
                           sessionId={sessionId}
                           onTitleChange={setWebsiteTitle}
+                          cloudflareProjectName={cloudflareProjectName || undefined}
                         />
                         <div className="w-full h-full">
                           <Sandpack
@@ -1719,6 +1726,7 @@ export default function BuilderSession() {
                           isDark={isDark}
                           sessionId={sessionId}
                           onTitleChange={setWebsiteTitle}
+                          cloudflareProjectName={cloudflareProjectName || undefined}
                         />
                         <div className="w-full h-full">
                           <Sandpack

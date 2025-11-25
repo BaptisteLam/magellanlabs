@@ -1,7 +1,8 @@
-import { Search, Pencil, Copy, Check, Paperclip } from 'lucide-react';
+import { Search, Pencil, Copy, Check, Paperclip, Settings } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { CustomDomainDialog } from './CustomDomainDialog';
 
 interface FakeUrlBarProps {
   projectTitle: string;
@@ -10,13 +11,15 @@ interface FakeUrlBarProps {
   onTitleChange?: (newTitle: string) => void;
   currentFavicon?: string;
   onFaviconChange?: (faviconUrl: string) => void;
+  cloudflareProjectName?: string;
 }
 
-export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleChange, currentFavicon, onFaviconChange }: FakeUrlBarProps) {
+export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleChange, currentFavicon, onFaviconChange, cloudflareProjectName }: FakeUrlBarProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(projectTitle);
   const [copied, setCopied] = useState(false);
   const [isHoveringFavicon, setIsHoveringFavicon] = useState(false);
+  const [showCustomDomain, setShowCustomDomain] = useState(false);
   const faviconInputRef = useRef<HTMLInputElement | null>(null);
   
   useEffect(() => {
@@ -235,6 +238,16 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
             >
               .builtbymagellan.com
             </span>
+            <button
+              onClick={() => setShowCustomDomain(true)}
+              className="flex-shrink-0 ml-1 p-0.5 hover:text-[#03A5C0] transition-colors cursor-pointer bg-transparent border-0"
+              title="Configurer un domaine personnalisé"
+            >
+              <Settings 
+                className="w-3 h-3"
+                style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
+              />
+            </button>
           </div>
         )}
       </div>
@@ -292,6 +305,13 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
           />
         </button>
       </div>
+
+      <CustomDomainDialog
+        open={showCustomDomain}
+        onOpenChange={setShowCustomDomain}
+        sessionId={sessionId}
+        cloudflareProjectName={cloudflareProjectName}
+      />
     </div>
   );
 }
