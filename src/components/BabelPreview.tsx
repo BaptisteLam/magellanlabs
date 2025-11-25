@@ -12,6 +12,7 @@ interface BabelPreviewProps {
 export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspectMode = false, onElementSelect }: BabelPreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Générer le HTML avec transpilation Babel
   const generatedHTML = useMemo(() => {
@@ -569,6 +570,12 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspe
       if (event.data.type === 'element-selected' && onElementSelect) {
         onElementSelect(event.data.data);
       }
+      
+      // Gérer le rechargement de la preview
+      if (event.data.type === 'reload') {
+        console.log('🔄 Rechargement de la preview Babel...');
+        setReloadKey(prev => prev + 1);
+      }
     };
 
     window.addEventListener('message', handleMessage);
@@ -604,7 +611,7 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspe
       
       return () => iframe.removeEventListener('load', onLoad);
     }
-  }, [generatedHTML, inspectMode]);
+  }, [generatedHTML, inspectMode, reloadKey]);
 
   if (!projectFiles || Object.keys(projectFiles).length === 0) {
     return (

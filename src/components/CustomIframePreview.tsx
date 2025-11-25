@@ -15,6 +15,7 @@ export function CustomIframePreview({
 }: CustomIframePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [currentFile, setCurrentFile] = useState<string>('index.html');
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Générer le HTML complet avec script d'inspection intégré
   const generatedHTML = useMemo(() => {
@@ -385,6 +386,17 @@ export function CustomIframePreview({
           console.error('❌ Fichier non trouvé:', filename);
         }
       }
+      
+      // Gérer le rechargement de la preview
+      if (event.data.type === 'reload') {
+        console.log('🔄 Rechargement de la preview...');
+        setReloadKey(prev => prev + 1);
+      }
+      // Gérer le rechargement de la preview
+      if (event.data.type === 'reload') {
+        console.log('🔄 Rechargement de la preview...');
+        setReloadKey(prev => prev + 1);
+      }
     };
 
     window.addEventListener('message', handleMessage);
@@ -449,7 +461,7 @@ export function CustomIframePreview({
         setTimeout(sendInspectMode, 500);
       }
     }
-  }, [generatedHTML, inspectMode]);
+  }, [generatedHTML, inspectMode, reloadKey]);
 
   return (
     <iframe
