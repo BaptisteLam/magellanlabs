@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { GeneratingPreview } from './GeneratingPreview';
+import { generate404Page } from '@/lib/generate404Page';
 
 interface ESBuildPreviewProps {
   projectFiles: Record<string, string> | Record<string, { code: string }>;
@@ -14,6 +15,7 @@ export function ESBuildPreview({ projectFiles, isDark = false, onConsoleLog, ins
   const workerRef = useRef<Worker | null>(null);
   const [isBuilding, setIsBuilding] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [show404, setShow404] = useState(false);
   const buildIdRef = useRef(0);
 
   // Normaliser les fichiers
@@ -71,6 +73,7 @@ export function ESBuildPreview({ projectFiles, isDark = false, onConsoleLog, ins
       }
 
       if (success && code) {
+        setShow404(false); // Réinitialiser la 404 lors d'un nouveau build réussi
         injectCodeIntoIframe(code);
         setError(null);
       } else {
@@ -93,6 +96,7 @@ export function ESBuildPreview({ projectFiles, isDark = false, onConsoleLog, ins
 
     setIsBuilding(true);
     setError(null);
+    setShow404(false); // Réinitialiser la 404 lors d'un nouveau build
     buildIdRef.current++;
 
     workerRef.current?.postMessage({
@@ -108,6 +112,15 @@ export function ESBuildPreview({ projectFiles, isDark = false, onConsoleLog, ins
     if (!iframe || !iframe.contentWindow) return;
 
     const doc = iframe.contentWindow.document;
+    
+    // Si on doit afficher la page 404
+    if (show404) {
+      const html404 = generate404Page(isDark);
+      doc.open();
+      doc.write(html404);
+      doc.close();
+      return;
+    }
     
     const html = `
 <!DOCTYPE html>
@@ -321,6 +334,49 @@ export function ESBuildPreview({ projectFiles, isDark = false, onConsoleLog, ins
       }
       return path.join(' > ');
     }
+    
+    // Intercepter TOUS les clics sur liens pour isoler la preview
+    document.addEventListener('click', function(e) {
+      // Ne pas intercepter les clics si on est en mode inspection
+      if (inspectMode) return;
+      
+      const target = e.target.closest('a');
+      if (target && target.href) {
+        e.preventDefault();
+        e.stopPropagation();
+        const href = target.getAttribute('href') || '';
+        
+        // Bloquer TOUS les liens externes (http, https, mailto, tel, etc.)
+        if (href.startsWith('http') || href.startsWith('//') || href.includes('magellan') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+          const errorDiv = document.createElement('div');
+          errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:#000;padding:2rem;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:999999;max-width:400px;text-align:center;font-family:system-ui;';
+          errorDiv.innerHTML = \`
+            <h3 style="margin:0 0 1rem 0;font-size:1.25rem;color:#dc2626;">🚫 Lien externe bloqué</h3>
+            <p style="margin:0 0 1rem 0;color:#666;">Les liens externes sont désactivés dans la preview.</p>
+            <button onclick="this.parentElement.remove()" style="background:rgb(3,165,192);color:#fff;border:none;padding:0.5rem 1.5rem;border-radius:9999px;cursor:pointer;font-size:1rem;font-weight:500;">Fermer</button>
+          \`;
+          document.body.appendChild(errorDiv);
+          setTimeout(() => errorDiv.remove(), 3000);
+          return false;
+        }
+        
+        // Pour les liens internes (comme #section)
+        if (href.startsWith('#')) {
+          const targetId = href.substring(1);
+          const element = document.getElementById(targetId);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+          }
+          return false;
+        }
+        
+        // Pour les autres liens internes (pages du site) - afficher 404
+        window.parent.postMessage({
+          type: 'navigate-404'
+        }, '*');
+        return false;
+      }
+    }, true);
   </script>
 </head>
 <body>
@@ -410,6 +466,16 @@ export function ESBuildPreview({ projectFiles, isDark = false, onConsoleLog, ins
       }
       if (event.data?.type === 'element-selected' && onElementSelect) {
         onElementSelect(event.data.data);
+      }
+      // Gérer la navigation vers la page 404
+      if (event.data?.type === 'navigate-404') {
+        console.log('🚫 Navigation vers page 404 (ESBuild)');
+        setShow404(true);
+      }
+      // Gérer la navigation depuis la page 404 vers l'accueil
+      if (event.data?.type === 'navigate' && event.data.file === 'index.html') {
+        console.log('🏠 Retour à l\'accueil depuis la 404 (ESBuild)');
+        setShow404(false);
       }
     };
 

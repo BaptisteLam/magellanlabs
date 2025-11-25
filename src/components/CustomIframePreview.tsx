@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useRef, useState } from 'react';
+import { generate404Page } from '@/lib/generate404Page';
 
 interface CustomIframePreviewProps {
   projectFiles: Record<string, string>;
@@ -21,6 +22,12 @@ export function CustomIframePreview({
   const generatedHTML = useMemo(() => {
     console.log('📦 CustomIframePreview - currentFile:', currentFile);
     console.log('📦 CustomIframePreview - projectFiles:', Object.keys(projectFiles));
+    
+    // Si on demande la page 404
+    if (currentFile === '__404__') {
+      console.log('🚫 Affichage de la page 404');
+      return generate404Page(isDark);
+    }
     
     if (!projectFiles || Object.keys(projectFiles).length === 0) {
       console.log('⚠️ Aucun fichier de projet');
@@ -400,6 +407,8 @@ export function CustomIframePreview({
           setCurrentFile(filename);
         } else {
           console.error('❌ Fichier non trouvé:', filename);
+          // Afficher la page 404
+          setCurrentFile('__404__');
         }
       }
       
