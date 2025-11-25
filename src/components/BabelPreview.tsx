@@ -345,184 +345,191 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspe
     });
     
     // Script d'inspection pour le mode édition visuelle
-    let inspectMode = false;
-    let currentHighlight = null;
-    
-    window.addEventListener('message', (e) => {
-      if (e.data.type === 'toggle-inspect') {
-        inspectMode = e.data.enabled;
-        if (inspectMode) {
-          activateInspection();
-        } else {
-          deactivateInspection();
-        }
-      }
-    });
-    
-    function activateInspection() {
-      document.body.style.cursor = 'crosshair';
-      document.addEventListener('click', handleElementClick, true);
-      document.addEventListener('mouseover', highlightElement, true);
-      document.addEventListener('mouseout', removeHighlight, true);
-      showAllOutlines();
-    }
-    
-    function deactivateInspection() {
-      document.body.style.cursor = 'default';
-      document.removeEventListener('click', handleElementClick, true);
-      document.removeEventListener('mouseover', highlightElement, true);
-      document.removeEventListener('mouseout', removeHighlight, true);
-      hideAllOutlines();
-      removeHighlight();
-    }
-    
-    function showAllOutlines() {
-      const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
-      document.querySelectorAll(selectableTags.join(',')).forEach(el => {
-        if (el !== document.body && el !== document.documentElement) {
-          el.style.outline = '1px dashed rgba(3, 165, 192, 0.3)';
-          el.style.outlineOffset = '2px';
-          el.setAttribute('data-inspectable', 'true');
-        }
-      });
-    }
-    
-    function hideAllOutlines() {
-      document.querySelectorAll('[data-inspectable]').forEach(el => {
-        el.style.outline = '';
-        el.style.outlineOffset = '';
-        el.removeAttribute('data-inspectable');
-      });
-    }
-    
-    function highlightElement(e) {
-      if (!inspectMode) return;
+    (function() {
+      let isInspectMode = false;
+      let hoveredElement = null;
       
-      const target = e.target;
-      if (target === document.body || target === document.documentElement) return;
+      console.log('🔍 Magellan Inspect (Babel): Script chargé');
       
-      // Filtrer les éléments non pertinents
-      const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
-      if (!selectableTags.includes(target.tagName)) return;
-      
-      removeHighlight();
-      
-      // Créer un overlay avec effet de pulsation
-      const rect = target.getBoundingClientRect();
-      const overlay = document.createElement('div');
-      overlay.id = '__inspect_overlay__';
-      overlay.style.cssText = \`
-        position: fixed;
-        left: \${rect.left}px;
-        top: \${rect.top}px;
-        width: \${rect.width}px;
-        height: \${rect.height}px;
-        border: 2px solid #03A5C0;
-        border-radius: 4px;
-        background: rgba(3, 165, 192, 0.05);
-        box-shadow: 0 0 0 4px rgba(3, 165, 192, 0.2);
-        pointer-events: none;
-        z-index: 999998;
-        transition: all 150ms ease-in-out;
-        animation: inspectPulse 2s ease-in-out infinite;
-      \`;
-      
-      // Créer le label du tag
-      const label = document.createElement('div');
-      label.id = '__inspect_label__';
-      label.textContent = target.tagName.toLowerCase();
-      label.style.cssText = \`
-        position: fixed;
-        left: \${rect.left}px;
-        top: \${rect.top - 24}px;
-        background: #03A5C0;
-        color: white;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 11px;
-        font-family: monospace;
-        font-weight: 600;
-        pointer-events: none;
-        z-index: 999999;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      \`;
-      
-      // Ajouter animation de pulsation
+      // Styles CSS pour l'inspection
       const style = document.createElement('style');
-      style.id = '__inspect_animation__';
+      style.id = '__magellan_inspect_styles__';
       style.textContent = \`
-        @keyframes inspectPulse {
-          0%, 100% { box-shadow: 0 0 0 4px rgba(3, 165, 192, 0.2); }
-          50% { box-shadow: 0 0 0 8px rgba(3, 165, 192, 0.3); }
+        .magellan-inspect-highlight {
+          outline: 2px solid #03A5C0 !important;
+          outline-offset: 2px !important;
+          cursor: pointer !important;
+          position: relative;
+        }
+        .magellan-inspect-highlight::after {
+          content: attr(data-magellan-tag);
+          position: absolute;
+          top: -24px;
+          left: 0;
+          background: #03A5C0;
+          color: white;
+          padding: 2px 8px;
+          font-size: 11px;
+          font-family: monospace;
+          font-weight: 600;
+          border-radius: 4px;
+          pointer-events: none;
+          z-index: 999999;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .magellan-inspect-dashed {
+          outline: 1px dashed rgba(3, 165, 192, 0.3) !important;
+          outline-offset: 2px;
         }
       \`;
-      if (!document.getElementById('__inspect_animation__')) {
-        document.head.appendChild(style);
-      }
+      document.head.appendChild(style);
       
-      document.body.appendChild(overlay);
-      document.body.appendChild(label);
-      currentHighlight = overlay;
-    }
-    
-    function removeHighlight() {
-      const overlay = document.getElementById('__inspect_overlay__');
-      const label = document.getElementById('__inspect_label__');
-      if (overlay) overlay.remove();
-      if (label) label.remove();
-      currentHighlight = null;
-    }
-    
-    function handleElementClick(e) {
-      if (!inspectMode) return;
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const target = e.target;
-      if (target === document.body || target === document.documentElement) return;
-      
-      const rect = target.getBoundingClientRect();
-      const elementInfo = {
-        tagName: target.tagName,
-        textContent: target.textContent || '',
-        classList: Array.from(target.classList || []),
-        path: getElementPath(target),
-        innerHTML: target.innerHTML,
-        id: target.id || undefined,
-        boundingRect: {
-          left: rect.left,
-          top: rect.top,
-          width: rect.width,
-          height: rect.height,
-          bottom: rect.bottom,
-          right: rect.right
-        }
-      };
-      
-      window.parent.postMessage({
-        type: 'element-selected',
-        data: elementInfo
-      }, '*');
-    }
-    
-    function getElementPath(element) {
-      const path = [];
-      let current = element;
-      while (current && current !== document.body) {
-        let selector = current.tagName.toLowerCase();
-        if (current.id) {
-          selector += '#' + current.id;
-        } else if (current.className && typeof current.className === 'string') {
-          const classes = current.className.trim().split(/\\s+/);
-          if (classes.length > 0 && classes[0]) {
-            selector += '.' + classes.join('.');
+      // Écouter les messages du parent
+      window.addEventListener('message', (e) => {
+        console.log('📨 Message reçu (Babel):', e.data);
+        if (e.data.type === 'toggle-inspect') {
+          isInspectMode = e.data.enabled;
+          console.log('🎯 Mode inspect (Babel):', isInspectMode);
+          
+          if (isInspectMode) {
+            activateInspection();
+          } else {
+            deactivateInspection();
           }
         }
-        path.unshift(selector);
-        current = current.parentElement;
+      });
+      
+      function activateInspection() {
+        console.log('✅ Activation du mode inspection (Babel)');
+        document.body.style.cursor = 'crosshair';
+        showAllOutlines();
       }
-      return path.join(' > ');
-    }
+      
+      function deactivateInspection() {
+        console.log('❌ Désactivation du mode inspection (Babel)');
+        document.body.style.cursor = 'default';
+        if (hoveredElement) {
+          hoveredElement.classList.remove('magellan-inspect-highlight');
+          hoveredElement.removeAttribute('data-magellan-tag');
+          hoveredElement = null;
+        }
+        hideAllOutlines();
+      }
+      
+      function showAllOutlines() {
+        const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
+        document.querySelectorAll(selectableTags.join(',')).forEach(el => {
+          if (el !== document.body && el !== document.documentElement) {
+            el.classList.add('magellan-inspect-dashed');
+          }
+        });
+      }
+      
+      function hideAllOutlines() {
+        document.querySelectorAll('.magellan-inspect-dashed').forEach(el => {
+          el.classList.remove('magellan-inspect-dashed');
+        });
+      }
+      
+      function getElementDescription(el) {
+        const tag = el.tagName.toLowerCase();
+        if (tag === 'h1') return 'Titre H1';
+        if (tag === 'h2') return 'Titre H2';
+        if (tag === 'h3') return 'Titre H3';
+        if (tag === 'img') return 'Image';
+        if (tag === 'button') return 'Bouton';
+        if (tag === 'a') return 'Lien';
+        if (tag === 'p') return 'Paragraphe';
+        return tag.toUpperCase();
+      }
+      
+      function getElementPath(element) {
+        const path = [];
+        let current = element;
+        
+        while (current && current !== document.body && current !== document.documentElement) {
+          let selector = current.tagName.toLowerCase();
+          
+          if (current.id) {
+            selector += '#' + current.id;
+          } else if (current.className) {
+            const classes = Array.from(current.classList)
+              .filter(c => !c.startsWith('magellan-inspect'))
+              .join('.');
+            if (classes) selector += '.' + classes;
+          }
+          
+          path.unshift(selector);
+          current = current.parentElement;
+        }
+        
+        return path.join(' > ');
+      }
+      
+      // Détection au survol avec mousemove
+      document.addEventListener('mousemove', (e) => {
+        if (!isInspectMode) return;
+        
+        const target = e.target;
+        if (target === hoveredElement) return;
+        if (target === document.body || target === document.documentElement) return;
+        
+        const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
+        if (!selectableTags.includes(target.tagName)) return;
+        
+        if (hoveredElement) {
+          hoveredElement.classList.remove('magellan-inspect-highlight');
+          hoveredElement.removeAttribute('data-magellan-tag');
+        }
+        
+        hoveredElement = target;
+        const elementType = getElementDescription(target);
+        target.setAttribute('data-magellan-tag', elementType);
+        target.classList.add('magellan-inspect-highlight');
+      }, true);
+      
+      // Sélection au clic
+      document.addEventListener('click', (e) => {
+        if (!isInspectMode) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        const target = e.target;
+        if (target === document.body || target === document.documentElement) return;
+        
+        console.log('🎯 Élément cliqué (Babel):', target.tagName);
+        
+        const rect = target.getBoundingClientRect();
+        const elementInfo = {
+          tagName: target.tagName,
+          textContent: target.textContent?.substring(0, 200) || '',
+          classList: Array.from(target.classList).filter(c => !c.startsWith('magellan-inspect')),
+          path: getElementPath(target),
+          innerHTML: target.innerHTML,
+          id: target.id || undefined,
+          boundingRect: {
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height,
+            bottom: rect.bottom,
+            right: rect.right
+          }
+        };
+        
+        console.log('📤 Envoi au parent (Babel):', elementInfo);
+        window.parent.postMessage({
+          type: 'element-selected',
+          data: elementInfo
+        }, '*');
+        
+        return false;
+      }, true);
+      
+      console.log('✅ Magellan Inspect (Babel): Prêt');
+    })();
   </script>
 </head>
 <body>

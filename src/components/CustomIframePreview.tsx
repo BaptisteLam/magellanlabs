@@ -80,200 +80,172 @@ export function CustomIframePreview({
 
     // Injecter les CSS et le script d'inspection DIRECTEMENT dans le HTML
     const inspectionScript = `
+    <style id="__magellan_inspect_styles__">
+      .magellan-inspect-highlight {
+        outline: 2px solid #03A5C0 !important;
+        outline-offset: 2px !important;
+        cursor: pointer !important;
+        position: relative;
+      }
+      .magellan-inspect-highlight::after {
+        content: attr(data-magellan-tag);
+        position: absolute;
+        top: -24px;
+        left: 0;
+        background: #03A5C0;
+        color: white;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-family: monospace;
+        font-weight: 600;
+        border-radius: 4px;
+        pointer-events: none;
+        z-index: 999999;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      }
+      .magellan-inspect-dashed {
+        outline: 1px dashed rgba(3, 165, 192, 0.3) !important;
+        outline-offset: 2px;
+      }
+    </style>
     <script>
-      let inspectMode = false;
-      let currentHighlight = null;
-      
-      // Intercepter TOUS les clics sur liens pour isoler la preview
-      document.addEventListener('click', function(e) {
-        const target = e.target.closest('a');
-        if (target && target.href) {
-          const href = target.getAttribute('href') || '';
-          
-          // Bloquer TOUS les liens externes et magellan
-          if (href.startsWith('http') || href.startsWith('//') || href.includes('magellan') || href.startsWith('mailto:') || href.startsWith('tel:')) {
-            e.preventDefault();
-            e.stopPropagation();
+      (function() {
+        let isInspectMode = false;
+        let hoveredElement = null;
+        
+        console.log('🔍 Magellan Inspect: Script chargé');
+        
+        // Écouter les messages du parent
+        window.addEventListener('message', (e) => {
+          console.log('📨 Message reçu:', e.data);
+          if (e.data.type === 'toggle-inspect') {
+            isInspectMode = e.data.enabled;
+            console.log('🎯 Mode inspect:', isInspectMode);
             
-            // Afficher message d'erreur
-            const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:#000;padding:2rem;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:999999;max-width:400px;text-align:center;font-family:system-ui;';
-            errorDiv.innerHTML = '<h3 style="margin:0 0 1rem 0;font-size:1.25rem;color:#dc2626;">🚫 Lien externe bloqué</h3>' +
-              '<p style="margin:0 0 1rem 0;color:#666;">Les liens externes sont désactivés dans la preview.</p>' +
-              '<button onclick="this.parentElement.remove()" style="background:rgb(3,165,192);color:#fff;border:none;padding:0.5rem 1.5rem;border-radius:9999px;cursor:pointer;font-size:1rem;font-weight:500;">Fermer</button>';
-            document.body.appendChild(errorDiv);
-            setTimeout(() => errorDiv.remove(), 3000);
-            return false;
-          }
-          
-          // Pour les ancres (#section)
-          if (href.startsWith('#')) {
-            // Laisser l'ancre fonctionner
-            return true;
-          }
-          
-          // Pour les autres liens internes (navigation multi-pages)
-          const pathname = href.replace(/^\//, '');
-          if (pathname && pathname !== '' && pathname !== '/') {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Envoyer un message au parent pour charger le fichier
-            window.parent.postMessage({
-              type: 'navigate',
-              file: pathname
-            }, '*');
-            return false;
-          }
-        }
-      }, true);
-      
-      window.addEventListener('message', (e) => {
-        console.log('📨 Message reçu dans iframe:', e.data);
-        if (e.data.type === 'toggle-inspect') {
-          console.log('🔍 Toggle inspect mode:', e.data.enabled);
-          inspectMode = e.data.enabled;
-          if (inspectMode) {
-            console.log('✅ Activation du mode inspection');
-            activateInspection();
-          } else {
-            console.log('❌ Désactivation du mode inspection');
-            deactivateInspection();
-          }
-        }
-      });
-      
-      function activateInspection() {
-        console.log('🎯 activateInspection appelée');
-        document.body.style.cursor = 'crosshair';
-        document.addEventListener('click', handleElementClick, true);
-        document.addEventListener('mouseover', highlightElement, true);
-        document.addEventListener('mouseout', removeHighlight, true);
-        showAllOutlines();
-        console.log('✅ Event listeners ajoutés');
-      }
-      
-      function deactivateInspection() {
-        document.body.style.cursor = 'default';
-        document.removeEventListener('click', handleElementClick, true);
-        document.removeEventListener('mouseover', highlightElement, true);
-        document.removeEventListener('mouseout', removeHighlight, true);
-        hideAllOutlines();
-        removeHighlight();
-      }
-      
-      function showAllOutlines() {
-        const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
-        document.querySelectorAll(selectableTags.join(',')).forEach(el => {
-          if (el !== document.body && el !== document.documentElement) {
-            el.style.outline = '1px dashed rgba(3, 165, 192, 0.3)';
-            el.style.outlineOffset = '2px';
-            el.setAttribute('data-inspectable', 'true');
+            if (isInspectMode) {
+              activateInspection();
+            } else {
+              deactivateInspection();
+            }
           }
         });
-      }
-      
-      function hideAllOutlines() {
-        document.querySelectorAll('[data-inspectable]').forEach(el => {
-          el.style.outline = '';
-          el.style.outlineOffset = '';
-          el.removeAttribute('data-inspectable');
-        });
-      }
-      
-      function highlightElement(e) {
-        if (!inspectMode) return;
         
-        const target = e.target;
-        if (target === document.body || target === document.documentElement) return;
-        
-        // Filtrer les éléments non pertinents
-        const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
-        if (!selectableTags.includes(target.tagName)) return;
-        
-        removeHighlight();
-        
-        // Créer un overlay avec effet de pulsation
-        const rect = target.getBoundingClientRect();
-        const overlay = document.createElement('div');
-        overlay.id = '__inspect_overlay__';
-        overlay.style.cssText = 'position: fixed;' +
-          'left: ' + rect.left + 'px;' +
-          'top: ' + rect.top + 'px;' +
-          'width: ' + rect.width + 'px;' +
-          'height: ' + rect.height + 'px;' +
-          'border: 2px solid #03A5C0;' +
-          'border-radius: 4px;' +
-          'background: rgba(3, 165, 192, 0.05);' +
-          'box-shadow: 0 0 0 4px rgba(3, 165, 192, 0.2);' +
-          'pointer-events: none;' +
-          'z-index: 999998;' +
-          'transition: all 150ms ease-in-out;' +
-          'animation: inspectPulse 2s ease-in-out infinite;';
-        
-        // Créer le label du tag
-        const label = document.createElement('div');
-        label.id = '__inspect_label__';
-        label.textContent = target.tagName.toLowerCase();
-        label.style.cssText = 'position: fixed;' +
-          'left: ' + rect.left + 'px;' +
-          'top: ' + (rect.top - 24) + 'px;' +
-          'background: #03A5C0;' +
-          'color: white;' +
-          'padding: 2px 8px;' +
-          'border-radius: 4px;' +
-          'font-size: 11px;' +
-          'font-family: monospace;' +
-          'font-weight: 600;' +
-          'pointer-events: none;' +
-          'z-index: 999999;' +
-          'box-shadow: 0 2px 8px rgba(0,0,0,0.2);';
-        
-        // Ajouter animation de pulsation
-        const style = document.createElement('style');
-        style.id = '__inspect_animation__';
-        style.textContent = '@keyframes inspectPulse {' +
-          '0%, 100% { box-shadow: 0 0 0 4px rgba(3, 165, 192, 0.2); }' +
-          '50% { box-shadow: 0 0 0 8px rgba(3, 165, 192, 0.3); }' +
-          '}';
-        if (!document.getElementById('__inspect_animation__')) {
-          document.head.appendChild(style);
+        function activateInspection() {
+          console.log('✅ Activation du mode inspection');
+          document.body.style.cursor = 'crosshair';
+          showAllOutlines();
         }
         
-        document.body.appendChild(overlay);
-        document.body.appendChild(label);
-        currentHighlight = target;
-      }
-      
-      function removeHighlight() {
-        const overlay = document.getElementById('__inspect_overlay__');
-        if (overlay) {
-          overlay.remove();
+        function deactivateInspection() {
+          console.log('❌ Désactivation du mode inspection');
+          document.body.style.cursor = 'default';
+          if (hoveredElement) {
+            hoveredElement.classList.remove('magellan-inspect-highlight');
+            hoveredElement.removeAttribute('data-magellan-tag');
+            hoveredElement = null;
+          }
+          hideAllOutlines();
         }
-        const label = document.getElementById('__inspect_label__');
-        if (label) {
-          label.remove();
+        
+        function showAllOutlines() {
+          const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
+          document.querySelectorAll(selectableTags.join(',')).forEach(el => {
+            if (el !== document.body && el !== document.documentElement) {
+              el.classList.add('magellan-inspect-dashed');
+            }
+          });
         }
-        if (currentHighlight) {
-          currentHighlight = null;
+        
+        function hideAllOutlines() {
+          document.querySelectorAll('.magellan-inspect-dashed').forEach(el => {
+            el.classList.remove('magellan-inspect-dashed');
+          });
         }
-      }
-      
-      function handleElementClick(e) {
-        if (!inspectMode) return;
         
-        e.preventDefault();
-        e.stopPropagation();
+        function getElementDescription(el) {
+          const tag = el.tagName.toLowerCase();
+          if (tag === 'h1') return 'Titre H1';
+          if (tag === 'h2') return 'Titre H2';
+          if (tag === 'h3') return 'Titre H3';
+          if (tag === 'h4') return 'Titre H4';
+          if (tag === 'h5') return 'Titre H5';
+          if (tag === 'h6') return 'Titre H6';
+          if (tag === 'img') return 'Image';
+          if (tag === 'button') return 'Bouton';
+          if (tag === 'a') return 'Lien';
+          if (tag === 'p') return 'Paragraphe';
+          if (tag === 'span') return 'Span';
+          if (tag === 'input') return 'Input';
+          return tag.toUpperCase();
+        }
         
-        const target = e.target;
-        const rect = target.getBoundingClientRect();
+        function getElementPath(element) {
+          const path = [];
+          let current = element;
+          
+          while (current && current !== document.body && current !== document.documentElement) {
+            let selector = current.tagName.toLowerCase();
+            
+            if (current.id) {
+              selector += '#' + current.id;
+            } else if (current.className) {
+              const classes = Array.from(current.classList)
+                .filter(c => !c.startsWith('magellan-inspect'))
+                .join('.');
+              if (classes) selector += '.' + classes;
+            }
+            
+            path.unshift(selector);
+            current = current.parentElement;
+          }
+          
+          return path.join(' > ');
+        }
         
-        window.parent.postMessage({
-          type: 'element-selected',
-          data: {
+        // Détection des éléments au survol avec mousemove (plus réactif que mouseover)
+        document.addEventListener('mousemove', (e) => {
+          if (!isInspectMode) return;
+          
+          const target = e.target;
+          if (target === hoveredElement) return; // Même élément, ne rien faire
+          if (target === document.body || target === document.documentElement) return;
+          
+          // Filtrer les éléments sélectionnables
+          const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
+          if (!selectableTags.includes(target.tagName)) return;
+          
+          // Retirer le highlight précédent
+          if (hoveredElement) {
+            hoveredElement.classList.remove('magellan-inspect-highlight');
+            hoveredElement.removeAttribute('data-magellan-tag');
+          }
+          
+          // Ajouter le nouveau highlight
+          hoveredElement = target;
+          const elementType = getElementDescription(target);
+          target.setAttribute('data-magellan-tag', elementType);
+          target.classList.add('magellan-inspect-highlight');
+        }, true);
+        
+        // Sélection au clic
+        document.addEventListener('click', (e) => {
+          if (!isInspectMode) return;
+          
+          // Arrêter la propagation pour éviter les conflits
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          
+          const target = e.target;
+          if (target === document.body || target === document.documentElement) return;
+          
+          console.log('🎯 Élément cliqué:', target.tagName);
+          
+          const rect = target.getBoundingClientRect();
+          const elementInfo = {
             tagName: target.tagName,
             textContent: target.textContent?.substring(0, 200) || '',
-            classList: Array.from(target.classList),
+            classList: Array.from(target.classList).filter(c => !c.startsWith('magellan-inspect')),
             path: getElementPath(target),
             innerHTML: target.innerHTML,
             id: target.id || undefined,
@@ -285,30 +257,60 @@ export function CustomIframePreview({
               bottom: rect.bottom,
               right: rect.right
             }
-          }
-        }, '*');
-      }
-      
-      function getElementPath(element) {
-        const path = [];
-        let current = element;
-        
-        while (current && current !== document.body) {
-          let selector = current.tagName.toLowerCase();
+          };
           
-          if (current.id) {
-            selector += '#' + current.id;
-          } else if (current.className) {
-            const classes = Array.from(current.classList).join('.');
-            if (classes) selector += '.' + classes;
-          }
+          console.log('📤 Envoi des infos au parent:', elementInfo);
+          window.parent.postMessage({
+            type: 'element-selected',
+            data: elementInfo
+          }, '*');
           
-          path.unshift(selector);
-          current = current.parentElement;
-        }
+          return false;
+        }, true);
         
-        return path.join(' > ');
-      }
+        // Intercepter les clics sur liens (APRÈS le click handler d'inspection)
+        document.addEventListener('click', function(e) {
+          const target = e.target.closest('a');
+          if (target && target.href && !isInspectMode) {
+            const href = target.getAttribute('href') || '';
+            
+            // Bloquer liens externes
+            if (href.startsWith('http') || href.startsWith('//') || href.includes('magellan') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+              e.preventDefault();
+              e.stopPropagation();
+              
+              const errorDiv = document.createElement('div');
+              errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:#000;padding:2rem;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:999999;max-width:400px;text-align:center;font-family:system-ui;';
+              errorDiv.innerHTML = '<h3 style="margin:0 0 1rem 0;font-size:1.25rem;color:#dc2626;">🚫 Lien externe bloqué</h3>' +
+                '<p style="margin:0 0 1rem 0;color:#666;">Les liens externes sont désactivés dans la preview.</p>' +
+                '<button onclick="this.parentElement.remove()" style="background:rgb(3,165,192);color:#fff;border:none;padding:0.5rem 1.5rem;border-radius:9999px;cursor:pointer;font-size:1rem;font-weight:500;">Fermer</button>';
+              document.body.appendChild(errorDiv);
+              setTimeout(() => errorDiv.remove(), 3000);
+              return false;
+            }
+            
+            // Ancres
+            if (href.startsWith('#')) {
+              return true;
+            }
+            
+            // Navigation multi-pages
+            const pathname = href.replace(/^\//, '');
+            if (pathname && pathname !== '' && pathname !== '/') {
+              e.preventDefault();
+              e.stopPropagation();
+              
+              window.parent.postMessage({
+                type: 'navigate',
+                file: pathname
+              }, '*');
+              return false;
+            }
+          }
+        });
+        
+        console.log('✅ Magellan Inspect: Prêt');
+      })();
     </script>
     `;
 
