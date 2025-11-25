@@ -1645,7 +1645,6 @@ export default function BuilderSession() {
                           isDark={isDark}
                           inspectMode={inspectMode}
                           onInspectModeChange={setInspectMode}
-                          projectType={projectType}
                           onElementModify={async (prompt, elementInfo) => {
                             const contextualPrompt = `Modifier l'élément suivant dans le code :
 
@@ -1697,7 +1696,6 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                           isDark={isDark}
                           inspectMode={inspectMode}
                           onInspectModeChange={setInspectMode}
-                          projectType={projectType}
                           onElementModify={async (prompt, elementInfo) => {
                             const contextualPrompt = `Modifier l'élément suivant dans le code :
 

@@ -222,7 +222,6 @@ export default function PublicProject() {
             isDark={false}
             inspectMode={false}
             onInspectModeChange={() => {}}
-            projectType={project.project_type}
           />
         )}
       </main>

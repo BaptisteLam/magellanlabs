@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { HybridPreview } from './HybridPreview';
+import { CustomIframePreview } from './CustomIframePreview';
 import { VisualEditToolbar } from './VisualEditToolbar';
 
 interface InteractivePreviewProps {
@@ -8,7 +8,6 @@ interface InteractivePreviewProps {
   onElementModify?: (prompt: string, elementInfo: ElementInfo) => void;
   inspectMode: boolean;
   onInspectModeChange: (mode: boolean) => void;
-  projectType?: 'website' | 'webapp' | 'mobile';
 }
 
 export interface ElementInfo {
@@ -28,7 +27,7 @@ export interface ElementInfo {
   };
 }
 
-export function InteractivePreview({ projectFiles, isDark = false, onElementModify, inspectMode, onInspectModeChange, projectType = 'webapp' }: InteractivePreviewProps) {
+export function InteractivePreview({ projectFiles, isDark = false, onElementModify, inspectMode, onInspectModeChange }: InteractivePreviewProps) {
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
@@ -67,13 +66,12 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
         </div>
       )}
 
-      {/* Preview Hybride (React ou HTML statique) */}
-      <HybridPreview 
+      {/* Preview HTML statique */}
+      <CustomIframePreview 
         projectFiles={normalizedFiles} 
         isDark={isDark}
         inspectMode={inspectMode}
         onElementSelect={handleElementSelect}
-        projectType={projectType}
       />
 
       {/* Barre d'édition visuelle avancée */}
