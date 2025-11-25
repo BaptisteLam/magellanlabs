@@ -22,11 +22,13 @@ import ScrollToTop from "./components/ScrollToTop";
 import { SettingsCenter } from "./components/settings/SettingsCenter";
 import { useThemeStore } from "./stores/themeStore";
 import { useEffect } from "react";
+import { useSubdomain } from "./hooks/useSubdomain";
 
 const queryClient = new QueryClient();
 
 function App() {
   const { isDark } = useThemeStore();
+  const subdomain = useSubdomain();
 
   useEffect(() => {
     if (isDark) {
@@ -36,6 +38,20 @@ function App() {
     }
   }, [isDark]);
 
+  // Si on détecte un subdomain, afficher directement le projet publié
+  if (subdomain) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <PublicProject />
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  // Sinon, afficher les routes normales du SaaS
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -50,10 +66,10 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/builder" element={<AIBuilder />} />
             <Route path="/builder/:sessionId" element={<BuilderSession />} />
-          <Route path="/builder/app/:sessionId" element={<BuilderAppSession />} />
-          <Route path="/builder/mobile/:sessionId" element={<BuilderSessionMobile />} />
-          <Route path="/preview/:sessionId" element={<SessionPreview />} />
-          <Route path="/p/:subdomain" element={<PublicProject />} />
+            <Route path="/builder/app/:sessionId" element={<BuilderAppSession />} />
+            <Route path="/builder/mobile/:sessionId" element={<BuilderSessionMobile />} />
+            <Route path="/preview/:sessionId" element={<SessionPreview />} />
+            <Route path="/p/:subdomain" element={<PublicProject />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/tarifs" element={<Pricing />} />
