@@ -1245,15 +1245,13 @@ export default function BuilderSession() {
       {/* Barre d'action */}
       <div className={`h-12 backdrop-blur-sm flex items-center justify-between px-4 ${isDark ? '' : 'bg-slate-50/80'}`} style={{ backgroundColor: isDark ? '#1F1F20' : undefined }}>
         <div className="flex items-center gap-3">
-          <Button
+          <button
             onClick={() => navigate('/dashboard')}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 hover:text-[#03A5C0] transition-colors"
+            className="h-8 w-8 flex items-center justify-center transition-colors group"
             title="Dashboard"
           >
-            <Home className="w-4 h-4" />
-          </Button>
+            <Home className="w-4 h-4 transition-colors" style={{ color: isDark ? '#6B7280' : '#9CA3AF' }} onMouseEnter={(e) => e.currentTarget.style.color = '#03A5C0'} onMouseLeave={(e) => e.currentTarget.style.color = isDark ? '#6B7280' : '#9CA3AF'} />
+          </button>
         </div>
 
         {/* Input caché pour le favicon */}
