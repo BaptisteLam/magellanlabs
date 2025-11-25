@@ -73,14 +73,11 @@ serve(async (req) => {
       );
     }
 
-    console.log('📦 Deploying project to Cloudflare Pages...');
-    
-    const GA_MEASUREMENT_ID = Deno.env.get('GA_MEASUREMENT_ID');
-    console.log('GA4 Measurement ID configured:', !!GA_MEASUREMENT_ID);
+    console.log('📦 Deploying project directly to Cloudflare Pages...');
 
     const { data: session, error: sessionError } = await supabaseAdmin
       .from('build_sessions')
-      .select('cloudflare_project_name, cloudflare_deployment_url, title, github_repo_name, github_repo_url')
+      .select('cloudflare_project_name, cloudflare_deployment_url, title')
       .eq('id', sessionId)
       .single();
 
@@ -93,270 +90,18 @@ serve(async (req) => {
 
     const CLOUDFLARE_ACCOUNT_ID = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
     const CLOUDFLARE_API_TOKEN = Deno.env.get('CLOUDFLARE_API_TOKEN');
-    const GITHUB_TOKEN = Deno.env.get('GITHUB_TOKEN');
 
     if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
       throw new Error('Cloudflare credentials not configured');
     }
 
-    if (!GITHUB_TOKEN) {
-      throw new Error('GitHub token not configured');
-    }
-
-    // ============= ÉTAPE 1: CRÉATION ET PUSH VERS GITHUB =============
-    console.log('📦 Starting GitHub repository creation and push...');
-    
     const baseTitle = session.title?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'site';
     const uniqueId = sessionId.slice(0, 8);
-    const repoName = session.github_repo_name || `${baseTitle}-${uniqueId}`;
-    
-    let githubRepoUrl = session.github_repo_url;
-    
-    // Récupérer l'utilisateur GitHub pour connaître le owner
-    const userResponse = await fetch('https://api.github.com/user', {
-      headers: {
-        'Authorization': `Bearer ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json',
-      },
-    });
-    
-    if (!userResponse.ok) {
-      throw new Error('Failed to get GitHub user info');
-    }
-    
-    const githubUser = await userResponse.json();
-    const owner = githubUser.login;
-    
-    // Toujours essayer de créer le repo (si il existe déjà, on aura un 422)
-    console.log('🔨 Attempting to create GitHub repository:', repoName);
-    
-    const createRepoResponse = await fetch('https://api.github.com/user/repos', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        name: repoName,
-        description: `Website: ${session.title || 'Sans titre'}`,
-        private: false,
-        auto_init: false,
-      }),
-    });
-    
-    if (createRepoResponse.ok) {
-      const repoData = await createRepoResponse.json();
-      githubRepoUrl = repoData.html_url;
-      console.log('✅ New GitHub repository created:', githubRepoUrl);
-    } else if (createRepoResponse.status === 422) {
-      // Le repo existe déjà, c'est OK, on va juste pusher dessus
-      githubRepoUrl = `https://github.com/${owner}/${repoName}`;
-      console.log('📂 Repository already exists, will update it:', githubRepoUrl);
-    } else {
-      const errorText = await createRepoResponse.text();
-      console.error('❌ Failed to create GitHub repo:', errorText);
-      throw new Error(`Failed to create GitHub repository: ${errorText}`);
-    }
-    
-    console.log('📤 Pushing files to GitHub...');
-    
-    // Créer un commit avec tous les fichiers
-    // 1. Obtenir la référence de la branche main (ou créer si nécessaire)
-    let sha: string | null = null;
-    let isEmptyRepo = false;
-    
-    try {
-      const refResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repoName}/git/refs/heads/main`,
-        {
-          headers: {
-            'Authorization': `Bearer ${GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github.v3+json',
-          },
-        }
-      );
-      
-      if (refResponse.ok) {
-        const refData = await refResponse.json();
-        sha = refData.object.sha;
-      } else if (refResponse.status === 404) {
-        console.log('Branch main does not exist yet - empty repository');
-        isEmptyRepo = true;
-      }
-    } catch (e) {
-      console.log('Error checking branch, assuming empty repository:', e);
-      isEmptyRepo = true;
-    }
-    
-    // 2. Créer les blobs pour chaque fichier
-    const blobs: Array<{ path: string; mode: string; type: string; sha: string }> = [];
-    
-    for (const file of projectFiles) {
-      const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
-      
-      let content: string;
-      if (file.content.startsWith('data:')) {
-        // Fichier binaire (image, etc.)
-        content = file.content.split(',')[1]; // Garder en base64
-      } else {
-        // Fichier texte
-        content = btoa(unescape(encodeURIComponent(file.content))); // Encoder en base64
-      }
-      
-      const blobResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repoName}/git/blobs`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            content: content,
-            encoding: 'base64',
-          }),
-        }
-      );
-      
-      if (!blobResponse.ok) {
-        const errorText = await blobResponse.text();
-        console.error(`❌ Failed to create blob for ${fileName}:`, errorText);
-        continue;
-      }
-      
-      const blobData = await blobResponse.json();
-      blobs.push({
-        path: fileName,
-        mode: '100644',
-        type: 'blob',
-        sha: blobData.sha,
-      });
-    }
-    
-    // 3. Créer un tree avec tous les blobs
-    const createTreeBody: any = {
-      tree: blobs,
-    };
-    
-    // Ne pas utiliser base_tree si le repo est vide
-    if (sha && !isEmptyRepo) {
-      createTreeBody.base_tree = sha;
-    }
-    
-    const treeResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repoName}/git/trees`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${GITHUB_TOKEN}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(createTreeBody),
-      }
-    );
-    
-    if (!treeResponse.ok) {
-      const errorText = await treeResponse.text();
-      throw new Error(`Failed to create tree: ${errorText}`);
-    }
-    
-    const treeData = await treeResponse.json();
-    
-    // 4. Créer un commit
-    const commitBody: any = {
-      message: `Deploy: ${new Date().toISOString()}`,
-      tree: treeData.sha,
-    };
-    
-    // Ne pas utiliser parents si le repo est vide (premier commit)
-    if (sha && !isEmptyRepo) {
-      commitBody.parents = [sha];
-    }
-    
-    const commitResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repoName}/git/commits`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${GITHUB_TOKEN}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(commitBody),
-      }
-    );
-    
-    if (!commitResponse.ok) {
-      const errorText = await commitResponse.text();
-      throw new Error(`Failed to create commit: ${errorText}`);
-    }
-    
-    const commitData = await commitResponse.json();
-    
-    // 5. Créer ou mettre à jour la référence main
-    let updateRefResponse;
-    
-    if (isEmptyRepo || !sha) {
-      // Créer la référence pour la première fois
-      updateRefResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repoName}/git/refs`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ref: 'refs/heads/main',
-            sha: commitData.sha
-          }),
-        }
-      );
-    } else {
-      // Mettre à jour la référence existante
-      updateRefResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repoName}/git/refs/heads/main`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            sha: commitData.sha,
-            force: true
-          }),
-        }
-      );
-    }
-    
-    if (!updateRefResponse.ok) {
-      const errorText = await updateRefResponse.text();
-      throw new Error(`Failed to update ref: ${errorText}`);
-    }
-    
-    console.log('✅ Files pushed to GitHub successfully');
-    
-    // Sauvegarder les infos GitHub dans la session
-    await supabaseAdmin
-      .from('build_sessions')
-      .update({
-        github_repo_name: repoName,
-        github_repo_url: githubRepoUrl,
-      })
-      .eq('id', sessionId);
-    
-    // ============= ÉTAPE 2: CONNEXION GITHUB → CLOUDFLARE =============
-    console.log('🚀 Connecting GitHub repository to Cloudflare Pages...');
-    
     const projectName = session.cloudflare_project_name || `${baseTitle}-${uniqueId}`;
     
-    // Vérifier si le projet Cloudflare existe
+    console.log('🚀 Deploying directly to Cloudflare Pages project:', projectName);
+    
+    // Vérifier si le projet existe
     const checkProjectResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}`,
       {
@@ -366,11 +111,9 @@ serve(async (req) => {
       }
     );
     
-    let deploymentUrl: string;
-    
+    // Créer le projet s'il n'existe pas
     if (!checkProjectResponse.ok && checkProjectResponse.status === 404) {
-      // Projet n'existe pas, le créer avec connexion GitHub
-      console.log('📝 Creating new Cloudflare Pages project connected to GitHub...');
+      console.log('📝 Creating new Cloudflare Pages project...');
       
       const createProjectResponse = await fetch(
         `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects`,
@@ -383,21 +126,6 @@ serve(async (req) => {
           body: JSON.stringify({
             name: projectName,
             production_branch: 'main',
-            source: {
-              type: 'github',
-              config: {
-                owner: owner,
-                repo_name: repoName,
-                production_branch: 'main',
-                pr_comments_enabled: false,
-                deployments_enabled: true,
-              },
-            },
-            build_config: {
-              build_command: '',
-              destination_dir: '/',
-              root_dir: '/',
-            },
           }),
         }
       );
@@ -408,38 +136,58 @@ serve(async (req) => {
         throw new Error(`Failed to create Cloudflare Pages project: ${createError}`);
       }
       
-      const projectData = await createProjectResponse.json();
-      deploymentUrl = `https://${projectName}.pages.dev`;
-      console.log('✅ Cloudflare Pages project created and connected to GitHub');
-    } else {
-      // Projet existe, déclencher un nouveau déploiement depuis GitHub
-      console.log('🔄 Triggering deployment from GitHub...');
+      console.log('✅ Cloudflare Pages project created');
+    }
+
+    // Préparer les fichiers pour l'upload direct
+    console.log('📤 Uploading files to Cloudflare Pages...');
+    
+    const formData = new FormData();
+    
+    // Ajouter chaque fichier au FormData
+    for (const file of projectFiles) {
+      const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
       
-      const deployResponse = await fetch(
-        `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            branch: 'main',
-          }),
+      let blob: Blob;
+      if (file.content.startsWith('data:')) {
+        // Fichier binaire (image, etc.)
+        const base64Data = file.content.split(',')[1];
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
         }
-      );
-      
-      if (!deployResponse.ok) {
-        const deployError = await deployResponse.text();
-        console.error('❌ Failed to trigger deployment:', deployError);
-        throw new Error(`Failed to trigger deployment: ${deployError}`);
+        blob = new Blob([bytes], { type: file.type || 'application/octet-stream' });
+      } else {
+        // Fichier texte
+        blob = new Blob([file.content], { type: file.type || 'text/plain' });
       }
       
-      const deployData = await deployResponse.json();
-      deploymentUrl = deployData.result?.url || `https://${projectName}.pages.dev`;
-      console.log('✅ Deployment triggered from GitHub');
+      formData.append(fileName, blob, fileName);
     }
     
+    // Créer un déploiement direct sur Cloudflare
+    const deployResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+        },
+        body: formData,
+      }
+    );
+    
+    if (!deployResponse.ok) {
+      const deployError = await deployResponse.text();
+      console.error('❌ Failed to deploy:', deployError);
+      throw new Error(`Failed to deploy to Cloudflare Pages: ${deployError}`);
+    }
+    
+    const deployData = await deployResponse.json();
+    const deploymentUrl = deployData.result?.url || `https://${projectName}.pages.dev`;
+    
+    console.log('✅ Deployed to Cloudflare:', deploymentUrl);
 
     // Update session
     const { error: updateError } = await supabaseAdmin
