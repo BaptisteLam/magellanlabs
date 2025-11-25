@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Eye, ExternalLink } from 'lucide-react';
 import { InteractivePreview } from '@/components/InteractivePreview';
 import { Sandpack } from '@codesandbox/sandpack-react';
+import { useSubdomain } from '@/hooks/useSubdomain';
 
 interface ProjectData {
   id: string;
@@ -15,7 +16,12 @@ interface ProjectData {
 }
 
 export default function PublicProject() {
-  const { subdomain } = useParams<{ subdomain: string }>();
+  const { subdomain: subdomainParam } = useParams<{ subdomain: string }>();
+  const subdomainFromUrl = useSubdomain();
+  
+  // Utiliser le subdomain depuis l'URL hostname si disponible, sinon depuis les params
+  const subdomain = subdomainFromUrl || subdomainParam;
+  
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);

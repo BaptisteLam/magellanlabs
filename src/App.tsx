@@ -22,8 +22,47 @@ import ScrollToTop from "./components/ScrollToTop";
 import { SettingsCenter } from "./components/settings/SettingsCenter";
 import { useThemeStore } from "./stores/themeStore";
 import { useEffect } from "react";
+import { useSubdomain } from "./hooks/useSubdomain";
 
 const queryClient = new QueryClient();
+
+function AppContent() {
+  const subdomain = useSubdomain();
+  
+  // Si on est sur un sous-domaine, afficher directement le projet publié
+  if (subdomain) {
+    return <PublicProject />;
+  }
+  
+  // Sinon, afficher le SaaS normal
+  return (
+    <>
+      <SettingsCenter />
+      <ScrollToTop />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/builder" element={<AIBuilder />} />
+        <Route path="/builder/:sessionId" element={<BuilderSession />} />
+        <Route path="/builder/app/:sessionId" element={<BuilderAppSession />} />
+        <Route path="/builder/mobile/:sessionId" element={<BuilderSessionMobile />} />
+        <Route path="/preview/:sessionId" element={<SessionPreview />} />
+        <Route path="/p/:subdomain" element={<PublicProject />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/tarifs" element={<Pricing />} />
+        <Route path="/politique-de-confidentialite" element={<PrivacyPolicy />} />
+        <Route path="/cgv" element={<TermsOfService />} />
+        <Route path="/home" element={<Navigate to="/" replace />} />
+        <Route path="/careers" element={<Navigate to="/contact" replace />} />
+        <Route path="/nous-rejoindre" element={<Navigate to="/contact" replace />} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+}
 
 function App() {
   const { isDark } = useThemeStore();
@@ -42,29 +81,7 @@ function App() {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <SettingsCenter />
-          <ScrollToTop />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/builder" element={<AIBuilder />} />
-            <Route path="/builder/:sessionId" element={<BuilderSession />} />
-          <Route path="/builder/app/:sessionId" element={<BuilderAppSession />} />
-          <Route path="/builder/mobile/:sessionId" element={<BuilderSessionMobile />} />
-          <Route path="/preview/:sessionId" element={<SessionPreview />} />
-          <Route path="/p/:subdomain" element={<PublicProject />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/tarifs" element={<Pricing />} />
-            <Route path="/politique-de-confidentialite" element={<PrivacyPolicy />} />
-            <Route path="/cgv" element={<TermsOfService />} />
-            <Route path="/home" element={<Navigate to="/" replace />} />
-            <Route path="/careers" element={<Navigate to="/contact" replace />} />
-            <Route path="/nous-rejoindre" element={<Navigate to="/contact" replace />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AppContent />
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
