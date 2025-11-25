@@ -6,10 +6,11 @@ interface CollapsedAiTasksProps {
   events: GenerationEvent[];
   isDark?: boolean;
   isLoading?: boolean;
+  autoExpand?: boolean;
 }
 
-export function CollapsedAiTasks({ events, isDark = false, isLoading = false }: CollapsedAiTasksProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+export function CollapsedAiTasks({ events, isDark = false, isLoading = false, autoExpand = false }: CollapsedAiTasksProps) {
+  const [isExpanded, setIsExpanded] = useState(autoExpand);
 
   // Compter les edits
   const editCount = events.filter(e => e.type === 'edit').length;
@@ -20,16 +21,18 @@ export function CollapsedAiTasks({ events, isDark = false, isLoading = false }: 
 
   return (
     <div className="relative flex w-full flex-col">
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="absolute right-0 top-0 z-10 flex h-6 items-center justify-center px-2 py-1 text-xs font-normal transition-all duration-200 ease-out hover:opacity-70"
-        aria-label={isExpanded ? "Collapse tool uses" : "Expand tool uses"}
-        style={{
-          color: isDark ? '#94a3b8' : '#64748b'
-        }}
-      >
-        {isExpanded ? 'masquer' : 'voir'}
-      </button>
+      {!autoExpand && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="absolute right-0 top-0 z-10 flex h-6 items-center justify-center px-2 py-1 text-xs font-normal transition-all duration-200 ease-out hover:opacity-70"
+          aria-label={isExpanded ? "Collapse tool uses" : "Expand tool uses"}
+          style={{
+            color: isDark ? '#94a3b8' : '#64748b'
+          }}
+        >
+          {isExpanded ? 'masquer' : 'voir'}
+        </button>
+      )}
       
       <div 
         className="relative overflow-hidden transition-all duration-300 ease-in-out"
