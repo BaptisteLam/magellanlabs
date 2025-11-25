@@ -97,11 +97,9 @@ export function CustomIframePreview({
             // Afficher message d'erreur
             const errorDiv = document.createElement('div');
             errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:#000;padding:2rem;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:999999;max-width:400px;text-align:center;font-family:system-ui;';
-            errorDiv.innerHTML = \`
-              <h3 style="margin:0 0 1rem 0;font-size:1.25rem;color:#dc2626;">🚫 Lien externe bloqué</h3>
-              <p style="margin:0 0 1rem 0;color:#666;">Les liens externes sont désactivés dans la preview.</p>
-              <button onclick="this.parentElement.remove()" style="background:rgb(3,165,192);color:#fff;border:none;padding:0.5rem 1.5rem;border-radius:9999px;cursor:pointer;font-size:1rem;font-weight:500;">Fermer</button>
-            \`;
+            errorDiv.innerHTML = '<h3 style="margin:0 0 1rem 0;font-size:1.25rem;color:#dc2626;">🚫 Lien externe bloqué</h3>' +
+              '<p style="margin:0 0 1rem 0;color:#666;">Les liens externes sont désactivés dans la preview.</p>' +
+              '<button onclick="this.parentElement.remove()" style="background:rgb(3,165,192);color:#fff;border:none;padding:0.5rem 1.5rem;border-radius:9999px;cursor:pointer;font-size:1rem;font-weight:500;">Fermer</button>';
             document.body.appendChild(errorDiv);
             setTimeout(() => errorDiv.remove(), 3000);
             return false;
@@ -198,51 +196,45 @@ export function CustomIframePreview({
         const rect = target.getBoundingClientRect();
         const overlay = document.createElement('div');
         overlay.id = '__inspect_overlay__';
-        overlay.style.cssText = \`
-          position: fixed;
-          left: \${rect.left}px;
-          top: \${rect.top}px;
-          width: \${rect.width}px;
-          height: \${rect.height}px;
-          border: 2px solid #03A5C0;
-          border-radius: 4px;
-          background: rgba(3, 165, 192, 0.05);
-          box-shadow: 0 0 0 4px rgba(3, 165, 192, 0.2);
-          pointer-events: none;
-          z-index: 999998;
-          transition: all 150ms ease-in-out;
-          animation: inspectPulse 2s ease-in-out infinite;
-        \`;
+        overlay.style.cssText = 'position: fixed;' +
+          'left: ' + rect.left + 'px;' +
+          'top: ' + rect.top + 'px;' +
+          'width: ' + rect.width + 'px;' +
+          'height: ' + rect.height + 'px;' +
+          'border: 2px solid #03A5C0;' +
+          'border-radius: 4px;' +
+          'background: rgba(3, 165, 192, 0.05);' +
+          'box-shadow: 0 0 0 4px rgba(3, 165, 192, 0.2);' +
+          'pointer-events: none;' +
+          'z-index: 999998;' +
+          'transition: all 150ms ease-in-out;' +
+          'animation: inspectPulse 2s ease-in-out infinite;';
         
         // Créer le label du tag
         const label = document.createElement('div');
         label.id = '__inspect_label__';
         label.textContent = target.tagName.toLowerCase();
-        label.style.cssText = \`
-          position: fixed;
-          left: \${rect.left}px;
-          top: \${rect.top - 24}px;
-          background: #03A5C0;
-          color: white;
-          padding: 2px 8px;
-          border-radius: 4px;
-          font-size: 11px;
-          font-family: monospace;
-          font-weight: 600;
-          pointer-events: none;
-          z-index: 999999;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        \`;
+        label.style.cssText = 'position: fixed;' +
+          'left: ' + rect.left + 'px;' +
+          'top: ' + (rect.top - 24) + 'px;' +
+          'background: #03A5C0;' +
+          'color: white;' +
+          'padding: 2px 8px;' +
+          'border-radius: 4px;' +
+          'font-size: 11px;' +
+          'font-family: monospace;' +
+          'font-weight: 600;' +
+          'pointer-events: none;' +
+          'z-index: 999999;' +
+          'box-shadow: 0 2px 8px rgba(0,0,0,0.2);';
         
         // Ajouter animation de pulsation
         const style = document.createElement('style');
         style.id = '__inspect_animation__';
-        style.textContent = \`
-          @keyframes inspectPulse {
-            0%, 100% { box-shadow: 0 0 0 4px rgba(3, 165, 192, 0.2); }
-            50% { box-shadow: 0 0 0 8px rgba(3, 165, 192, 0.3); }
-          }
-        \`;
+        style.textContent = '@keyframes inspectPulse {' +
+          '0%, 100% { box-shadow: 0 0 0 4px rgba(3, 165, 192, 0.2); }' +
+          '50% { box-shadow: 0 0 0 8px rgba(3, 165, 192, 0.3); }' +
+          '}';
         if (!document.getElementById('__inspect_animation__')) {
           document.head.appendChild(style);
         }
@@ -349,7 +341,9 @@ export function CustomIframePreview({
     // ✅ AJOUTER LE JAVASCRIPT INLINE AVANT LE SCRIPT D'INSPECTION
     if (jsFiles) {
       console.log('✅ Injection JS inline dans <body>');
-      const scriptTag = `<script>${jsFiles}</script>`;
+      // Échapper les balises </script> dans le code JavaScript pour éviter la fermeture prématurée
+      const escapedJS = jsFiles.replace(/<\/script>/gi, '<\\/script>');
+      const scriptTag = `<script>${escapedJS}</script>`;
       if (finalHTML.includes('</body>')) {
         finalHTML = finalHTML.replace('</body>', `${scriptTag}${inspectionScript}</body>`);
       } else {
