@@ -406,14 +406,15 @@ export default function BuilderSession() {
   };
 
   // Fonction pour capturer le thumbnail UNIQUEMENT après une génération
-  const captureThumbnail = async () => {
-    if (!sessionId || !generatedHtml) return;
+  const captureThumbnail = async (htmlContent?: string) => {
+    const contentToCapture = htmlContent || generatedHtml;
+    if (!sessionId || !contentToCapture) return;
 
     try {
       console.log('📸 Capture du thumbnail après génération...');
       
       // Utiliser notre helper pour capturer le thumbnail
-      const blob = await capturePreviewThumbnail(generatedHtml);
+      const blob = await capturePreviewThumbnail(contentToCapture);
       
       if (blob) {
         // Uploader vers Supabase Storage
@@ -1023,7 +1024,7 @@ export default function BuilderSession() {
 
           // 📸 Capturer le thumbnail UNIQUEMENT après une génération réussie
           console.log('📸 Capture du thumbnail après génération...');
-          await captureThumbnail();
+          await captureThumbnail(updatedFiles['index.html'] || updatedFiles['app.html']);
 
           // ✅ MAINTENANT on peut appliquer les fichiers à la preview
           console.log('📦 Application des fichiers à la preview:', Object.keys(updatedFiles));

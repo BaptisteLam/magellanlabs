@@ -398,17 +398,17 @@ export default function BuilderSession() {
   };
 
   // Fonction pour capturer le thumbnail UNIQUEMENT après une génération
-  const captureThumbnail = async () => {
+  const captureThumbnail = async (htmlContent?: string) => {
     if (!sessionId) return;
 
     try {
       console.log('📸 Capture du thumbnail après génération...');
       
-      const htmlContent = generatedHtml || projectFiles['index.html'] || '';
+      const contentToCapture = htmlContent || generatedHtml || projectFiles['index.html'] || '';
       
-      if (htmlContent) {
+      if (contentToCapture) {
         // Utiliser notre helper pour capturer le thumbnail
-        const blob = await capturePreviewThumbnail(htmlContent);
+        const blob = await capturePreviewThumbnail(contentToCapture);
         
         if (blob) {
           // Uploader vers Supabase Storage
@@ -971,7 +971,7 @@ export default function BuilderSession() {
 
           // 📸 Capturer le thumbnail UNIQUEMENT après une génération réussie
           console.log('📸 Capture du thumbnail après génération...');
-          await captureThumbnail();
+          await captureThumbnail(updatedFiles['index.html'] || updatedFiles['app.html'] || Object.values(updatedFiles).find(f => typeof f === 'string' && f.includes('<html')));
 
           // ✅ MAINTENANT on peut appliquer les fichiers à la preview
           console.log('📦 Application des fichiers à la preview:', Object.keys(updatedFiles));
