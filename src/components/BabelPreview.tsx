@@ -343,117 +343,187 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspe
       console.error('Unhandled promise rejection:', event.reason);
     });
     
-    // Script d'inspection pour le mode édition visuelle
-    let inspectMode = false;
-    let currentHighlight = null;
-    
-    window.addEventListener('message', (e) => {
-      if (e.data.type === 'toggle-inspect') {
-        inspectMode = e.data.enabled;
-        if (inspectMode) {
-          activateInspection();
-        } else {
-          deactivateInspection();
-        }
-      }
-    });
-    
-    function activateInspection() {
-      document.body.style.cursor = 'crosshair';
-      document.addEventListener('click', handleElementClick, true);
-      document.addEventListener('mouseover', highlightElement, true);
-      document.addEventListener('mouseout', removeHighlight, true);
-    }
-    
-    function deactivateInspection() {
-      document.body.style.cursor = '';
-      document.removeEventListener('click', handleElementClick, true);
-      document.removeEventListener('mouseover', highlightElement, true);
-      document.removeEventListener('mouseout', removeHighlight, true);
-      removeHighlight();
-    }
-    
-    function highlightElement(e) {
-      if (!inspectMode) return;
-      e.stopPropagation();
-      const target = e.target;
-      if (target === document.body || target === document.documentElement) return;
-      
-      removeHighlight();
-      
-      const rect = target.getBoundingClientRect();
-      currentHighlight = document.createElement('div');
-      currentHighlight.style.cssText = \`
-        position: fixed;
-        pointer-events: none;
-        border: 2px solid rgb(3, 165, 192);
-        background: rgba(3, 165, 192, 0.1);
-        z-index: 999999;
-        left: \${rect.left}px;
-        top: \${rect.top}px;
-        width: \${rect.width}px;
-        height: \${rect.height}px;
-      \`;
-      document.body.appendChild(currentHighlight);
-    }
-    
-    function removeHighlight() {
-      if (currentHighlight) {
-        currentHighlight.remove();
-        currentHighlight = null;
-      }
-    }
-    
-    function handleElementClick(e) {
-      if (!inspectMode) return;
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const target = e.target;
-      if (target === document.body || target === document.documentElement) return;
-      
-      const rect = target.getBoundingClientRect();
-      const elementInfo = {
-        tagName: target.tagName,
-        textContent: target.textContent || '',
-        classList: Array.from(target.classList || []),
-        path: getElementPath(target),
-        innerHTML: target.innerHTML,
-        id: target.id || undefined,
-        boundingRect: {
-          left: rect.left,
-          top: rect.top,
-          width: rect.width,
-          height: rect.height,
-          bottom: rect.bottom,
-          right: rect.right
-        }
-      };
-      
-      window.parent.postMessage({
-        type: 'element-selected',
-        data: elementInfo
-      }, '*');
-    }
-    
-    function getElementPath(element) {
-      const path = [];
-      let current = element;
-      while (current && current !== document.body) {
-        let selector = current.tagName.toLowerCase();
-        if (current.id) {
-          selector += '#' + current.id;
-        } else if (current.className && typeof current.className === 'string') {
-          const classes = current.className.trim().split(/\\s+/);
-          if (classes.length > 0 && classes[0]) {
-            selector += '.' + classes.join('.');
+    // 🛡️ Script d'inspection pour le mode édition visuelle - ISOLÉ dans une IIFE
+    (function() {
+      'use strict';
+
+      try {
+        // Variables privées dans le scope de l'IIFE
+        let inspectMode = false;
+        let currentHighlight = null;
+
+        console.log('🔧 [Magellan Inspect - React] Script d\'inspection chargé et isolé');
+
+        window.addEventListener('message', (e) => {
+          try {
+            console.log('📨 [Magellan Inspect - React] Message reçu:', e.data);
+            if (e.data.type === 'toggle-inspect') {
+              console.log('🔍 [Magellan Inspect - React] Toggle:', e.data.enabled);
+              inspectMode = e.data.enabled;
+              if (inspectMode) {
+                console.log('✅ [Magellan Inspect - React] Activation');
+                activateInspection();
+              } else {
+                console.log('❌ [Magellan Inspect - React] Désactivation');
+                deactivateInspection();
+              }
+            }
+          } catch (err) {
+            console.error('🔴 [Magellan Inspect - React] Erreur message handler:', err);
+          }
+        });
+
+        function activateInspection() {
+          try {
+            console.log('🎯 [Magellan Inspect - React] activateInspection appelée');
+            if (document.body) {
+              document.body.style.cursor = 'crosshair';
+            }
+            document.addEventListener('click', handleElementClick, true);
+            document.addEventListener('mouseover', highlightElement, true);
+            document.addEventListener('mouseout', removeHighlight, true);
+            console.log('✅ [Magellan Inspect - React] Event listeners ajoutés');
+          } catch (err) {
+            console.error('🔴 [Magellan Inspect - React] Erreur activateInspection:', err);
           }
         }
-        path.unshift(selector);
-        current = current.parentElement;
+
+        function deactivateInspection() {
+          try {
+            if (document.body) {
+              document.body.style.cursor = '';
+            }
+            document.removeEventListener('click', handleElementClick, true);
+            document.removeEventListener('mouseover', highlightElement, true);
+            document.removeEventListener('mouseout', removeHighlight, true);
+            removeHighlight();
+          } catch (err) {
+            console.error('🔴 [Magellan Inspect - React] Erreur deactivateInspection:', err);
+          }
+        }
+
+        function highlightElement(e) {
+          try {
+            if (!inspectMode) return;
+            e.stopPropagation();
+            const target = e.target;
+            if (!target || target === document.body || target === document.documentElement) return;
+
+            removeHighlight();
+
+            const rect = target.getBoundingClientRect();
+            currentHighlight = document.createElement('div');
+            currentHighlight.style.cssText = \`
+              position: fixed;
+              pointer-events: none;
+              border: 2px solid rgb(3, 165, 192);
+              background: rgba(3, 165, 192, 0.1);
+              z-index: 999999;
+              left: \${rect.left}px;
+              top: \${rect.top}px;
+              width: \${rect.width}px;
+              height: \${rect.height}px;
+            \`;
+            if (document.body) {
+              document.body.appendChild(currentHighlight);
+            }
+          } catch (err) {
+            console.error('🔴 [Magellan Inspect - React] Erreur highlightElement:', err);
+          }
+        }
+
+        function removeHighlight() {
+          try {
+            if (currentHighlight) {
+              currentHighlight.remove();
+              currentHighlight = null;
+            }
+          } catch (err) {
+            console.error('🔴 [Magellan Inspect - React] Erreur removeHighlight:', err);
+          }
+        }
+
+        function handleElementClick(e) {
+          try {
+            if (!inspectMode) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const target = e.target;
+            if (!target || target === document.body || target === document.documentElement) return;
+
+            const rect = target.getBoundingClientRect();
+            const elementInfo = {
+              tagName: target.tagName,
+              textContent: target.textContent || '',
+              classList: Array.from(target.classList || []),
+              path: getElementPath(target),
+              innerHTML: target.innerHTML || '',
+              id: target.id || undefined,
+              boundingRect: {
+                left: rect.left,
+                top: rect.top,
+                width: rect.width,
+                height: rect.height,
+                bottom: rect.bottom,
+                right: rect.right
+              }
+            };
+
+            window.parent.postMessage({
+              type: 'element-selected',
+              data: elementInfo
+            }, '*');
+          } catch (err) {
+            console.error('🔴 [Magellan Inspect - React] Erreur handleElementClick:', err);
+          }
+        }
+
+        function getElementPath(element) {
+          try {
+            const path = [];
+            let current = element;
+            while (current && current !== document.body) {
+              let selector = current.tagName.toLowerCase();
+              if (current.id) {
+                selector += '#' + current.id;
+              } else if (current.className && typeof current.className === 'string') {
+                const classes = current.className.trim().split(/\\s+/);
+                if (classes.length > 0 && classes[0]) {
+                  selector += '.' + classes.join('.');
+                }
+              }
+              path.unshift(selector);
+              current = current.parentElement;
+            }
+            return path.join(' > ');
+          } catch (err) {
+            console.error('🔴 [Magellan Inspect - React] Erreur getElementPath:', err);
+            return 'unknown';
+          }
+        }
+
+        // 🏥 Health check
+        console.log('✅ [Magellan Inspect - React] Système initialisé avec succès');
+
+        // Notifier le parent
+        window.parent.postMessage({
+          type: 'inspect-system-ready',
+          ready: true
+        }, '*');
+
+      } catch (err) {
+        console.error('🔴 [Magellan Inspect - React] ERREUR CRITIQUE:', err);
+        try {
+          window.parent.postMessage({
+            type: 'inspect-system-error',
+            error: err.message
+          }, '*');
+        } catch (e) {
+          console.error('🔴 [Magellan Inspect - React] Impossible de notifier le parent:', e);
+        }
       }
-      return path.join(' > ');
-    }
+    })();
   </script>
 </head>
 <body>
