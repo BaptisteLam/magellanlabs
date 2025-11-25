@@ -1663,6 +1663,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                           sessionId={sessionId}
                           onTitleChange={setWebsiteTitle}
                           currentFavicon={currentFavicon}
+                          onFaviconChange={setCurrentFavicon}
                         />
                         <InteractivePreview 
                           projectFiles={projectFiles} 
