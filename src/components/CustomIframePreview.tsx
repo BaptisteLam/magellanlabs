@@ -322,9 +322,20 @@ export function CustomIframePreview({
     // Injecter CSS et JS dans le HTML
     let finalHTML = htmlContent;
     
+    // ❌ RETIRER TOUTES LES RÉFÉRENCES EXTERNES AUX FICHIERS CSS/JS
+    console.log('🗑️ Suppression des références externes CSS/JS');
+    
+    // Retirer les liens CSS externes
+    finalHTML = finalHTML.replace(/<link[^>]*href=["'][^"']*\.css["'][^>]*>/gi, '');
+    
+    // Retirer les scripts externes
+    finalHTML = finalHTML.replace(/<script[^>]*src=["'][^"']*\.js["'][^>]*><\/script>/gi, '');
+    
+    console.log('✅ Références externes supprimées');
+    
     // ✅ AJOUTER LE CSS DANS LE <HEAD>
     if (cssFiles) {
-      console.log('✅ Injection CSS dans <head>');
+      console.log('✅ Injection CSS inline dans <head>');
       const styleTag = `<style>${cssFiles}</style>`;
       if (finalHTML.includes('</head>')) {
         finalHTML = finalHTML.replace('</head>', `${styleTag}</head>`);
@@ -335,9 +346,9 @@ export function CustomIframePreview({
       console.warn('⚠️ Aucun CSS à injecter');
     }
     
-    // ✅ AJOUTER LE JAVASCRIPT AVANT LE SCRIPT D'INSPECTION
+    // ✅ AJOUTER LE JAVASCRIPT INLINE AVANT LE SCRIPT D'INSPECTION
     if (jsFiles) {
-      console.log('✅ Injection JS dans <body>');
+      console.log('✅ Injection JS inline dans <body>');
       const scriptTag = `<script>${jsFiles}</script>`;
       if (finalHTML.includes('</body>')) {
         finalHTML = finalHTML.replace('</body>', `${scriptTag}${inspectionScript}</body>`);
