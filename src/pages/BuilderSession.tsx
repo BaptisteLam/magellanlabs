@@ -1634,14 +1634,21 @@ export default function BuilderSession() {
                     isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
                       <GeneratingPreview />
                     ) : (
-                      <InteractivePreview 
-                        projectFiles={projectFiles} 
-                        isDark={isDark}
-                        inspectMode={inspectMode}
-                        onInspectModeChange={setInspectMode}
-                        projectType={projectType}
-                        onElementModify={async (prompt, elementInfo) => {
-                          const contextualPrompt = `Modifier l'élément suivant dans le code :
+                      <>
+                        <FakeUrlBar 
+                          projectTitle={websiteTitle || 'Mon Projet'} 
+                          isDark={isDark}
+                          sessionId={sessionId}
+                          onTitleChange={setWebsiteTitle}
+                        />
+                        <InteractivePreview 
+                          projectFiles={projectFiles} 
+                          isDark={isDark}
+                          inspectMode={inspectMode}
+                          onInspectModeChange={setInspectMode}
+                          projectType={projectType}
+                          onElementModify={async (prompt, elementInfo) => {
+                            const contextualPrompt = `Modifier l'élément suivant dans le code :
 
 Type: <${elementInfo.tagName.toLowerCase()}>
 ${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
@@ -1652,11 +1659,12 @@ Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textC
 Instruction: ${prompt}
 
 Ne modifie que cet élément spécifique, pas le reste du code.`;
-                          
-                          setInputValue(contextualPrompt);
-                          setTimeout(() => handleSubmit(), 100);
-                        }}
-                      />
+                            
+                            setInputValue(contextualPrompt);
+                            setTimeout(() => handleSubmit(), 100);
+                          }}
+                        />
+                      </>
                     )
                   ) : viewMode === 'analytics' ? (
                     <Analytics 
@@ -1677,14 +1685,21 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                     isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
                       <GeneratingPreview />
                     ) : (
-                      <InteractivePreview 
-                        projectFiles={projectFiles} 
-                        isDark={isDark}
-                        inspectMode={inspectMode}
-                        onInspectModeChange={setInspectMode}
-                        projectType={projectType}
-                        onElementModify={async (prompt, elementInfo) => {
-                          const contextualPrompt = `Modifier l'élément suivant dans le code :
+                      <>
+                        <FakeUrlBar 
+                          projectTitle={websiteTitle || 'Mon Projet'} 
+                          isDark={isDark}
+                          sessionId={sessionId}
+                          onTitleChange={setWebsiteTitle}
+                        />
+                        <InteractivePreview 
+                          projectFiles={projectFiles} 
+                          isDark={isDark}
+                          inspectMode={inspectMode}
+                          onInspectModeChange={setInspectMode}
+                          projectType={projectType}
+                          onElementModify={async (prompt, elementInfo) => {
+                            const contextualPrompt = `Modifier l'élément suivant dans le code :
 
 Type: <${elementInfo.tagName.toLowerCase()}>
 ${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
@@ -1695,44 +1710,44 @@ Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textC
 Instruction: ${prompt}
 
 Ne modifie que cet élément spécifique, pas le reste du code.`;
-                          
-                          // Envoyer directement à Claude sans afficher dans le chat
-                          if (!user) {
-                            navigate('/auth');
-                            return;
-                          }
-
-                          const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
-                            const keywords = prompt.toLowerCase().split(/\s+/);
-                            const scored = Object.entries(files).map(([path, content]) => {
-                              let score = 0;
-                              keywords.forEach(k => {
-                                if (path.toLowerCase().includes(k)) score += 50;
-                                if (content.toLowerCase().includes(k)) score += 10;
-                              });
-                              if (path.includes('index.html') || path.includes('App.tsx')) score += 100;
-                              return { path, content, score };
-                            });
                             
-                            return scored
-                              .sort((a, b) => b.score - a.score)
-                              .slice(0, 5);
-                          };
+                            // Envoyer directement à Claude sans afficher dans le chat
+                            if (!user) {
+                              navigate('/auth');
+                              return;
+                            }
 
-                          const relevantFilesArray = selectRelevantFiles(contextualPrompt, projectFiles);
-                          const chatHistory = messages.slice(-3).map(m => ({
-                            role: m.role,
-                            content: typeof m.content === 'string' ? m.content : '[message multimédia]'
-                          }));
+                            const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
+                              const keywords = prompt.toLowerCase().split(/\s+/);
+                              const scored = Object.entries(files).map(([path, content]) => {
+                                let score = 0;
+                                keywords.forEach(k => {
+                                  if (path.toLowerCase().includes(k)) score += 50;
+                                  if (content.toLowerCase().includes(k)) score += 10;
+                                });
+                                if (path.includes('index.html') || path.includes('App.tsx')) score += 100;
+                                return { path, content, score };
+                              });
+                              
+                              return scored
+                                .sort((a, b) => b.score - a.score)
+                                .slice(0, 5);
+                            };
 
-                          let assistantMessage = '';
-                          const updatedFiles = { ...projectFiles };
+                            const relevantFilesArray = selectRelevantFiles(contextualPrompt, projectFiles);
+                            const chatHistory = messages.slice(-3).map(m => ({
+                              role: m.role,
+                              content: typeof m.content === 'string' ? m.content : '[message multimédia]'
+                            }));
 
-                          setAiEvents([]);
-                          setGenerationEvents([]);
-                          
-                          // 🔒 Activer le mode "génération en cours" pour bloquer la preview
-                          setIsInitialGeneration(true);
+                            let assistantMessage = '';
+                            const updatedFiles = { ...projectFiles };
+
+                            setAiEvents([]);
+                            setGenerationEvents([]);
+                            
+                            // 🔒 Activer le mode "génération en cours" pour bloquer la preview
+                            setIsInitialGeneration(true);
                           isInitialGenerationRef.current = true;
 
                           const projectContext = projectType === 'website' 
@@ -1918,8 +1933,9 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                               }
                             }
                           );
-                        }}
-                      />
+                          }}
+                        />
+                      </>
                     )
                   ) : viewMode === 'analytics' ? (
                     <Analytics 
