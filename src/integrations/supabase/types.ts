@@ -127,6 +127,8 @@ export type Database = {
           description: string | null
           email: string
           id: string
+          tokens_quota: number | null
+          tokens_used: number | null
           updated_at: string | null
           username: string | null
         }
@@ -136,6 +138,8 @@ export type Database = {
           description?: string | null
           email: string
           id: string
+          tokens_quota?: number | null
+          tokens_used?: number | null
           updated_at?: string | null
           username?: string | null
         }
@@ -145,6 +149,8 @@ export type Database = {
           description?: string | null
           email?: string
           id?: string
+          tokens_quota?: number | null
+          tokens_used?: number | null
           updated_at?: string | null
           username?: string | null
         }

@@ -27,6 +27,7 @@ import AiTaskList from '@/components/chat/AiTaskList';
 import { SimpleAiEvents } from '@/components/chat/SimpleAiEvents';
 import { MessageActions } from '@/components/chat/MessageActions';
 import html2canvas from 'html2canvas';
+import { TokenCounter } from '@/components/TokenCounter';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -1254,6 +1255,8 @@ export default function BuilderSession() {
           >
             <Home className="w-4 h-4" />
           </Button>
+
+          <TokenCounter isDark={isDark} userId={user?.id} />
         </div>
 
         {/* Barre URL - repositionnée à gauche et rétrécie */}

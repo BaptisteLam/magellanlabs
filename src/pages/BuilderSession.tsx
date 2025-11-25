@@ -27,6 +27,7 @@ import AiTaskList from '@/components/chat/AiTaskList';
 import { SimpleAiEvents } from '@/components/chat/SimpleAiEvents';
 import { MessageActions } from '@/components/chat/MessageActions';
 import html2canvas from 'html2canvas';
+import { TokenCounter } from '@/components/TokenCounter';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -1252,6 +1253,8 @@ export default function BuilderSession() {
           >
             <Home className="w-4 h-4 transition-colors" style={{ color: isDark ? '#fff' : '#9CA3AF' }} onMouseEnter={(e) => e.currentTarget.style.color = '#03A5C0'} onMouseLeave={(e) => e.currentTarget.style.color = isDark ? '#fff' : '#9CA3AF'} />
           </button>
+
+          <TokenCounter isDark={isDark} userId={user?.id} />
         </div>
 
         {/* Input caché pour le favicon */}
