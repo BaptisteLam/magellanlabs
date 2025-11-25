@@ -18,6 +18,10 @@ export function CustomIframePreview({
   const [currentFile, setCurrentFile] = useState<string>('index.html');
   const [reloadKey, setReloadKey] = useState(0);
   const [iframeReady, setIframeReady] = useState(false);
+  
+  // Gestion de l'historique de navigation
+  const [navigationHistory, setNavigationHistory] = useState<string[]>(['index.html']);
+  const [navigationIndex, setNavigationIndex] = useState(0);
 
   // Générer le HTML complet avec script d'inspection intégré
   const generatedHTML = useMemo(() => {
@@ -432,11 +436,42 @@ export function CustomIframePreview({
         );
         
         if (fileExists) {
+          // Ajouter à l'historique
+          setNavigationHistory(prev => {
+            const newHistory = prev.slice(0, navigationIndex + 1);
+            return [...newHistory, filename];
+          });
+          setNavigationIndex(prev => prev + 1);
           setCurrentFile(filename);
         } else {
           console.error('❌ Fichier non trouvé:', filename);
           // Afficher la page 404
+          setNavigationHistory(prev => {
+            const newHistory = prev.slice(0, navigationIndex + 1);
+            return [...newHistory, '__404__'];
+          });
+          setNavigationIndex(prev => prev + 1);
           setCurrentFile('__404__');
+        }
+      }
+      
+      // Gérer la navigation arrière
+      if (event.data.type === 'navigate-back') {
+        console.log('⬅️ Navigation arrière');
+        if (navigationIndex > 0) {
+          const newIndex = navigationIndex - 1;
+          setNavigationIndex(newIndex);
+          setCurrentFile(navigationHistory[newIndex]);
+        }
+      }
+      
+      // Gérer la navigation avant
+      if (event.data.type === 'navigate-forward') {
+        console.log('➡️ Navigation avant');
+        if (navigationIndex < navigationHistory.length - 1) {
+          const newIndex = navigationIndex + 1;
+          setNavigationIndex(newIndex);
+          setCurrentFile(navigationHistory[newIndex]);
         }
       }
       
@@ -449,7 +484,19 @@ export function CustomIframePreview({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onElementSelect, projectFiles]);
+  }, [onElementSelect, projectFiles, navigationIndex, navigationHistory]);
+  
+  // Envoyer l'état de navigation au parent
+  useEffect(() => {
+    const canGoBack = navigationIndex > 0;
+    const canGoForward = navigationIndex < navigationHistory.length - 1;
+    
+    window.parent.postMessage({
+      type: 'navigation-state',
+      canGoBack,
+      canGoForward
+    }, '*');
+  }, [navigationIndex, navigationHistory]);
 
   // Fonction pour envoyer le mode inspect avec retry intelligent et backoff exponentiel
   const sendInspectModeToIframe = useCallback((retryCount = 0, maxRetries = 5) => {
