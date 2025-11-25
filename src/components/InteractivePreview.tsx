@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { HybridPreview } from './HybridPreview';
-import { FloatingEditBar } from './FloatingEditBar';
+import { VisualEditToolbar } from './VisualEditToolbar';
 
 interface InteractivePreviewProps {
   projectFiles: Record<string, string>;
@@ -76,8 +76,8 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
         projectType={projectType}
       />
 
-      {/* Barre d'édition flottante */}
-      <FloatingEditBar
+      {/* Barre d'édition visuelle avancée */}
+      <VisualEditToolbar
         isOpen={showEditDialog}
         onClose={() => {
           setShowEditDialog(false);
@@ -85,6 +85,21 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
         }}
         elementInfo={selectedElement}
         onModify={handleModify}
+        onDirectEdit={(action, value) => {
+          // Pour l'instant, on convertit les actions directes en prompts
+          // Dans une version future, on pourrait appliquer les changements directement
+          const prompts = {
+            color: `Changer la couleur en ${value}`,
+            font: `Modifier la police de caractères`,
+            edit: `Rendre ce texte éditable`,
+            delete: `Supprimer cet élément`
+          };
+          if (selectedElement && onElementModify) {
+            onElementModify(prompts[action], selectedElement);
+          }
+          setShowEditDialog(false);
+          setSelectedElement(null);
+        }}
       />
     </div>
   );

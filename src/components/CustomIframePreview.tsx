@@ -150,6 +150,7 @@ export function CustomIframePreview({
         document.addEventListener('click', handleElementClick, true);
         document.addEventListener('mouseover', highlightElement, true);
         document.addEventListener('mouseout', removeHighlight, true);
+        showAllOutlines();
         console.log('✅ Event listeners ajoutés');
       }
       
@@ -158,7 +159,27 @@ export function CustomIframePreview({
         document.removeEventListener('click', handleElementClick, true);
         document.removeEventListener('mouseover', highlightElement, true);
         document.removeEventListener('mouseout', removeHighlight, true);
+        hideAllOutlines();
         removeHighlight();
+      }
+      
+      function showAllOutlines() {
+        const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
+        document.querySelectorAll(selectableTags.join(',')).forEach(el => {
+          if (el !== document.body && el !== document.documentElement) {
+            el.style.outline = '1px dashed rgba(3, 165, 192, 0.3)';
+            el.style.outlineOffset = '2px';
+            el.setAttribute('data-inspectable', 'true');
+          }
+        });
+      }
+      
+      function hideAllOutlines() {
+        document.querySelectorAll('[data-inspectable]').forEach(el => {
+          el.style.outline = '';
+          el.style.outlineOffset = '';
+          el.removeAttribute('data-inspectable');
+        });
       }
       
       function highlightElement(e) {
@@ -173,7 +194,7 @@ export function CustomIframePreview({
         
         removeHighlight();
         
-        // Créer un overlay au lieu d'un outline
+        // Créer un overlay avec effet de pulsation
         const rect = target.getBoundingClientRect();
         const overlay = document.createElement('div');
         overlay.id = '__inspect_overlay__';
@@ -185,12 +206,49 @@ export function CustomIframePreview({
           height: \${rect.height}px;
           border: 2px solid #03A5C0;
           border-radius: 4px;
+          background: rgba(3, 165, 192, 0.05);
           box-shadow: 0 0 0 4px rgba(3, 165, 192, 0.2);
           pointer-events: none;
-          z-index: 999999;
+          z-index: 999998;
           transition: all 150ms ease-in-out;
+          animation: inspectPulse 2s ease-in-out infinite;
         \`;
+        
+        // Créer le label du tag
+        const label = document.createElement('div');
+        label.id = '__inspect_label__';
+        label.textContent = target.tagName.toLowerCase();
+        label.style.cssText = \`
+          position: fixed;
+          left: \${rect.left}px;
+          top: \${rect.top - 24}px;
+          background: #03A5C0;
+          color: white;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 11px;
+          font-family: monospace;
+          font-weight: 600;
+          pointer-events: none;
+          z-index: 999999;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        \`;
+        
+        // Ajouter animation de pulsation
+        const style = document.createElement('style');
+        style.id = '__inspect_animation__';
+        style.textContent = \`
+          @keyframes inspectPulse {
+            0%, 100% { box-shadow: 0 0 0 4px rgba(3, 165, 192, 0.2); }
+            50% { box-shadow: 0 0 0 8px rgba(3, 165, 192, 0.3); }
+          }
+        \`;
+        if (!document.getElementById('__inspect_animation__')) {
+          document.head.appendChild(style);
+        }
+        
         document.body.appendChild(overlay);
+        document.body.appendChild(label);
         currentHighlight = target;
       }
       
@@ -198,6 +256,10 @@ export function CustomIframePreview({
         const overlay = document.getElementById('__inspect_overlay__');
         if (overlay) {
           overlay.remove();
+        }
+        const label = document.getElementById('__inspect_label__');
+        if (label) {
+          label.remove();
         }
         if (currentHighlight) {
           currentHighlight = null;
