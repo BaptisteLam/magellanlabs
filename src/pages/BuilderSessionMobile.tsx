@@ -123,17 +123,17 @@ export default function BuilderSession() {
     checkAuth();
   }, [sessionId]);
 
-  // Sauvegarde automatique périodique toutes les 30 secondes
-  useEffect(() => {
-    if (!sessionId || Object.keys(projectFiles).length === 0) return;
-    
-    const autoSaveInterval = setInterval(() => {
-      console.log('💾 Auto-sauvegarde périodique (mobile)...');
-      saveSession();
-    }, 30000); // 30 secondes
-
-    return () => clearInterval(autoSaveInterval);
-  }, [sessionId, projectFiles, messages, websiteTitle]);
+  // Auto-save désactivé
+  // useEffect(() => {
+  //   if (!sessionId || Object.keys(projectFiles).length === 0) return;
+  //   
+  //   const autoSaveInterval = setInterval(() => {
+  //     console.log('💾 Auto-sauvegarde périodique (mobile)...');
+  //     saveSession();
+  //   }, 30000); // 30 secondes
+  //
+  //   return () => clearInterval(autoSaveInterval);
+  // }, [sessionId, projectFiles, messages, websiteTitle]);
 
   // Sauvegarde avant fermeture de la page
   useEffect(() => {
