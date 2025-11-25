@@ -251,17 +251,24 @@ export default function BuilderSession() {
             // Support des deux formats: array ET object
             if (Array.isArray(projectFilesData) && projectFilesData.length > 0) {
               // Format array: [{path, content}, ...]
+              console.log('📦 Loading project files (array format):', projectFilesData.length, 'files');
               projectFilesData.forEach((file: any) => {
                 if (file.path && file.content) {
                   filesMap[file.path] = file.content;
+                  console.log('  ✅', file.path, ':', file.content.length, 'chars');
                 }
               });
             } else if (typeof projectFilesData === 'object' && Object.keys(projectFilesData).length > 0) {
               // Format object: {path: content, ...}
+              console.log('📦 Loading project files (object format):', Object.keys(projectFilesData).length, 'files');
               filesMap = projectFilesData;
+              Object.entries(filesMap).forEach(([path, content]) => {
+                console.log('  ✅', path, ':', content.length, 'chars');
+              });
             }
             
             if (Object.keys(filesMap).length > 0) {
+              console.log('✅ Total files loaded:', Object.keys(filesMap).length);
               setProjectFiles(filesMap);
               setGeneratedHtml(filesMap['index.html'] || '');
               
@@ -277,16 +284,18 @@ export default function BuilderSession() {
                 setSelectedFileContent(filesMap[firstFile]);
               }
             } else {
+              console.warn('⚠️ No files found in project_files');
               setProjectFiles({});
               setGeneratedHtml('');
             }
           } else {
             // Fallback: projet vide
+            console.warn('⚠️ project_files is null or undefined');
             setProjectFiles({});
             setGeneratedHtml('');
           }
         } catch (err) {
-          console.error('Erreur parsing project_files:', err);
+          console.error('❌ Error parsing project_files:', err);
           setProjectFiles({});
           setGeneratedHtml('');
         }
