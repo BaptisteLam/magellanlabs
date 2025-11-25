@@ -27,6 +27,7 @@ export type Database = {
           netlify_site_id: string | null
           project_files: Json | null
           project_type: string | null
+          public_url: string | null
           thumbnail_url: string | null
           title: string | null
           updated_at: string
@@ -45,6 +46,7 @@ export type Database = {
           netlify_site_id?: string | null
           project_files?: Json | null
           project_type?: string | null
+          public_url?: string | null
           thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
@@ -63,6 +65,7 @@ export type Database = {
           netlify_site_id?: string | null
           project_files?: Json | null
           project_type?: string | null
+          public_url?: string | null
           thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
@@ -189,6 +192,41 @@ export type Database = {
         }
         Relationships: []
       }
+      published_projects: {
+        Row: {
+          build_session_id: string
+          id: string
+          last_updated: string | null
+          published_at: string | null
+          subdomain: string
+          view_count: number | null
+        }
+        Insert: {
+          build_session_id: string
+          id?: string
+          last_updated?: string | null
+          published_at?: string | null
+          subdomain: string
+          view_count?: number | null
+        }
+        Update: {
+          build_session_id?: string
+          id?: string
+          last_updated?: string | null
+          published_at?: string | null
+          subdomain?: string
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "published_projects_build_session_id_fkey"
+            columns: ["build_session_id"]
+            isOneToOne: false
+            referencedRelation: "build_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       websites: {
         Row: {
           build_session_id: string | null
@@ -263,7 +301,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_view_count: {
+        Args: { project_subdomain: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

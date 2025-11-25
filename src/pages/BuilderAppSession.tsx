@@ -380,6 +380,24 @@ export default function BuilderSession() {
         .eq('id', sessionId);
 
       if (error) throw error;
+
+      // Publier automatiquement le projet sur builtbymagellan.com
+      if (websiteTitle && Object.keys(projectFiles).length > 0) {
+        try {
+          console.log('🚀 Publishing project to builtbymagellan.com...');
+          const { data: publishData, error: publishError } = await supabase.functions.invoke('publish-project', {
+            body: { sessionId }
+          });
+
+          if (publishError) {
+            console.error('❌ Error publishing project:', publishError);
+          } else if (publishData?.publicUrl) {
+            console.log('✅ Project published at:', publishData.publicUrl);
+          }
+        } catch (publishErr) {
+          console.error('❌ Error calling publish function:', publishErr);
+        }
+      }
     } catch (error) {
       console.error('Error saving session:', error);
     }
