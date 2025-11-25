@@ -618,7 +618,7 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspe
       
       return () => iframe.removeEventListener('load', onLoad);
     }
-  }, [generatedHTML, inspectMode, reloadKey]);
+  }, [generatedHTML, reloadKey]);
 
   if (!projectFiles || Object.keys(projectFiles).length === 0) {
     return (
