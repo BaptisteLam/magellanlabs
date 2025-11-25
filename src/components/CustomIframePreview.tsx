@@ -110,25 +110,31 @@ export function CustomIframePreview({
     </style>
     <script>
       (function() {
+        console.log('🚀 Magellan Inspect: Script chargé');
+        
         let isInspectMode = false;
         let hoveredElement = null;
         
-        console.log('🔍 Magellan Inspect: Script chargé');
-        
-        // Écouter les messages du parent
-        window.addEventListener('message', (e) => {
-          console.log('📨 Message reçu:', e.data);
-          if (e.data.type === 'toggle-inspect') {
-            isInspectMode = e.data.enabled;
-            console.log('🎯 Mode inspect:', isInspectMode);
-            
-            if (isInspectMode) {
-              activateInspection();
-            } else {
-              deactivateInspection();
+        function init() {
+          console.log('🔍 Magellan Inspect: Initialisation');
+          
+          // Écouter les messages du parent
+          window.addEventListener('message', (e) => {
+            console.log('📨 Message reçu dans iframe:', e.data);
+            if (e.data.type === 'toggle-inspect') {
+              isInspectMode = e.data.enabled;
+              console.log('🎯 Mode inspect changé:', isInspectMode);
+              
+              if (isInspectMode) {
+                activateInspection();
+              } else {
+                deactivateInspection();
+              }
             }
-          }
-        });
+          });
+          
+          console.log('✅ Event listener installé');
+        }
         
         function activateInspection() {
           console.log('✅ Activation du mode inspection');
@@ -148,8 +154,11 @@ export function CustomIframePreview({
         }
         
         function showAllOutlines() {
+          console.log('👁️ Affichage des outlines');
           const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
-          document.querySelectorAll(selectableTags.join(',')).forEach(el => {
+          const elements = document.querySelectorAll(selectableTags.join(','));
+          console.log('📊 Éléments trouvés:', elements.length);
+          elements.forEach(el => {
             if (el !== document.body && el !== document.documentElement) {
               el.classList.add('magellan-inspect-dashed');
             }
@@ -309,7 +318,12 @@ export function CustomIframePreview({
           }
         });
         
-        console.log('✅ Magellan Inspect: Prêt');
+        // Attendre que le DOM soit prêt avant d'initialiser
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', init);
+        } else {
+          init();
+        }
       })();
     </script>
     `;
