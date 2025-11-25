@@ -46,10 +46,17 @@ export default function PublicProject() {
         .from('published_projects')
         .select('build_session_id, view_count')
         .eq('subdomain', subdomain)
-        .single();
+        .maybeSingle();
 
-      if (publishedError || !publishedProject) {
-        console.error('❌ Project not found:', publishedError);
+      if (publishedError) {
+        console.error('❌ Database error:', publishedError);
+        setError('Erreur de base de données');
+        setLoading(false);
+        return;
+      }
+
+      if (!publishedProject) {
+        console.error('❌ Project not found for subdomain:', subdomain);
         setError('Projet non trouvé');
         setLoading(false);
         return;
@@ -60,10 +67,17 @@ export default function PublicProject() {
         .from('build_sessions')
         .select('id, title, project_files, project_type, created_at')
         .eq('id', publishedProject.build_session_id)
-        .single();
+        .maybeSingle();
 
-      if (sessionError || !session) {
-        console.error('❌ Session not found:', sessionError);
+      if (sessionError) {
+        console.error('❌ Database error:', sessionError);
+        setError('Erreur de base de données');
+        setLoading(false);
+        return;
+      }
+
+      if (!session) {
+        console.error('❌ Session not found');
         setError('Session non trouvée');
         setLoading(false);
         return;
