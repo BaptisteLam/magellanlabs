@@ -69,7 +69,7 @@ export function TokenCounter({ isDark, userId }: TokenCounterProps) {
 
   return (
     <div
-      className="flex items-center gap-2.5 px-4 py-2 rounded-full border-2"
+      className="flex items-center gap-2.5 px-4 py-2 rounded-full border"
       style={{
         backgroundColor: isDark ? 'rgba(3, 165, 192, 0.05)' : 'rgba(3, 165, 192, 0.05)',
         borderColor: '#03A5C0',
