@@ -64,8 +64,8 @@ export function TokenCounter({ isDark, userId }: TokenCounterProps) {
     return count.toString();
   };
 
-  const progressPercentage = (tokensUsed / tokensQuota) * 100;
   const tokensRemaining = tokensQuota - tokensUsed;
+  const progressPercentage = (tokensRemaining / tokensQuota) * 100;
 
   return (
     <div
