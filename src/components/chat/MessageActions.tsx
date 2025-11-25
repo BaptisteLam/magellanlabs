@@ -9,6 +9,7 @@ interface MessageActionsProps {
   isLatestMessage: boolean;
   tokenCount?: number;
   onRestore?: (messageIndex: number) => void;
+  onGoToPrevious?: () => void;
   isDark?: boolean;
 }
 
@@ -18,6 +19,7 @@ export function MessageActions({
   isLatestMessage, 
   tokenCount,
   onRestore,
+  onGoToPrevious,
   isDark 
 }: MessageActionsProps) {
   
@@ -36,27 +38,35 @@ export function MessageActions({
     }
   };
 
+  const handleGoBack = () => {
+    if (isLatestMessage && onGoToPrevious) {
+      onGoToPrevious();
+    } else if (!isLatestMessage && onRestore) {
+      onRestore(messageIndex);
+    }
+  };
+
   return (
     <div className="flex items-center gap-1 mt-2">
       <TooltipProvider>
-        {/* Bouton Retour en arrière - seulement si ce n'est pas le dernier message */}
-        {!isLatestMessage && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRestore}
-                className="h-3 w-3 p-0 hover:bg-[#03A5C0]/10"
-              >
-                <Undo2 className="h-2 w-2" style={{ color: '#03A5C0' }} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">Revenir à cette version</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
+        {/* Bouton Retour en arrière - toujours visible */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleGoBack}
+              className="h-3 w-3 p-0 hover:bg-[#03A5C0]/10"
+            >
+              <Undo2 className="h-2 w-2" style={{ color: '#03A5C0' }} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-xs">
+              {isLatestMessage ? 'Revenir à la version précédente' : 'Revenir à cette version'}
+            </p>
+          </TooltipContent>
+        </Tooltip>
 
         {/* Bouton Copier */}
         <Tooltip>
