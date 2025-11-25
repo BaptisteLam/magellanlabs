@@ -1558,6 +1558,46 @@ export default function BuilderSession() {
                                 sonnerToast.success('Version restaurée');
                               }
                             }}
+                            onGoToPrevious={async () => {
+                              const recapMessages = messages
+                                .map((m, i) => ({ message: m, index: i }))
+                                .filter(({ message }) => message.role === 'assistant' && message.metadata?.type === 'recap')
+                                .slice(-15);
+                              
+                              if (recapMessages.length < 2) {
+                                sonnerToast.error('Aucune version précédente disponible');
+                                return;
+                              }
+                              
+                              const previousRecap = recapMessages[recapMessages.length - 2];
+                              const targetMessage = previousRecap.message;
+                              
+                              if (!targetMessage.id || !sessionId) return;
+                              
+                              const { data: chatMessage } = await supabase
+                                .from('chat_messages')
+                                .select('metadata')
+                                .eq('id', targetMessage.id)
+                                .single();
+                              
+                              if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
+                                const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                                setProjectFiles(restoredFiles);
+                                
+                                const truncatedMessages = messages.slice(0, previousRecap.index + 1);
+                                setMessages(truncatedMessages);
+                                
+                                await supabase
+                                  .from('build_sessions')
+                                  .update({
+                                    project_files: convertFilesToArray(restoredFiles),
+                                    updated_at: new Date().toISOString()
+                                  })
+                                  .eq('id', sessionId);
+                                
+                                sonnerToast.success('Version précédente restaurée');
+                              }
+                            }}
                             isDark={isDark}
                           />
                         </div>
@@ -1611,6 +1651,46 @@ export default function BuilderSession() {
                                     .eq('id', sessionId);
                                   
                                   sonnerToast.success('Version restaurée');
+                                }
+                              }}
+                              onGoToPrevious={async () => {
+                                const recapMessages = messages
+                                  .map((m, i) => ({ message: m, index: i }))
+                                  .filter(({ message }) => message.role === 'assistant' && (message.metadata?.type === 'recap' || !message.metadata?.type))
+                                  .slice(-15);
+                                
+                                if (recapMessages.length < 2) {
+                                  sonnerToast.error('Aucune version précédente disponible');
+                                  return;
+                                }
+                                
+                                const previousRecap = recapMessages[recapMessages.length - 2];
+                                const targetMessage = previousRecap.message;
+                                
+                                if (!targetMessage.id || !sessionId) return;
+                                
+                                const { data: chatMessage } = await supabase
+                                  .from('chat_messages')
+                                  .select('metadata')
+                                  .eq('id', targetMessage.id)
+                                  .single();
+                                
+                                if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
+                                  const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                                  setProjectFiles(restoredFiles);
+                                  
+                                  const truncatedMessages = messages.slice(0, previousRecap.index + 1);
+                                  setMessages(truncatedMessages);
+                                  
+                                  await supabase
+                                    .from('build_sessions')
+                                    .update({
+                                      project_files: convertFilesToArray(restoredFiles),
+                                      updated_at: new Date().toISOString()
+                                    })
+                                    .eq('id', sessionId);
+                                  
+                                  sonnerToast.success('Version précédente restaurée');
                                 }
                               }}
                               isDark={isDark}

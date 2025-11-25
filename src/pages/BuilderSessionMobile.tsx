@@ -1383,61 +1383,73 @@ Now generate the mobile app based on this request:`;
                               ? (msg.metadata.total_tokens as number) 
                               : msg.token_count}
                             onRestore={async (messageIdx) => {
-                            // Restaurer à cette version
-                            const targetMessage = messages[messageIdx];
-                            if (!targetMessage.id || !sessionId) return;
-                            
-                            try {
-                              // Charger l'état des fichiers à ce moment-là
-                              const { data: chatMessage } = await supabase
-                                .from('chat_messages')
-                                .select('metadata')
-                                .eq('id', targetMessage.id)
-                                .single();
+                              const targetMessage = messages[messageIdx];
                               
-                              if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
-                                const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                              if (targetMessage?.metadata && typeof targetMessage.metadata === 'object' && 'project_files' in targetMessage.metadata) {
+                                const restoredFiles = targetMessage.metadata.project_files as Record<string, string>;
                                 
-                                // Restaurer les fichiers
-                                setProjectFiles(restoredFiles);
-                                
-                                // Restaurer la preview si c'est une app web
-                                if (restoredFiles['index.html']) {
-                                  setGeneratedHtml(restoredFiles['index.html']);
+                                if (Object.keys(restoredFiles).length > 0) {
+                                  setProjectFiles(restoredFiles);
+                                  
+                                  const truncatedMessages = messages.slice(0, messageIdx + 1);
+                                  setMessages(truncatedMessages);
+                                  
+                                  await supabase
+                                    .from('build_sessions')
+                                    .update({
+                                      project_files: convertFilesToArray(restoredFiles),
+                                      messages: truncatedMessages as any,
+                                      updated_at: new Date().toISOString()
+                                    })
+                                    .eq('id', sessionId);
+                                  
+                                  sonnerToast.success('Version restaurée avec succès !');
+                                } else {
+                                  sonnerToast.error('Impossible de restaurer cette version (fichiers non sauvegardés)');
                                 }
-                                
-                                // Restaurer le premier fichier dans l'éditeur
-                                const firstFile = Object.keys(restoredFiles)[0];
-                                if (firstFile) {
-                                  setSelectedFile(firstFile);
-                                  setSelectedFileContent(restoredFiles[firstFile]);
-                                  setOpenFiles([firstFile]);
-                                }
-                                
-                                // Tronquer l'historique des messages
-                                const truncatedMessages = messages.slice(0, messageIdx + 1);
-                                setMessages(truncatedMessages);
-                                
-                                // Mettre à jour la session
-                                await supabase
-                                  .from('build_sessions')
-                                  .update({
-                                    project_files: convertFilesToArray(restoredFiles),
-                                    messages: truncatedMessages as any,
-                                    updated_at: new Date().toISOString()
-                                  })
-                                  .eq('id', sessionId);
-                                
-                                sonnerToast.success('Version restaurée avec succès !');
                               } else {
-                                sonnerToast.error('Impossible de restaurer cette version (fichiers non sauvegardés)');
+                                sonnerToast.error('Les fichiers de cette version ne sont pas disponibles');
                               }
-                            } catch (error) {
-                              console.error('Erreur lors de la restauration:', error);
-                                sonnerToast.error('Erreur lors de la restauration');
-                            }
-                          }}
-                          isDark={isDark}
+                            }}
+                            onGoToPrevious={async () => {
+                              const assistantMessages = messages
+                                .map((m, i) => ({ message: m, index: i }))
+                                .filter(({ message }) => message.role === 'assistant')
+                                .slice(-15);
+                              
+                              if (assistantMessages.length < 2) {
+                                sonnerToast.error('Aucune version précédente disponible');
+                                return;
+                              }
+                              
+                              const previousMessage = assistantMessages[assistantMessages.length - 2];
+                              const targetMessage = previousMessage.message;
+                              
+                              if (targetMessage?.metadata && typeof targetMessage.metadata === 'object' && 'project_files' in targetMessage.metadata) {
+                                const restoredFiles = targetMessage.metadata.project_files as Record<string, string>;
+                                
+                                if (Object.keys(restoredFiles).length > 0) {
+                                  setProjectFiles(restoredFiles);
+                                  
+                                  const truncatedMessages = messages.slice(0, previousMessage.index + 1);
+                                  setMessages(truncatedMessages);
+                                  
+                                  await supabase
+                                    .from('build_sessions')
+                                    .update({
+                                      project_files: convertFilesToArray(restoredFiles),
+                                      messages: truncatedMessages as any,
+                                      updated_at: new Date().toISOString()
+                                    })
+                                    .eq('id', sessionId);
+                                  
+                                  sonnerToast.success('Version précédente restaurée');
+                                } else {
+                                  sonnerToast.error('Impossible de restaurer cette version (fichiers non sauvegardés)');
+                                }
+                              }
+                            }}
+                            isDark={isDark}
                           />
                         )}
                       </div>
