@@ -876,19 +876,19 @@ export default function BuilderSession() {
           let recapMessage = '';
           if (isInitialGenerationRef.current) {
             if (newFiles.length > 0) {
-              recapMessage = `✅ J'ai créé votre site avec ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} : ${newFiles.join(', ')}`;
+              recapMessage = `J'ai créé votre site avec ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} : ${newFiles.join(', ')}`;
             } else {
-              recapMessage = '✅ Votre site est prêt !';
+              recapMessage = 'Votre site est prêt.';
             }
           } else {
             if (newFiles.length > 0 && modifiedFiles.length > 0) {
-              recapMessage = `✅ J'ai créé ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} (${newFiles.join(', ')}) et modifié ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''} (${modifiedFiles.join(', ')}).`;
+              recapMessage = `J'ai créé ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} (${newFiles.join(', ')}) et modifié ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''} (${modifiedFiles.join(', ')}).`;
             } else if (newFiles.length > 0) {
-              recapMessage = `✅ J'ai créé ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} : ${newFiles.join(', ')}`;
+              recapMessage = `J'ai créé ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} : ${newFiles.join(', ')}`;
             } else if (modifiedFiles.length > 0) {
-              recapMessage = `✅ J'ai modifié ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''} : ${modifiedFiles.join(', ')}`;
+              recapMessage = `J'ai modifié ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''} : ${modifiedFiles.join(', ')}`;
             } else {
-              recapMessage = '✅ Modifications appliquées !';
+              recapMessage = 'Modifications appliquées.';
             }
           }
 
@@ -1529,7 +1529,7 @@ export default function BuilderSession() {
                         </div>
                       )}
                       
-                      {/* Message simple (ancien format) - pour compatibilité */}
+                       {/* Message simple (ancien format) - pour compatibilité */}
                       {!msg.metadata?.type && (
                         <div className="flex items-start gap-3">
                           <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
@@ -1540,41 +1540,6 @@ export default function BuilderSession() {
                                 : 'Contenu généré'
                               }
                             </p>
-                            <MessageActions
-                              content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
-                              messageIndex={idx}
-                              isLatestMessage={idx === messages.length - 1}
-                              tokenCount={msg.token_count}
-                              onRestore={async (messageIdx) => {
-                                const targetMessage = messages[messageIdx];
-                                if (!targetMessage.id || !sessionId) return;
-                                
-                                const { data: chatMessage } = await supabase
-                                  .from('chat_messages')
-                                  .select('metadata')
-                                  .eq('id', targetMessage.id)
-                                  .single();
-                                
-                                if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
-                                  const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
-                                  setProjectFiles(restoredFiles);
-                                  
-                                  const truncatedMessages = messages.slice(0, messageIdx + 1);
-                                  setMessages(truncatedMessages);
-                                  
-                                  await supabase
-                                    .from('build_sessions')
-                                    .update({
-                                      project_files: restoredFiles,
-                                      updated_at: new Date().toISOString()
-                                    })
-                                    .eq('id', sessionId);
-                                  
-                                  sonnerToast.success('Version restaurée');
-                                }
-                              }}
-                              isDark={isDark}
-                            />
                           </div>
                         </div>
                       )}
@@ -1583,12 +1548,6 @@ export default function BuilderSession() {
                 </div>
               ))}
 
-              {/* Affichage des événements de génération pour les reprompts */}
-              {(generationEvents.length > 0 || agent.isLoading) && !isInitialGeneration && (
-                <div className="flex flex-col space-y-2 mb-4 px-4">
-                  <CollapsedAiTasks events={generationEvents} isDark={isDark} isLoading={agent.isLoading} />
-                </div>
-              )}
 
               {/* Affichage du streaming en temps réel */}
               {agent.isStreaming && (
