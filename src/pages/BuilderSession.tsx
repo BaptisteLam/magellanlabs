@@ -1175,6 +1175,22 @@ export default function BuilderSession() {
         if (result.websiteId) {
           setWebsiteId(result.websiteId);
         }
+
+        // Publier/mettre à jour sur builtbymagellan.com
+        try {
+          console.log('🚀 Publishing/updating project on builtbymagellan.com...');
+          const { data: publishData, error: publishError } = await supabase.functions.invoke('publish-project', {
+            body: { sessionId }
+          });
+
+          if (publishError) {
+            console.error('❌ Error publishing to builtbymagellan.com:', publishError);
+          } else if (publishData?.publicUrl) {
+            console.log('✅ Project published/updated at:', publishData.publicUrl);
+          }
+        } catch (publishErr) {
+          console.error('❌ Error calling publish function:', publishErr);
+        }
         
         // Afficher popup de succès (sans redirection)
         if (result.state === 'ready') {
