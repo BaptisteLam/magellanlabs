@@ -41,24 +41,21 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
   }, []);
 
   const handleNavigateBack = () => {
-    const iframe = document.querySelector('iframe');
-    if (iframe?.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'navigate-back' }, '*');
-    }
+    console.log('⬅️ FakeUrlBar: Demande de navigation arrière');
+    // Envoyer un message à la fenêtre parente pour que CustomIframePreview le capte
+    window.postMessage({ type: 'navigate-back' }, '*');
   };
 
   const handleNavigateForward = () => {
-    const iframe = document.querySelector('iframe');
-    if (iframe?.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'navigate-forward' }, '*');
-    }
+    console.log('➡️ FakeUrlBar: Demande de navigation avant');
+    // Envoyer un message à la fenêtre parente pour que CustomIframePreview le capte
+    window.postMessage({ type: 'navigate-forward' }, '*');
   };
 
   const handleReload = () => {
-    const iframe = document.querySelector('iframe');
-    if (iframe?.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'reload' }, '*');
-    }
+    console.log('🔄 FakeUrlBar: Demande de rechargement');
+    // Envoyer un message à la fenêtre parente pour que CustomIframePreview le capte
+    window.postMessage({ type: 'reload' }, '*');
   };
 
   // Convertir le titre en nom de domaine
@@ -197,35 +194,63 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
         <button
           onClick={handleNavigateBack}
           disabled={!canGoBack}
-          className="w-6 h-6 rounded flex items-center justify-center transition-colors disabled:opacity-40"
+          className="w-6 h-6 rounded flex items-center justify-center transition-colors disabled:opacity-40 hover:bg-opacity-80"
           style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
           title="Retour"
+          onMouseEnter={(e) => {
+            if (canGoBack) {
+              const icon = e.currentTarget.querySelector('svg');
+              if (icon) icon.style.color = '#03A5C0';
+            }
+          }}
+          onMouseLeave={(e) => {
+            const icon = e.currentTarget.querySelector('svg');
+            if (icon) icon.style.color = isDark ? '#6B7280' : '#9CA3AF';
+          }}
         >
           <ChevronLeft 
-            className="w-3.5 h-3.5"
+            className="w-3.5 h-3.5 transition-colors"
             style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
           />
         </button>
         <button
           onClick={handleNavigateForward}
           disabled={!canGoForward}
-          className="w-6 h-6 rounded flex items-center justify-center transition-colors disabled:opacity-40"
+          className="w-6 h-6 rounded flex items-center justify-center transition-colors disabled:opacity-40 hover:bg-opacity-80"
           style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
           title="Suivant"
+          onMouseEnter={(e) => {
+            if (canGoForward) {
+              const icon = e.currentTarget.querySelector('svg');
+              if (icon) icon.style.color = '#03A5C0';
+            }
+          }}
+          onMouseLeave={(e) => {
+            const icon = e.currentTarget.querySelector('svg');
+            if (icon) icon.style.color = isDark ? '#6B7280' : '#9CA3AF';
+          }}
         >
           <ChevronRight 
-            className="w-3.5 h-3.5"
+            className="w-3.5 h-3.5 transition-colors"
             style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
           />
         </button>
         <button
           onClick={handleReload}
-          className="w-6 h-6 rounded flex items-center justify-center transition-colors"
+          className="w-6 h-6 rounded flex items-center justify-center transition-colors hover:bg-opacity-80"
           style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
           title="Recharger"
+          onMouseEnter={(e) => {
+            const icon = e.currentTarget.querySelector('svg');
+            if (icon) icon.style.color = '#03A5C0';
+          }}
+          onMouseLeave={(e) => {
+            const icon = e.currentTarget.querySelector('svg');
+            if (icon) icon.style.color = isDark ? '#6B7280' : '#9CA3AF';
+          }}
         >
           <RotateCw 
-            className="w-3.5 h-3.5"
+            className="w-3.5 h-3.5 transition-colors"
             style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
           />
         </button>
