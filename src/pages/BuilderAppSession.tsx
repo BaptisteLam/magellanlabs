@@ -95,6 +95,9 @@ export default function BuilderSession() {
   
   // Mode d'affichage de la preview (desktop/mobile)
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+  
+  // Index de la version actuellement affichée (null = dernière version)
+  const [currentVersionIndex, setCurrentVersionIndex] = useState<number | null>(null);
 
   // Fonction pour générer automatiquement un nom de projet
   const generateProjectName = async (prompt: string) => {
@@ -1481,8 +1484,12 @@ export default function BuilderSession() {
           <div className={`h-full flex flex-col ${isDark ? '' : 'bg-slate-50'}`} style={{ backgroundColor: isDark ? '#1F1F20' : undefined }}>
             {/* Chat history */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {messages.map((msg, idx) => (
-                <div key={idx}>
+              {messages.map((msg, idx) => {
+                // Calculer si ce message est "inactif" (après la version courante)
+                const isInactive = currentVersionIndex !== null && idx > currentVersionIndex;
+                
+                return (
+                <div key={idx} className={isInactive ? 'opacity-40' : ''}>
                   {msg.role === 'user' ? (
                     <div className="flex justify-end">
                       <div className="max-w-[80%] rounded-2xl px-4 py-2.5 border border-[#03A5C0] bg-[#03A5C0]/10">
@@ -1639,8 +1646,8 @@ export default function BuilderSession() {
                                   const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
                                   setProjectFiles(restoredFiles);
                                   
-                                  const truncatedMessages = messages.slice(0, messageIdx + 1);
-                                  setMessages(truncatedMessages);
+                                  // Ne pas tronquer les messages, juste marquer la version courante
+                                  setCurrentVersionIndex(messageIdx);
                                   
                                   await supabase
                                     .from('build_sessions')
@@ -1659,12 +1666,17 @@ export default function BuilderSession() {
                                   .filter(({ message }) => message.role === 'assistant' && (message.metadata?.type === 'recap' || !message.metadata?.type))
                                   .slice(-15);
                                 
-                                if (recapMessages.length < 2) {
+                                // Trouver l'index actuel dans la liste des recaps
+                                const currentRecapIndex = currentVersionIndex !== null
+                                  ? recapMessages.findIndex(r => r.index === currentVersionIndex)
+                                  : recapMessages.length - 1;
+                                
+                                if (currentRecapIndex <= 0) {
                                   sonnerToast.error('Aucune version précédente disponible');
                                   return;
                                 }
                                 
-                                const previousRecap = recapMessages[recapMessages.length - 2];
+                                const previousRecap = recapMessages[currentRecapIndex - 1];
                                 const targetMessage = previousRecap.message;
                                 
                                 if (!targetMessage.id || !sessionId) return;
@@ -1679,8 +1691,8 @@ export default function BuilderSession() {
                                   const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
                                   setProjectFiles(restoredFiles);
                                   
-                                  const truncatedMessages = messages.slice(0, previousRecap.index + 1);
-                                  setMessages(truncatedMessages);
+                                  // Ne pas tronquer les messages, juste marquer la version courante
+                                  setCurrentVersionIndex(previousRecap.index);
                                   
                                   await supabase
                                     .from('build_sessions')
@@ -1701,7 +1713,8 @@ export default function BuilderSession() {
                     </div>
                   )}
                 </div>
-              ))}
+              );
+              })}
 
               {/* Affichage des événements de génération pour les reprompts */}
               {(generationEvents.length > 0 || agent.isLoading) && !isInitialGeneration && (

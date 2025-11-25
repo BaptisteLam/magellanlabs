@@ -91,6 +91,9 @@ export default function BuilderSession() {
   // Mode Inspect pour la preview interactive
   const [inspectMode, setInspectMode] = useState(false);
   
+  // Index de la version actuellement affichée (null = dernière version)
+  const [currentVersionIndex, setCurrentVersionIndex] = useState<number | null>(null);
+  
   // Mode d'affichage de la preview (toujours mobile pour cette page)
   const previewMode = 'mobile';
 
@@ -1325,8 +1328,12 @@ Now generate the mobile app based on this request:`;
           <div className={`h-full flex flex-col ${isDark ? '' : 'bg-slate-50'}`} style={{ backgroundColor: isDark ? '#1F1F20' : undefined }}>
             {/* Chat history */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {messages.map((msg, idx) => (
-                <div key={idx}>
+              {messages.map((msg, idx) => {
+                // Calculer si ce message est "inactif" (après la version courante)
+                const isInactive = currentVersionIndex !== null && idx > currentVersionIndex;
+                
+                return (
+                <div key={idx} className={isInactive ? 'opacity-40' : ''}>
                   {msg.role === 'user' ? (
                     <div className="flex justify-end">
                       <div className="max-w-[80%] rounded-2xl px-4 py-2.5 border border-[#03A5C0] bg-[#03A5C0]/10">
@@ -1391,14 +1398,13 @@ Now generate the mobile app based on this request:`;
                                 if (Object.keys(restoredFiles).length > 0) {
                                   setProjectFiles(restoredFiles);
                                   
-                                  const truncatedMessages = messages.slice(0, messageIdx + 1);
-                                  setMessages(truncatedMessages);
+                                  // Ne pas tronquer les messages, juste marquer la version courante
+                                  setCurrentVersionIndex(messageIdx);
                                   
                                   await supabase
                                     .from('build_sessions')
                                     .update({
                                       project_files: convertFilesToArray(restoredFiles),
-                                      messages: truncatedMessages as any,
                                       updated_at: new Date().toISOString()
                                     })
                                     .eq('id', sessionId);
@@ -1417,12 +1423,17 @@ Now generate the mobile app based on this request:`;
                                 .filter(({ message }) => message.role === 'assistant')
                                 .slice(-15);
                               
-                              if (assistantMessages.length < 2) {
+                              // Trouver l'index actuel dans la liste des messages assistant
+                              const currentAssistantIndex = currentVersionIndex !== null
+                                ? assistantMessages.findIndex(a => a.index === currentVersionIndex)
+                                : assistantMessages.length - 1;
+                              
+                              if (currentAssistantIndex <= 0) {
                                 sonnerToast.error('Aucune version précédente disponible');
                                 return;
                               }
                               
-                              const previousMessage = assistantMessages[assistantMessages.length - 2];
+                              const previousMessage = assistantMessages[currentAssistantIndex - 1];
                               const targetMessage = previousMessage.message;
                               
                               if (targetMessage?.metadata && typeof targetMessage.metadata === 'object' && 'project_files' in targetMessage.metadata) {
@@ -1431,14 +1442,13 @@ Now generate the mobile app based on this request:`;
                                 if (Object.keys(restoredFiles).length > 0) {
                                   setProjectFiles(restoredFiles);
                                   
-                                  const truncatedMessages = messages.slice(0, previousMessage.index + 1);
-                                  setMessages(truncatedMessages);
+                                  // Ne pas tronquer les messages, juste marquer la version courante
+                                  setCurrentVersionIndex(previousMessage.index);
                                   
                                   await supabase
                                     .from('build_sessions')
                                     .update({
                                       project_files: convertFilesToArray(restoredFiles),
-                                      messages: truncatedMessages as any,
                                       updated_at: new Date().toISOString()
                                     })
                                     .eq('id', sessionId);
@@ -1456,7 +1466,8 @@ Now generate the mobile app based on this request:`;
                     </div>
                   )}
                 </div>
-              ))}
+              );
+              })}
 
               {/* Affichage des événements de génération en cours - toujours sauf premier prompt */}
               {!isInitialGeneration && (
