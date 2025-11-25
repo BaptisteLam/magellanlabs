@@ -97,7 +97,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
   if (!data) return null;
 
   return (
-    <div className={`h-full overflow-auto p-6 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
+    <div className={`h-full overflow-auto p-6 ${isDark ? 'bg-[#1f1f20]' : 'bg-slate-50'}`}>
       {/* Header with current visitors and period selector */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-3">
@@ -109,7 +109,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
           </div>
         </div>
         <Select value={period} onValueChange={(value: any) => setPeriod(value)}>
-          <SelectTrigger className={`w-40 rounded-lg ${isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white'}`}>
+          <SelectTrigger className={`w-40 rounded-lg ${isDark ? 'bg-[#181818] border-slate-700 text-slate-200' : 'bg-white'}`}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -122,7 +122,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-5 gap-4 mb-6">
-        <Card className={`p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white'} ${period === '7d' ? 'border-[#03A5C0]' : ''}`}>
+        <Card className={`p-4 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'} ${period === '7d' ? 'border-[#03A5C0]' : ''}`}>
           <div className="flex items-center gap-2 mb-2">
             <Eye className="w-4 h-4 text-[#03A5C0]" />
             <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Visitors</span>
@@ -132,7 +132,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
           </div>
         </Card>
 
-        <Card className={`p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white'}`}>
+        <Card className={`p-4 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <div className="flex items-center gap-2 mb-2">
             <MousePointer className="w-4 h-4 text-slate-400" />
             <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Pageviews</span>
@@ -142,7 +142,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
           </div>
         </Card>
 
-        <Card className={`p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white'}`}>
+        <Card className={`p-4 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-4 h-4 text-slate-400" />
             <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Views Per Visit</span>
@@ -152,7 +152,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
           </div>
         </Card>
 
-        <Card className={`p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white'}`}>
+        <Card className={`p-4 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <div className="flex items-center gap-2 mb-2">
             <Timer className="w-4 h-4 text-slate-400" />
             <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Visit Duration</span>
@@ -162,7 +162,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
           </div>
         </Card>
 
-        <Card className={`p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white'}`}>
+        <Card className={`p-4 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <div className="flex items-center gap-2 mb-2">
             <Activity className="w-4 h-4 text-slate-400" />
             <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Bounce Rate</span>
@@ -175,7 +175,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
 
       {/* Note */}
       {data.timeSeries.length > 0 && (
-        <div className={`p-3 rounded-lg mb-6 flex items-start gap-2 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+        <div className={`p-3 rounded-lg mb-6 flex items-start gap-2 ${isDark ? 'bg-[#181818]' : 'bg-slate-100'}`}>
           <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             <strong>Note:</strong> Analytics data provided by Cloudflare Web Analytics.
           </span>
@@ -183,7 +183,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
       )}
 
       {/* Chart */}
-      <Card className={`p-6 mb-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white'}`}>
+      <Card className={`p-6 mb-6 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
         <ResponsiveContainer width="100%" height={300}>
           <AreaChart data={data.timeSeries}>
             <defs>
@@ -222,7 +222,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
       {/* Lists Grid */}
       <div className="grid grid-cols-2 gap-6">
         {/* Source */}
-        <Card className={`p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white'}`}>
+        <Card className={`p-6 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <h3 className={`text-sm font-medium mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             Source
           </h3>
@@ -244,7 +244,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
         </Card>
 
         {/* Page */}
-        <Card className={`p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white'}`}>
+        <Card className={`p-6 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <h3 className={`text-sm font-medium mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             Page
           </h3>
@@ -266,7 +266,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
         </Card>
 
         {/* Country */}
-        <Card className={`p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white'}`}>
+        <Card className={`p-6 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <h3 className={`text-sm font-medium mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             Country
           </h3>
@@ -288,7 +288,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
         </Card>
 
         {/* Device */}
-        <Card className={`p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white'}`}>
+        <Card className={`p-6 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <h3 className={`text-sm font-medium mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             Device
           </h3>
