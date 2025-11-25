@@ -8,8 +8,13 @@ export function useSubdomain(): string | null {
   return useMemo(() => {
     const hostname = window.location.hostname;
     
-    // En développement (localhost)
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    // En développement (localhost ou lovableproject.com)
+    if (
+      hostname === 'localhost' || 
+      hostname === '127.0.0.1' || 
+      hostname.endsWith('.lovableproject.com') ||
+      hostname === 'lovableproject.com'
+    ) {
       return null;
     }
     
@@ -20,7 +25,7 @@ export function useSubdomain(): string | null {
       const subdomain = parts[0];
       
       // Ignorer 'www' comme sous-domaine
-      if (subdomain !== 'www') {
+      if (subdomain !== 'www' && hostname.includes('builtbymagellan.com')) {
         return subdomain;
       }
     }
