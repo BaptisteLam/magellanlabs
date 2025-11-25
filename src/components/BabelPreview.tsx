@@ -363,45 +363,113 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspe
       document.addEventListener('click', handleElementClick, true);
       document.addEventListener('mouseover', highlightElement, true);
       document.addEventListener('mouseout', removeHighlight, true);
+      showAllOutlines();
     }
     
     function deactivateInspection() {
-      document.body.style.cursor = '';
+      document.body.style.cursor = 'default';
       document.removeEventListener('click', handleElementClick, true);
       document.removeEventListener('mouseover', highlightElement, true);
       document.removeEventListener('mouseout', removeHighlight, true);
+      hideAllOutlines();
       removeHighlight();
+    }
+    
+    function showAllOutlines() {
+      const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
+      document.querySelectorAll(selectableTags.join(',')).forEach(el => {
+        if (el !== document.body && el !== document.documentElement) {
+          el.style.outline = '1px dashed rgba(3, 165, 192, 0.3)';
+          el.style.outlineOffset = '2px';
+          el.setAttribute('data-inspectable', 'true');
+        }
+      });
+    }
+    
+    function hideAllOutlines() {
+      document.querySelectorAll('[data-inspectable]').forEach(el => {
+        el.style.outline = '';
+        el.style.outlineOffset = '';
+        el.removeAttribute('data-inspectable');
+      });
     }
     
     function highlightElement(e) {
       if (!inspectMode) return;
-      e.stopPropagation();
+      
       const target = e.target;
       if (target === document.body || target === document.documentElement) return;
       
+      // Filtrer les éléments non pertinents
+      const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
+      if (!selectableTags.includes(target.tagName)) return;
+      
       removeHighlight();
       
+      // Créer un overlay avec effet de pulsation
       const rect = target.getBoundingClientRect();
-      currentHighlight = document.createElement('div');
-      currentHighlight.style.cssText = \`
+      const overlay = document.createElement('div');
+      overlay.id = '__inspect_overlay__';
+      overlay.style.cssText = \`
         position: fixed;
-        pointer-events: none;
-        border: 2px solid rgb(3, 165, 192);
-        background: rgba(3, 165, 192, 0.1);
-        z-index: 999999;
         left: \${rect.left}px;
         top: \${rect.top}px;
         width: \${rect.width}px;
         height: \${rect.height}px;
+        border: 2px solid #03A5C0;
+        border-radius: 4px;
+        background: rgba(3, 165, 192, 0.05);
+        box-shadow: 0 0 0 4px rgba(3, 165, 192, 0.2);
+        pointer-events: none;
+        z-index: 999998;
+        transition: all 150ms ease-in-out;
+        animation: inspectPulse 2s ease-in-out infinite;
       \`;
-      document.body.appendChild(currentHighlight);
+      
+      // Créer le label du tag
+      const label = document.createElement('div');
+      label.id = '__inspect_label__';
+      label.textContent = target.tagName.toLowerCase();
+      label.style.cssText = \`
+        position: fixed;
+        left: \${rect.left}px;
+        top: \${rect.top - 24}px;
+        background: #03A5C0;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-family: monospace;
+        font-weight: 600;
+        pointer-events: none;
+        z-index: 999999;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      \`;
+      
+      // Ajouter animation de pulsation
+      const style = document.createElement('style');
+      style.id = '__inspect_animation__';
+      style.textContent = \`
+        @keyframes inspectPulse {
+          0%, 100% { box-shadow: 0 0 0 4px rgba(3, 165, 192, 0.2); }
+          50% { box-shadow: 0 0 0 8px rgba(3, 165, 192, 0.3); }
+        }
+      \`;
+      if (!document.getElementById('__inspect_animation__')) {
+        document.head.appendChild(style);
+      }
+      
+      document.body.appendChild(overlay);
+      document.body.appendChild(label);
+      currentHighlight = overlay;
     }
     
     function removeHighlight() {
-      if (currentHighlight) {
-        currentHighlight.remove();
-        currentHighlight = null;
-      }
+      const overlay = document.getElementById('__inspect_overlay__');
+      const label = document.getElementById('__inspect_label__');
+      if (overlay) overlay.remove();
+      if (label) label.remove();
+      currentHighlight = null;
     }
     
     function handleElementClick(e) {
