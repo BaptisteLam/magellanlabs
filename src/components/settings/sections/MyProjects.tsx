@@ -106,6 +106,22 @@ export function MyProjects() {
       setProjects((prev) => prev.map((p) => (p.id === project.id ? { ...p, title: editTitle } : p)));
       setEditingId(null);
       toast({ title: 'Titre modifié' });
+
+      // Republier automatiquement le projet avec le nouveau subdomain
+      if (project.type === 'builder' || project.build_session_id) {
+        const sessionId = project.type === 'builder' ? project.id : project.build_session_id;
+        console.log('🔄 Updating public URL for project:', sessionId);
+        
+        const { data: publishData, error: publishError } = await supabase.functions.invoke('publish-project', {
+          body: { sessionId }
+        });
+
+        if (publishError) {
+          console.error('❌ Error updating public URL:', publishError);
+        } else if (publishData?.publicUrl) {
+          console.log('✅ Public URL updated:', publishData.publicUrl);
+        }
+      }
     } catch (error) {
       console.error('Update error:', error);
       toast({
