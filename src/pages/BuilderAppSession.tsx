@@ -1634,25 +1634,33 @@ export default function BuilderSession() {
                     isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
                       <GeneratingPreview />
                     ) : (
-                      <div className="w-full h-full">
-                        <Sandpack
-                          theme={isDark ? "dark" : "light"}
-                          template="react-ts"
-                          files={Object.fromEntries(
-                            Object.entries(projectFiles).map(([path, content]) => [
-                              path.startsWith('/') ? path : `/${path}`,
-                              { code: content }
-                            ])
-                          )}
-                          options={{
-                            showNavigator: false,
-                            showTabs: false,
-                            showLineNumbers: true,
-                            editorHeight: "100%",
-                            editorWidthPercentage: 0,
-                          }}
+                      <>
+                        <FakeUrlBar 
+                          projectTitle={websiteTitle || 'Mon Projet'} 
+                          isDark={isDark}
+                          sessionId={sessionId}
+                          onTitleChange={setWebsiteTitle}
                         />
-                      </div>
+                        <div className="w-full h-full">
+                          <Sandpack
+                            theme={isDark ? "dark" : "light"}
+                            template="react-ts"
+                            files={Object.fromEntries(
+                              Object.entries(projectFiles).map(([path, content]) => [
+                                path.startsWith('/') ? path : `/${path}`,
+                                { code: content }
+                              ])
+                            )}
+                            options={{
+                              showNavigator: false,
+                              showTabs: false,
+                              showLineNumbers: true,
+                              editorHeight: "100%",
+                              editorWidthPercentage: 0,
+                            }}
+                          />
+                        </div>
+                      </>
                     )
                   ) : viewMode === 'analytics' ? (
                     <Analytics 
@@ -1673,25 +1681,33 @@ export default function BuilderSession() {
                     isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
                       <GeneratingPreview />
                     ) : (
-                      <div className="w-full h-full">
-                        <Sandpack
-                          theme={isDark ? "dark" : "light"}
-                          template="react-ts"
-                          files={Object.fromEntries(
-                            Object.entries(projectFiles).map(([path, content]) => [
-                              path.startsWith('/') ? path : `/${path}`,
-                              { code: content }
-                            ])
-                          )}
-                          options={{
-                            showNavigator: false,
-                            showTabs: false,
-                            showLineNumbers: true,
-                            editorHeight: "100%",
-                            editorWidthPercentage: 0,
-                          }}
+                      <>
+                        <FakeUrlBar 
+                          projectTitle={websiteTitle || 'Mon Projet'} 
+                          isDark={isDark}
+                          sessionId={sessionId}
+                          onTitleChange={setWebsiteTitle}
                         />
-                      </div>
+                        <div className="w-full h-full">
+                          <Sandpack
+                            theme={isDark ? "dark" : "light"}
+                            template="react-ts"
+                            files={Object.fromEntries(
+                              Object.entries(projectFiles).map(([path, content]) => [
+                                path.startsWith('/') ? path : `/${path}`,
+                                { code: content }
+                              ])
+                            )}
+                            options={{
+                              showNavigator: false,
+                              showTabs: false,
+                              showLineNumbers: true,
+                              editorHeight: "100%",
+                              editorWidthPercentage: 0,
+                            }}
+                          />
+                        </div>
+                      </>
                     )
                   ) : viewMode === 'analytics' ? (
                     <Analytics 
