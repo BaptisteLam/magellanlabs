@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
-import { InteractivePreview } from "@/components/InteractivePreview";
+import { Sandpack } from "@codesandbox/sandpack-react";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
 import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
@@ -71,7 +71,7 @@ export default function BuilderSession() {
   const [currentFavicon, setCurrentFavicon] = useState<string | null>(null);
   const [gaPropertyId, setGaPropertyId] = useState<string | null>(null);
   const [websiteId, setWebsiteId] = useState<string | null>(null);
-  const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('website');
+  const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('webapp');
   
   // Hook pour la nouvelle API Agent
   const agent = useAgentAPI();
@@ -1634,29 +1634,25 @@ export default function BuilderSession() {
                     isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
                       <GeneratingPreview />
                     ) : (
-                      <InteractivePreview 
-                        projectFiles={projectFiles} 
-                        isDark={isDark}
-                        inspectMode={inspectMode}
-                        onInspectModeChange={setInspectMode}
-                        projectType={projectType}
-                        onElementModify={async (prompt, elementInfo) => {
-                          const contextualPrompt = `Modifier l'élément suivant dans le code :
-
-Type: <${elementInfo.tagName.toLowerCase()}>
-${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
-${elementInfo.classList.length > 0 ? `Classes: ${elementInfo.classList.join(', ')}` : ''}
-Chemin CSS: ${elementInfo.path}
-Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textContent.length > 200 ? '...' : ''}"
-
-Instruction: ${prompt}
-
-Ne modifie que cet élément spécifique, pas le reste du code.`;
-                          
-                          setInputValue(contextualPrompt);
-                          setTimeout(() => handleSubmit(), 100);
-                        }}
-                      />
+                      <div className="w-full h-full">
+                        <Sandpack
+                          theme={isDark ? "dark" : "light"}
+                          template="react-ts"
+                          files={Object.fromEntries(
+                            Object.entries(projectFiles).map(([path, content]) => [
+                              path.startsWith('/') ? path : `/${path}`,
+                              { code: content }
+                            ])
+                          )}
+                          options={{
+                            showNavigator: false,
+                            showTabs: false,
+                            showLineNumbers: true,
+                            editorHeight: "100%",
+                            editorWidthPercentage: 0,
+                          }}
+                        />
+                      </div>
                     )
                   ) : viewMode === 'analytics' ? (
                     <Analytics 
@@ -1677,249 +1673,25 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                     isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
                       <GeneratingPreview />
                     ) : (
-                      <InteractivePreview 
-                        projectFiles={projectFiles} 
-                        isDark={isDark}
-                        inspectMode={inspectMode}
-                        onInspectModeChange={setInspectMode}
-                        projectType={projectType}
-                        onElementModify={async (prompt, elementInfo) => {
-                          const contextualPrompt = `Modifier l'élément suivant dans le code :
-
-Type: <${elementInfo.tagName.toLowerCase()}>
-${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
-${elementInfo.classList.length > 0 ? `Classes: ${elementInfo.classList.join(', ')}` : ''}
-Chemin CSS: ${elementInfo.path}
-Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textContent.length > 200 ? '...' : ''}"
-
-Instruction: ${prompt}
-
-Ne modifie que cet élément spécifique, pas le reste du code.`;
-                          
-                          // Envoyer directement à Claude sans afficher dans le chat
-                          if (!user) {
-                            navigate('/auth');
-                            return;
-                          }
-
-                          const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
-                            const keywords = prompt.toLowerCase().split(/\s+/);
-                            const scored = Object.entries(files).map(([path, content]) => {
-                              let score = 0;
-                              keywords.forEach(k => {
-                                if (path.toLowerCase().includes(k)) score += 50;
-                                if (content.toLowerCase().includes(k)) score += 10;
-                              });
-                              if (path.includes('index.html') || path.includes('App.tsx')) score += 100;
-                              return { path, content, score };
-                            });
-                            
-                            return scored
-                              .sort((a, b) => b.score - a.score)
-                              .slice(0, 5);
-                          };
-
-                          const relevantFilesArray = selectRelevantFiles(contextualPrompt, projectFiles);
-                          const chatHistory = messages.slice(-3).map(m => ({
-                            role: m.role,
-                            content: typeof m.content === 'string' ? m.content : '[message multimédia]'
-                          }));
-
-                          let assistantMessage = '';
-                          const updatedFiles = { ...projectFiles };
-
-                          setAiEvents([]);
-                          setGenerationEvents([]);
-                          
-                          // 🔒 Activer le mode "génération en cours" pour bloquer la preview
-                          setIsInitialGeneration(true);
-                          isInitialGenerationRef.current = true;
-
-                          const projectContext = projectType === 'website' 
-                            ? 'Generate a static website with HTML, CSS, and vanilla JavaScript files only. No React, no JSX. Use simple HTML structure.'
-                            : projectType === 'webapp'
-                            ? 'Generate a React web application with TypeScript/JSX. Use React components and modern web technologies.'
-                            : 'Generate a mobile-optimized React application with responsive design for mobile devices.';
-
-                          await agent.callAgent(
-                            `${projectContext}\n\n${contextualPrompt}`,
-                            projectFiles,
-                            relevantFilesArray,
-                            chatHistory,
-                            sessionId!,
-                            projectType,
-                            {
-                              onStatus: (status) => {
-                                console.log('📊 Status:', status);
-                                setAiEvents(prev => [...prev, { type: 'status', content: status }]);
-                              },
-                              onMessage: (message) => {
-                                assistantMessage += message;
-                                setMessages(prev => {
-                                  const withoutLastAssistant = prev.filter((m, i) => 
-                                    !(i === prev.length - 1 && m.role === 'assistant')
-                                  );
-                                  return [...withoutLastAssistant, { role: 'assistant' as const, content: assistantMessage }];
-                                });
-                              },
-                              onLog: (log) => {
-                                console.log('📝 Log:', log);
-                                setAiEvents(prev => [...prev, { type: 'log', content: log }]);
-                              },
-                              onIntent: (intent) => {
-                                console.log('🎯 Intent:', intent);
-                                setAiEvents(prev => [...prev, intent]);
-                              },
-                              onGenerationEvent: (event) => {
-                                console.log('🔄 Generation:', event);
-                                setGenerationEvents(prev => [...prev, event]);
-                              },
-                              onCodeUpdate: (path, code) => {
-                                console.log('📦 Accumulating file:', path);
-                                setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
-                                updatedFiles[path] = code;
-                                
-                                // ⏸️ NE JAMAIS mettre à jour la preview pendant la génération
-                                // Les fichiers seront appliqués tous ensemble dans onComplete
-                                
-                                if (path === 'index.html') {
-                                  setGeneratedHtml(code);
-                                }
-                                
-                                if (selectedFile === path || !selectedFile) {
-                                  setSelectedFile(path);
-                                  setSelectedFileContent(code);
-                                }
-                              },
-                              onComplete: async () => {
-                                console.log('✅ Génération terminée - Validation des fichiers avant affichage');
-                                setAiEvents(prev => [...prev, { type: 'complete' }]);
-                                
-                                // 🔍 VALIDATION CRITIQUE : Vérifier que les fichiers essentiels sont créés et NON VIDES
-                                const hasHtml = 'index.html' in updatedFiles;
-                                const hasCss = 'styles.css' in updatedFiles;
-                                const hasJs = 'script.js' in updatedFiles;
-                                
-                                const htmlContent = updatedFiles['index.html'] || '';
-                                const cssContent = updatedFiles['styles.css'] || '';
-                                const jsContent = updatedFiles['script.js'] || '';
-                                
-                                console.log('📊 Validation fichiers:', {
-                                  hasHtml, hasCss, hasJs,
-                                  htmlLength: htmlContent.length,
-                                  cssLength: cssContent.length,
-                                  jsLength: jsContent.length
-                                });
-                                
-                                // Vérifier que index.html contient bien les liens vers CSS et JS
-                                const hasStyleLink = htmlContent.includes('href="styles.css"') || htmlContent.includes("href='styles.css'");
-                                const hasScriptLink = htmlContent.includes('src="script.js"') || htmlContent.includes("src='script.js'");
-                                
-                                // ⚠️ ERREURS CRITIQUES - Validation stricte de tous les fichiers
-                                if (!hasHtml || !hasCss || !hasJs) {
-                                  const missing = [];
-                                  if (!hasHtml) missing.push('index.html');
-                                  if (!hasCss) missing.push('styles.css');
-                                  if (!hasJs) missing.push('script.js');
-                                  
-                                  console.error('❌ FICHIERS MANQUANTS:', missing);
-                                  sonnerToast.error(`Fichiers manquants: ${missing.join(', ')}. Impossible d'afficher la preview.`);
-                                  setGenerationEvents(prev => [...prev, { 
-                                    type: 'error', 
-                                    message: `Fichiers manquants: ${missing.join(', ')}` 
-                                  }]);
-                                  setIsInitialGeneration(false);
-                                  isInitialGenerationRef.current = false;
-                                  return;
-                                }
-                                
-                                // Validation du contenu HTML (doit être substantiel)
-                                if (htmlContent.length < 200) {
-                                  console.error('❌ HTML VIDE OU TROP COURT:', htmlContent.length, 'caractères');
-                                  sonnerToast.error('Le fichier HTML est vide ou incomplet. Impossible d\'afficher la preview.');
-                                  setGenerationEvents(prev => [...prev, { 
-                                    type: 'error', 
-                                    message: 'HTML file is empty or too short' 
-                                  }]);
-                                  setIsInitialGeneration(false);
-                                  isInitialGenerationRef.current = false;
-                                  return;
-                                }
-                                
-                                // Validation du contenu CSS (doit être substantiel)
-                                if (cssContent.length < 100) {
-                                  console.error('❌ CSS VIDE OU TROP COURT:', cssContent.length, 'caractères');
-                                  sonnerToast.error('Le fichier CSS est vide ou incomplet. Impossible d\'afficher la preview.');
-                                  setGenerationEvents(prev => [...prev, { 
-                                    type: 'error', 
-                                    message: 'CSS file is empty or too short' 
-                                  }]);
-                                  setIsInitialGeneration(false);
-                                  isInitialGenerationRef.current = false;
-                                  return;
-                                }
-                                
-                                // Validation du contenu JS (doit exister, peut être court si pas de logique)
-                                if (jsContent.length < 10) {
-                                  console.error('❌ JS VIDE OU TROP COURT:', jsContent.length, 'caractères');
-                                  sonnerToast.error('Le fichier JavaScript est vide ou incomplet. Impossible d\'afficher la preview.');
-                                  setGenerationEvents(prev => [...prev, { 
-                                    type: 'error', 
-                                    message: 'JS file is empty or too short' 
-                                  }]);
-                                  setIsInitialGeneration(false);
-                                  isInitialGenerationRef.current = false;
-                                  return;
-                                }
-                                
-                                if (!hasStyleLink || !hasScriptLink) {
-                                  console.error('❌ LIENS CSS/JS MANQUANTS dans index.html');
-                                  sonnerToast.error('Les liens CSS/JS ne sont pas présents dans index.html');
-                                  setGenerationEvents(prev => [...prev, { 
-                                    type: 'error', 
-                                    message: 'Missing CSS/JS links in HTML' 
-                                  }]);
-                                  setIsInitialGeneration(false);
-                                  isInitialGenerationRef.current = false;
-                                  return;
-                                }
-                                
-                                // ✅ VALIDATION RÉUSSIE
-                                console.log('✅ Validation réussie - Application de TOUS les fichiers à la preview');
-                                setGenerationEvents(prev => [...prev, { type: 'complete', message: 'All files generated successfully' }]);
-                                
-                                // ✅ Appliquer TOUS les fichiers générés à la preview en une seule fois
-                                console.log('📦 Fichiers à appliquer:', Object.keys(updatedFiles));
-                                setProjectFiles({ ...updatedFiles });
-                                
-                                // Désactiver le mode "génération en cours"
-                                setIsInitialGeneration(false);
-                                isInitialGenerationRef.current = false;
-                                
-                                await supabase
-                                  .from('build_sessions')
-                                  .update({
-                                    project_files: updatedFiles,
-                                    updated_at: new Date().toISOString()
-                                  })
-                                  .eq('id', sessionId);
-
-                                await supabase
-                                  .from('chat_messages')
-                                  .insert({
-                                    session_id: sessionId,
-                                    role: 'assistant',
-                                    content: assistantMessage
-                                  });
-                              },
-                              onError: (error) => {
-                                console.error('❌ Error:', error);
-                                sonnerToast.error(error);
-                              }
-                            }
-                          );
-                        }}
-                      />
+                      <div className="w-full h-full">
+                        <Sandpack
+                          theme={isDark ? "dark" : "light"}
+                          template="react-ts"
+                          files={Object.fromEntries(
+                            Object.entries(projectFiles).map(([path, content]) => [
+                              path.startsWith('/') ? path : `/${path}`,
+                              { code: content }
+                            ])
+                          )}
+                          options={{
+                            showNavigator: false,
+                            showTabs: false,
+                            showLineNumbers: true,
+                            editorHeight: "100%",
+                            editorWidthPercentage: 0,
+                          }}
+                        />
+                      </div>
                     )
                   ) : viewMode === 'analytics' ? (
                     <Analytics 
