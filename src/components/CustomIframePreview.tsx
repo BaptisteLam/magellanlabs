@@ -394,15 +394,33 @@ export function CustomIframePreview({
   // Envoyer l'état d'inspection à l'iframe
   useEffect(() => {
     console.log('📤 Envoi du mode inspection:', inspectMode);
-    if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage({
-        type: 'toggle-inspect',
-        enabled: inspectMode
-      }, '*');
-      console.log('✅ Message envoyé');
-    } else {
-      console.log('❌ Iframe contentWindow non disponible');
-    }
+    
+    // Fonction pour envoyer le message avec plusieurs tentatives
+    const sendInspectMode = () => {
+      if (iframeRef.current?.contentWindow) {
+        console.log('✅ Envoi du message toggle-inspect avec enabled:', inspectMode);
+        iframeRef.current.contentWindow.postMessage({
+          type: 'toggle-inspect',
+          enabled: inspectMode
+        }, '*');
+      } else {
+        console.log('❌ Iframe contentWindow non disponible');
+      }
+    };
+    
+    // Envoyer immédiatement
+    sendInspectMode();
+    
+    // Réessayer après 50ms, 150ms et 300ms pour être sûr que l'iframe soit prête
+    const timer1 = setTimeout(sendInspectMode, 50);
+    const timer2 = setTimeout(sendInspectMode, 150);
+    const timer3 = setTimeout(sendInspectMode, 300);
+    
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
   }, [inspectMode]);
 
   // Mettre à jour l'iframe quand le HTML change
@@ -414,9 +432,10 @@ export function CustomIframePreview({
         doc.write(generatedHTML);
         doc.close();
         
-        // Attendre que l'iframe soit chargée puis réappliquer le mode inspect
+        // Attendre que l'iframe soit chargée puis réappliquer le mode inspect avec plusieurs tentatives
         const sendInspectMode = () => {
           if (iframeRef.current?.contentWindow) {
+            console.log('🔄 Réapplication du mode inspect après rechargement HTML:', inspectMode);
             iframeRef.current.contentWindow.postMessage({
               type: 'toggle-inspect',
               enabled: inspectMode
@@ -424,11 +443,13 @@ export function CustomIframePreview({
           }
         };
         
-        // Envoyer le message après un court délai pour s'assurer que le script est chargé
+        // Envoyer le message avec plusieurs tentatives pour être sûr
         setTimeout(sendInspectMode, 100);
+        setTimeout(sendInspectMode, 300);
+        setTimeout(sendInspectMode, 500);
       }
     }
-  }, [generatedHTML]);
+  }, [generatedHTML, inspectMode]);
 
   return (
     <iframe

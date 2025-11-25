@@ -422,17 +422,24 @@ export function ESBuildPreview({ projectFiles, isDark = false, onConsoleLog, ins
     const iframe = iframeRef.current;
     if (iframe?.contentWindow) {
       const sendInspectMode = () => {
+        console.log('📤 ESBuildPreview - Envoi toggle-inspect:', inspectMode);
         iframe.contentWindow?.postMessage({
           type: 'toggle-inspect',
           enabled: inspectMode
         }, '*');
       };
       
-      // Envoyer immédiatement et après un court délai pour s'assurer que l'iframe est prête
+      // Envoyer avec plusieurs tentatives pour être sûr que l'iframe soit prête
       sendInspectMode();
-      const timer = setTimeout(sendInspectMode, 100);
+      const timer1 = setTimeout(sendInspectMode, 100);
+      const timer2 = setTimeout(sendInspectMode, 300);
+      const timer3 = setTimeout(sendInspectMode, 500);
       
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+      };
     }
   }, [inspectMode, isBuilding]);
 

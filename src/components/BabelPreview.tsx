@@ -580,9 +580,10 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspe
     if (iframeRef.current && generatedHTML) {
       iframeRef.current.srcdoc = generatedHTML;
       
-      // Envoyer l'état du mode inspection après le chargement de l'iframe
+      // Envoyer l'état du mode inspection après le chargement de l'iframe avec plusieurs tentatives
       const sendInspectMode = () => {
         if (iframeRef.current?.contentWindow) {
+          console.log('📤 BabelPreview - Envoi toggle-inspect:', inspectMode);
           iframeRef.current.contentWindow.postMessage({
             type: 'toggle-inspect',
             enabled: inspectMode
@@ -590,11 +591,18 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspe
         }
       };
       
-      // Attendre que l'iframe soit chargée
+      // Attendre que l'iframe soit chargée et envoyer plusieurs fois
       const iframe = iframeRef.current;
-      iframe.addEventListener('load', sendInspectMode);
+      const onLoad = () => {
+        sendInspectMode();
+        setTimeout(sendInspectMode, 100);
+        setTimeout(sendInspectMode, 300);
+        setTimeout(sendInspectMode, 500);
+      };
       
-      return () => iframe.removeEventListener('load', sendInspectMode);
+      iframe.addEventListener('load', onLoad);
+      
+      return () => iframe.removeEventListener('load', onLoad);
     }
   }, [generatedHTML, inspectMode]);
 
