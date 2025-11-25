@@ -354,48 +354,12 @@ export default function BuilderSession() {
               path.endsWith('.js') ? 'javascript' : 'text'
       }));
 
-      // Capturer le thumbnail directement depuis generatedHtml
-      let thumbnailUrl: string | null = null;
-      try {
-        console.log('📸 Capture du thumbnail depuis generatedHtml...');
-        
-        const htmlContent = generatedHtml || projectFiles['index.html'] || '';
-        
-        if (htmlContent) {
-          // Utiliser notre helper pour capturer le thumbnail
-          const blob = await capturePreviewThumbnail(htmlContent);
-          
-          if (blob) {
-            // Uploader vers Supabase Storage
-            const fileName = `${sessionId}-${Date.now()}.png`;
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('screenshots')
-              .upload(fileName, blob, {
-                contentType: 'image/png',
-                upsert: true
-              });
-            
-            if (uploadError) {
-              console.error('❌ Error uploading screenshot:', uploadError);
-            } else {
-              // Obtenir l'URL publique
-              const { data: { publicUrl } } = supabase.storage
-                .from('screenshots')
-                .getPublicUrl(fileName);
-              
-              thumbnailUrl = publicUrl;
-              console.log('✅ Thumbnail uploaded:', publicUrl);
-            }
-          } else {
-            console.warn('⚠️ Thumbnail capture returned null');
-          }
-        } else {
-          console.warn('⚠️ No HTML content available for thumbnail capture');
-        }
-      } catch (screenshotError) {
-        console.error('❌ Error generating thumbnail:', screenshotError);
-        // Ne pas bloquer la sauvegarde si le thumbnail échoue
-      }
+      // Récupérer le thumbnail existant
+      const { data: existingSession } = await supabase
+        .from('build_sessions')
+        .select('thumbnail_url')
+        .eq('id', sessionId)
+        .single();
 
       const { error } = await supabase
         .from('build_sessions')
@@ -404,7 +368,7 @@ export default function BuilderSession() {
           messages: messages as any,
           title: websiteTitle,
           project_type: projectType,
-          thumbnail_url: thumbnailUrl,
+          thumbnail_url: existingSession?.thumbnail_url || null, // Garder le thumbnail existant
           updated_at: new Date().toISOString()
         })
         .eq('id', sessionId);
@@ -412,6 +376,54 @@ export default function BuilderSession() {
       if (error) throw error;
     } catch (error) {
       console.error('Error saving session:', error);
+    }
+  };
+
+  // Fonction pour capturer le thumbnail UNIQUEMENT après une génération
+  const captureThumbnail = async () => {
+    if (!sessionId) return;
+
+    try {
+      console.log('📸 Capture du thumbnail après génération...');
+      
+      const htmlContent = generatedHtml || projectFiles['index.html'] || '';
+      
+      if (htmlContent) {
+        // Utiliser notre helper pour capturer le thumbnail
+        const blob = await capturePreviewThumbnail(htmlContent);
+        
+        if (blob) {
+          // Uploader vers Supabase Storage
+          const fileName = `${sessionId}-${Date.now()}.png`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('screenshots')
+            .upload(fileName, blob, {
+              contentType: 'image/png',
+              upsert: true
+            });
+          
+          if (uploadError) {
+            console.error('❌ Error uploading screenshot:', uploadError);
+          } else {
+            // Obtenir l'URL publique
+            const { data: { publicUrl } } = supabase.storage
+              .from('screenshots')
+              .getPublicUrl(fileName);
+            
+            // Mettre à jour uniquement le thumbnail
+            await supabase
+              .from('build_sessions')
+              .update({ thumbnail_url: publicUrl })
+              .eq('id', sessionId);
+            
+            console.log('✅ Thumbnail capturé et enregistré:', publicUrl);
+          }
+        } else {
+          console.warn('⚠️ Thumbnail capture returned null');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error capturing thumbnail:', error);
     }
   };
 
@@ -931,6 +943,10 @@ Now generate the mobile app based on this request:`;
               updated_at: new Date().toISOString()
             })
             .eq('id', sessionId);
+
+          // 📸 Capturer le thumbnail UNIQUEMENT après une génération réussie
+          console.log('📸 Capture du thumbnail après génération...');
+          await captureThumbnail();
 
           // ✅ MAINTENANT on peut appliquer les fichiers à la preview
           console.log('📦 Application des fichiers à la preview:', Object.keys(updatedFiles));
