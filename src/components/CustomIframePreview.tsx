@@ -17,6 +17,7 @@ export function CustomIframePreview({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [currentFile, setCurrentFile] = useState<string>('index.html');
   const [reloadKey, setReloadKey] = useState(0);
+  const [iframeReady, setIframeReady] = useState(false);
 
   // Générer le HTML complet avec script d'inspection intégré
   const generatedHTML = useMemo(() => {
@@ -345,6 +346,10 @@ export function CustomIframePreview({
         // Appeler init() IMMÉDIATEMENT pour que l'event listener soit prêt
         init();
         console.log('🎬 Script d\'inspection initialisé immédiatement');
+        
+        // Envoyer un message au parent pour confirmer que le script est prêt
+        window.parent.postMessage({ type: 'inspect-ready' }, '*');
+        console.log('📤 Message inspect-ready envoyé au parent');
       })();
     </script>
     `;
@@ -363,6 +368,14 @@ export function CustomIframePreview({
     
     console.log('✅ Références externes supprimées');
     
+    // ✅ INJECTER LE SCRIPT D'INSPECTION EN PREMIER DANS LE <HEAD> (avant tout le reste)
+    console.log('✅ Injection du script d\'inspection dans <head>');
+    if (finalHTML.includes('</head>')) {
+      finalHTML = finalHTML.replace('</head>', `${inspectionScript}</head>`);
+    } else {
+      finalHTML = finalHTML.replace('<head>', `<head>${inspectionScript}`);
+    }
+    
     // ✅ AJOUTER LE CSS DANS LE <HEAD>
     if (cssFiles) {
       console.log('✅ Injection CSS inline dans <head>');
@@ -376,25 +389,19 @@ export function CustomIframePreview({
       console.warn('⚠️ Aucun CSS à injecter');
     }
     
-    // ✅ AJOUTER LE JAVASCRIPT INLINE AVANT LE SCRIPT D'INSPECTION
+    // ✅ AJOUTER LE JAVASCRIPT INLINE DANS LE <BODY>
     if (jsFiles) {
       console.log('✅ Injection JS inline dans <body>');
       // Échapper les balises </script> dans le code JavaScript pour éviter la fermeture prématurée
       const escapedJS = jsFiles.replace(/<\/script>/gi, '<\\/script>');
       const scriptTag = `<script>${escapedJS}</script>`;
       if (finalHTML.includes('</body>')) {
-        finalHTML = finalHTML.replace('</body>', `${scriptTag}${inspectionScript}</body>`);
+        finalHTML = finalHTML.replace('</body>', `${scriptTag}</body>`);
       } else {
-        finalHTML += scriptTag + inspectionScript;
+        finalHTML += scriptTag;
       }
     } else {
       console.warn('⚠️ Aucun JS à injecter');
-      // Ajouter quand même le script d'inspection
-      if (finalHTML.includes('</body>')) {
-        finalHTML = finalHTML.replace('</body>', `${inspectionScript}</body>`);
-      } else {
-        finalHTML += inspectionScript;
-      }
     }
 
     return finalHTML;
@@ -403,6 +410,13 @@ export function CustomIframePreview({
   // Écouter les messages de l'iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Gérer le handshake de readiness
+      if (event.data.type === 'inspect-ready') {
+        console.log('✅ Iframe prête - Message inspect-ready reçu');
+        setIframeReady(true);
+        return;
+      }
+      
       if (event.data.type === 'element-selected' && onElementSelect) {
         onElementSelect(event.data.data);
       }
@@ -431,90 +445,65 @@ export function CustomIframePreview({
         console.log('🔄 Rechargement de la preview...');
         setReloadKey(prev => prev + 1);
       }
-      // Gérer le rechargement de la preview
-      if (event.data.type === 'reload') {
-        console.log('🔄 Rechargement de la preview...');
-        setReloadKey(prev => prev + 1);
-      }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [onElementSelect, projectFiles]);
 
-  // Référence pour garder l'état précédent du HTML
-  const previousGeneratedHTMLRef = useRef<string>('');
-  
-  // Fonction centralisée pour envoyer le mode inspect
-  const sendInspectModeToIframe = useCallback((retryCount = 0) => {
+  // Fonction pour envoyer le mode inspect avec retry intelligent et backoff exponentiel
+  const sendInspectModeToIframe = useCallback((retryCount = 0, maxRetries = 5) => {
     if (!iframeRef.current?.contentWindow) {
-      console.log('❌ Iframe contentWindow non disponible (tentative', retryCount + 1, ')');
+      console.log('❌ Iframe contentWindow non disponible (tentative', retryCount + 1, '/', maxRetries, ')');
+      
+      // Retry avec backoff exponentiel
+      if (retryCount < maxRetries) {
+        const delay = 100 * Math.pow(1.5, retryCount); // 100ms, 150ms, 225ms, 337ms, 506ms
+        setTimeout(() => sendInspectModeToIframe(retryCount + 1, maxRetries), delay);
+      }
       return;
     }
     
-    console.log('✅ Envoi du message toggle-inspect avec enabled:', inspectMode, '(tentative', retryCount + 1, ')');
-    iframeRef.current.contentWindow.postMessage({
-      type: 'toggle-inspect',
-      enabled: inspectMode
-    }, '*');
+    console.log('✅ Envoi du message toggle-inspect avec enabled:', inspectMode, '(tentative', retryCount + 1, '/', maxRetries, ')');
+    
+    try {
+      iframeRef.current.contentWindow.postMessage(
+        { type: 'toggle-inspect', enabled: inspectMode },
+        '*'
+      );
+      console.log('✅ Message toggle-inspect envoyé avec succès');
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'envoi du message:', error);
+      
+      // Retry en cas d'erreur
+      if (retryCount < maxRetries) {
+        const delay = 100 * Math.pow(1.5, retryCount);
+        setTimeout(() => sendInspectModeToIframe(retryCount + 1, maxRetries), delay);
+      }
+    }
   }, [inspectMode]);
 
-  // Mettre à jour l'iframe quand le HTML change
+  // Effet unifié : envoyer le toggle-inspect uniquement quand l'iframe est prête ET que inspectMode change
   useEffect(() => {
-    if (!iframeRef.current) return;
-    
-    const doc = iframeRef.current.contentDocument;
-    if (!doc) return;
-
-    // Vérifier si le HTML a vraiment changé
-    const htmlChanged = previousGeneratedHTMLRef.current !== generatedHTML;
-    previousGeneratedHTMLRef.current = generatedHTML;
-    
-    if (htmlChanged) {
-      console.log('🔄 HTML changé, rechargement de l\'iframe...');
-      doc.open();
-      doc.write(generatedHTML);
-      doc.close();
-      
-      // Attendre que l'iframe soit complètement chargée avant de réappliquer le mode inspect
-      const iframe = iframeRef.current;
-      const handleLoad = () => {
-        console.log('✅ Iframe chargée, réapplication du mode inspect:', inspectMode);
-        
-        // Envoyer avec plusieurs tentatives espacées
-        sendInspectModeToIframe(0);
-        setTimeout(() => sendInspectModeToIframe(1), 100);
-        setTimeout(() => sendInspectModeToIframe(2), 300);
-        setTimeout(() => sendInspectModeToIframe(3), 600);
-      };
-      
-      iframe.addEventListener('load', handleLoad, { once: true });
-      
-      // Fallback si l'événement load ne se déclenche pas
-      setTimeout(handleLoad, 800);
+    if (!iframeReady) {
+      console.log('⏳ Iframe pas encore prête, attente du message inspect-ready...');
+      return;
     }
-  }, [generatedHTML, reloadKey, sendInspectModeToIframe]);
-
-  // Envoyer l'état d'inspection à l'iframe quand inspectMode change
-  useEffect(() => {
-    console.log('📤 Mode inspection changé:', inspectMode);
     
-    // Envoyer avec plusieurs tentatives pour être sûr
+    console.log('🎯 Iframe prête ET inspectMode =', inspectMode, '→ Envoi du message');
     sendInspectModeToIframe(0);
-    const timer1 = setTimeout(() => sendInspectModeToIframe(1), 50);
-    const timer2 = setTimeout(() => sendInspectModeToIframe(2), 150);
-    const timer3 = setTimeout(() => sendInspectModeToIframe(3), 400);
-    
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-    };
-  }, [inspectMode, sendInspectModeToIframe]);
+  }, [iframeReady, inspectMode, sendInspectModeToIframe]);
+
+  // Effet pour réinitialiser iframeReady quand le HTML change (rechargement)
+  useEffect(() => {
+    console.log('🔄 HTML généré a changé, reset de iframeReady');
+    setIframeReady(false);
+  }, [generatedHTML, reloadKey]);
 
   return (
     <iframe
       ref={iframeRef}
+      srcDoc={generatedHTML}
       className="w-full h-full border-0"
       sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
       title="Preview"
