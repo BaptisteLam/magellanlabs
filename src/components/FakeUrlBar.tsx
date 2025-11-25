@@ -1,6 +1,7 @@
-import { Lock, Search, Pencil } from 'lucide-react';
+import { Lock, Search, Pencil, Copy, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface FakeUrlBarProps {
   projectTitle: string;
@@ -12,6 +13,7 @@ interface FakeUrlBarProps {
 export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleChange }: FakeUrlBarProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(projectTitle);
+  const [copied, setCopied] = useState(false);
   
   useEffect(() => {
     setEditedTitle(projectTitle);
@@ -34,6 +36,7 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
     if (!sessionId || !editedTitle.trim()) return;
 
     try {
+      // Sauvegarder le nouveau titre
       const { error } = await supabase
         .from('build_sessions')
         .update({ title: editedTitle })
@@ -43,6 +46,18 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
       
       if (onTitleChange) {
         onTitleChange(editedTitle);
+      }
+
+      // Republier automatiquement le projet avec le nouveau subdomain
+      console.log('🔄 Updating public URL with new title...');
+      const { data: publishData, error: publishError } = await supabase.functions.invoke('publish-project', {
+        body: { sessionId }
+      });
+
+      if (publishError) {
+        console.error('❌ Error updating public URL:', publishError);
+      } else if (publishData?.publicUrl) {
+        console.log('✅ Public URL updated:', publishData.publicUrl);
       }
     } catch (error) {
       console.error('Error saving title:', error);
@@ -68,6 +83,13 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
 
   const handleSearchClick = () => {
     window.open(`https://${fullDomain}`, '_blank');
+  };
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(`https://${fullDomain}`);
+    setCopied(true);
+    toast.success('URL copiée !');
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -145,9 +167,29 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
       {/* Icônes d'actions */}
       <div className="flex items-center gap-2 flex-shrink-0">
         <button
+          onClick={handleCopyUrl}
+          className="w-6 h-6 rounded flex items-center justify-center hover:bg-opacity-80 transition-colors"
+          style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
+          title="Copier l'URL"
+        >
+          {copied ? (
+            <Check 
+              className="w-3.5 h-3.5"
+              style={{ color: '#03A5C0' }}
+            />
+          ) : (
+            <Copy 
+              className="w-3.5 h-3.5"
+              style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
+            />
+          )}
+        </button>
+
+        <button
           onClick={() => setIsEditing(true)}
           className="w-6 h-6 rounded flex items-center justify-center hover:bg-opacity-80 transition-colors"
           style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
+          title="Modifier le nom"
         >
           <Pencil 
             className="w-3.5 h-3.5"
@@ -161,6 +203,7 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
           style={{ 
             backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB',
           }}
+          title="Voir le site publié"
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#03A5C0';
           }}
