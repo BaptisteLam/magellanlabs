@@ -1250,7 +1250,7 @@ export default function BuilderSession() {
             className="h-8 w-8 flex items-center justify-center transition-colors group"
             title="Dashboard"
           >
-            <Home className="w-4 h-4 transition-colors" style={{ color: isDark ? '#6B7280' : '#9CA3AF' }} onMouseEnter={(e) => e.currentTarget.style.color = '#03A5C0'} onMouseLeave={(e) => e.currentTarget.style.color = isDark ? '#6B7280' : '#9CA3AF'} />
+            <Home className="w-4 h-4 transition-colors" style={{ color: isDark ? '#fff' : '#9CA3AF' }} onMouseEnter={(e) => e.currentTarget.style.color = '#03A5C0'} onMouseLeave={(e) => e.currentTarget.style.color = isDark ? '#fff' : '#9CA3AF'} />
           </button>
         </div>
 
