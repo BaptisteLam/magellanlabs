@@ -892,8 +892,8 @@ export default function BuilderSession() {
             }
           }
 
-          // Sauvegarder le message d'introduction
-          await supabase
+          // Sauvegarder le message d'introduction avec les generation_events
+          const { data: insertedIntro } = await supabase
             .from('chat_messages')
             .insert({
               session_id: sessionId,
@@ -901,9 +901,11 @@ export default function BuilderSession() {
               content: introMessage,
               metadata: { 
                 type: 'intro' as const,
-                generation_events: aiEvents
+                generation_events: generationEvents
               }
-            });
+            })
+            .select()
+            .single();
 
           // Sauvegarder le message de récapitulatif avec les détails et tokens réels de Claude
           const { data: insertedRecap } = await supabase
@@ -919,7 +921,7 @@ export default function BuilderSession() {
                 new_files: newFiles,
                 modified_files: modifiedFiles,
                 project_files: updatedFiles,
-                generation_events: aiEvents,
+                generation_events: generationEvents,
                 input_tokens: agent.tokenUsage.input,
                 output_tokens: agent.tokenUsage.output,
                 total_tokens: agent.tokenUsage.total
@@ -934,7 +936,11 @@ export default function BuilderSession() {
             { 
               role: 'assistant' as const, 
               content: introMessage,
-              metadata: { type: 'intro' as const, generation_events: aiEvents }
+              id: insertedIntro?.id,
+              metadata: { 
+                type: 'intro' as const, 
+                generation_events: generationEvents
+              }
             },
             { 
               role: 'assistant' as const, 
@@ -943,7 +949,7 @@ export default function BuilderSession() {
               id: insertedRecap?.id,
               metadata: { 
                 type: 'recap' as const, 
-                generation_events: aiEvents,
+                generation_events: generationEvents,
                 input_tokens: agent.tokenUsage.input,
                 output_tokens: agent.tokenUsage.output,
                 total_tokens: agent.tokenUsage.total
