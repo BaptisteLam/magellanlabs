@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Loader2, Lightbulb } from 'lucide-react';
 import type { GenerationEvent } from '@/types/agent';
 
 interface CollapsedAiTasksProps {
@@ -7,10 +7,30 @@ interface CollapsedAiTasksProps {
   isDark?: boolean;
   isLoading?: boolean;
   autoExpand?: boolean;
+  autoCollapse?: boolean;
 }
 
-export function CollapsedAiTasks({ events, isDark = false, isLoading = false, autoExpand = false }: CollapsedAiTasksProps) {
+export function CollapsedAiTasks({ events, isDark = false, isLoading = false, autoExpand = false, autoCollapse = false }: CollapsedAiTasksProps) {
   const [isExpanded, setIsExpanded] = useState(autoExpand);
+  const [thinkingSeconds, setThinkingSeconds] = useState(0);
+  
+  // Calculer le temps de réflexion total
+  useEffect(() => {
+    if (isLoading) {
+      const startTime = Date.now();
+      const interval = setInterval(() => {
+        setThinkingSeconds(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isLoading]);
+  
+  // Auto-collapse quand la génération est terminée
+  useEffect(() => {
+    if (autoCollapse && !isLoading && events.length > 0) {
+      setIsExpanded(false);
+    }
+  }, [autoCollapse, isLoading, events.length]);
 
   // Compter les edits
   const editCount = events.filter(e => e.type === 'edit').length;
@@ -51,7 +71,7 @@ export function CollapsedAiTasks({ events, isDark = false, isLoading = false, au
             <div className="flex h-6 items-center gap-1.5 whitespace-nowrap text-base font-medium text-muted-foreground md:text-sm">
               <div className="mb-px flex shrink-0 items-center">
                 {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" style={{ color: isDark ? '#94a3b8' : '#64748b' }} />
+                  <Lightbulb className="h-4 w-4" style={{ color: isDark ? '#94a3b8' : '#64748b' }} />
                 ) : hasError ? (
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
@@ -81,7 +101,7 @@ export function CollapsedAiTasks({ events, isDark = false, isLoading = false, au
                 )}
               </div>
               <span className="flex-shrink-0 font-normal">
-                {isLoading ? 'Thinking...' : hasError ? 'Error occurred' : editCount > 0 ? `${editCount} edit${editCount > 1 ? 's' : ''} made` : 'Generation completed'}
+                {isLoading ? `Thought for ${thinkingSeconds}s` : hasError ? 'Error occurred' : editCount > 0 ? `${editCount} edit${editCount > 1 ? 's' : ''} made` : 'Generation completed'}
               </span>
             </div>
           ) : (

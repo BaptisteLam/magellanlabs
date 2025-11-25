@@ -1546,6 +1546,7 @@ export default function BuilderSession() {
                             events={msg.metadata?.generation_events || []} 
                             isDark={isDark} 
                             autoExpand={true}
+                            autoCollapse={idx !== messages.length - 1}
                             isLoading={idx === messages.length - 1 && agent.isLoading}
                           />
                         </>
