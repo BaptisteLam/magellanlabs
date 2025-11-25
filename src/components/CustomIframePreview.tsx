@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef, useState } from 'react';
+import { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { generate404Page } from '@/lib/generate404Page';
 
 interface CustomIframePreviewProps {
@@ -428,65 +428,75 @@ export function CustomIframePreview({
     return () => window.removeEventListener('message', handleMessage);
   }, [onElementSelect, projectFiles]);
 
-  // Envoyer l'état d'inspection à l'iframe
+  // Référence pour garder l'état précédent du HTML
+  const previousGeneratedHTMLRef = useRef<string>('');
+  
+  // Fonction centralisée pour envoyer le mode inspect
+  const sendInspectModeToIframe = useCallback((retryCount = 0) => {
+    if (!iframeRef.current?.contentWindow) {
+      console.log('❌ Iframe contentWindow non disponible (tentative', retryCount + 1, ')');
+      return;
+    }
+    
+    console.log('✅ Envoi du message toggle-inspect avec enabled:', inspectMode, '(tentative', retryCount + 1, ')');
+    iframeRef.current.contentWindow.postMessage({
+      type: 'toggle-inspect',
+      enabled: inspectMode
+    }, '*');
+  }, [inspectMode]);
+
+  // Mettre à jour l'iframe quand le HTML change
   useEffect(() => {
-    console.log('📤 Envoi du mode inspection:', inspectMode);
+    if (!iframeRef.current) return;
     
-    // Fonction pour envoyer le message avec plusieurs tentatives
-    const sendInspectMode = () => {
-      if (iframeRef.current?.contentWindow) {
-        console.log('✅ Envoi du message toggle-inspect avec enabled:', inspectMode);
-        iframeRef.current.contentWindow.postMessage({
-          type: 'toggle-inspect',
-          enabled: inspectMode
-        }, '*');
-      } else {
-        console.log('❌ Iframe contentWindow non disponible');
-      }
-    };
+    const doc = iframeRef.current.contentDocument;
+    if (!doc) return;
+
+    // Vérifier si le HTML a vraiment changé
+    const htmlChanged = previousGeneratedHTMLRef.current !== generatedHTML;
+    previousGeneratedHTMLRef.current = generatedHTML;
     
-    // Envoyer immédiatement
-    sendInspectMode();
+    if (htmlChanged) {
+      console.log('🔄 HTML changé, rechargement de l\'iframe...');
+      doc.open();
+      doc.write(generatedHTML);
+      doc.close();
+      
+      // Attendre que l'iframe soit complètement chargée avant de réappliquer le mode inspect
+      const iframe = iframeRef.current;
+      const handleLoad = () => {
+        console.log('✅ Iframe chargée, réapplication du mode inspect:', inspectMode);
+        
+        // Envoyer avec plusieurs tentatives espacées
+        sendInspectModeToIframe(0);
+        setTimeout(() => sendInspectModeToIframe(1), 100);
+        setTimeout(() => sendInspectModeToIframe(2), 300);
+        setTimeout(() => sendInspectModeToIframe(3), 600);
+      };
+      
+      iframe.addEventListener('load', handleLoad, { once: true });
+      
+      // Fallback si l'événement load ne se déclenche pas
+      setTimeout(handleLoad, 800);
+    }
+  }, [generatedHTML, reloadKey, sendInspectModeToIframe]);
+
+  // Envoyer l'état d'inspection à l'iframe quand inspectMode change
+  useEffect(() => {
+    console.log('📤 Mode inspection changé:', inspectMode);
     
-    // Réessayer après 50ms, 150ms et 300ms pour être sûr que l'iframe soit prête
-    const timer1 = setTimeout(sendInspectMode, 50);
-    const timer2 = setTimeout(sendInspectMode, 150);
-    const timer3 = setTimeout(sendInspectMode, 300);
+    // Envoyer avec plusieurs tentatives pour être sûr
+    sendInspectModeToIframe(0);
+    const timer1 = setTimeout(() => sendInspectModeToIframe(1), 50);
+    const timer2 = setTimeout(() => sendInspectModeToIframe(2), 150);
+    const timer3 = setTimeout(() => sendInspectModeToIframe(3), 400);
     
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
       clearTimeout(timer3);
     };
-  }, [inspectMode]);
-
-  // Mettre à jour l'iframe quand le HTML change
-  useEffect(() => {
-    if (iframeRef.current) {
-      const doc = iframeRef.current.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(generatedHTML);
-        doc.close();
-        
-        // Attendre que l'iframe soit chargée puis réappliquer le mode inspect avec plusieurs tentatives
-        const sendInspectMode = () => {
-          if (iframeRef.current?.contentWindow) {
-            console.log('🔄 Réapplication du mode inspect après rechargement HTML:', inspectMode);
-            iframeRef.current.contentWindow.postMessage({
-              type: 'toggle-inspect',
-              enabled: inspectMode
-            }, '*');
-          }
-        };
-        
-        // Envoyer le message avec plusieurs tentatives pour être sûr
-        setTimeout(sendInspectMode, 100);
-        setTimeout(sendInspectMode, 300);
-        setTimeout(sendInspectMode, 500);
-      }
-    }
-  }, [generatedHTML, reloadKey]);
+  }, [inspectMode, sendInspectModeToIframe]);
 
   return (
     <iframe
