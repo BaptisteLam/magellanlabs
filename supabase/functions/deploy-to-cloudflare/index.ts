@@ -158,7 +158,7 @@ serve(async (req) => {
 
     // Créer le manifest avec les hashes
     console.log('🔐 Computing file hashes...');
-    const manifest: Record<string, string> = {};
+    const manifest: Record<string, { hash: string; size: number }> = {};
     
     for (const file of projectFiles) {
       const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
@@ -176,8 +176,9 @@ serve(async (req) => {
       }
       
       const hash = computeHash(content);
-      manifest[filePath] = hash;
-      console.log(`  ✓ ${filePath}: ${hash}`);
+      const size = new TextEncoder().encode(content).length;
+      manifest[filePath] = { hash, size };
+      console.log(`  ✓ ${filePath}: ${hash} (${size} bytes)`);
     }
     
     console.log('📤 Uploading files to Cloudflare Pages...');
