@@ -45,7 +45,9 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <PublicProject />
+          <BrowserRouter>
+            <PublicProject />
+          </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
     );
