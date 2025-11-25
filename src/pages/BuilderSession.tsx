@@ -1541,21 +1541,19 @@ export default function BuilderSession() {
                     <div className="space-y-3">
                       {/* Message d'introduction - texte simple sans icône */}
                       {msg.metadata?.type === 'intro' && (
-                        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
-                          {typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
-                        </p>
-                      )}
-                      
-                      {/* AI Tasks - affichés après le message intro */}
-                      {msg.metadata?.type === 'intro' && msg.metadata?.generation_events && (
-                        <div>
+                        <>
+                          <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap mb-3`}>
+                            {typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
+                          </p>
+                          
+                          {/* AI Tasks - toujours affichés après le message intro */}
                           <CollapsedAiTasks 
-                            events={msg.metadata.generation_events} 
+                            events={msg.metadata?.generation_events || []} 
                             isDark={isDark} 
                             autoExpand={true}
                             isLoading={idx === messages.length - 1 && agent.isLoading}
                           />
-                        </div>
+                        </>
                       )}
                       
                       {/* Message de récapitulatif - texte simple avec boutons */}
