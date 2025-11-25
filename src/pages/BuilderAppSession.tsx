@@ -878,8 +878,6 @@ export default function BuilderSession() {
           if (isInitialGenerationRef.current) {
             if (newFiles.length > 0) {
               recapMessage = `✅ J'ai créé votre site avec ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} : ${newFiles.join(', ')}`;
-            } else {
-              recapMessage = '✅ Votre site est prêt !';
             }
           } else {
             if (newFiles.length > 0 && modifiedFiles.length > 0) {
