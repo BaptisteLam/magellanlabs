@@ -1,5 +1,5 @@
 import { Search, Pencil, Copy, Check, Paperclip } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -17,7 +17,7 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
   const [editedTitle, setEditedTitle] = useState(projectTitle);
   const [copied, setCopied] = useState(false);
   const [isHoveringFavicon, setIsHoveringFavicon] = useState(false);
-  const faviconInputRef = useState<HTMLInputElement | null>(null)[0];
+  const faviconInputRef = useRef<HTMLInputElement | null>(null);
   
   useEffect(() => {
     setEditedTitle(projectTitle);
@@ -183,16 +183,14 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
       >
         <input
           type="file"
-          ref={(el) => {
-            if (el) (faviconInputRef as any) = el;
-          }}
+          ref={faviconInputRef}
           onChange={handleFaviconUpload}
           accept="image/*"
           className="hidden"
         />
         
         <button
-          onClick={() => (faviconInputRef as any)?.click()}
+          onClick={() => faviconInputRef.current?.click()}
           onMouseEnter={() => setIsHoveringFavicon(true)}
           onMouseLeave={() => setIsHoveringFavicon(false)}
           className="flex-shrink-0 hover:text-[#03A5C0] transition-colors cursor-pointer bg-transparent border-0 p-0"
