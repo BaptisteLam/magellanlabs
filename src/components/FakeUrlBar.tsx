@@ -1,4 +1,4 @@
-import { Search, Pencil, Copy, Check, Paperclip, Settings } from 'lucide-react';
+import { Search, Pencil, Copy, Check, Paperclip, Settings, ChevronLeft, ChevronRight, RotateCw } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -20,11 +20,46 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
   const [copied, setCopied] = useState(false);
   const [isHoveringFavicon, setIsHoveringFavicon] = useState(false);
   const [showCustomDomain, setShowCustomDomain] = useState(false);
+  const [canGoBack, setCanGoBack] = useState(false);
+  const [canGoForward, setCanGoForward] = useState(false);
   const faviconInputRef = useRef<HTMLInputElement | null>(null);
   
   useEffect(() => {
     setEditedTitle(projectTitle);
   }, [projectTitle]);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'navigation-state') {
+        setCanGoBack(event.data.canGoBack);
+        setCanGoForward(event.data.canGoForward);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const handleNavigateBack = () => {
+    const iframe = document.querySelector('iframe');
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'navigate-back' }, '*');
+    }
+  };
+
+  const handleNavigateForward = () => {
+    const iframe = document.querySelector('iframe');
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'navigate-forward' }, '*');
+    }
+  };
+
+  const handleReload = () => {
+    const iframe = document.querySelector('iframe');
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'reload' }, '*');
+    }
+  };
 
   // Convertir le titre en nom de domaine
   const domainName = editedTitle
@@ -159,20 +194,41 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
     >
       {/* Boutons de navigation */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        <div className="flex items-center gap-1">
-          <div 
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: isDark ? '#4A4A4B' : '#E5E7EB' }}
+        <button
+          onClick={handleNavigateBack}
+          disabled={!canGoBack}
+          className="w-6 h-6 rounded flex items-center justify-center transition-colors disabled:opacity-40"
+          style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
+          title="Retour"
+        >
+          <ChevronLeft 
+            className="w-3.5 h-3.5"
+            style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
           />
-          <div 
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: isDark ? '#4A4A4B' : '#E5E7EB' }}
+        </button>
+        <button
+          onClick={handleNavigateForward}
+          disabled={!canGoForward}
+          className="w-6 h-6 rounded flex items-center justify-center transition-colors disabled:opacity-40"
+          style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
+          title="Suivant"
+        >
+          <ChevronRight 
+            className="w-3.5 h-3.5"
+            style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
           />
-          <div 
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: isDark ? '#4A4A4B' : '#E5E7EB' }}
+        </button>
+        <button
+          onClick={handleReload}
+          className="w-6 h-6 rounded flex items-center justify-center transition-colors"
+          style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
+          title="Recharger"
+        >
+          <RotateCw 
+            className="w-3.5 h-3.5"
+            style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
           />
-        </div>
+        </button>
       </div>
 
       {/* Barre d'URL */}
