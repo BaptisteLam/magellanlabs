@@ -244,9 +244,11 @@ export default function BuilderSession() {
           setProjectType(data.project_type as 'website' | 'webapp' | 'mobile');
         }
         
-        // Parser les fichiers de projet
+        // 📦 Parser et restaurer les fichiers de projet avec validation stricte
+        console.log('📦 Starting project files restoration...');
         try {
           const projectFilesData = data.project_files as any;
+          console.log('📦 Raw project_files data type:', typeof projectFilesData, Array.isArray(projectFilesData) ? `(array, ${projectFilesData.length} items)` : '');
           
           if (projectFilesData) {
             let filesMap: Record<string, string> = {};
@@ -254,37 +256,52 @@ export default function BuilderSession() {
             // Support des deux formats: array ET object
             if (Array.isArray(projectFilesData) && projectFilesData.length > 0) {
               // Format array: [{path, content}, ...]
-              projectFilesData.forEach((file: any) => {
+              console.log('📦 Loading project files (array format):', projectFilesData.length, 'files');
+              projectFilesData.forEach((file: any, index: number) => {
                 if (file.path && file.content) {
                   filesMap[file.path] = file.content;
+                  console.log(`  ✅ [${index + 1}/${projectFilesData.length}] ${file.path} : ${file.content.length} chars`);
+                } else {
+                  console.warn(`  ⚠️ [${index + 1}/${projectFilesData.length}] Invalid file structure`);
                 }
               });
             } else if (typeof projectFilesData === 'object' && Object.keys(projectFilesData).length > 0) {
               // Format object: {path: content, ...}
+              console.log('📦 Loading project files (object format):', Object.keys(projectFilesData).length, 'files');
               filesMap = projectFilesData;
+              Object.entries(filesMap).forEach(([path, content], index) => {
+                console.log(`  ✅ [${index + 1}/${Object.keys(filesMap).length}] ${path} : ${content.length} chars`);
+              });
             }
             
             if (Object.keys(filesMap).length > 0) {
+              console.log('✅ =====================================');
+              console.log('✅ PROJECT FILES RESTORATION SUCCESS');
+              console.log('✅ Total files restored:', Object.keys(filesMap).length);
+              console.log('✅ Files:', Object.keys(filesMap).join(', '));
+              console.log('✅ =====================================');
+              
               setProjectFiles(filesMap);
               setGeneratedHtml(filesMap['index.html'] || '');
-              
-              // Charger le favicon s'il existe
-              const faviconFile = Object.keys(filesMap).find(path => path.startsWith('public/favicon.'));
-              if (faviconFile) {
-                setCurrentFavicon(filesMap[faviconFile]);
-              }
               
               const firstFile = Object.keys(filesMap)[0];
               if (firstFile) {
                 setSelectedFile(firstFile);
                 setSelectedFileContent(filesMap[firstFile]);
+                console.log('✅ First file selected:', firstFile);
               }
             } else {
+              console.error('❌ =====================================');
+              console.error('❌ PROJECT FILES RESTORATION FAILED');
+              console.error('❌ No files found after parsing');
+              console.error('❌ =====================================');
               setProjectFiles({});
               setGeneratedHtml('');
             }
           } else {
-            // Fallback: projet vide
+            console.error('❌ =====================================');
+            console.error('❌ PROJECT FILES DATA IS NULL/UNDEFINED');
+            console.error('❌ =====================================');
             setProjectFiles({});
             setGeneratedHtml('');
           }

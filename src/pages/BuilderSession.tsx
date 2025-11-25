@@ -244,9 +244,11 @@ export default function BuilderSession() {
           setProjectType(data.project_type as 'website' | 'webapp' | 'mobile');
         }
         
-        // Parser les fichiers de projet
+        // 📦 Parser et restaurer les fichiers de projet avec validation stricte
+        console.log('📦 Starting project files restoration...');
         try {
           const projectFilesData = data.project_files as any;
+          console.log('📦 Raw project_files data type:', typeof projectFilesData, Array.isArray(projectFilesData) ? `(array, ${projectFilesData.length} items)` : '');
           
           if (projectFilesData) {
             let filesMap: Record<string, string> = {};
@@ -255,23 +257,30 @@ export default function BuilderSession() {
             if (Array.isArray(projectFilesData) && projectFilesData.length > 0) {
               // Format array: [{path, content}, ...]
               console.log('📦 Loading project files (array format):', projectFilesData.length, 'files');
-              projectFilesData.forEach((file: any) => {
+              projectFilesData.forEach((file: any, index: number) => {
                 if (file.path && file.content) {
                   filesMap[file.path] = file.content;
-                  console.log('  ✅', file.path, ':', file.content.length, 'chars');
+                  console.log(`  ✅ [${index + 1}/${projectFilesData.length}] ${file.path} : ${file.content.length} chars`);
+                } else {
+                  console.warn(`  ⚠️ [${index + 1}/${projectFilesData.length}] Invalid file structure:`, { hasPath: !!file.path, hasContent: !!file.content });
                 }
               });
             } else if (typeof projectFilesData === 'object' && Object.keys(projectFilesData).length > 0) {
               // Format object: {path: content, ...}
               console.log('📦 Loading project files (object format):', Object.keys(projectFilesData).length, 'files');
               filesMap = projectFilesData;
-              Object.entries(filesMap).forEach(([path, content]) => {
-                console.log('  ✅', path, ':', content.length, 'chars');
+              Object.entries(filesMap).forEach(([path, content], index) => {
+                console.log(`  ✅ [${index + 1}/${Object.keys(filesMap).length}] ${path} : ${content.length} chars`);
               });
             }
             
             if (Object.keys(filesMap).length > 0) {
-              console.log('✅ Total files loaded:', Object.keys(filesMap).length);
+              console.log('✅ =====================================');
+              console.log('✅ PROJECT FILES RESTORATION SUCCESS');
+              console.log('✅ Total files restored:', Object.keys(filesMap).length);
+              console.log('✅ Files:', Object.keys(filesMap).join(', '));
+              console.log('✅ =====================================');
+              
               setProjectFiles(filesMap);
               setGeneratedHtml(filesMap['index.html'] || '');
               
@@ -279,21 +288,28 @@ export default function BuilderSession() {
               const faviconFile = Object.keys(filesMap).find(path => path.startsWith('public/favicon.'));
               if (faviconFile) {
                 setCurrentFavicon(filesMap[faviconFile]);
+                console.log('✅ Favicon restored:', faviconFile);
               }
               
               const firstFile = Object.keys(filesMap)[0];
               if (firstFile) {
                 setSelectedFile(firstFile);
                 setSelectedFileContent(filesMap[firstFile]);
+                console.log('✅ First file selected:', firstFile);
               }
             } else {
-              console.warn('⚠️ No files found in project_files');
+              console.error('❌ =====================================');
+              console.error('❌ PROJECT FILES RESTORATION FAILED');
+              console.error('❌ No files found after parsing');
+              console.error('❌ =====================================');
               setProjectFiles({});
               setGeneratedHtml('');
             }
           } else {
-            // Fallback: projet vide
-            console.warn('⚠️ project_files is null or undefined');
+            console.error('❌ =====================================');
+            console.error('❌ PROJECT FILES DATA IS NULL/UNDEFINED');
+            console.error('❌ Cannot restore project files');
+            console.error('❌ =====================================');
             setProjectFiles({});
             setGeneratedHtml('');
           }
@@ -928,7 +944,14 @@ export default function BuilderSession() {
           }
 
 
-          // Sauvegarder le message de récapitulatif avec les détails et tokens réels de Claude
+          // 💾 Sauvegarder le message de récapitulatif avec état complet du projet
+          console.log('💾 =====================================');
+          console.log('💾 SAVING RECAP MESSAGE WITH PROJECT STATE');
+          console.log('💾 Files to save:', Object.keys(updatedFiles).length);
+          console.log('💾 File list:', Object.keys(updatedFiles).join(', '));
+          console.log('💾 Total tokens:', agent.tokenUsage.total);
+          console.log('💾 =====================================');
+          
           const { data: insertedRecap } = await supabase
             .from('chat_messages')
             .insert([{
@@ -941,11 +964,12 @@ export default function BuilderSession() {
                 files_updated: Object.keys(updatedFiles).length,
                 new_files: newFiles,
                 modified_files: modifiedFiles,
-                project_files: updatedFiles,
+                project_files: updatedFiles, // État complet du projet sauvegardé ici
                 generation_events: aiEvents,
                 input_tokens: agent.tokenUsage.input,
                 output_tokens: agent.tokenUsage.output,
-                total_tokens: agent.tokenUsage.total
+                total_tokens: agent.tokenUsage.total,
+                saved_at: new Date().toISOString()
               }
             }])
             .select()
@@ -1547,6 +1571,11 @@ export default function BuilderSession() {
                               const targetMessage = messages[messageIdx];
                               if (!targetMessage.id || !sessionId) return;
                               
+                              console.log('🔄 =====================================');
+                              console.log('🔄 RESTORING VERSION FROM MESSAGE', messageIdx);
+                              console.log('🔄 Message ID:', targetMessage.id);
+                              console.log('🔄 =====================================');
+                              
                               const { data: chatMessage } = await supabase
                                 .from('chat_messages')
                                 .select('metadata')
@@ -1555,7 +1584,24 @@ export default function BuilderSession() {
                               
                               if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
                                 const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                                
+                                console.log('✅ Project files found in metadata');
+                                console.log('✅ Files to restore:', Object.keys(restoredFiles).length);
+                                console.log('✅ File list:', Object.keys(restoredFiles).join(', '));
+                                
                                 setProjectFiles(restoredFiles);
+                                setGeneratedHtml(restoredFiles['index.html'] || '');
+                                
+                                // Mettre à jour le fichier sélectionné si nécessaire
+                                if (selectedFile && restoredFiles[selectedFile]) {
+                                  setSelectedFileContent(restoredFiles[selectedFile]);
+                                } else {
+                                  const firstFile = Object.keys(restoredFiles)[0];
+                                  if (firstFile) {
+                                    setSelectedFile(firstFile);
+                                    setSelectedFileContent(restoredFiles[firstFile]);
+                                  }
+                                }
                                 
                                 // Ne pas tronquer les messages, juste marquer la version courante
                                 setCurrentVersionIndex(messageIdx);
@@ -1568,7 +1614,11 @@ export default function BuilderSession() {
                                   })
                                   .eq('id', sessionId);
                                 
+                                console.log('✅ Version restored successfully');
                                 sonnerToast.success('Version restaurée');
+                              } else {
+                                console.error('❌ No project_files found in message metadata');
+                                sonnerToast.error('Impossible de restaurer cette version');
                               }
                             }}
                             onGoToPrevious={async () => {
@@ -1578,12 +1628,21 @@ export default function BuilderSession() {
                                 .filter(({ message }) => message.role === 'assistant' && message.metadata?.type === 'recap')
                                 .slice(-15); // Limiter aux 15 dernières versions
                               
+                              console.log('⏮️ =====================================');
+                              console.log('⏮️ GOING TO PREVIOUS VERSION');
+                              console.log('⏮️ Total recap messages:', recapMessages.length);
+                              console.log('⏮️ Current version index:', currentVersionIndex);
+                              console.log('⏮️ =====================================');
+                              
                               // Trouver l'index actuel dans la liste des recaps
                               const currentRecapIndex = currentVersionIndex !== null
                                 ? recapMessages.findIndex(r => r.index === currentVersionIndex)
                                 : recapMessages.length - 1;
                               
+                              console.log('⏮️ Current recap index in list:', currentRecapIndex);
+                              
                               if (currentRecapIndex <= 0) {
+                                console.warn('⚠️ No previous version available');
                                 sonnerToast.error('Aucune version précédente disponible');
                                 return;
                               }
@@ -1591,6 +1650,9 @@ export default function BuilderSession() {
                               // Prendre le message recap précédent
                               const previousRecap = recapMessages[currentRecapIndex - 1];
                               const targetMessage = previousRecap.message;
+                              
+                              console.log('⏮️ Previous recap index:', previousRecap.index);
+                              console.log('⏮️ Target message ID:', targetMessage.id);
                               
                               if (!targetMessage.id || !sessionId) return;
                               
@@ -1602,7 +1664,24 @@ export default function BuilderSession() {
                               
                               if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
                                 const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                                
+                                console.log('✅ Project files found in metadata');
+                                console.log('✅ Files to restore:', Object.keys(restoredFiles).length);
+                                console.log('✅ File list:', Object.keys(restoredFiles).join(', '));
+                                
                                 setProjectFiles(restoredFiles);
+                                setGeneratedHtml(restoredFiles['index.html'] || '');
+                                
+                                // Mettre à jour le fichier sélectionné si nécessaire
+                                if (selectedFile && restoredFiles[selectedFile]) {
+                                  setSelectedFileContent(restoredFiles[selectedFile]);
+                                } else {
+                                  const firstFile = Object.keys(restoredFiles)[0];
+                                  if (firstFile) {
+                                    setSelectedFile(firstFile);
+                                    setSelectedFileContent(restoredFiles[firstFile]);
+                                  }
+                                }
                                 
                                 // Ne pas tronquer les messages, juste marquer la version courante
                                 setCurrentVersionIndex(previousRecap.index);
@@ -1615,7 +1694,11 @@ export default function BuilderSession() {
                                   })
                                   .eq('id', sessionId);
                                 
+                                console.log('✅ Previous version restored successfully');
                                 sonnerToast.success('Version précédente restaurée');
+                              } else {
+                                console.error('❌ No project_files found in message metadata');
+                                sonnerToast.error('Impossible de restaurer cette version');
                               }
                             }}
                             isDark={isDark}
