@@ -357,6 +357,10 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
         let accumulated = '';
         let lastParsedFiles: ProjectFile[] = [];
         let timeout: number | null = null;
+        
+        // Variables pour capturer les tokens réels de Claude
+        let inputTokens = 0;
+        let outputTokens = 0;
 
         // Timeout de 120 secondes (2 minutes)
         timeout = setTimeout(() => {
@@ -389,6 +393,24 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
               if (!line.startsWith('data:')) continue;
               
               const dataStr = line.replace('data:', '').trim();
+              
+              try {
+                const parsed = JSON.parse(dataStr);
+                
+                // Capturer les tokens depuis message_start
+                if (parsed.type === 'message_start' && parsed.message?.usage) {
+                  inputTokens = parsed.message.usage.input_tokens || 0;
+                  console.log(`[generate-site] 📊 Input tokens: ${inputTokens}`);
+                }
+                
+                // Capturer les tokens d'output depuis message_delta
+                if (parsed.type === 'message_delta' && parsed.usage) {
+                  outputTokens = parsed.usage.output_tokens || 0;
+                  console.log(`[generate-site] 📊 Output tokens so far: ${outputTokens}`);
+                }
+              } catch (e) {
+                // Ignore parsing errors for non-JSON lines
+              }
               
               // Claude envoie un [DONE] ou message_stop
               if (dataStr === '[DONE]' || dataStr.includes('"type":"message_stop"')) {
@@ -470,6 +492,9 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                   return;
                 }
                 
+                const totalTokens = inputTokens + outputTokens;
+                console.log(`[generate-site] 📊 FINAL TOKEN COUNT: Input=${inputTokens}, Output=${outputTokens}, Total=${totalTokens}`);
+                
                 // Sauvegarder dans Supabase
                 if (sessionId) {
                   await supabaseClient
@@ -482,10 +507,18 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                     .eq('id', sessionId);
                 }
 
-                // Event: complete
+                // Event: complete avec tokens réels
                 safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'complete',
-                  data: { totalFiles: finalFiles.length, projectType }
+                  data: { 
+                    totalFiles: finalFiles.length, 
+                    projectType,
+                    tokens: {
+                      input: inputTokens,
+                      output: outputTokens,
+                      total: totalTokens
+                    }
+                  }
                 })}\n\n`));
                 
                 closeStream();
