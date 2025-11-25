@@ -423,7 +423,7 @@ export function CustomIframePreview({
         setTimeout(sendInspectMode, 100);
       }
     }
-  }, [generatedHTML, inspectMode]);
+  }, [generatedHTML]);
 
   return (
     <iframe
