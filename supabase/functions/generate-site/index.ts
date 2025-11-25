@@ -155,9 +155,9 @@ serve(async (req) => {
 
     console.log(`[generate-site] User ${user.id} generating site for session ${sessionId}`);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error('ANTHROPIC_API_KEY not configured');
     }
 
     // Prompt système optimisé pour génération de projets web modernes multi-fichiers
@@ -271,19 +271,20 @@ EXIGENCES DE QUALITÉ :
 
 Génère maintenant un projet web complet, professionnel et visuellement impressionnant.`;
 
-    // Appel Lovable AI Gateway avec Gemini Flash (plus rapide)
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Appel Claude API avec streaming
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'claude-sonnet-4-5',
         max_tokens: 8000,
         stream: true,
+        system: systemPrompt,
         messages: [
-          { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
       }),
@@ -291,13 +292,12 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[generate-site] Lovable AI error:', response.status, errorText);
+      console.error('[generate-site] Claude API error:', response.status, errorText);
       
       // Return generic error message to user
       const statusMessages: Record<number, string> = {
         400: 'Invalid request. Please check your input.',
         401: 'Authentication failed. Please try again.',
-        402: 'Credits required. Please add credits to your Lovable AI workspace.',
         429: 'Rate limit exceeded. Please try again in a few moments.',
         500: 'An unexpected error occurred. Please try again later.'
       };
@@ -381,10 +381,17 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
               
               if (!line.trim() || line.startsWith(':') || line === '') continue;
               
+              // Claude SSE format: "event: content_block_delta" suivi de "data: {...}"
+              if (line.startsWith('event:')) {
+                continue; // Skip event type lines
+              }
+              
               if (!line.startsWith('data:')) continue;
               
               const dataStr = line.replace('data:', '').trim();
-              if (dataStr === '[DONE]') {
+              
+              // Claude envoie un [DONE] ou message_stop
+              if (dataStr === '[DONE]' || dataStr.includes('"type":"message_stop"')) {
                 if (timeout) clearTimeout(timeout);
                 
                 // ✅ VALIDATION DU CONTENU FINAL
@@ -487,8 +494,10 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
 
               try {
                 const json = JSON.parse(dataStr);
-                // Support OpenAI-compatible streaming format (Lovable AI)
-                const delta = json?.choices?.[0]?.delta?.content || '';
+                
+                // Support Claude streaming format: { type: "content_block_delta", delta: { text: "..." } }
+                // ET OpenAI format: { choices: [{ delta: { content: "..." } }] }
+                const delta = json?.delta?.text || json?.choices?.[0]?.delta?.content || '';
                 if (!delta) continue;
 
                 accumulated += delta;
