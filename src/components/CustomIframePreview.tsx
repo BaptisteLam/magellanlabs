@@ -424,7 +424,7 @@ export function CustomIframePreview({
         doc.open();
         doc.write(generatedHTML);
         doc.close();
-        
+
         // Attendre que l'iframe soit chargée puis réappliquer le mode inspect
         const sendInspectMode = () => {
           if (iframeRef.current?.contentWindow) {
@@ -434,12 +434,12 @@ export function CustomIframePreview({
             }, '*');
           }
         };
-        
-        // Envoyer le message après un court délai pour s'assurer que le script est chargé
-        setTimeout(sendInspectMode, 100);
+
+        // Envoyer le message après un délai pour s'assurer que le script est chargé
+        setTimeout(sendInspectMode, 200);
       }
     }
-  }, [generatedHTML, inspectMode]);
+  }, [generatedHTML]); // ✅ CORRECTION : Supprimé inspectMode pour éviter le rechargement de l'iframe
 
   return (
     <iframe
