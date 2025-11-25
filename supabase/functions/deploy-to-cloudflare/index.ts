@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { blake3 } from 'https://esm.sh/@noble/hashes@1.3.3/blake3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +11,17 @@ interface ProjectFile {
   name: string;
   content: string;
   type: string;
+}
+
+function computeHash(content: string): string {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(content);
+  const hash = blake3(data);
+  // Convertir en hex (32 caractères)
+  return Array.from(hash)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+    .substring(0, 32);
 }
 
 serve(async (req) => {
@@ -144,18 +156,46 @@ serve(async (req) => {
       console.log('✅ Cloudflare Pages project created');
     }
 
-    // Préparer les fichiers pour l'upload direct
-    console.log('📤 Uploading files to Cloudflare Pages...');
+    // Créer le manifest avec les hashes
+    console.log('🔐 Computing file hashes...');
+    const manifest: Record<string, string> = {};
     
-    const formData = new FormData();
-    
-    // Ajouter chaque fichier au FormData
     for (const file of projectFiles) {
       const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
+      const filePath = '/' + fileName;
+      
+      // Calculer le hash blake3
+      let content: string;
+      if (file.content.startsWith('data:')) {
+        // Fichier binaire - décoder le base64
+        const base64Data = file.content.split(',')[1];
+        content = atob(base64Data);
+      } else {
+        // Fichier texte
+        content = file.content;
+      }
+      
+      const hash = computeHash(content);
+      manifest[filePath] = hash;
+      console.log(`  ✓ ${filePath}: ${hash}`);
+    }
+    
+    console.log('📤 Uploading files to Cloudflare Pages...');
+    
+    // Créer le FormData avec manifest + fichiers
+    const formData = new FormData();
+    
+    // 1. MANIFEST EN PREMIER (CRITIQUE)
+    formData.append('manifest', JSON.stringify(manifest));
+    
+    // 2. PUIS LES FICHIERS
+    for (const file of projectFiles) {
+      const fileName = file.name.startsWith('/') ? file.name.slice(1) : file.name;
+      const filePath = '/' + fileName;
       
       let blob: Blob;
       if (file.content.startsWith('data:')) {
-        // Fichier binaire (image, etc.)
+        // Fichier binaire
         const base64Data = file.content.split(',')[1];
         const binaryString = atob(base64Data);
         const bytes = new Uint8Array(binaryString.length);
@@ -165,19 +205,22 @@ serve(async (req) => {
         blob = new Blob([bytes], { type: file.type || 'application/octet-stream' });
       } else {
         // Fichier texte
-        blob = new Blob([file.content], { type: file.type || 'text/plain' });
+        blob = new Blob([file.content], { type: file.type || 'text/plain; charset=utf-8' });
       }
       
-      formData.append(fileName, blob, fileName);
+      // Utiliser le chemin avec / au début comme nom de champ
+      formData.append(filePath, blob, fileName);
     }
     
-    // Créer un déploiement direct sur Cloudflare
+    // Créer le déploiement
     const deployResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/deployments`,
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+          // Ne PAS mettre Content-Type: multipart/form-data
+          // Le browser le fait automatiquement avec le boundary
         },
         body: formData,
       }
@@ -190,9 +233,10 @@ serve(async (req) => {
     }
     
     const deployData = await deployResponse.json();
-    const deploymentUrl = deployData.result?.url || `https://${projectName}.pages.dev`;
+    console.log('✅ Deploy response:', deployData);
     
-    console.log('✅ Deployed to Cloudflare:', deploymentUrl);
+    const deploymentUrl = deployData.result?.url || `https://${projectName}.pages.dev`;
+    console.log('✅ Deployed to:', deploymentUrl);
 
     // Update session
     const { error: updateError } = await supabaseAdmin
