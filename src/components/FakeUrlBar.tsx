@@ -1,4 +1,4 @@
-import { Search, Pencil, Copy, Check } from 'lucide-react';
+import { Search, Pencil, Copy, Check, Paperclip } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -9,12 +9,15 @@ interface FakeUrlBarProps {
   sessionId?: string;
   onTitleChange?: (newTitle: string) => void;
   currentFavicon?: string;
+  onFaviconChange?: (faviconUrl: string) => void;
 }
 
-export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleChange, currentFavicon }: FakeUrlBarProps) {
+export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleChange, currentFavicon, onFaviconChange }: FakeUrlBarProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(projectTitle);
   const [copied, setCopied] = useState(false);
+  const [isHoveringFavicon, setIsHoveringFavicon] = useState(false);
+  const faviconInputRef = useState<HTMLInputElement | null>(null)[0];
   
   useEffect(() => {
     setEditedTitle(projectTitle);
@@ -93,6 +96,56 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !sessionId) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez sélectionner une image');
+      return;
+    }
+
+    try {
+      // Convertir l'image en base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        
+        // Récupérer les fichiers actuels du projet
+        const { data: session, error: fetchError } = await supabase
+          .from('build_sessions')
+          .select('project_files')
+          .eq('id', sessionId)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const updatedFiles = {
+          ...(session.project_files as any || {}),
+          favicon: base64
+        };
+
+        // Mettre à jour avec le nouveau favicon
+        const { error } = await supabase
+          .from('build_sessions')
+          .update({ project_files: updatedFiles })
+          .eq('id', sessionId);
+
+        if (error) throw error;
+        
+        if (onFaviconChange) {
+          onFaviconChange(base64);
+        }
+        
+        toast.success('Favicon mis à jour !');
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading favicon:', error);
+      toast.error('Erreur lors de la mise à jour du favicon');
+    }
+  };
+
   return (
     <div 
       className="h-10 border-b flex items-center px-4 gap-3 w-full"
@@ -128,13 +181,33 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
           borderRadius: '9999px'
         }}
       >
-        {currentFavicon ? (
-          <img src={currentFavicon} alt="favicon" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
-        ) : (
-          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        )}
+        <input
+          type="file"
+          ref={(el) => {
+            if (el) (faviconInputRef as any) = el;
+          }}
+          onChange={handleFaviconUpload}
+          accept="image/*"
+          className="hidden"
+        />
+        
+        <button
+          onClick={() => (faviconInputRef as any)?.click()}
+          onMouseEnter={() => setIsHoveringFavicon(true)}
+          onMouseLeave={() => setIsHoveringFavicon(false)}
+          className="flex-shrink-0 hover:text-[#03A5C0] transition-colors cursor-pointer bg-transparent border-0 p-0"
+          title="Changer le favicon"
+        >
+          {currentFavicon && !isHoveringFavicon ? (
+            <img src={currentFavicon} alt="favicon" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
+          ) : isHoveringFavicon ? (
+            <Paperclip className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#03A5C0' }} />
+          ) : (
+            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          )}
+        </button>
         
         {isEditing ? (
           <input
