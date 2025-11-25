@@ -1,4 +1,4 @@
-import { Lock, Search, Pencil, Copy, Check } from 'lucide-react';
+import { Search, Pencil, Copy, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -8,9 +8,10 @@ interface FakeUrlBarProps {
   isDark?: boolean;
   sessionId?: string;
   onTitleChange?: (newTitle: string) => void;
+  currentFavicon?: string;
 }
 
-export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleChange }: FakeUrlBarProps) {
+export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleChange, currentFavicon }: FakeUrlBarProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(projectTitle);
   const [copied, setCopied] = useState(false);
@@ -127,10 +128,13 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
           borderRadius: '9999px'
         }}
       >
-        <Lock 
-          className="w-3.5 h-3.5 flex-shrink-0" 
-          style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
-        />
+        {currentFavicon ? (
+          <img src={currentFavicon} alt="favicon" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
+        ) : (
+          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        )}
         
         {isEditing ? (
           <input
