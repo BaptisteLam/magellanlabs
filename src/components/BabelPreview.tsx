@@ -620,6 +620,32 @@ export function BabelPreview({ projectFiles, isDark = false, onConsoleLog, inspe
     }
   }, [generatedHTML, reloadKey]);
 
+  // Envoyer les changements de mode inspection sans recharger l'iframe
+  useEffect(() => {
+    if (!iframeRef.current?.contentWindow) return;
+
+    const sendInspectMode = () => {
+      if (iframeRef.current?.contentWindow) {
+        console.log('📤 BabelPreview - Toggle inspect (sans reload):', inspectMode);
+        iframeRef.current.contentWindow.postMessage({
+          type: 'toggle-inspect',
+          enabled: inspectMode,
+        }, '*');
+      }
+    };
+
+    sendInspectMode();
+    const t1 = setTimeout(sendInspectMode, 50);
+    const t2 = setTimeout(sendInspectMode, 150);
+    const t3 = setTimeout(sendInspectMode, 300);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [inspectMode]);
+
   if (!projectFiles || Object.keys(projectFiles).length === 0) {
     return (
       <div className="flex items-center justify-center h-full bg-background text-foreground">
