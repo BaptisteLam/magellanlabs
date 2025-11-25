@@ -126,6 +126,11 @@ serve(async (req) => {
           body: JSON.stringify({
             name: projectName,
             production_branch: 'main',
+            build_config: {
+              build_command: 'exit 0',
+              destination_dir: '.',
+              root_dir: '/',
+            },
           }),
         }
       );
