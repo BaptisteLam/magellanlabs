@@ -463,7 +463,7 @@ export function CustomIframePreview({
         setTimeout(sendInspectMode, 500);
       }
     }
-  }, [generatedHTML, inspectMode, reloadKey]);
+  }, [generatedHTML, reloadKey]);
 
   return (
     <iframe
