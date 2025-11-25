@@ -24,18 +24,10 @@ export function CollapsedAiTasks({ events, isDark = false, isLoading = false, au
       {!autoExpand && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="absolute right-0 top-0 z-10 flex h-6 items-center justify-center rounded px-2 py-1 text-xs font-normal transition-all duration-200 ease-out"
+          className="absolute right-0 top-0 z-10 flex h-6 items-center justify-center px-2 py-1 text-xs font-normal transition-all duration-200 ease-out hover:opacity-70"
           aria-label={isExpanded ? "Collapse tool uses" : "Expand tool uses"}
           style={{
-            color: isDark ? '#94a3b8' : '#64748b',
-            backgroundColor: isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(148, 163, 184, 0.2)',
-            border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.5)' : 'rgba(148, 163, 184, 0.3)'}`
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = isDark ? 'rgba(51, 65, 85, 0.7)' : 'rgba(148, 163, 184, 0.3)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(148, 163, 184, 0.2)';
+            color: isDark ? '#94a3b8' : '#64748b'
           }}
         >
           {isExpanded ? 'masquer' : 'voir'}
@@ -87,51 +79,55 @@ export function CollapsedAiTasks({ events, isDark = false, isLoading = false, au
           ) : (
             <div className="pt-2 space-y-1">
               {events.map((event, idx) => {
+                // Déterminer si c'est le dernier événement non-complete (donc en cours)
+                const isLastNonComplete = idx === events.length - 1 && event.type !== 'complete' && event.type !== 'error';
+                const isActive = isLoading && isLastNonComplete;
+                
                 return (
                   <div 
                     key={idx} 
-                    className="flex items-start gap-2 text-sm px-2 py-1.5"
+                    className={`flex items-start gap-2 text-sm px-2 py-1.5 rounded-md transition-all duration-300 ${
+                      isActive 
+                        ? 'bg-[#03A5C0]/10 border border-[#03A5C0]/30 animate-pulse' 
+                        : ''
+                    }`}
                     style={{ 
                       color: isDark ? '#94a3b8' : '#64748b'
                     }}
                   >
                     {event.type === 'thought' && (
                       <>
-                        <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                          <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/>
-                        </svg>
-                        <span>
+                        <span className="text-base flex-shrink-0">💡</span>
+                        <span className={isActive ? 'font-medium' : ''}>
                           {event.duration ? `Thought for ${event.duration}s` : event.message}
                         </span>
                       </>
                     )}
                     {event.type === 'read' && (
                       <>
-                        <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd"/>
-                        </svg>
-                        <span>
+                        <span className="text-base flex-shrink-0">📄</span>
+                        <span className={isActive ? 'font-medium' : ''}>
                           Read {event.file || event.message}
                         </span>
                       </>
                     )}
                     {event.type === 'edit' && (
                       <>
-                        <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
-                        </svg>
-                        <span>
+                        <span className="text-base flex-shrink-0">✏️</span>
+                        <span className={isActive ? 'font-medium' : ''}>
                           Edited {event.file || event.message}
                         </span>
                       </>
                     )}
-                    {event.type === 'complete' && null}
+                    {event.type === 'complete' && (
+                      <>
+                        <span className="text-base flex-shrink-0">✅</span>
+                        <span>{event.message}</span>
+                      </>
+                    )}
                     {event.type === 'error' && (
                       <>
-                        <svg className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
-                        </svg>
+                        <span className="text-base flex-shrink-0">❌</span>
                         <span className="text-red-500">{event.message}</span>
                       </>
                     )}
@@ -140,11 +136,11 @@ export function CollapsedAiTasks({ events, isDark = false, isLoading = false, au
               })}
               {isLoading && events.length === 0 && (
                 <div 
-                  className="flex items-center gap-2 text-sm px-2 py-1.5" 
+                  className="flex items-center gap-2 text-sm px-2 py-1.5 rounded-md bg-[#03A5C0]/10 border border-[#03A5C0]/30 animate-pulse" 
                   style={{ color: isDark ? '#94a3b8' : '#64748b' }}
                 >
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Thinking...</span>
+                  <span className="font-medium">Thinking...</span>
                 </div>
               )}
             </div>
