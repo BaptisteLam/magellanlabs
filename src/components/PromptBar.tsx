@@ -184,6 +184,7 @@ const PromptBar = ({
                   <Button 
                     variant="ghost" 
                     size="icon"
+                    type="button"
                     onClick={onInspectToggle}
                     className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
                     style={iconButtonStyle(inspectMode)}
@@ -202,6 +203,7 @@ const PromptBar = ({
                 <Button 
                   variant="ghost" 
                   size="icon"
+                  type="button"
                   onClick={handleFileClick}
                   className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
                   style={iconButtonStyle(false)}
@@ -225,6 +227,7 @@ const PromptBar = ({
                         <Button 
                           variant="ghost" 
                           size="icon"
+                          type="button"
                           className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
                           style={iconButtonStyle(false)}
                         >
@@ -306,6 +309,7 @@ const PromptBar = ({
                     <Button 
                       variant="ghost" 
                       size="icon"
+                      type="button"
                       onClick={() => handleTypeChange('website')}
                       className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
                       style={iconButtonStyle(projectType === 'website')}
@@ -324,6 +328,7 @@ const PromptBar = ({
                     <Button 
                       variant="ghost" 
                       size="icon"
+                      type="button"
                       onClick={() => handleTypeChange('webapp')}
                       className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
                       style={iconButtonStyle(projectType === 'webapp')}
@@ -342,6 +347,7 @@ const PromptBar = ({
                     <Button 
                       variant="ghost" 
                       size="icon"
+                      type="button"
                       onClick={() => handleTypeChange('mobile')}
                       className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
                       style={iconButtonStyle(projectType === 'mobile')}
@@ -360,14 +366,15 @@ const PromptBar = ({
           {/* Bouton d'envoi */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                onClick={onSubmit}
-                disabled={isLoading}
-                className="w-9 h-9 rounded-full p-0 transition-all hover:scale-105 disabled:opacity-50 border-0"
-                style={{ backgroundColor: '#03A5C0' }}
-              >
-                <ArrowUp className="w-4 h-4 text-white" />
-              </Button>
+                <Button
+                  onClick={onSubmit}
+                  type="button"
+                  disabled={isLoading}
+                  className="w-9 h-9 rounded-full p-0 transition-all hover:scale-105 disabled:opacity-50 border-0"
+                  style={{ backgroundColor: '#03A5C0' }}
+                >
+                  <ArrowUp className="w-4 h-4 text-white" />
+                </Button>
             </TooltipTrigger>
             <TooltipContent side="top">
               <p className="text-xs">Envoyer</p>

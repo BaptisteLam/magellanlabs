@@ -1335,6 +1335,7 @@ export default function BuilderSession() {
                 <TooltipTrigger asChild>
                   <Button
                     onClick={() => setInspectMode(!inspectMode)}
+                    type="button"
                     variant="iconOnly"
                     size="sm"
                     className="h-8 w-8 p-0"
