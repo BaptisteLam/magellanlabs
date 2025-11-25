@@ -646,7 +646,7 @@ export default function BuilderSession() {
     setInputValue('');
     setAttachedFiles([]);
 
-    // Créer immédiatement le message d'intro avec CollapsedAiTasks
+    // Créer immédiatement le message d'intro avec CollapsedAiTasks (UI seulement, pas de DB insert)
     const introMessage: Message = {
       role: 'assistant',
       content: "Je vais analyser votre demande et effectuer les modifications nécessaires...",
@@ -657,15 +657,6 @@ export default function BuilderSession() {
     };
     
     setMessages(prev => [...prev, introMessage]);
-    
-    await supabase
-      .from('chat_messages')
-      .insert([{
-        session_id: sessionId,
-        role: 'assistant',
-        content: typeof introMessage.content === 'string' ? introMessage.content : 'Analyzing...',
-        metadata: introMessage.metadata
-      }]);
 
     // Préparer les fichiers pertinents
     const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
@@ -944,14 +935,31 @@ export default function BuilderSession() {
           }
 
 
-          // 💾 Sauvegarder le message de récapitulatif avec état complet du projet
+          // 💾 Sauvegarder les messages intro + recap avec état complet du projet
           console.log('💾 =====================================');
-          console.log('💾 SAVING RECAP MESSAGE WITH PROJECT STATE');
+          console.log('💾 SAVING INTRO + RECAP MESSAGES WITH PROJECT STATE');
           console.log('💾 Files to save:', Object.keys(updatedFiles).length);
           console.log('💾 File list:', Object.keys(updatedFiles).join(', '));
           console.log('💾 Total tokens:', agent.tokenUsage.total);
+          console.log('💾 Generation events:', generationEvents.length);
           console.log('💾 =====================================');
           
+          // Insérer le message d'intro avec les generation_events
+          const { data: insertedIntro } = await supabase
+            .from('chat_messages')
+            .insert([{
+              session_id: sessionId,
+              role: 'assistant',
+              content: introMessage,
+              metadata: { 
+                type: 'intro' as const,
+                generation_events: generationEvents
+              }
+            }])
+            .select()
+            .single();
+
+          // Insérer le message de recap avec tous les détails
           const { data: insertedRecap } = await supabase
             .from('chat_messages')
             .insert([{
@@ -965,7 +973,7 @@ export default function BuilderSession() {
                 new_files: newFiles,
                 modified_files: modifiedFiles,
                 project_files: updatedFiles, // État complet du projet sauvegardé ici
-                generation_events: aiEvents,
+                generation_events: generationEvents,
                 input_tokens: agent.tokenUsage.input,
                 output_tokens: agent.tokenUsage.output,
                 total_tokens: agent.tokenUsage.total,
@@ -975,27 +983,41 @@ export default function BuilderSession() {
             .select()
             .single();
 
-          // Ajouter le message récap à l'interface
-          setMessages(prev => [
-            ...prev,
-            { 
-              role: 'assistant' as const, 
-              content: recapMessage,
-              token_count: agent.tokenUsage.total,
-              id: insertedRecap?.id,
-              metadata: { 
-                type: 'recap' as const, 
-                files_updated: Object.keys(updatedFiles).length,
-                new_files: newFiles,
-                modified_files: modifiedFiles,
-                project_files: updatedFiles,
-                generation_events: aiEvents,
-                input_tokens: agent.tokenUsage.input,
-                output_tokens: agent.tokenUsage.output,
-                total_tokens: agent.tokenUsage.total
+          // Mettre à jour l'interface avec les messages intro + recap
+          setMessages(prev => {
+            // Retirer le message intro temporaire (UI uniquement)
+            const withoutTempIntro = prev.filter(m => !(m.role === 'assistant' && m.metadata?.type === 'intro' && !m.id));
+            
+            return [
+              ...withoutTempIntro,
+              { 
+                role: 'assistant' as const, 
+                content: introMessage,
+                id: insertedIntro?.id,
+                metadata: { 
+                  type: 'intro' as const,
+                  generation_events: generationEvents
+                }
+              },
+              { 
+                role: 'assistant' as const, 
+                content: recapMessage,
+                token_count: agent.tokenUsage.total,
+                id: insertedRecap?.id,
+                metadata: { 
+                  type: 'recap' as const, 
+                  files_updated: Object.keys(updatedFiles).length,
+                  new_files: newFiles,
+                  modified_files: modifiedFiles,
+                  project_files: updatedFiles,
+                  generation_events: generationEvents,
+                  input_tokens: agent.tokenUsage.input,
+                  output_tokens: agent.tokenUsage.output,
+                  total_tokens: agent.tokenUsage.total
+                }
               }
-            }
-          ]);
+            ];
+          });
           
           // Sauvegarder automatiquement le projet avec le nom généré
           if (websiteTitle && websiteTitle !== 'Sans titre') {
