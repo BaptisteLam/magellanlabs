@@ -1,100 +1,204 @@
 /**
- * Analyse l'intent d'un prompt utilisateur pour déterminer
- * s'il nécessite une régénération complète ou un simple patch
+ * Système d'analyse d'intent amélioré avec scoring pondéré (0-100)
+ * pour déterminer le type de génération nécessaire
  */
 
+export interface IntentAnalysis {
+  type: 'quick-modification' | 'full-generation';
+  score: number; // 0-100 (0 = trivial, 100 = complexe)
+  confidence: number; // 0-100
+  reasoning: string;
+  complexity: 'trivial' | 'simple' | 'moderate' | 'complex';
+}
+
+/**
+ * Analyse l'intent d'un prompt avec scoring pondéré
+ */
 export function analyzeIntent(
   prompt: string,
   projectFiles: Record<string, string>
 ): 'quick-modification' | 'full-generation' {
-  const lowerPrompt = prompt.toLowerCase().trim();
-  
-  // Si pas de fichiers existants, toujours faire une génération complète
-  if (Object.keys(projectFiles).length === 0) {
-    return 'full-generation';
-  }
-  
-  // Mots-clés pour modifications rapides (petits changements)
-  const quickModificationKeywords = [
-    // Changements de texte
-    'change le titre', 'modifie le titre', 'change le texte', 'modifie le texte',
-    'remplace', 'corrige', 'change en', 'mets', 'met le',
-    
-    // Changements de couleur
-    'change la couleur', 'met en rouge', 'met en bleu', 'couleur',
-    'background', 'fond', 'color',
-    
-    // Changements de style simple
-    'plus grand', 'plus petit', 'taille', 'police', 'font',
-    'gras', 'italique', 'souligné',
-    
-    // Petites modifications de contenu
-    'ajoute un texte', 'supprime le texte', 'enlève', 'retire',
-    'change le prix', 'modifie le prix', 'prix',
-    
-    // Corrections mineures
-    'corrige la faute', 'orthographe', 'grammaire',
-  ];
-  
-  // Mots-clés pour génération complète (gros changements)
-  const fullGenerationKeywords = [
-    // Nouvelles pages/sections
-    'ajoute une page', 'crée une page', 'nouvelle page',
-    'ajoute une section', 'crée une section',
-    
-    // Gros changements structurels
-    'refais', 'refait', 'redesign', 'restructure',
-    'réorganise', 'change tout', 'modifie tout',
-    
-    // Nouvelles fonctionnalités
-    'ajoute une galerie', 'crée un formulaire', 'formulaire de contact',
-    'menu de navigation', 'carrousel', 'slider',
-    'système de', 'intégration',
-    
-    // Changements majeurs de design
-    'change le design', 'nouveau design', 'style différent',
-    'thème', 'layout', 'mise en page',
-  ];
-  
-  // Vérifier d'abord les mots-clés de génération complète (priorité)
-  for (const keyword of fullGenerationKeywords) {
-    if (lowerPrompt.includes(keyword)) {
-      console.log('🔄 Intent détecté: FULL GENERATION -', keyword);
-      return 'full-generation';
-    }
-  }
-  
-  // Puis vérifier les mots-clés de modification rapide
-  for (const keyword of quickModificationKeywords) {
-    if (lowerPrompt.includes(keyword)) {
-      console.log('⚡ Intent détecté: QUICK MODIFICATION -', keyword);
-      return 'quick-modification';
-    }
-  }
-  
-  // Heuristiques additionnelles
-  
-  // Si le prompt est très court (< 50 caractères), probablement une petite modif
-  if (prompt.length < 50) {
-    console.log('⚡ Intent détecté: QUICK MODIFICATION - prompt court');
-    return 'quick-modification';
-  }
-  
-  // Si le prompt mentionne plusieurs fichiers ou composants, probablement un gros changement
-  const fileKeywords = ['fichier', 'composant', 'component', 'page', 'section'];
-  const fileCount = fileKeywords.filter(k => lowerPrompt.includes(k)).length;
-  if (fileCount >= 2) {
-    console.log('🔄 Intent détecté: FULL GENERATION - multiples fichiers/composants');
-    return 'full-generation';
-  }
-  
-  // Par défaut, si incertain, préférer la modification rapide pour une meilleure UX
-  console.log('⚡ Intent détecté: QUICK MODIFICATION - par défaut');
-  return 'quick-modification';
+  const analysis = analyzeIntentDetailed(prompt, projectFiles);
+  return analysis.type;
 }
 
 /**
- * Identifie les fichiers pertinents pour une modification
+ * Analyse détaillée avec scoring
+ */
+export function analyzeIntentDetailed(
+  prompt: string,
+  projectFiles: Record<string, string>
+): IntentAnalysis {
+  const lowerPrompt = prompt.toLowerCase().trim();
+  
+  // Si pas de fichiers existants, toujours génération complète
+  if (Object.keys(projectFiles).length === 0) {
+    return {
+      type: 'full-generation',
+      score: 100,
+      confidence: 100,
+      reasoning: 'Aucun fichier existant - génération initiale requise',
+      complexity: 'complex'
+    };
+  }
+  
+  let score = 0;
+  const reasons: string[] = [];
+  
+  // === ANALYSE 1: Mots-clés et patterns (40 points max) ===
+  
+  // Patterns de modification simple (points négatifs = favorise quick-mod)
+  const simplePatterns = [
+    { regex: /change\s+(le|la|les)?\s*(titre|texte|couleur|prix)/i, points: -15, reason: 'Changement de contenu simple' },
+    { regex: /modifie\s+(le|la|les)?\s*(titre|texte|couleur)/i, points: -15, reason: 'Modification de contenu' },
+    { regex: /remplace\s+["'].*["']\s+par\s+["'].*["']/i, points: -20, reason: 'Remplacement textuel direct' },
+    { regex: /met(s)?\s+(en)?\s+(rouge|bleu|vert|jaune|noir|blanc)/i, points: -10, reason: 'Changement de couleur' },
+    { regex: /corrige\s+(la|le|les)?\s*(faute|orthographe|grammaire)/i, points: -15, reason: 'Correction mineure' },
+    { regex: /plus\s+(grand|petit|gros)/i, points: -8, reason: 'Ajustement de taille' },
+    { regex: /(gras|italique|souligné|bold|italic|underline)/i, points: -8, reason: 'Style de texte' },
+    { regex: /enlève|supprime|retire/i, points: -12, reason: 'Suppression d\'élément' },
+  ];
+  
+  // Patterns de génération complète (points positifs)
+  const complexPatterns = [
+    { regex: /(ajoute|crée|créer)\s+(une)?\s*page/i, points: 40, reason: 'Création de page' },
+    { regex: /(ajoute|crée)\s+(une|un)?\s*(section|formulaire|galerie)/i, points: 35, reason: 'Nouvelle section/fonctionnalité' },
+    { regex: /(refais|refait|redesign|restructure)/i, points: 45, reason: 'Restructuration majeure' },
+    { regex: /change\s+(tout|le\s+design|la\s+structure)/i, points: 40, reason: 'Changement global' },
+    { regex: /(navigation|menu|carrousel|slider|système)/i, points: 30, reason: 'Composant complexe' },
+    { regex: /(responsive|mobile|desktop|tablette)/i, points: 25, reason: 'Adaptation responsive' },
+    { regex: /(animation|transition|effet)/i, points: 20, reason: 'Animations' },
+    { regex: /(api|intégration|backend|database)/i, points: 35, reason: 'Intégration externe' },
+  ];
+  
+  // Évaluer les patterns simples
+  for (const pattern of simplePatterns) {
+    if (pattern.regex.test(prompt)) {
+      score += pattern.points;
+      reasons.push(pattern.reason);
+    }
+  }
+  
+  // Évaluer les patterns complexes
+  for (const pattern of complexPatterns) {
+    if (pattern.regex.test(prompt)) {
+      score += pattern.points;
+      reasons.push(pattern.reason);
+    }
+  }
+  
+  // === ANALYSE 2: Complexité syntaxique (20 points max) ===
+  
+  const wordCount = prompt.split(/\s+/).length;
+  const sentenceCount = prompt.split(/[.!?]+/).filter(s => s.trim()).length;
+  const hasMultipleSentences = sentenceCount > 1;
+  const hasConjunctions = /\s+(et|ou|puis|ensuite|également|aussi)\s+/i.test(prompt);
+  
+  if (wordCount < 10) {
+    score -= 10;
+    reasons.push('Prompt très court (modification ciblée)');
+  } else if (wordCount < 30) {
+    score -= 5;
+    reasons.push('Prompt court');
+  } else if (wordCount > 50) {
+    score += 10;
+    reasons.push('Prompt long et détaillé');
+  }
+  
+  if (hasMultipleSentences) {
+    score += 5;
+    reasons.push('Plusieurs phrases (instructions multiples)');
+  }
+  
+  if (hasConjunctions) {
+    score += 5;
+    reasons.push('Conjonctions multiples (tâches combinées)');
+  }
+  
+  // === ANALYSE 3: Mentions de fichiers/composants (20 points) ===
+  
+  const fileKeywords = ['fichier', 'component', 'composant', 'page', 'section', 'module'];
+  const mentionedFiles = fileKeywords.filter(k => lowerPrompt.includes(k)).length;
+  
+  if (mentionedFiles >= 3) {
+    score += 20;
+    reasons.push('Multiples fichiers/composants mentionnés');
+  } else if (mentionedFiles >= 2) {
+    score += 10;
+    reasons.push('Plusieurs fichiers/composants');
+  }
+  
+  // Détection de mentions spécifiques de fichiers existants
+  const filePaths = Object.keys(projectFiles);
+  const mentionedSpecificFiles = filePaths.filter(path => 
+    lowerPrompt.includes(path.toLowerCase())
+  );
+  
+  if (mentionedSpecificFiles.length === 1) {
+    score -= 10;
+    reasons.push(`Fichier spécifique ciblé: ${mentionedSpecificFiles[0]}`);
+  } else if (mentionedSpecificFiles.length > 1) {
+    score += 15;
+    reasons.push('Multiples fichiers spécifiques ciblés');
+  }
+  
+  // === ANALYSE 4: Scope de l'impact (20 points) ===
+  
+  // Indicateurs d'impact limité
+  if (/(un|une|le|la)\s+(seul|unique|premier|dernier)/i.test(prompt)) {
+    score -= 8;
+    reasons.push('Impact limité à un élément');
+  }
+  
+  // Indicateurs d'impact large
+  if (/(tous|toutes|partout|chaque|global|entier)/i.test(prompt)) {
+    score += 15;
+    reasons.push('Impact global/multiple éléments');
+  }
+  
+  // Quantificateurs
+  const numbers = prompt.match(/\d+/g);
+  if (numbers && numbers.some(n => parseInt(n) > 3)) {
+    score += 10;
+    reasons.push('Modifications nombreuses demandées');
+  }
+  
+  // === DÉTERMINATION FINALE ===
+  
+  // Normaliser le score entre -50 et 100
+  score = Math.max(-50, Math.min(100, score));
+  
+  // Calculer la confiance (plus le score est extrême, plus on est confiant)
+  const confidence = Math.min(100, Math.abs(score) * 1.5);
+  
+  // Déterminer la complexité
+  let complexity: 'trivial' | 'simple' | 'moderate' | 'complex';
+  if (score < -20) complexity = 'trivial';
+  else if (score < 10) complexity = 'simple';
+  else if (score < 30) complexity = 'moderate';
+  else complexity = 'complex';
+  
+  // Décision: seuil à 15 (favorise quick-mod pour meilleure UX)
+  const type = score < 15 ? 'quick-modification' : 'full-generation';
+  
+  const reasoning = reasons.length > 0 
+    ? reasons.slice(0, 3).join(', ')
+    : 'Analyse heuristique standard';
+  
+  console.log(`📊 Intent Analysis: ${type} (score: ${score}, confidence: ${confidence}%, complexity: ${complexity})`);
+  console.log(`   Reasoning: ${reasoning}`);
+  
+  return {
+    type,
+    score,
+    confidence,
+    reasoning,
+    complexity
+  };
+}
+
+/**
+ * Identifie les fichiers pertinents avec scoring amélioré
  */
 export function identifyRelevantFiles(
   prompt: string,
@@ -110,34 +214,98 @@ export function identifyRelevantFiles(
     const lowerPath = path.toLowerCase();
     const lowerContent = content.toLowerCase();
     
-    // Bonus si le fichier est mentionné dans le prompt
+    // === SCORING PONDÉRÉ ===
+    
+    // 1. Mention directe du fichier (score très élevé)
     if (lowerPrompt.includes(lowerPath)) {
-      score += 100;
+      score += 200;
     }
     
-    // Bonus pour les fichiers principaux
-    if (path === 'index.html' || path === 'App.tsx' || path === 'App.jsx') {
-      score += 50;
+    // Mention du nom de fichier sans extension
+    const fileName = path.split('/').pop()?.replace(/\.[^.]+$/, '') || '';
+    if (fileName && lowerPrompt.includes(fileName.toLowerCase())) {
+      score += 150;
     }
     
-    // Chercher des mots-clés du prompt dans le contenu
-    const words = lowerPrompt.split(/\s+/).filter(w => w.length > 3);
-    for (const word of words) {
-      const matches = (lowerContent.match(new RegExp(word, 'g')) || []).length;
-      score += matches * 10;
+    // 2. Fichiers principaux (haute priorité)
+    const mainFilePriority: Record<string, number> = {
+      'index.html': 100,
+      'App.tsx': 90,
+      'App.jsx': 90,
+      'main.tsx': 80,
+      'main.jsx': 80,
+      'index.tsx': 80,
+      'index.jsx': 80,
+      'styles.css': 70,
+      'index.css': 70,
+    };
+    
+    const baseName = path.split('/').pop() || '';
+    if (mainFilePriority[baseName]) {
+      score += mainFilePriority[baseName];
     }
     
-    // Bonus pour les fichiers récemment créés/modifiés (on suppose qu'ils sont plus pertinents)
-    if (path.includes('component') || path.includes('page')) {
-      score += 20;
+    // 3. Correspondance de mots-clés (scoring par fréquence)
+    const keywords = lowerPrompt
+      .split(/\s+/)
+      .filter(w => w.length > 3 && !['dans', 'avec', 'pour', 'cette', 'change'].includes(w));
+    
+    for (const keyword of keywords) {
+      // Correspondance dans le contenu
+      const contentMatches = (lowerContent.match(new RegExp(keyword, 'g')) || []).length;
+      score += contentMatches * 15;
+      
+      // Correspondance dans le chemin
+      if (lowerPath.includes(keyword)) {
+        score += 50;
+      }
+    }
+    
+    // 4. Type de fichier pertinent au contexte
+    const extension = path.split('.').pop()?.toLowerCase();
+    const promptContext = {
+      style: ['css', 'scss', 'sass'],
+      script: ['js', 'jsx', 'ts', 'tsx'],
+      markup: ['html', 'jsx', 'tsx'],
+      config: ['json', 'config', 'env'],
+    };
+    
+    if (lowerPrompt.includes('style') || lowerPrompt.includes('couleur') || lowerPrompt.includes('design')) {
+      if (extension && promptContext.style.includes(extension)) {
+        score += 60;
+      }
+    }
+    
+    if (lowerPrompt.includes('fonction') || lowerPrompt.includes('logic') || lowerPrompt.includes('script')) {
+      if (extension && promptContext.script.includes(extension)) {
+        score += 60;
+      }
+    }
+    
+    // 5. Bonus pour fichiers récents/importants
+    if (path.includes('component') || path.includes('Component')) {
+      score += 30;
+    }
+    
+    if (path.includes('page') || path.includes('Page')) {
+      score += 30;
+    }
+    
+    // 6. Pénalité pour fichiers de configuration (sauf si explicitement mentionnés)
+    if (['package.json', 'tsconfig.json', '.gitignore', 'README.md'].includes(baseName)) {
+      score -= 50;
     }
     
     relevantFiles.push({ path, content, score });
   }
   
   // Trier par score décroissant et prendre les N premiers
-  return relevantFiles
+  const sorted = relevantFiles
     .sort((a, b) => b.score - a.score)
-    .slice(0, maxFiles)
-    .map(({ path, content }) => ({ path, content }));
+    .slice(0, maxFiles);
+  
+  console.log(`📂 Relevant files (top ${maxFiles}):`);
+  sorted.forEach(f => console.log(`   ${f.path} (score: ${f.score})`));
+  
+  return sorted.map(({ path, content }) => ({ path, content }));
 }

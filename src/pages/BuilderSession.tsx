@@ -1103,6 +1103,11 @@ export default function BuilderSession() {
       throw new Error('Authentication required');
     }
     
+    // Analyser la complexité de la modification
+    const { analyzeIntentDetailed } = await import('@/utils/intentAnalyzer');
+    const analysis = analyzeIntentDetailed(userPrompt, projectFiles);
+    console.log(`📊 Complexité: ${analysis.complexity}, Score: ${analysis.score}, Confidence: ${analysis.confidence}%`);
+    
     // Identifier les fichiers pertinents
     const relevantFiles = identifyRelevantFiles(userPrompt, projectFiles, 3);
     
@@ -1121,7 +1126,7 @@ export default function BuilderSession() {
     };
     setMessages(prev => [...prev, introMessage]);
     
-    // Appeler modify-site
+    // Appeler modify-site avec la complexité
     await modifySiteHook.modifySite(
       userPrompt,
       relevantFiles,
@@ -1233,7 +1238,8 @@ export default function BuilderSession() {
           // Fallback sur génération complète en cas d'erreur
           handleFullGeneration(userPrompt);
         }
-      }
+      },
+      analysis.complexity // Passer la complexité pour sélection du modèle
     );
   };
 
