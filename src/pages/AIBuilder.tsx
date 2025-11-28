@@ -37,12 +37,16 @@ const AIBuilder = () => {
     }
 
     try {
-      // Créer une nouvelle session
+      // Créer une nouvelle session avec les images attachées
       const { data: sessionData, error: sessionError } = await supabase
         .from('build_sessions')
         .insert({
           user_id: user?.id || null,
-          messages: [{ role: 'user', content: inputValue }],
+          messages: [{ 
+            role: 'user', 
+            content: inputValue,
+            attachedFiles: attachedFiles.length > 0 ? attachedFiles : undefined
+          }],
           project_files: [],
           project_type: projectType,
         })
@@ -52,7 +56,12 @@ const AIBuilder = () => {
       if (sessionError) throw sessionError;
 
       // Rediriger IMMÉDIATEMENT vers la session (génération en arrière-plan)
-      navigate(`/builder/${sessionData.id}`, { state: { initialPrompt: inputValue } });
+      navigate(`/builder/${sessionData.id}`, { 
+        state: { 
+          initialPrompt: inputValue,
+          attachedFiles: attachedFiles.length > 0 ? attachedFiles : undefined
+        } 
+      });
     } catch (error) {
       console.error('Error:', error);
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");

@@ -19,7 +19,8 @@ serve(async (req) => {
       projectFiles = {}, 
       chatHistory = [],
       sessionId,
-      projectType = 'webapp'
+      projectType = 'webapp',
+      attachedFiles = []
     } = await req.json();
 
     console.log('🚀 Agent API called:', { message, filesCount: Object.keys(projectFiles).length, projectType });
@@ -182,10 +183,17 @@ Tu DOIS générer des fichiers CSS/JS complets et professionnels, pas des fichie
 - La preview doit fonctionner comme un site local avec navigation interne fluide
 
 IMAGES ET RESSOURCES:
-- Tu peux télécharger et utiliser des images libres de droit depuis Unsplash, Pexels, etc.
-- Intègre intelligemment des images pertinentes au contenu du site
-- Utilise des URLs d'images directes dans les balises <img> ou en background CSS
+- Si l'utilisateur a attaché des images (via attachedFiles dans le message), tu DOIS les utiliser intelligemment dans le site
+- Analyse le contexte des images pour comprendre leur rôle (logo, bannière, produit, équipe, etc.)
+- Intègre-les aux bons endroits du site (header pour logo, hero section pour bannière, galerie pour produits, etc.)
+- Utilise les images base64 directement dans les balises <img> ou en background CSS
+- Exemples d'intégration :
+  * Logo : <img src="data:image/png;base64,..." alt="Logo" class="logo">
+  * Bannière : background-image: url('data:image/jpeg;base64,...');
+  * Galerie : plusieurs <img> avec les différentes images attachées
+- Tu peux aussi télécharger et utiliser des images libres de droit depuis Unsplash, Pexels, etc. en complément
 - Optimise le chargement avec lazy loading quand approprié
+- IMPORTANT: Si des images sont attachées, elles doivent apparaître dans le site généré
 
 **DESIGN ET STYLES - OBLIGATOIRE**:
 - Le fichier **styles.css** doit contenir un DESIGN COMPLET ET PROFESSIONNEL avec :
@@ -406,6 +414,29 @@ Exemple de flux COMPLET:
         try {
           console.log('📤 Envoi à Claude Sonnet 4.5...');
 
+          // Construire le contenu du message avec images si présentes
+          let userContent: any = message;
+          if (attachedFiles && attachedFiles.length > 0) {
+            userContent = [
+              { type: 'text', text: message }
+            ];
+            
+            // Ajouter les images au format Claude Vision API
+            for (const file of attachedFiles) {
+              // Extraire les données base64 (enlever le préfixe data:image/...;base64,)
+              const base64Data = file.base64.split(',')[1] || file.base64;
+              userContent.push({
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: file.type,
+                  data: base64Data
+                }
+              });
+            }
+            console.log(`📸 ${attachedFiles.length} image(s) attachée(s) envoyées à Claude`);
+          }
+
           const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
@@ -420,7 +451,7 @@ Exemple de flux COMPLET:
               system: systemPrompt,
               messages: [
                 ...recentHistory,
-                { role: 'user', content: message }
+                { role: 'user', content: userContent }
               ],
             }),
           });

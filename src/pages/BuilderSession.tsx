@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
@@ -48,6 +48,7 @@ interface Message {
 export default function BuilderSession() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isDark, toggleTheme } = useThemeStore();
   const [inputValue, setInputValue] = useState('');
   const [generatedHtml, setGeneratedHtml] = useState('');
@@ -158,6 +159,13 @@ export default function BuilderSession() {
       // Ne rien faire si déjà traité ou si on a des fichiers
       if (initialPromptProcessed || Object.keys(projectFiles).length > 0) return;
       
+      // Vérifier s'il y a des images dans l'état de navigation
+      const stateAttachedFiles = location.state?.attachedFiles;
+      if (stateAttachedFiles && Array.isArray(stateAttachedFiles) && stateAttachedFiles.length > 0) {
+        console.log('📎 Images attachées trouvées dans l\'état de navigation:', stateAttachedFiles.length);
+        setAttachedFiles(stateAttachedFiles);
+      }
+      
       const urlParams = new URLSearchParams(window.location.search);
       const promptFromUrl = urlParams.get('prompt');
       
@@ -191,7 +199,7 @@ export default function BuilderSession() {
     if (!sessionLoading && user && !initialPromptProcessed) {
       processInitialPrompt();
     }
-  }, [sessionId, sessionLoading, user, projectFiles, messages, initialPromptProcessed]);
+  }, [sessionId, sessionLoading, user, projectFiles, messages, initialPromptProcessed, location.state]);
 
 
   const checkAuth = async () => {
@@ -336,6 +344,13 @@ export default function BuilderSession() {
             metadata: msg.metadata as any
           }));
           setMessages(loadedMessages);
+          
+          // Extraire les images attachées du premier message utilisateur s'il y en a
+          const firstUserMessage = loadedMessages.find(m => m.role === 'user');
+          if (firstUserMessage?.metadata?.attachedFiles) {
+            console.log('📎 Images attachées trouvées dans le message initial:', firstUserMessage.metadata.attachedFiles.length);
+            setAttachedFiles(firstUserMessage.metadata.attachedFiles);
+          }
         } else {
           // Fallback sur l'ancienne méthode si pas de messages dans chat_messages
           const parsedMessages = Array.isArray(data.messages) ? data.messages as any[] : [];
@@ -721,6 +736,7 @@ export default function BuilderSession() {
       chatHistory,
       sessionId!,
       projectType,
+      attachedFiles,
       {
         onStatus: (status) => {
           console.log('📊 Status:', status);
@@ -1940,6 +1956,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                             chatHistory,
                             sessionId!,
                             projectType,
+                            [], // pas d'images attachées pour l'inspect mode
                             {
                               onStatus: (status) => {
                                 console.log('📊 Status:', status);
