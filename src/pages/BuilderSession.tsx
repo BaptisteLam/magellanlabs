@@ -28,6 +28,8 @@ import { MessageActions } from '@/components/chat/MessageActions';
 import html2canvas from 'html2canvas';
 import { TokenCounter } from '@/components/TokenCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
+import { analyzeIntent, identifyRelevantFiles } from '@/utils/intentAnalyzer';
+import { useModifySite, applyPatch, type PatchAction } from '@/hooks/useModifySite';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -78,6 +80,9 @@ export default function BuilderSession() {
   
   // Hook pour la nouvelle API Agent
   const agent = useAgentAPI();
+  
+  // Hook pour les modifications rapides
+  const modifySiteHook = useModifySite();
   
   // Événements IA pour la TaskList
   const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
@@ -604,8 +609,9 @@ export default function BuilderSession() {
     }
   };
 
-  const handleSubmit = async () => {
-    const prompt = inputValue.trim() || (messages.length === 1 && typeof messages[0].content === 'string' ? messages[0].content : '');
+  // Fonction pour gérer la génération complète (mode original avec loading preview)
+  const handleFullGeneration = async (userPromptInput?: string) => {
+    const prompt = userPromptInput || inputValue.trim() || (messages.length === 1 && typeof messages[0].content === 'string' ? messages[0].content : '');
     
     if (!prompt && attachedFiles.length === 0) {
       sonnerToast.error("Veuillez entrer votre message ou joindre un fichier");
@@ -1086,6 +1092,218 @@ export default function BuilderSession() {
         }
       }
     );
+  };
+
+  // Fonction pour gérer les modifications rapides (sans rechargement preview)
+  const handleQuickModification = async (userPrompt: string) => {
+    console.log('⚡ MODE: QUICK MODIFICATION');
+    
+    if (!user) {
+      navigate('/auth');
+      throw new Error('Authentication required');
+    }
+    
+    // Identifier les fichiers pertinents
+    const relevantFiles = identifyRelevantFiles(userPrompt, projectFiles, 3);
+    
+    if (relevantFiles.length === 0) {
+      console.warn('⚠️ Aucun fichier pertinent trouvé, fallback sur génération complète');
+      return handleFullGeneration(userPrompt);
+    }
+    
+    console.log('📄 Fichiers pertinents:', relevantFiles.map(f => f.path).join(', '));
+    
+    // Ajouter message intro
+    const introMessage: Message = {
+      role: 'assistant',
+      content: 'Je vais appliquer vos modifications...',
+      metadata: { type: 'intro' }
+    };
+    setMessages(prev => [...prev, introMessage]);
+    
+    // Appeler modify-site
+    await modifySiteHook.modifySite(
+      userPrompt,
+      relevantFiles,
+      sessionId!,
+      {
+        onMessage: (message) => {
+          console.log('💬 Message:', message);
+        },
+        onPatch: async (actions: PatchAction[]) => {
+          console.log('⚡ Application de', actions.length, 'patches');
+          
+          // Appliquer tous les patches
+          const updatedFiles = { ...projectFiles };
+          let modifiedFilesList: string[] = [];
+          
+          for (const action of actions) {
+            const currentContent = updatedFiles[action.path];
+            if (!currentContent) {
+              console.warn('⚠️ Fichier non trouvé:', action.path);
+              continue;
+            }
+            
+            const newContent = applyPatch(currentContent, action);
+            if (newContent !== currentContent) {
+              updatedFiles[action.path] = newContent;
+              modifiedFilesList.push(action.path);
+              console.log('✅ Patch appliqué:', action.path);
+            }
+          }
+          
+          // Mettre à jour l'état avec les nouveaux fichiers
+          setProjectFiles(updatedFiles);
+          setGeneratedHtml(updatedFiles['index.html'] || generatedHtml);
+          
+          // Mettre à jour le fichier sélectionné si modifié
+          if (selectedFile && modifiedFilesList.includes(selectedFile)) {
+            setSelectedFileContent(updatedFiles[selectedFile]);
+          }
+          
+          // Sauvegarder
+          const filesArray = Object.entries(updatedFiles).map(([path, content]) => ({
+            path,
+            content,
+            type: path.endsWith('.html') ? 'html' : 
+                  path.endsWith('.css') ? 'stylesheet' : 
+                  path.endsWith('.js') ? 'javascript' : 'text'
+          }));
+          
+          await supabase
+            .from('build_sessions')
+            .update({
+              project_files: filesArray,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', sessionId!);
+          
+          // Message de récapitulatif
+          const recapMessage = modifiedFilesList.length > 0
+            ? `Modifications appliquées sur ${modifiedFilesList.length} fichier${modifiedFilesList.length > 1 ? 's' : ''}: ${modifiedFilesList.join(', ')}`
+            : 'Aucune modification nécessaire.';
+          
+          // Sauvegarder le message de récap
+          const { data: insertedRecap } = await supabase
+            .from('chat_messages')
+            .insert([{
+              session_id: sessionId,
+              role: 'assistant',
+              content: recapMessage,
+              token_count: 0,
+              metadata: { 
+                type: 'recap' as const,
+                files_updated: modifiedFilesList.length,
+                modified_files: modifiedFilesList,
+                project_files: updatedFiles,
+                saved_at: new Date().toISOString()
+              }
+            }])
+            .select()
+            .single();
+          
+          // Mettre à jour l'interface avec le message de récap
+          setMessages(prev => [
+            ...prev.filter(m => m.metadata?.type !== 'intro' || m.id),
+            { 
+              role: 'assistant' as const, 
+              content: recapMessage,
+              token_count: 0,
+              id: insertedRecap?.id,
+              metadata: { 
+                type: 'recap' as const, 
+                files_updated: modifiedFilesList.length,
+                modified_files: modifiedFilesList,
+                project_files: updatedFiles
+              }
+            }
+          ]);
+          
+          sonnerToast.success('Modifications appliquées !');
+        },
+        onComplete: () => {
+          console.log('✅ Modification rapide terminée');
+        },
+        onError: (error) => {
+          console.error('❌ Erreur modification rapide:', error);
+          sonnerToast.error(`Erreur: ${error}`);
+          // Fallback sur génération complète en cas d'erreur
+          handleFullGeneration(userPrompt);
+        }
+      }
+    );
+  };
+
+  // Nouveau handleSubmit qui route entre modifications rapides et génération complète
+  const handleSubmit = async () => {
+    const prompt = inputValue.trim() || (messages.length === 1 && typeof messages[0].content === 'string' ? messages[0].content : '');
+    
+    if (!prompt && attachedFiles.length === 0) {
+      sonnerToast.error("Veuillez entrer votre message ou joindre un fichier");
+      return;
+    }
+
+    if (!user) {
+      navigate('/auth');
+      throw new Error('Authentication required');
+    }
+
+    // Construire le message utilisateur
+    let userMessageContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+    
+    if (attachedFiles.length > 0) {
+      const contentArray: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+      if (prompt) {
+        contentArray.push({ type: 'text', text: prompt });
+      }
+      attachedFiles.forEach(file => {
+        contentArray.push({ 
+          type: 'image_url', 
+          image_url: { url: file.base64 }
+        });
+      });
+      userMessageContent = contentArray;
+    } else {
+      userMessageContent = prompt;
+    }
+
+    const shouldAddMessage = inputValue.trim() || messages.length === 0 || messages[messages.length - 1]?.content !== userMessageContent;
+    const newMessages = shouldAddMessage ? [...messages, { role: 'user' as const, content: userMessageContent }] : messages;
+    
+    if (shouldAddMessage) {
+      setMessages(newMessages);
+      
+      const userMessageText = typeof userMessageContent === 'string' 
+        ? userMessageContent 
+        : (Array.isArray(userMessageContent) 
+            ? userMessageContent.find(c => c.type === 'text')?.text || '[message multimédia]'
+            : String(userMessageContent));
+
+      await supabase
+        .from('chat_messages')
+        .insert({
+          session_id: sessionId,
+          role: 'user',
+          content: userMessageText,
+          metadata: { has_images: attachedFiles.length > 0 }
+        });
+    }
+    
+    setInputValue('');
+    setAttachedFiles([]);
+
+    // ⚡ ANALYSE DE L'INTENT : Décider entre modification rapide ou génération complète
+    const intent = analyzeIntent(prompt, projectFiles);
+    
+    if (intent === 'quick-modification' && attachedFiles.length === 0) {
+      // MODE RAPIDE : Pas de loading preview, modification ciblée
+      console.log('🚀 Routing vers QUICK MODIFICATION');
+      await handleQuickModification(prompt);
+    } else {
+      // MODE COMPLET : Loading preview, régénération complète
+      console.log('🚀 Routing vers FULL GENERATION');
+      await handleFullGeneration(prompt);
+    }
   };
 
   const handleSave = async () => {
