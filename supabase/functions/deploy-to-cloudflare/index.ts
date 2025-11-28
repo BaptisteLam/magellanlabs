@@ -239,12 +239,59 @@ serve(async (req) => {
     const deploymentUrl = deployData.result?.url || `https://${projectName}.pages.dev`;
     console.log('✅ Deployed to:', deploymentUrl);
 
-    // Update session
+    // Générer le sous-domaine personnalisé à partir du titre
+    const subdomain = (session.title || 'mon-projet')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .substring(0, 50);
+
+    const customDomain = `${subdomain}.builtbymagellan.com`;
+    console.log('🌐 Adding custom domain:', customDomain);
+
+    // Ajouter le custom domain au projet Cloudflare Pages
+    try {
+      const customDomainResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projectName}/domains`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: customDomain }),
+        }
+      );
+
+      if (customDomainResponse.ok) {
+        console.log('✅ Custom domain added successfully:', customDomain);
+      } else {
+        const domainError = await customDomainResponse.text();
+        // Si le domaine existe déjà, ce n'est pas une erreur critique
+        if (domainError.includes('already exists')) {
+          console.log('ℹ️ Custom domain already exists:', customDomain);
+        } else {
+          console.error('⚠️ Failed to add custom domain:', domainError);
+        }
+      }
+    } catch (domainError) {
+      console.error('⚠️ Error adding custom domain:', domainError);
+      // On continue quand même, le domaine Cloudflare Pages fonctionne
+    }
+
+    const finalUrl = `https://${customDomain}`;
+
+    // Update session avec l'URL personnalisée
     const { error: updateError } = await supabaseAdmin
       .from('build_sessions')
       .update({
         cloudflare_project_name: projectName,
         cloudflare_deployment_url: deploymentUrl,
+        public_url: finalUrl,
       })
       .eq('id', sessionId);
 
@@ -348,12 +395,15 @@ serve(async (req) => {
     
     screenshotPromise;
 
-    console.log('✅ Deployment successful:', deploymentUrl);
+    console.log('✅ Deployment successful');
+    console.log('   Cloudflare URL:', deploymentUrl);
+    console.log('   Custom Domain:', finalUrl);
 
     return new Response(
       JSON.stringify({
         success: true,
-        url: deploymentUrl,
+        url: finalUrl,
+        cloudflareUrl: deploymentUrl,
         projectName: projectName,
         websiteId: websiteId || null,
         state: 'active',
