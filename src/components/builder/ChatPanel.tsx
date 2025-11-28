@@ -70,9 +70,8 @@ export function ChatPanel({
                     <CollapsedAiTasks
                       events={messageEvents}
                       isDark={isDark}
-                      isLoading={index === messages.length - 1 && isGenerating}
-                      autoExpand={index === messages.length - 1 && isGenerating}
-                      autoCollapse={!isGenerating}
+                      isLoading={false}
+                      startTime={msg.metadata?.startTime as number | undefined}
                     />
                   )}
 
@@ -109,8 +108,7 @@ export function ChatPanel({
               events={generationEvents}
               isDark={isDark}
               isLoading={true}
-              autoExpand={true}
-              autoCollapse={false}
+              startTime={Date.now() - (generationEvents[0]?.duration ? generationEvents[0].duration * 1000 : 0)}
             />
           </div>
         )}

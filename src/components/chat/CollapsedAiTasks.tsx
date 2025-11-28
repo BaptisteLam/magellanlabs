@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Loader2, Lightbulb, FileText, Pencil, Plus, Search, ClipboardList, CheckCircle2, XCircle, FileEdit } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Loader2, Lightbulb, FileText, Pencil, Plus, Search, ClipboardList, CheckCircle2, XCircle, FileEdit, Clock } from 'lucide-react';
 import type { GenerationEvent } from '@/types/agent';
+import { Progress } from '@/components/ui/progress';
 
 interface CollapsedAiTasksProps {
   events: GenerationEvent[];
@@ -8,22 +9,34 @@ interface CollapsedAiTasksProps {
   isLoading?: boolean;
   autoExpand?: boolean;
   autoCollapse?: boolean;
+  startTime?: number; // Timestamp de début de génération
 }
 
-export function CollapsedAiTasks({ events, isDark = false, isLoading = false, autoExpand = false, autoCollapse = false }: CollapsedAiTasksProps) {
+export function CollapsedAiTasks({ 
+  events, 
+  isDark = false, 
+  isLoading = false, 
+  autoExpand = false, 
+  autoCollapse = false,
+  startTime 
+}: CollapsedAiTasksProps) {
   const [isExpanded, setIsExpanded] = useState(autoExpand);
-  const [thinkingSeconds, setThinkingSeconds] = useState(0);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [estimatedTime, setEstimatedTime] = useState<number | null>(null);
   
-  // Calculer le temps de réflexion en temps réel
+  // Mise à jour du temps écoulé en temps réel
   useEffect(() => {
-    if (isLoading) {
-      const startTime = Date.now();
-      const interval = setInterval(() => {
-        setThinkingSeconds(Math.floor((Date.now() - startTime) / 1000));
-      }, 1000);
-      return () => clearInterval(interval);
+    if (!isLoading || !startTime) {
+      setElapsedTime(0);
+      return;
     }
-  }, [isLoading]);
+
+    const interval = setInterval(() => {
+      setElapsedTime(Date.now() - startTime);
+    }, 100); // Update every 100ms for smooth display
+
+    return () => clearInterval(interval);
+  }, [isLoading, startTime]);
   
   // Auto-collapse quand la génération est terminée
   useEffect(() => {
@@ -32,6 +45,58 @@ export function CollapsedAiTasks({ events, isDark = false, isLoading = false, au
       return () => clearTimeout(timer);
     }
   }, [autoCollapse, isLoading, events.length]);
+
+  // Calcul du fichier en cours de modification
+  const currentFile = useMemo(() => {
+    const inProgressEvents = events.filter(e => e.status === 'in-progress');
+    const lastInProgress = inProgressEvents[inProgressEvents.length - 1];
+    return lastInProgress?.file || null;
+  }, [events]);
+
+  // Estimation du temps restant
+  useEffect(() => {
+    if (!isLoading) {
+      setEstimatedTime(null);
+      return;
+    }
+
+    const completedEvents = events.filter(e => e.status === 'completed');
+    const totalEvents = Math.max(events.length, 5); // Estimer au moins 5 étapes
+
+    if (completedEvents.length > 2 && elapsedTime > 0) {
+      // Calcul basé sur la vitesse moyenne
+      const avgTimePerEvent = elapsedTime / completedEvents.length;
+      const remainingEvents = Math.max(totalEvents - completedEvents.length, 2);
+      const estimated = avgTimePerEvent * remainingEvents;
+      setEstimatedTime(Math.max(estimated, 1000)); // Minimum 1 seconde
+    } else if (elapsedTime > 0) {
+      // Estimation initiale : 10-20 secondes pour une génération moyenne
+      const baseEstimate = 15000;
+      setEstimatedTime(Math.max(baseEstimate - elapsedTime, 2000));
+    }
+  }, [events, elapsedTime, isLoading]);
+
+  // Calcul de la progression
+  const progress = useMemo(() => {
+    if (!isLoading) return 100;
+    
+    const totalEvents = Math.max(events.length, 5);
+    const completedEvents = events.filter(e => e.status === 'completed').length;
+    
+    if (completedEvents === 0) return 5; // Début
+    
+    // Progress de 5% à 95% basé sur les événements complétés
+    return Math.min(5 + (completedEvents / totalEvents) * 90, 95);
+  }, [events, isLoading]);
+
+  // Format du temps
+  const formatTime = (ms: number) => {
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  };
 
   // Compter les différents types d'événements
   const editCount = events.filter(e => e.type === 'edit' || e.type === 'create').length;
@@ -85,7 +150,64 @@ export function CollapsedAiTasks({ events, isDark = false, isLoading = false, au
   };
 
   return (
-    <div className="relative flex w-full flex-col">
+    <div className="relative flex w-full flex-col space-y-2">
+      {/* Progress bar et infos en temps réel (affichée seulement pendant la génération) */}
+      {isLoading && (
+        <div 
+          className="space-y-2 p-3 rounded-lg animate-fade-in"
+          style={{
+            backgroundColor: isDark ? 'rgba(30, 41, 59, 0.5)' : 'rgba(241, 245, 249, 0.8)',
+            border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.3)' : 'rgba(226, 232, 240, 0.8)'}`,
+            backdropFilter: 'blur(8px)'
+          }}
+        >
+          {/* En-tête avec fichier en cours */}
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2" style={{ color: isDark ? '#cbd5e1' : '#475569' }}>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: '#03A5C0' }} />
+              <span className="font-medium">Generating...</span>
+              {currentFile && (
+                <>
+                  <span style={{ color: isDark ? '#64748b' : '#94a3b8' }}>•</span>
+                  <FileEdit className="h-3.5 w-3.5" style={{ color: '#03A5C0' }} />
+                  <span className="font-mono" style={{ color: isDark ? '#e2e8f0' : '#334155' }}>
+                    {currentFile}
+                  </span>
+                </>
+              )}
+            </div>
+            
+            {/* Temps écoulé et estimation */}
+            <div className="flex items-center gap-3" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
+              <div className="flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                <span className="font-medium">{formatTime(elapsedTime)}</span>
+              </div>
+              {estimatedTime && estimatedTime > 0 && (
+                <div className="flex items-center gap-1" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
+                  <span>~{formatTime(estimatedTime)} left</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="space-y-1">
+            <Progress value={progress} className="h-2" />
+            <div 
+              className="flex items-center justify-between text-[10px]" 
+              style={{ color: isDark ? '#64748b' : '#94a3b8' }}
+            >
+              <span>{Math.round(progress)}% complete</span>
+              <span>
+                {events.filter(e => e.status === 'completed').length}/{events.length} steps
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bouton collapse/expand */}
       {!autoExpand && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -126,7 +248,7 @@ export function CollapsedAiTasks({ events, isDark = false, isLoading = false, au
               </div>
               <span className="flex-shrink-0 font-normal">
                 {isLoading 
-                  ? `Thinking for ${thinkingSeconds}s...` 
+                  ? `Thinking for ${Math.floor(elapsedTime / 1000)}s...` 
                   : hasError 
                     ? 'Error occurred' 
                     : editCount > 0 
