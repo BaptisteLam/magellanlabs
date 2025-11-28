@@ -260,7 +260,7 @@ export function MyProjects() {
                     size="sm"
                     variant="ghost"
                     onClick={() => handleDeleteProject(project)}
-                    className="text-muted-foreground hover:text-red-500 transition-colors"
+                    className="text-muted-foreground hover:text-red-500 hover:bg-transparent transition-colors focus-visible:ring-0 focus-visible:ring-offset-0"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
