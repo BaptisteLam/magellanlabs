@@ -1062,6 +1062,9 @@ export default function BuilderSession() {
         onMessage: (message) => {
           console.log('💬 Message:', message);
         },
+        onGenerationEvent: (event) => {
+          setGenerationEvents(prev => [...prev, event]);
+        },
         onPatch: async (actions: PatchAction[]) => {
           console.log('⚡ Application de', actions.length, 'patches');
           

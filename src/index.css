@@ -144,6 +144,17 @@ All colors MUST be HSL for design consistency.
   }
 }
 
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes slideInUp {
   from {
     opacity: 0;
@@ -159,6 +170,10 @@ All colors MUST be HSL for design consistency.
   /* Trinity Animation Classes */
   .fade-in {
     animation: fadeIn 0.6s ease-out forwards;
+  }
+  
+  .animate-fade-in {
+    animation: fade-in-up 0.3s ease-out forwards;
   }
   
   .slide-in-up {
