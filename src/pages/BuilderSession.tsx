@@ -726,13 +726,9 @@ export default function BuilderSession() {
           setAiEvents(prev => [...prev, { type: 'status', content: status }]);
         },
         onMessage: (message) => {
+          // On accumule simplement la réponse de l'agent sans modifier le chat en temps réel
+          // pour conserver la structure intro + AI tasks + récap uniquement.
           assistantMessage += message;
-          setMessages(prev => {
-            const withoutLastAssistant = prev.filter((m, i) => 
-              !(i === prev.length - 1 && m.role === 'assistant')
-            );
-            return [...withoutLastAssistant, { role: 'assistant' as const, content: assistantMessage }];
-          });
         },
         onLog: (log) => {
           console.log('📝 Log:', log);
