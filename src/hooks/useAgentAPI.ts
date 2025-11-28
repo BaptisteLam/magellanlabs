@@ -11,6 +11,7 @@ interface UseAgentAPIOptions {
   onComplete?: () => void;
   onError?: (error: string) => void;
   onGenerationEvent?: (event: import('@/types/agent').GenerationEvent) => void;
+  onTokens?: (tokens: { input: number; output: number; total: number }) => void;
 }
 
 export function useAgentAPI() {
@@ -140,6 +141,7 @@ export function useAgentAPI() {
                   total: (event as any).total_tokens || 0
                 };
                 setTokenUsage(tokens);
+                options.onTokens?.(tokens);
                 console.log('📊 Tokens utilisés:', tokens);
                 break;
             }

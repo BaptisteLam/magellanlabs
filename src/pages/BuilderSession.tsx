@@ -691,6 +691,7 @@ export default function BuilderSession() {
 
     let assistantMessage = '';
     const updatedFiles = { ...projectFiles };
+    let usedTokens = { input: 0, output: 0, total: 0 };
 
     // Réinitialiser les événements pour une nouvelle requête
     setAiEvents([]);
@@ -754,6 +755,9 @@ export default function BuilderSession() {
             }
             return prev;
           });
+        },
+        onTokens: (tokens) => {
+          usedTokens = tokens;
         },
         onCodeUpdate: (path, code) => {
           console.log('📦 Accumulating file:', path);
@@ -936,7 +940,7 @@ export default function BuilderSession() {
           console.log('💾 SAVING INTRO + RECAP MESSAGES WITH PROJECT STATE');
           console.log('💾 Files to save:', Object.keys(updatedFiles).length);
           console.log('💾 File list:', Object.keys(updatedFiles).join(', '));
-          console.log('💾 Total tokens:', agent.tokenUsage.total);
+          console.log('💾 Total tokens:', usedTokens.total);
           console.log('💾 Generation events:', generationEvents.length);
           console.log('💾 =====================================');
           
@@ -962,7 +966,7 @@ export default function BuilderSession() {
               session_id: sessionId,
               role: 'assistant',
               content: recapMessage,
-              token_count: agent.tokenUsage.total, // Tokens réels de Claude
+              token_count: usedTokens.total, // Tokens réels de Claude
               metadata: { 
                 type: 'recap' as const,
                 files_updated: Object.keys(updatedFiles).length,
@@ -970,9 +974,9 @@ export default function BuilderSession() {
                 modified_files: modifiedFiles,
                 project_files: updatedFiles, // État complet du projet sauvegardé ici
                 generation_events: generationEvents,
-                input_tokens: agent.tokenUsage.input,
-                output_tokens: agent.tokenUsage.output,
-                total_tokens: agent.tokenUsage.total,
+                input_tokens: usedTokens.input,
+                output_tokens: usedTokens.output,
+                total_tokens: usedTokens.total,
                 saved_at: new Date().toISOString()
               }
             }])
@@ -998,7 +1002,7 @@ export default function BuilderSession() {
               { 
                 role: 'assistant' as const, 
                 content: recapMessage,
-                token_count: agent.tokenUsage.total,
+                token_count: usedTokens.total,
                 id: insertedRecap?.id,
                 metadata: { 
                   type: 'recap' as const, 
@@ -1007,9 +1011,9 @@ export default function BuilderSession() {
                   modified_files: modifiedFiles,
                   project_files: updatedFiles,
                   generation_events: generationEvents,
-                  input_tokens: agent.tokenUsage.input,
-                  output_tokens: agent.tokenUsage.output,
-                  total_tokens: agent.tokenUsage.total
+                  input_tokens: usedTokens.input,
+                  output_tokens: usedTokens.output,
+                  total_tokens: usedTokens.total
                 }
               }
             ];
@@ -1913,13 +1917,14 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
 
                             let assistantMessage = '';
                             const updatedFiles = { ...projectFiles };
+                            let usedTokens = { input: 0, output: 0, total: 0 };
 
                             setAiEvents([]);
                             setGenerationEvents([]);
                             
                             // 🔒 Activer le mode "génération en cours" pour bloquer la preview
                             setIsInitialGeneration(true);
-                          isInitialGenerationRef.current = true;
+                            isInitialGenerationRef.current = true;
 
                           const projectContext = projectType === 'website' 
                             ? 'Generate a static website with HTML, CSS, and vanilla JavaScript files only. No React, no JSX. Use simple HTML structure.'
@@ -1959,6 +1964,9 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                               onGenerationEvent: (event) => {
                                 console.log('🔄 Generation:', event);
                                 setGenerationEvents(prev => [...prev, event]);
+                              },
+                              onTokens: (tokens) => {
+                                usedTokens = tokens;
                               },
                               onCodeUpdate: (path, code) => {
                                 console.log('📦 Accumulating file:', path);
@@ -2095,7 +2103,15 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                                   .insert({
                                     session_id: sessionId,
                                     role: 'assistant',
-                                    content: assistantMessage
+                                    content: assistantMessage,
+                                    token_count: usedTokens.total,
+                                    metadata: {
+                                      input_tokens: usedTokens.input,
+                                      output_tokens: usedTokens.output,
+                                      total_tokens: usedTokens.total,
+                                      project_files: updatedFiles,
+                                      generation_events: generationEvents
+                                    }
                                   });
                               },
                               onError: (error) => {
