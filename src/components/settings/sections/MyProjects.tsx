@@ -260,7 +260,7 @@ export function MyProjects() {
                     size="sm"
                     variant="ghost"
                     onClick={() => handleDeleteProject(project)}
-                    className="text-destructive hover:text-destructive"
+                    className="text-muted-foreground hover:text-red-500 transition-colors"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
