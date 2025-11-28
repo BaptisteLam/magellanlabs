@@ -742,6 +742,8 @@ const styles = StyleSheet.create({
 Now generate the mobile app based on this request:`;
 
     // Appeler l'API Agent avec callbacks
+    let usedTokens = { input: 0, output: 0, total: 0 };
+
     await agent.callAgent(
       `${projectContext}\n\n${userPrompt}`,
       projectFiles,
@@ -775,6 +777,9 @@ Now generate the mobile app based on this request:`;
           console.log('🔄 Generation:', event);
           setGenerationEvents(prev => [...prev, event]);
           setCurrentMessageEvents(prev => [...prev, event]);
+        },
+        onTokens: (tokens) => {
+          usedTokens = tokens;
         },
         onCodeUpdate: (path, code) => {
           console.log('📦 Accumulating file:', path);
@@ -904,13 +909,13 @@ Now generate the mobile app based on this request:`;
               session_id: sessionId,
               role: 'assistant',
               content: finalMessage,
-              token_count: agent.tokenUsage.total, // Utiliser les tokens exacts de Claude
+              token_count: usedTokens.total, // Utiliser les tokens exacts de Claude
               metadata: { 
                 files_updated: Object.keys(updatedFiles).length,
                 project_files: updatedFiles, // Sauvegarder l'état des fichiers à ce moment
-                input_tokens: agent.tokenUsage.input,
-                output_tokens: agent.tokenUsage.output,
-                total_tokens: agent.tokenUsage.total,
+                input_tokens: usedTokens.input,
+                output_tokens: usedTokens.output,
+                total_tokens: usedTokens.total,
                 generation_events: currentMessageEvents // Sauvegarder les events pour affichage groupé
               }
             })
@@ -921,12 +926,12 @@ Now generate the mobile app based on this request:`;
           const messageWithId = { 
             role: 'assistant' as const, 
             content: finalMessage,
-            token_count: agent.tokenUsage.total,
+            token_count: usedTokens.total,
             id: insertedMessage?.id,
             metadata: {
-              input_tokens: agent.tokenUsage.input,
-              output_tokens: agent.tokenUsage.output,
-              total_tokens: agent.tokenUsage.total,
+              input_tokens: usedTokens.input,
+              output_tokens: usedTokens.output,
+              total_tokens: usedTokens.total,
               project_files: updatedFiles,
               generation_events: currentMessageEvents
             }

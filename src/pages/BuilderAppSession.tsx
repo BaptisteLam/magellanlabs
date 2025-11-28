@@ -680,6 +680,8 @@ export default function BuilderSession() {
     setAiEvents([]);
     setGenerationEvents([]);
     
+    let usedTokens = { input: 0, output: 0, total: 0 };
+    
     // 🔒 TOUJOURS activer le mode "génération en cours" pour bloquer la preview jusqu'à completion
     setIsInitialGeneration(true);
     isInitialGenerationRef.current = true;
@@ -725,6 +727,9 @@ export default function BuilderSession() {
         onGenerationEvent: (event) => {
           console.log('🔄 Generation:', event);
           setGenerationEvents(prev => [...prev, event]);
+        },
+        onTokens: (tokens) => {
+          usedTokens = tokens;
         },
         onCodeUpdate: (path, code) => {
           console.log('📦 Accumulating file:', path);
@@ -910,7 +915,7 @@ export default function BuilderSession() {
               session_id: sessionId,
               role: 'assistant',
               content: recapMessage,
-              token_count: agent.tokenUsage.total, // Tokens réels de Claude
+              token_count: usedTokens.total, // Tokens réels de Claude
               metadata: { 
                 type: 'recap' as const,
                 files_updated: Object.keys(updatedFiles).length,
@@ -918,9 +923,9 @@ export default function BuilderSession() {
                 modified_files: modifiedFiles,
                 project_files: updatedFiles,
                 generation_events: generationEvents,
-                input_tokens: agent.tokenUsage.input,
-                output_tokens: agent.tokenUsage.output,
-                total_tokens: agent.tokenUsage.total
+                input_tokens: usedTokens.input,
+                output_tokens: usedTokens.output,
+                total_tokens: usedTokens.total
               }
             })
             .select()
@@ -941,14 +946,14 @@ export default function BuilderSession() {
             { 
               role: 'assistant' as const, 
               content: recapMessage,
-              token_count: agent.tokenUsage.total,
+              token_count: usedTokens.total,
               id: insertedRecap?.id,
               metadata: { 
                 type: 'recap' as const, 
                 generation_events: generationEvents,
-                input_tokens: agent.tokenUsage.input,
-                output_tokens: agent.tokenUsage.output,
-                total_tokens: agent.tokenUsage.total
+                input_tokens: usedTokens.input,
+                output_tokens: usedTokens.output,
+                total_tokens: usedTokens.total
               }
             }
           ];
