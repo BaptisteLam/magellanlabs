@@ -13,6 +13,7 @@ interface UseModifySiteOptions {
   onPatch?: (actions: PatchAction[]) => void;
   onComplete?: () => void;
   onError?: (error: string) => void;
+  onGenerationEvent?: (event: import('@/types/agent').GenerationEvent) => void;
 }
 
 export function useModifySite() {
@@ -28,6 +29,13 @@ export function useModifySite() {
   ) => {
     setIsLoading(true);
     setIsStreaming(true);
+
+    // Emit initial events like full generation
+    options.onGenerationEvent?.({ type: 'analyze', message: 'Analyzing changes...', status: 'in-progress' });
+    
+    relevantFiles.forEach(file => {
+      options.onGenerationEvent?.({ type: 'read', message: file.path, file: file.path, status: 'completed' });
+    });
 
     const { data: { session } } = await supabase.auth.getSession();
     const abortController = new AbortController();
@@ -98,12 +106,23 @@ export function useModifySite() {
                 const { actions, message: finalMessage } = event.data;
                 console.log('⚡ Modifications rapides reçues:', actions.length, 'actions');
                 
+                // Emit edit events for each patched file
+                actions?.forEach((action: PatchAction) => {
+                  options.onGenerationEvent?.({ 
+                    type: 'edit', 
+                    message: action.path, 
+                    file: action.path,
+                    status: 'completed'
+                  });
+                });
+                
                 clearTimeout(safetyTimeout);
                 setIsStreaming(false);
                 setIsLoading(false);
                 
                 // Appliquer les patches
                 options.onPatch?.(actions);
+                options.onGenerationEvent?.({ type: 'complete', message: 'Changes applied', status: 'completed' });
                 options.onComplete?.();
                 break;
               case 'error':

@@ -37,13 +37,18 @@ export function useAgentAPI() {
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    // Track thinking time
+    // Track thinking time and emit initial planning event
     const thinkStart = Date.now();
-    options.onGenerationEvent?.({ type: 'thought', message: 'Analyzing your request...', duration: 0 });
+    options.onGenerationEvent?.({ type: 'thought', message: 'Analyzing your request...', status: 'in-progress' });
+
+    // Emit analyze event for relevant files
+    if (relevantFiles.length > 0) {
+      options.onGenerationEvent?.({ type: 'analyze', message: `${relevantFiles.length} file(s)`, status: 'in-progress' });
+    }
 
     // Emit read events for relevant files
     relevantFiles.slice(0, 5).forEach(file => {
-      options.onGenerationEvent?.({ type: 'read', message: file.path });
+      options.onGenerationEvent?.({ type: 'read', message: file.path, file: file.path, status: 'completed' });
     });
 
     // Timeout de sécurité : force l'arrêt après 120s même sans complete
@@ -112,7 +117,12 @@ export function useAgentAPI() {
                 // Emit thought complete with duration after first status
                 if (!options.onGenerationEvent) break;
                 const thinkDuration = Math.floor((Date.now() - thinkStart) / 1000);
-                options.onGenerationEvent({ type: 'thought', message: 'Request analyzed', duration: thinkDuration });
+                options.onGenerationEvent({ type: 'thought', message: 'Request analyzed', duration: thinkDuration, status: 'completed' });
+                
+                // Detect planning phase from status messages
+                if (event.content.toLowerCase().includes('plan')) {
+                  options.onGenerationEvent({ type: 'plan', message: event.content.replace(/^(Task:|Titre:)\s*/i, ''), status: 'in-progress' });
+                }
                 break;
               case 'message':
                 options.onMessage?.(event.content);
@@ -125,7 +135,15 @@ export function useAgentAPI() {
                 break;
               case 'code_update':
                 options.onCodeUpdate?.(event.path, event.code);
-                options.onGenerationEvent?.({ type: 'edit', message: event.path, file: event.path });
+                // Distinguish between create (new file) and edit (existing file)
+                const isNewFile = !projectFiles[event.path];
+                const eventType = isNewFile ? 'create' : 'edit';
+                options.onGenerationEvent?.({ 
+                  type: eventType, 
+                  message: event.path, 
+                  file: event.path,
+                  status: 'completed'
+                });
                 break;
               case 'complete':
                 console.log('🎉 Complete event received');
@@ -133,7 +151,7 @@ export function useAgentAPI() {
                 setIsStreaming(false);
                 setIsLoading(false);
                 options.onComplete?.();
-                options.onGenerationEvent?.({ type: 'complete', message: 'Changes applied' });
+                options.onGenerationEvent?.({ type: 'complete', message: 'Changes applied', status: 'completed' });
                 break;
               case 'tokens':
                 // Capturer les tokens d'utilisation

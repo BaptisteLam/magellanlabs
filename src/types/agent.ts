@@ -6,10 +6,11 @@ export type IntentAnalysis = {
 };
 
 export type GenerationEvent = {
-  type: "thought" | "read" | "edit" | "complete" | "error";
+  type: "thought" | "read" | "edit" | "create" | "analyze" | "plan" | "write" | "complete" | "error";
   message: string;
   duration?: number;
   file?: string;
+  status?: "pending" | "in-progress" | "completed" | "error";
 };
 
 export type AIEvent =
