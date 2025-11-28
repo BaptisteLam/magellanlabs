@@ -983,16 +983,17 @@ export default function BuilderSession() {
           console.log('📦 Application des fichiers à la preview:', Object.keys(updatedFiles));
           setProjectFiles({ ...updatedFiles });
           
-          // Désactiver le mode "génération en cours"
-          setIsInitialGeneration(false);
-          isInitialGenerationRef.current = false;
-          
-          // Forcer le passage en mode preview
+          // Attendre que Sandpack soit prêt avant de désactiver le mode génération
           setTimeout(() => {
+            // Désactiver le mode "génération en cours"
+            setIsInitialGeneration(false);
+            isInitialGenerationRef.current = false;
+            
+            // Forcer le passage en mode preview
             if (viewMode !== 'preview') {
               setViewMode('preview');
             }
-          }, 100);
+          }, 1500); // Délai pour laisser Sandpack initialiser la preview
 
           sonnerToast.success('Modifications terminées !');
         },
@@ -1830,7 +1831,7 @@ export default function BuilderSession() {
               {previewMode === 'mobile' ? (
                 <div className={`w-[375px] h-full flex flex-col shadow-2xl rounded-3xl border overflow-hidden`} style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff', borderColor: isDark ? 'rgb(51, 65, 85)' : '#ffffff' }}>
                   {viewMode === 'preview' ? (
-                    isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
+                    isInitialGeneration ? (
                       <GeneratingPreview />
                     ) : (
                       <>
@@ -1876,7 +1877,7 @@ export default function BuilderSession() {
               ) : (
                 <>
                   {viewMode === 'preview' ? (
-                    isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
+                    isInitialGeneration ? (
                       <GeneratingPreview />
                     ) : (
                       <>
