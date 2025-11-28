@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { CustomIframePreview } from './CustomIframePreview';
+import { HotReloadableIframe } from './HotReloadableIframe';
 import { VisualEditToolbar } from './VisualEditToolbar';
 
 interface InteractivePreviewProps {
@@ -66,8 +66,8 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
         </div>
       )}
 
-      {/* Preview HTML statique */}
-      <CustomIframePreview 
+      {/* Preview HTML statique avec Hot Reload */}
+      <HotReloadableIframe 
         projectFiles={normalizedFiles} 
         isDark={isDark}
         inspectMode={inspectMode}

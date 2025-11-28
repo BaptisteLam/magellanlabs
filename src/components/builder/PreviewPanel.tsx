@@ -1,6 +1,6 @@
 import { InteractivePreview } from '@/components/InteractivePreview';
 import { GeneratingPreview } from '@/components/GeneratingPreview';
-import { Sandpack } from '@codesandbox/sandpack-react';
+import { SandpackHotReload } from '@/components/SandpackHotReload';
 import { ExpoSnackPreview } from '@/components/ExpoSnackPreview';
 import type { ElementInfo } from '@/components/InteractivePreview';
 
@@ -29,7 +29,7 @@ export function PreviewPanel({
     return <GeneratingPreview />;
   }
 
-  // Site statique - utilise CustomIframePreview
+  // Site statique - utilise InteractivePreview avec HotReload
   if (projectType === 'website') {
     return (
       <InteractivePreview
@@ -51,21 +51,10 @@ export function PreviewPanel({
     );
   }
 
-  // Application web - utilise Sandpack
+  // Application web - utilise Sandpack avec HMR
   return (
     <div className="h-full w-full">
-      <Sandpack
-        template="react-ts"
-        files={projectFiles}
-        theme={isDark ? 'dark' : 'light'}
-        options={{
-          showNavigator: false,
-          showTabs: false,
-          showLineNumbers: true,
-          editorHeight: '100%',
-          autoReload: true
-        }}
-      />
+      <SandpackHotReload files={projectFiles} isDark={isDark} />
     </div>
   );
 }
