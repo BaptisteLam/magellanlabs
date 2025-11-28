@@ -180,17 +180,21 @@ export function HotReloadableIframe({
     setTimeout(() => style.remove(), 400);
   };
 
-  // Charger l'iframe initialement
+  // Charger l'iframe initialement et lors des changements
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    iframe.srcdoc = generatedHTML;
-    iframe.onload = () => {
-      setIframeReady(true);
-      initialLoadRef.current = false;
-    };
-  }, []); // Uniquement au mount
+    // Première fois : chargement initial
+    if (initialLoadRef.current) {
+      iframe.srcdoc = generatedHTML;
+      iframe.onload = () => {
+        setIframeReady(true);
+        initialLoadRef.current = false;
+      };
+    }
+    // Les changements suivants sont gérés par useHotReload
+  }, [generatedHTML]); // Dépend de generatedHTML pour détecter les changements
 
   return (
     <>

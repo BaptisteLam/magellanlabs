@@ -30,6 +30,8 @@ import { TokenCounter } from '@/components/TokenCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
 import { analyzeIntent, identifyRelevantFiles } from '@/utils/intentAnalyzer';
 import { useModifySite, applyPatch, type PatchAction } from '@/hooks/useModifySite';
+import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
+import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -64,7 +66,24 @@ export default function BuilderSession() {
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [projectFiles, setProjectFiles] = useState<Record<string, string>>({});
+  
+  // Hook optimisé pour la gestion des fichiers avec cache et sync
+  const {
+    projectFiles,
+    isLoading: filesLoading,
+    syncStatus,
+    lastSyncTime,
+    pendingChanges,
+    updateFiles,
+    updateFile,
+    saveNow,
+    isOnline
+  } = useOptimizedBuilder({
+    sessionId: sessionId!,
+    autoSave: true,
+    debounceMs: 2000
+  });
+  
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedFileContent, setSelectedFileContent] = useState<string>('');
   const [openFiles, setOpenFiles] = useState<string[]>([]);
@@ -295,7 +314,7 @@ export default function BuilderSession() {
               console.log('✅ Files:', Object.keys(filesMap).join(', '));
               console.log('✅ =====================================');
               
-              setProjectFiles(filesMap);
+              updateFiles(filesMap, false); // Pas de sync car c'est un chargement initial
               setGeneratedHtml(filesMap['index.html'] || '');
               
               const firstFile = Object.keys(filesMap)[0];
@@ -309,19 +328,19 @@ export default function BuilderSession() {
               console.error('❌ PROJECT FILES RESTORATION FAILED');
               console.error('❌ No files found after parsing');
               console.error('❌ =====================================');
-              setProjectFiles({});
+              // Pas besoin d'initialiser à vide, le hook le gère
               setGeneratedHtml('');
             }
           } else {
             console.error('❌ =====================================');
             console.error('❌ PROJECT FILES DATA IS NULL/UNDEFINED');
             console.error('❌ =====================================');
-            setProjectFiles({});
+            // Pas besoin d'initialiser à vide, le hook le gère
             setGeneratedHtml('');
           }
         } catch (err) {
           console.error('Erreur parsing project_files:', err);
-          setProjectFiles({});
+          // Pas besoin d'initialiser à vide, le hook le gère
           setGeneratedHtml('');
         }
 
@@ -569,10 +588,10 @@ export default function BuilderSession() {
       const faviconPath = `public/favicon.${extension}`;
       
       // Ajouter le favicon aux fichiers du projet
-      setProjectFiles(prev => ({
-        ...prev,
+      updateFiles({
+        ...projectFiles,
         [faviconPath]: base64
-      }));
+      }, true);
 
       // Mettre à jour index.html pour référencer le nouveau favicon
       const updatedIndexHtml = generatedHtml.replace(
@@ -1003,7 +1022,7 @@ export default function BuilderSession() {
 
           // ✅ MAINTENANT on peut appliquer les fichiers à la preview
           console.log('📦 Application des fichiers à la preview:', Object.keys(updatedFiles));
-          setProjectFiles({ ...updatedFiles });
+          updateFiles(updatedFiles, true);
           
           // Attendre que Sandpack soit prêt avant de désactiver le mode génération
           setTimeout(() => {
@@ -1093,7 +1112,7 @@ export default function BuilderSession() {
           }
           
           // Mettre à jour l'état avec les nouveaux fichiers
-          setProjectFiles(updatedFiles);
+          updateFiles(updatedFiles, true);
           setGeneratedHtml(updatedFiles['App.tsx'] || updatedFiles['index.html'] || generatedHtml);
           
           // Mettre à jour le fichier sélectionné si modifié
@@ -1550,6 +1569,14 @@ export default function BuilderSession() {
           </Button>
 
           <TokenCounter isDark={isDark} userId={user?.id} />
+          
+          <SyncStatusIndicator 
+            status={syncStatus}
+            lastSyncTime={lastSyncTime}
+            pendingChanges={pendingChanges}
+            isOnline={isOnline}
+            className="ml-2"
+          />
         </div>
 
         {/* Barre URL - repositionnée à gauche et rétrécie */}
@@ -1822,7 +1849,7 @@ export default function BuilderSession() {
                               
                               if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
                                 const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
-                                setProjectFiles(restoredFiles);
+                                updateFiles(restoredFiles, false); // Restauration de version, pas de sync
                                 
                                 const truncatedMessages = messages.slice(0, messageIdx + 1);
                                 setMessages(truncatedMessages);
@@ -1862,7 +1889,7 @@ export default function BuilderSession() {
                               
                               if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
                                 const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
-                                setProjectFiles(restoredFiles);
+                                updateFiles(restoredFiles, false); // Restauration de version, pas de sync
                                 
                                 const truncatedMessages = messages.slice(0, previousRecap.index + 1);
                                 setMessages(truncatedMessages);
@@ -1917,7 +1944,7 @@ export default function BuilderSession() {
                                 
                                 if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
                                   const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
-                                  setProjectFiles(restoredFiles);
+                                  updateFiles(restoredFiles, false); // Restauration de version, pas de sync
                                   
                                   // Ne pas tronquer les messages, juste marquer la version courante
                                   setCurrentVersionIndex(messageIdx);
@@ -1962,7 +1989,7 @@ export default function BuilderSession() {
                                 
                                 if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
                                   const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
-                                  setProjectFiles(restoredFiles);
+                                  updateFiles(restoredFiles, false); // Restauration de version, pas de sync
                                   
                                   // Ne pas tronquer les messages, juste marquer la version courante
                                   setCurrentVersionIndex(previousRecap.index);
@@ -2193,7 +2220,7 @@ export default function BuilderSession() {
                               onChange={(value) => {
                                 if (value !== undefined && selectedFile) {
                                   setSelectedFileContent(value);
-                                  setProjectFiles((prev) => ({ ...prev, [selectedFile]: value }));
+                                  updateFile(selectedFile, value);
                                 }
                               }}
                             />
