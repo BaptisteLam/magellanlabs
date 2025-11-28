@@ -8,6 +8,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface RelevantFile {
+  path: string;
+  content: string;
+  score: number;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -29,10 +35,21 @@ serve(async (req) => {
       throw new Error('ANTHROPIC_API_KEY not configured');
     }
 
-    // Construire contexte projet (limiter la taille)
-    const projectContext = Object.entries(projectFiles)
-      .slice(0, 20) // Limiter à 20 fichiers max
-      .map(([path, content]) => `=== ${path} ===\n${typeof content === 'string' ? content.slice(0, 2000) : content}`)
+    // Sélection intelligente des fichiers pertinents avec scoring
+    const relevantFilesWithScores = selectRelevantFiles(
+      message,
+      projectFiles,
+      attachedFiles
+    );
+
+    console.log('📊 Relevant files:', relevantFilesWithScores.map(f => `${f.path} (score: ${f.score})`));
+
+    // Construire contexte projet optimisé avec chunks
+    const projectContext = relevantFilesWithScores
+      .map(({ path, content, score }) => {
+        const preview = typeof content === 'string' ? content.slice(0, 3000) : content;
+        return `=== ${path} (relevance: ${score.toFixed(2)}) ===\n${preview}`;
+      })
       .join('\n\n');
 
     // Construire historique (garder les 5 derniers messages)
@@ -692,3 +709,105 @@ Exemple de flux COMPLET:
     );
   }
 });
+
+/**
+ * Sélection intelligente des fichiers pertinents avec scoring pondéré
+ */
+function selectRelevantFiles(
+  message: string,
+  projectFiles: Record<string, string>,
+  attachedFiles: Array<any> = []
+): RelevantFile[] {
+  const messageLower = message.toLowerCase();
+  const keywords = extractKeywords(messageLower);
+
+  const scored = Object.entries(projectFiles).map(([path, content]) => {
+    let score = 0;
+    const pathLower = path.toLowerCase();
+    const contentStr = typeof content === 'string' ? content : '';
+    const contentLower = contentStr.toLowerCase();
+
+    // 1. Mention explicite du fichier (poids: 50)
+    if (messageLower.includes(pathLower) || messageLower.includes(path.split('/').pop() || '')) {
+      score += 50;
+    }
+
+    // 2. Mots-clés dans le nom du fichier (poids: 30)
+    const keywordMatches = keywords.filter(kw => pathLower.includes(kw)).length;
+    score += keywordMatches * 10;
+
+    // 3. Mots-clés dans le contenu (poids: 20)
+    const contentMatches = keywords.filter(kw => contentLower.includes(kw)).length;
+    score += contentMatches * 2;
+
+    // 4. Fichiers critiques (poids: 25)
+    const criticalFiles = ['index', 'app', 'main', 'layout', 'config', 'route'];
+    if (criticalFiles.some(cf => pathLower.includes(cf))) {
+      score += 25;
+    }
+
+    // 5. Fichiers récemment modifiés (simulé par présence dans attachedFiles)
+    if (attachedFiles.some((af: any) => af.name === path)) {
+      score += 15;
+    }
+
+    // 6. Type de fichier pertinent
+    const ext = path.split('.').pop()?.toLowerCase();
+    const relevantExts = ['tsx', 'ts', 'jsx', 'js', 'html', 'css'];
+    if (ext && relevantExts.includes(ext)) {
+      score += 10;
+    }
+
+    // 7. Pénalités
+    // Fichiers node_modules, dist, build
+    if (pathLower.includes('node_modules') || pathLower.includes('dist') || pathLower.includes('build')) {
+      score = 0;
+    }
+
+    // Fichiers de config moins prioritaires sauf si mentionnés
+    if ((pathLower.includes('config') || pathLower.includes('.json')) && score < 30) {
+      score *= 0.5;
+    }
+
+    return { path, content: contentStr, score };
+  });
+
+  // Trier par score décroissant
+  scored.sort((a, b) => b.score - a.score);
+
+  // Sélectionner top 15 avec score > 5
+  const relevant = scored.filter(f => f.score > 5).slice(0, 15);
+
+  // Toujours inclure certains fichiers critiques même avec score faible
+  const mustInclude = ['index.html', 'App.tsx', 'main.tsx', 'styles.css', 'script.js'];
+  mustInclude.forEach(filename => {
+    const found = Object.entries(projectFiles).find(([path]) => 
+      path.endsWith(filename) || path.includes(filename)
+    );
+    if (found && !relevant.some(r => r.path === found[0])) {
+      relevant.push({ path: found[0], content: found[1] as string, score: 20 });
+    }
+  });
+
+  return relevant.slice(0, 15);
+}
+
+/**
+ * Extrait les mots-clés significatifs d'un message
+ */
+function extractKeywords(text: string): string[] {
+  const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 
+    'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be', 'have', 'has', 
+    'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must',
+    'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they',
+    'le', 'la', 'les', 'un', 'une', 'de', 'du', 'des', 'et', 'ou', 'mais', 'dans', 'sur',
+    'pour', 'avec', 'par', 'est', 'sont', 'était', 'faire', 'ajoute', 'change', 'modifie']);
+
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length > 2 && !stopWords.has(word))
+    .filter((word, idx, arr) => arr.indexOf(word) === idx) // unique
+    .slice(0, 20); // top 20 keywords
+}
