@@ -99,9 +99,6 @@ export function HotReloadableIframe({
               white-space: nowrap;
             }
             .magellan-inspect-dashed {
-              outline: 1px dashed rgba(3, 165, 192, 0.5) !important;
-              outline-offset: 2px;
-            }
           \`;
           document.head.appendChild(style);
           console.log('✅ Styles d\\'inspection injectés');
@@ -128,7 +125,6 @@ export function HotReloadableIframe({
           console.log('✨ Activation du mode inspection');
           injectStyles();
           document.body.style.cursor = 'crosshair';
-          showAllOutlines();
           attachEventListeners();
         }
         
@@ -140,7 +136,6 @@ export function HotReloadableIframe({
             hoveredElement.removeAttribute('data-magellan-tag');
             hoveredElement = null;
           }
-          hideAllOutlines();
           detachEventListeners();
         }
         
@@ -219,22 +214,6 @@ export function HotReloadableIframe({
           }
         }
         
-        function showAllOutlines() {
-          const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV','UL','LI'];
-          const elements = document.querySelectorAll(selectableTags.join(','));
-          console.log('📝 Affichage des outlines pour', elements.length, 'éléments');
-          elements.forEach(el => {
-            if (el !== document.body && el !== document.documentElement) {
-              el.classList.add('magellan-inspect-dashed');
-            }
-          });
-        }
-        
-        function hideAllOutlines() {
-          document.querySelectorAll('.magellan-inspect-dashed').forEach(el => {
-            el.classList.remove('magellan-inspect-dashed');
-          });
-        }
         
         function getElementDescription(el) {
           const tag = el.tagName.toLowerCase();
