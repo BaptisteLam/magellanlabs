@@ -159,62 +159,6 @@ export function CollapsedAiTasks({
 
   return (
     <div className="relative flex w-full flex-col space-y-2">
-      {/* Progress bar et infos en temps réel (affichée seulement pendant la génération) */}
-      {isLoading && (
-        <div 
-          className="space-y-2 p-3 rounded-lg animate-fade-in"
-          style={{
-            backgroundColor: isDark ? 'rgba(30, 41, 59, 0.5)' : 'rgba(241, 245, 249, 0.8)',
-            border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.3)' : 'rgba(226, 232, 240, 0.8)'}`,
-            backdropFilter: 'blur(8px)'
-          }}
-        >
-          {/* En-tête avec fichier en cours */}
-          <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2" style={{ color: isDark ? '#cbd5e1' : '#475569' }}>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: '#03A5C0' }} />
-              <span className="font-medium">Generating...</span>
-              {currentFile && (
-                <>
-                  <span style={{ color: isDark ? '#64748b' : '#94a3b8' }}>•</span>
-                  <FileEdit className="h-3.5 w-3.5" style={{ color: '#03A5C0' }} />
-                  <span className="font-mono" style={{ color: isDark ? '#e2e8f0' : '#334155' }}>
-                    {currentFile}
-                  </span>
-                </>
-              )}
-            </div>
-            
-            {/* Temps écoulé et estimation */}
-            <div className="flex items-center gap-3" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
-              <div className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" />
-                <span className="font-medium">{formatTime(elapsedTime)}</span>
-              </div>
-              {estimatedTime && estimatedTime > 0 && (
-                <div className="flex items-center gap-1" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
-                  <span>~{formatTime(estimatedTime)} left</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div className="space-y-1">
-            <Progress value={progress} className="h-2" />
-            <div 
-              className="flex items-center justify-between text-[10px]" 
-              style={{ color: isDark ? '#64748b' : '#94a3b8' }}
-            >
-              <span>{Math.round(progress)}% complete</span>
-              <span>
-                {events.filter(e => e.status === 'completed').length}/{events.length} steps
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-      
       <div 
         className="relative overflow-hidden transition-all duration-300 ease-in-out"
         style={{ height: isExpanded ? 'auto' : '24px' }}
@@ -307,30 +251,24 @@ export function CollapsedAiTasks({
         </div>
       </div>
 
-      {/* Bouton "voir plus" centré en dessous - affiché uniquement quand terminé */}
+      {/* Bouton "voir" discret à droite - style Lovable */}
       {!autoExpand && !isLoading && (
-        <div className="flex justify-center pt-1">
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex h-7 items-center justify-center rounded-full px-4 py-1 text-xs font-medium transition-all duration-200 ease-out"
-            aria-label={isExpanded ? "Masquer les détails" : "Voir plus de détails"}
-            style={{
-              color: isDark ? '#cbd5e1' : '#475569',
-              backgroundColor: isDark ? 'rgba(51, 65, 85, 0.6)' : 'rgba(148, 163, 184, 0.15)',
-              border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.5)' : 'rgba(148, 163, 184, 0.3)'}`
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = isDark ? 'rgba(51, 65, 85, 0.8)' : 'rgba(148, 163, 184, 0.25)';
-              e.currentTarget.style.color = '#03A5C0';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = isDark ? 'rgba(51, 65, 85, 0.6)' : 'rgba(148, 163, 184, 0.15)';
-              e.currentTarget.style.color = isDark ? '#cbd5e1' : '#475569';
-            }}
-          >
-            {isExpanded ? '✕ masquer' : '+ voir plus'}
-          </button>
-        </div>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="absolute right-0 top-0 text-xs transition-colors duration-200"
+          aria-label={isExpanded ? "Masquer" : "Voir"}
+          style={{
+            color: isDark ? '#64748b' : '#94a3b8',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = '#03A5C0';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = isDark ? '#64748b' : '#94a3b8';
+          }}
+        >
+          {isExpanded ? 'hide' : 'show all'}
+        </button>
       )}
     </div>
   );
