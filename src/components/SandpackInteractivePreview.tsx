@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { SandpackProvider, SandpackLayout, SandpackPreview, useSandpack } from '@codesandbox/sandpack-react';
+import { generate404Page } from '@/lib/generate404Page';
 
 interface SandpackInteractivePreviewProps {
   files: Record<string, string>;
@@ -125,8 +126,25 @@ function SandpackController({ inspectMode, onElementSelect }: { inspectMode: boo
               return true;
             }
             
-            // For internal React Router links, let Sandpack handle but log
-            console.log('🔗 Navigation interne:', href);
+            // TOUJOURS bloquer la navigation par défaut pour les liens internes
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Calculer le fichier cible
+            let targetFile = href.replace(/^\/+/, ''); // Enlever les slashes au début
+            
+            // Si vide ou "/", naviguer vers index.tsx ou App.tsx
+            if (!targetFile || targetFile === '' || targetFile === '/') {
+              targetFile = 'App.tsx';
+            }
+            
+            console.log('🔗 Navigation interne vers:', targetFile);
+            window.parent.postMessage({
+              type: 'navigate',
+              file: targetFile
+            }, '*');
+            
+            return false;
           }
         }, true);
       }
@@ -359,10 +377,52 @@ function SandpackController({ inspectMode, onElementSelect }: { inspectMode: boo
 }
 
 export function SandpackInteractivePreview({ files, isDark, inspectMode = false, onElementSelect }: SandpackInteractivePreviewProps) {
+  const [currentFile, setCurrentFile] = useState<string>('App.tsx');
+  const [navigationHistory, setNavigationHistory] = useState<string[]>(['App.tsx']);
+  const [navigationIndex, setNavigationIndex] = useState(0);
+
+  // Handler pour les messages de navigation depuis l'iframe
+  useEffect(() => {
+    const handleNavigationMessage = (event: MessageEvent) => {
+      if (event.data.type === 'navigate') {
+        const targetFile = event.data.file;
+        console.log('📨 Message navigate reçu:', targetFile);
+        
+        // Vérifier si le fichier existe
+        const fileExists = files[targetFile] || files[`/${targetFile}`] || files[`./${targetFile}`];
+        
+        if (fileExists) {
+          console.log('✅ Fichier trouvé, navigation vers:', targetFile);
+          setCurrentFile(targetFile);
+          
+          // Mettre à jour l'historique
+          const newHistory = navigationHistory.slice(0, navigationIndex + 1);
+          newHistory.push(targetFile);
+          setNavigationHistory(newHistory);
+          setNavigationIndex(newHistory.length - 1);
+        } else {
+          console.log('❌ Fichier introuvable:', targetFile, '- Affichage page 404');
+          setCurrentFile('__404__');
+        }
+      }
+    };
+
+    window.addEventListener('message', handleNavigationMessage);
+    return () => window.removeEventListener('message', handleNavigationMessage);
+  }, [files, navigationHistory, navigationIndex]);
+
+  // Générer les fichiers avec page 404 si nécessaire
+  const filesWithNotFound = {
+    ...files,
+    ...(currentFile === '__404__' && {
+      '/404.html': generate404Page(isDark)
+    })
+  };
+
   return (
     <SandpackProvider
       template="react-ts"
-      files={files}
+      files={filesWithNotFound}
       theme={isDark ? 'dark' : 'light'}
       options={{
         autoReload: true,
