@@ -151,8 +151,8 @@ RÈGLES DE CODE - TRÈS IMPORTANT ET NON NÉGOCIABLE:
   * Avant </body> : <script src="script.js"></script>
   * RIEN D'AUTRE comme CSS ou JS
 
-- ✅ **OBLIGATOIRE**: TOUT le CSS dans styles.css (fichier séparé - minimum 100 lignes)
-- ✅ **OBLIGATOIRE**: TOUT le JavaScript dans script.js (fichier séparé - minimum 50 lignes)
+- ✅ **OBLIGATOIRE**: TOUT le CSS dans styles.css (fichier séparé - minimum 200 lignes)
+- ✅ **OBLIGATOIRE**: TOUT le JavaScript dans script.js (fichier séparé - minimum 80 lignes RÉELLES avec interactivité)
 
 - ⚠️ **CONSÉQUENCE**: Si tu mets du CSS/JS inline, le déploiement échouera → page blanche sur Cloudflare
 - ⚠️ **VÉRIFICATION OBLIGATOIRE**: Avant d'envoyer {"type":"complete"}, vérifie que tu as bien envoyé ces 3 code_update distincts **DANS CET ORDRE** :
@@ -304,7 +304,7 @@ QUALITÉ DU CODE ET CONTEXTE:
 - Pas de markdown, pas de backticks, juste du JSON valide NDJSON
 
 **FICHIERS OBLIGATOIRES - RÈGLES STRICTES**:
-- **styles.css** EST OBLIGATOIRE et DOIT contenir (MINIMUM 100 lignes) :
+- **styles.css** EST OBLIGATOIRE et DOIT contenir (MINIMUM 200 lignes) :
   * Reset CSS complet (*, body, box-sizing, etc.)
   * Variables CSS personnalisées dans :root (couleurs, espacements, fonts, etc.)
   * Styles détaillés pour TOUS les éléments HTML utilisés (header, nav, sections, footer, etc.)
@@ -312,16 +312,33 @@ QUALITÉ DU CODE ET CONTEXTE:
   * Au moins 3-5 animations personnalisées avec @keyframes
   * Transitions et effets hover pour TOUS les éléments interactifs
   * Styles de grilles et flexbox
-- **script.js** EST OBLIGATOIRE et DOIT contenir (MINIMUM 50 lignes) :
-  * DOMContentLoaded event listener
-  * Au moins 3-5 fonctions d'interactivité (menu, scroll, animations, formulaires, etc.)
-  * Event listeners pour les interactions utilisateur
-  * Logique de navigation si plusieurs pages
-  * Animations JavaScript ou manipulations DOM
-  * JAMAIS un fichier vide ou avec juste console.log
-- **CRITIQUE**: TOUS les sites web doivent inclure du JavaScript pour l'interactivité
-- Ajoute TOUJOURS au minimum : navigation mobile, animations au scroll, interactions utilisateur
-- Utilise JavaScript pour : effets au survol, animations d'apparition, menus interactifs, formulaires dynamiques
+  
+- **script.js** EST OBLIGATOIRE et DOIT contenir (MINIMUM 80 lignes RÉELLES - PAS DE COMMENTAIRES VIDES) :
+  * ❌ **INTERDIT ABSOLU**: Fichier vide ou quasi-vide (juste console.log ou 5-10 lignes)
+  * ✅ **OBLIGATOIRE**: DOMContentLoaded event listener avec code complet à l'intérieur
+  * ✅ **OBLIGATOIRE**: Menu mobile hamburger (toggle, animation, overlay) - minimum 15 lignes
+  * ✅ **OBLIGATOIRE**: Animations au scroll (IntersectionObserver ou scroll events) - minimum 20 lignes
+  * ✅ **OBLIGATOIRE**: Effets interactifs (hover, click, transitions dynamiques) - minimum 15 lignes
+  * ✅ **OBLIGATOIRE**: Formulaires dynamiques si présents (validation, submit handlers) - minimum 20 lignes
+  * ✅ **OBLIGATOIRE**: Smooth scroll pour navigation interne - minimum 10 lignes
+  * Au moins 5-7 fonctions distinctes et détaillées
+  * Event listeners pour TOUTES les interactions utilisateur
+  * Manipulation DOM complète (ajout/suppression classes, changement styles, etc.)
+  
+- **FONCTIONNALITÉS JAVASCRIPT OBLIGATOIRES À INCLURE**:
+  1. Menu hamburger mobile complet avec toggle active class sur hamburger et nav-menu
+  2. IntersectionObserver pour animations au scroll avec threshold 0.1 et fade-in sur éléments
+  3. Smooth scroll pour tous les liens internes avec ancres href="#..." et scrollIntoView
+  4. Validation formulaire si présent avec preventDefault, regex email/téléphone, feedback visuel
+  5. Effets hover dynamiques via JavaScript si nécessaire pour interactions avancées
+  6. Carousel ou slider si images multiples avec navigation prev/next et dots
+  7. Modals ou popups si nécessaire avec overlay backdrop et fermeture au clic extérieur
+  
+- **CRITIQUE ABSOLUE**: Si tu génères un script.js avec moins de 80 lignes réelles, la génération est REFUSÉE
+- **VÉRIFICATION OBLIGATOIRE**: Compte les lignes avant d'envoyer → si < 80 lignes, AJOUTE plus de fonctionnalités
+- **PAS D'EXCUSES**: Même pour un site "simple", 80 lignes de JavaScript est le MINIMUM ABSOLU
+- TOUS les sites web DOIVENT inclure JavaScript avec interactivité riche
+- Ajoute TOUJOURS : navigation mobile complète, animations au scroll détaillées, smooth scroll, effets interactifs
 
 ANIMATIONS ET DESIGN:
 - **OBLIGATOIRE**: Tous les sites doivent avoir des animations sobres et élégantes
