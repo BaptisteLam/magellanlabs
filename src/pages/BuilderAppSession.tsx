@@ -25,6 +25,7 @@ import { useAgentAPI } from "@/hooks/useAgentAPI";
 import type { AIEvent, GenerationEvent } from '@/types/agent';
 import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
+import AiGenerationMessage from '@/components/chat/AiGenerationMessage';
 import html2canvas from 'html2canvas';
 import { TokenCounter } from '@/components/TokenCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
@@ -40,11 +41,18 @@ interface Message {
   token_count?: number;
   id?: string;
   metadata?: {
-    type?: 'intro' | 'recap';
+    type?: 'intro' | 'recap' | 'generation';
+    thought_duration?: number;
+    intent_message?: string;
     generation_events?: any[];
+    files_created?: number;
+    files_modified?: number;
     files_updated?: number;
     new_files?: string[];
     modified_files?: string[];
+    total_tokens?: number;
+    input_tokens?: number;
+    output_tokens?: number;
     project_files?: Record<string, string>;
     [key: string]: any;
   };
@@ -109,6 +117,9 @@ export default function BuilderSession() {
   
   // Événements de génération pour l'affichage de pensée
   const [generationEvents, setGenerationEvents] = useState<GenerationEvent[]>([]);
+  
+  // Temps de début de génération pour calculer la durée
+  const [generationStartTime, setGenerationStartTime] = useState<number>(0);
   
   // Flag pour savoir si on est en première génération
   const [isInitialGeneration, setIsInitialGeneration] = useState(false);
@@ -701,6 +712,26 @@ export default function BuilderSession() {
     setInputValue('');
     setAttachedFiles([]);
 
+    // Créer immédiatement le message d'intro avec toutes les métadonnées nécessaires
+    const introMessage: Message = {
+      role: 'assistant',
+      content: "Je vais analyser votre demande et effectuer les modifications nécessaires...",
+      metadata: {
+        type: 'generation',
+        thought_duration: 0,
+        intent_message: 'Analyzing your request...',
+        generation_events: [],
+        files_created: 0,
+        files_modified: 0,
+        new_files: [],
+        modified_files: [],
+        total_tokens: 0
+      }
+    };
+    
+    setMessages(prev => [...prev, introMessage]);
+    setGenerationStartTime(Date.now());
+
     // Préparer les fichiers pertinents
     const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
       const keywords = prompt.toLowerCase().split(/\s+/);
@@ -787,6 +818,26 @@ export default function BuilderSession() {
         onGenerationEvent: (event) => {
           console.log('🔄 Generation:', event);
           setGenerationEvents(prev => [...prev, event]);
+          
+          // Mettre à jour le message intro avec les nouveaux événements
+          setMessages(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage && (lastMessage.metadata?.type === 'generation' || lastMessage.metadata?.type === 'intro')) {
+              return prev.map((msg, idx) => 
+                idx === prev.length - 1
+                  ? { 
+                      ...msg, 
+                      metadata: { 
+                        ...msg.metadata, 
+                        generation_events: [...(msg.metadata.generation_events || []), event],
+                        thought_duration: event.type === 'thought' ? Date.now() - generationStartTime : msg.metadata.thought_duration
+                      } 
+                    }
+                  : msg
+              );
+            }
+            return prev;
+          });
         },
         onTokens: (tokens) => {
           usedTokens = tokens;
@@ -1802,6 +1853,84 @@ export default function BuilderSession() {
                         )}
                       </div>
                     </div>
+                  ) : msg.metadata?.type === 'generation' ? (
+                    // Nouveau message unifié style Lovable
+                    <AiGenerationMessage
+                      message={msg}
+                      messageIndex={idx}
+                      isLatestMessage={idx === messages.length - 1}
+                      isDark={isDark}
+                      isLoading={idx === messages.length - 1 && agent.isLoading}
+                      onRestore={async (messageIdx) => {
+                        const targetMessage = messages[messageIdx];
+                        if (!targetMessage.id || !sessionId) return;
+                        
+                        const { data: chatMessage } = await supabase
+                          .from('chat_messages')
+                          .select('metadata')
+                          .eq('id', targetMessage.id)
+                          .single();
+                        
+                        if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
+                          const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                          updateFiles(restoredFiles, false);
+                          
+                          const truncatedMessages = messages.slice(0, messageIdx + 1);
+                          setMessages(truncatedMessages);
+                          
+                          await supabase
+                            .from('build_sessions')
+                            .update({
+                              project_files: convertFilesToArray(restoredFiles),
+                              updated_at: new Date().toISOString()
+                            })
+                            .eq('id', sessionId);
+                          
+                          sonnerToast.success('Version restaurée');
+                        }
+                      }}
+                      onGoToPrevious={async () => {
+                        const generationMessages = messages
+                          .map((m, i) => ({ message: m, index: i }))
+                          .filter(({ message }) => message.role === 'assistant' && message.metadata?.type === 'generation')
+                          .slice(-15);
+                        
+                        if (generationMessages.length < 2) {
+                          sonnerToast.error('Aucune version précédente disponible');
+                          return;
+                        }
+                        
+                        const previousGeneration = generationMessages[generationMessages.length - 2];
+                        const targetMessage = previousGeneration.message;
+                        
+                        if (!targetMessage.id || !sessionId) return;
+                        
+                        const { data: chatMessage } = await supabase
+                          .from('chat_messages')
+                          .select('metadata')
+                          .eq('id', targetMessage.id)
+                          .single();
+                        
+                        if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
+                          const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                          updateFiles(restoredFiles, false);
+                          
+                          const truncatedMessages = messages.slice(0, previousGeneration.index + 1);
+                          setMessages(truncatedMessages);
+                          setCurrentVersionIndex(previousGeneration.index);
+                          
+                          await supabase
+                            .from('build_sessions')
+                            .update({
+                              project_files: convertFilesToArray(restoredFiles),
+                              updated_at: new Date().toISOString()
+                            })
+                            .eq('id', sessionId);
+                          
+                          sonnerToast.success('Version précédente restaurée');
+                        }
+                      }}
+                    />
                   ) : (
                     <div className="space-y-3">
                       {/* Message d'introduction - texte simple sans icône */}

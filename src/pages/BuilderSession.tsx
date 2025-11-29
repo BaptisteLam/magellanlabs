@@ -743,13 +743,20 @@ export default function BuilderSession() {
     setInputValue('');
     setAttachedFiles([]);
 
-    // Créer immédiatement le message d'intro avec CollapsedAiTasks (UI seulement, pas de DB insert)
+    // Créer immédiatement le message d'intro avec toutes les métadonnées nécessaires
     const introMessage: Message = {
       role: 'assistant',
       content: "Je vais analyser votre demande et effectuer les modifications nécessaires...",
       metadata: {
-        type: 'intro',
-        generation_events: []
+        type: 'generation',
+        thought_duration: 0,
+        intent_message: 'Analyzing your request...',
+        generation_events: [],
+        files_created: 0,
+        files_modified: 0,
+        new_files: [],
+        modified_files: [],
+        total_tokens: 0
       }
     };
     
@@ -845,10 +852,17 @@ export default function BuilderSession() {
           // Mettre à jour le message intro avec les nouveaux événements
           setMessages(prev => {
             const lastMessage = prev[prev.length - 1];
-            if (lastMessage && lastMessage.metadata?.type === 'intro') {
+            if (lastMessage && (lastMessage.metadata?.type === 'generation' || lastMessage.metadata?.type === 'intro')) {
               return prev.map((msg, idx) => 
                 idx === prev.length - 1
-                  ? { ...msg, metadata: { ...msg.metadata, generation_events: [...(msg.metadata.generation_events || []), event] } }
+                  ? { 
+                      ...msg, 
+                      metadata: { 
+                        ...msg.metadata, 
+                        generation_events: [...(msg.metadata.generation_events || []), event],
+                        thought_duration: event.type === 'thought' ? Date.now() - generationStartTime : msg.metadata.thought_duration
+                      } 
+                    }
                   : msg
               );
             }
@@ -882,10 +896,17 @@ export default function BuilderSession() {
           // Ajouter l'événement complete au message intro
           setMessages(prev => {
             const lastMessage = prev[prev.length - 1];
-            if (lastMessage && lastMessage.metadata?.type === 'intro') {
+            if (lastMessage && (lastMessage.metadata?.type === 'generation' || lastMessage.metadata?.type === 'intro')) {
               return prev.map((msg, idx) => 
                 idx === prev.length - 1
-                  ? { ...msg, metadata: { ...msg.metadata, generation_events: [...(msg.metadata.generation_events || []), { type: 'complete' as const, message: 'Generation completed' }] } }
+                  ? { 
+                      ...msg, 
+                      metadata: { 
+                        ...msg.metadata, 
+                        generation_events: [...(msg.metadata.generation_events || []), { type: 'complete' as const, message: 'Generation completed' }],
+                        thought_duration: Date.now() - generationStartTime
+                      } 
+                    }
                   : msg
               );
             }
