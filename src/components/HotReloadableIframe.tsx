@@ -343,6 +343,12 @@ export function HotReloadableIframe({
           console.log('✅ Inspect mode ready (immediate)');
           window.parent.postMessage({ type: 'inspect-ready' }, '*');
         }
+        
+        // Envoi redondant sur window.load pour garantir la réception
+        window.addEventListener('load', () => {
+          console.log('🔄 Re-sending inspect-ready on window.load');
+          window.parent.postMessage({ type: 'inspect-ready' }, '*');
+        });
       })();
     </script>
   `;
@@ -504,7 +510,7 @@ export function HotReloadableIframe({
         iframe.contentWindow.scrollTo(scrollX, scrollY);
       }
       setIframeReady(true);
-      setInspectReady(false); // Reset inspect ready on full reload
+      // Ne pas réinitialiser inspectReady - l'iframe renverra 'inspect-ready' automatiquement
     };
   };
 
@@ -563,15 +569,44 @@ export function HotReloadableIframe({
     return () => window.removeEventListener('message', handleMessage);
   }, [onElementSelect, projectFiles, navigationIndex]);
 
-  // Envoyer le toggle inspect mode à l'iframe
+  // Envoyer le toggle inspect mode à l'iframe avec mécanisme de retry
   useEffect(() => {
-    if (!inspectReady || !iframeRef.current?.contentWindow) return;
+    const sendToggleMessage = () => {
+      if (!iframeRef.current?.contentWindow) return false;
+      
+      console.log('📤 Sending toggle-inspect:', inspectMode);
+      iframeRef.current.contentWindow.postMessage(
+        { type: 'toggle-inspect', enabled: inspectMode },
+        '*'
+      );
+      return true;
+    };
 
-    console.log('📤 Sending toggle-inspect:', inspectMode);
-    iframeRef.current.contentWindow.postMessage(
-      { type: 'toggle-inspect', enabled: inspectMode },
-      '*'
-    );
+    // Envoyer immédiatement si l'iframe est prête
+    if (inspectReady) {
+      sendToggleMessage();
+    } else if (inspectMode) {
+      // Si inspect mode activé mais iframe pas encore prête, réessayer
+      console.log('⏳ Iframe pas prête, activation du retry pour toggle-inspect');
+      const retryInterval = setInterval(() => {
+        if (inspectReady) {
+          console.log('✅ Iframe prête, envoi du toggle-inspect');
+          sendToggleMessage();
+          clearInterval(retryInterval);
+        }
+      }, 100);
+      
+      // Cleanup après 2 secondes max
+      const timeout = setTimeout(() => {
+        console.log('⏱️ Timeout du retry toggle-inspect');
+        clearInterval(retryInterval);
+      }, 2000);
+      
+      return () => {
+        clearInterval(retryInterval);
+        clearTimeout(timeout);
+      };
+    }
   }, [inspectMode, inspectReady]);
 
   // Charger l'iframe uniquement au premier mount
@@ -583,7 +618,7 @@ export function HotReloadableIframe({
     iframe.srcdoc = generatedHTML;
     iframe.onload = () => {
       setIframeReady(true);
-      setInspectReady(false);
+      // Ne pas réinitialiser inspectReady - l'iframe enverra 'inspect-ready' automatiquement
       initialLoadRef.current = false;
     };
     
