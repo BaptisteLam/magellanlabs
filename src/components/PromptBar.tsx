@@ -378,9 +378,9 @@ const PromptBar = ({
                   className="transition-all hover:scale-105 border-0"
                   style={{ 
                     backgroundColor: '#03A5C0',
-                    width: isLoading ? '36px' : '36px',
-                    height: isLoading ? '36px' : '36px',
-                    borderRadius: isLoading ? '8px' : '50%',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
                     padding: 0
                   }}
                 >
