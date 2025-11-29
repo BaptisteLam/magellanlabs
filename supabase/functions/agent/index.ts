@@ -208,9 +208,51 @@ IMAGES ET RESSOURCES:
   * Logo : <img src="data:image/png;base64,..." alt="Logo" class="logo">
   * Bannière : background-image: url('data:image/jpeg;base64,...');
   * Galerie : plusieurs <img> avec les différentes images attachées
-- Tu peux aussi télécharger et utiliser des images libres de droit depuis Unsplash, Pexels, etc. en complément
 - Optimise le chargement avec lazy loading quand approprié
 - IMPORTANT: Si des images sont attachées, elles doivent apparaître dans le site généré
+
+**PHOTOS LIBRES DE DROIT - UTILISATION INTELLIGENTE OBLIGATOIRE**:
+- **OBLIGATOIRE**: Tu DOIS TOUJOURS utiliser des photos libres de droit de haute qualité provenant d'Unsplash
+- **RÈGLE CRITIQUE**: Utilise l'API Unsplash Source pour obtenir des images pertinentes selon le contexte du site
+- Format d'URL Unsplash: https://images.unsplash.com/photo-[ID]?w=[largeur]&q=80
+- **INTELLIGENCE CONTEXTUELLE**: Choisis des photos qui correspondent EXACTEMENT au secteur et contexte demandé:
+  * Site d'avocat → photos professionnelles: bureau moderne, justice, poignée de main, équipe corporate
+  * Startup tech → photos modernes: ordinateurs, coding, équipe jeune, espace de coworking, innovation
+  * Restaurant → photos appétissantes: plats gastronomiques, intérieur chaleureux, chef cuisinier
+  * Immobilier → photos architecture: maisons modernes, appartements lumineux, villas, intérieurs design
+  * Sport/Fitness → photos dynamiques: personnes en action, salle de sport, yoga, course à pied
+  * E-commerce → photos produits: objets sur fond neutre, mise en scène lifestyle
+  
+- **EXEMPLES D'URLS UNSPLASH PAR CONTEXTE**:
+  * Avocat: https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=1200&q=80 (bureau moderne)
+  * Tech: https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&q=80 (équipe tech)
+  * Restaurant: https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&q=80 (restaurant)
+  * Immobilier: https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80 (maison)
+  * Fitness: https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80 (gym)
+  
+- **PLACEMENT INTELLIGENT DES IMAGES**:
+  * ✅ Hero section: Grande image de bannière (1920x1080) contextuelle et inspirante
+  * ✅ Section services: 3-4 images illustrant chaque service (800x600)
+  * ✅ Section équipe: Photos professionnelles de personnes (400x400)
+  * ✅ Section témoignages: Photos d'avatars réalistes (100x100)
+  * ✅ Galerie/Portfolio: 6-12 images variées selon le secteur (600x400)
+  * ✅ Section CTA: Image contextuelle engageante (1200x800)
+  
+- **RÈGLES DE QUALITÉ**:
+  * Utilise TOUJOURS des paramètres de qualité haute: ?w=1200&q=80 (minimum)
+  * Pour les hero sections: ?w=1920&q=85
+  * Pour les thumbnails: ?w=400&q=80
+  * Ajoute loading="lazy" sur toutes les images sauf hero pour optimiser le chargement
+  * Utilise des alt texts descriptifs et contextuels (jamais génériques)
+  
+- **COHÉRENCE VISUELLE**:
+  * Choisis des images avec un style cohérent (même palette de couleurs, même ambiance)
+  * Privilégie des photos avec des tons neutres ou qui matchent la palette du site
+  * Évite les images trop saturées ou avec des filtres Instagram
+  * Préfère des photos avec beaucoup d'espace négatif pour y placer du texte si nécessaire
+  
+- ⚠️ **CRITIQUE**: Un site SANS IMAGES DE QUALITÉ paraît amateur → TOUJOURS intégrer au minimum 5-8 photos libres de droit pertinentes
+- ⚠️ **INTERDIT**: Utiliser des placeholders "lorem picsum" ou des URLs génériques → utilise TOUJOURS des vraies photos Unsplash contextuelles
 
 **DESIGN ET STYLES - OBLIGATOIRE**:
 - Le fichier **styles.css** doit contenir un DESIGN COMPLET ET PROFESSIONNEL avec :
