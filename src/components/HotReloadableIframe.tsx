@@ -347,6 +347,131 @@ export function HotReloadableIframe({
           return path.join(' > ');
         }
         
+        // Intercepter les clics sur liens (APRÈS le click handler d'inspection)
+        document.addEventListener('click', function(e) {
+          const target = e.target.closest('a');
+          if (target && target.href && !isInspectMode) {
+            const href = target.getAttribute('href') || '';
+            
+            // Bloquer TOUS les liens externes - la preview est complètement isolée
+            if (href.startsWith('http') || href.startsWith('//') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+              e.preventDefault();
+              e.stopPropagation();
+              e.stopImmediatePropagation();
+              
+              const errorDiv = document.createElement('div');
+              errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:#000;padding:2rem;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:999999;max-width:400px;text-align:center;font-family:system-ui;';
+              errorDiv.innerHTML = '<h3 style="margin:0 0 1rem 0;font-size:1.25rem;color:#dc2626;">🚫 Lien externe bloqué</h3>' +
+                '<p style="margin:0 0 1rem 0;color:#666;">Les liens externes sont désactivés dans la preview. Cette preview est complètement isolée.</p>' +
+                '<button onclick="this.parentElement.remove()" style="background:rgb(3,165,192);color:#fff;border:none;padding:0.5rem 1.5rem;border-radius:9999px;cursor:pointer;font-size:1rem;font-weight:500;">Fermer</button>';
+              document.body.appendChild(errorDiv);
+              setTimeout(() => errorDiv.remove(), 3000);
+              return false;
+            }
+            
+            // Ancres (navigation dans la même page)
+            if (href.startsWith('#')) {
+              return true;
+            }
+            
+            // Navigation multi-pages interne uniquement
+            const pathname = href.replace(/^\//, '');
+            if (pathname && pathname !== '' && pathname !== '/') {
+              e.preventDefault();
+              e.stopPropagation();
+              e.stopImmediatePropagation();
+              
+              console.log('🔗 Navigation interne vers:', pathname);
+              window.parent.postMessage({
+                type: 'navigate',
+                file: pathname
+              }, '*');
+              return false;
+            }
+          }
+        }, true);
+        
+        // Bloquer window.location programmatique
+        const originalLocationHref = Object.getOwnPropertyDescriptor(window.location, 'href');
+        Object.defineProperty(window.location, 'href', {
+          get: function() {
+            return originalLocationHref?.get?.call(window.location);
+          },
+          set: function(value) {
+            if (!isInspectMode && typeof value === 'string') {
+              console.log('🚫 Tentative de modification de location.href bloquée:', value);
+              
+              // Si c'est une navigation interne, l'intercepter
+              if (!value.startsWith('http') && !value.startsWith('//')) {
+                const pathname = value.replace(/^\//, '').split('?')[0].split('#')[0];
+                if (pathname) {
+                  window.parent.postMessage({
+                    type: 'navigate',
+                    file: pathname
+                  }, '*');
+                  return;
+                }
+              }
+            }
+            return originalLocationHref?.set?.call(window.location, value);
+          }
+        });
+        
+        // Bloquer history manipulation
+        const originalPushState = history.pushState;
+        const originalReplaceState = history.replaceState;
+        
+        history.pushState = function(state, title, url) {
+          if (!isInspectMode && url && typeof url === 'string') {
+            const pathname = url.replace(/^\//, '').split('?')[0].split('#')[0];
+            if (pathname && !pathname.startsWith('http')) {
+              console.log('🔗 history.pushState intercepté:', pathname);
+              window.parent.postMessage({
+                type: 'navigate',
+                file: pathname
+              }, '*');
+              return;
+            }
+          }
+          return originalPushState.apply(this, arguments);
+        };
+        
+        history.replaceState = function(state, title, url) {
+          if (!isInspectMode && url && typeof url === 'string') {
+            const pathname = url.replace(/^\//, '').split('?')[0].split('#')[0];
+            if (pathname && !pathname.startsWith('http')) {
+              console.log('🔗 history.replaceState intercepté:', pathname);
+              window.parent.postMessage({
+                type: 'navigate',
+                file: pathname
+              }, '*');
+              return;
+            }
+          }
+          return originalReplaceState.apply(this, arguments);
+        };
+        
+        // MutationObserver pour intercepter les liens dynamiques ajoutés
+        const observer = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+              if (node.nodeType === 1) { // Element node
+                const links = node.tagName === 'A' ? [node] : node.querySelectorAll('a');
+                links.forEach(function(link) {
+                  if (!link.hasAttribute('data-magellan-intercepted')) {
+                    link.setAttribute('data-magellan-intercepted', 'true');
+                  }
+                });
+              }
+            });
+          });
+        });
+        
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true
+        });
+        
         // Initialiser après le chargement du DOM
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', () => {

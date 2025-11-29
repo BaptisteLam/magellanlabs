@@ -125,40 +125,97 @@ export function generate404Page(isDark: boolean = false): string {
   </div>
   
   <script>
-    // Navigation isolée dans la preview uniquement - retour à index.html
-    function navigateToHome() {
-      // Empêcher toute navigation externe
-      event.preventDefault();
-      event.stopPropagation();
+    (function() {
+      console.log('🏠 404 Page - Script de navigation chargé');
       
-      console.log('🏠 Retour à l\'accueil de la preview (index.html)');
+      // Navigation isolée dans la preview uniquement - retour à index.html
+      window.navigateToHome = function() {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        
+        console.log('🏠 Retour à l\'accueil de la preview (index.html)');
+        
+        // Envoyer message au parent pour charger index.html dans la preview
+        window.parent.postMessage({
+          type: 'navigate',
+          file: 'index.html'
+        }, '*');
+        
+        return false;
+      };
       
-      // Envoyer message au parent pour charger index.html dans la preview
-      window.parent.postMessage({
-        type: 'navigate',
-        file: 'index.html'
-      }, '*');
-      
-      return false;
-    }
-    
-    // Bloquer TOUS les liens externes pour garantir l'isolation complète
-    document.addEventListener('click', function(e) {
-      const link = e.target.closest('a');
-      if (link && link.href) {
-        const href = link.getAttribute('href');
-        // Bloquer http, https, mailto, tel, et tout ce qui pourrait sortir de la preview
-        if (href && (href.startsWith('http') || href.startsWith('//') || href.startsWith('mailto:') || href.startsWith('tel:'))) {
-          e.preventDefault();
-          e.stopPropagation();
-          console.log('🚫 Lien externe bloqué dans 404:', href);
+      // Bloquer TOUS les liens et tentatives de navigation
+      function blockNavigation(e) {
+        const target = e.target;
+        
+        // Vérifier si c'est un lien
+        const link = target.closest('a');
+        if (link) {
+          const href = link.getAttribute('href') || '';
           
-          // Afficher un message d'erreur
-          alert('❌ Les liens externes sont bloqués. La preview est complètement isolée.');
-          return false;
+          // Bloquer liens externes (http, https, mailto, tel, //)
+          if (href.startsWith('http') || href.startsWith('//') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            console.log('🚫 Lien externe bloqué:', href);
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#dc2626;color:#fff;padding:1rem 2rem;border-radius:9999px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:999999;font-family:system-ui;font-size:14px;font-weight:500;';
+            errorDiv.textContent = '🚫 Liens externes bloqués dans la preview';
+            document.body.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 2000);
+            return false;
+          }
+          
+          // Bloquer navigation interne (autre que #anchors)
+          if (href && !href.startsWith('#') && href !== '') {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            console.log('🚫 Navigation interne bloquée depuis 404:', href);
+            
+            // Envoyer au parent pour vérifier si le fichier existe
+            window.parent.postMessage({
+              type: 'navigate',
+              file: href.replace(/^\//, '')
+            }, '*');
+            return false;
+          }
         }
       }
-    }, true);
+      
+      // Attacher les listeners avec capture pour intercepter avant tout
+      document.addEventListener('click', blockNavigation, true);
+      
+      // Bloquer window.location et autres tentatives programmatiques
+      const originalLocation = window.location;
+      Object.defineProperty(window, 'location', {
+        get: () => originalLocation,
+        set: (value) => {
+          console.log('🚫 Tentative de modification de window.location bloquée:', value);
+          return false;
+        }
+      });
+      
+      // Bloquer history.pushState et replaceState
+      const originalPushState = history.pushState;
+      const originalReplaceState = history.replaceState;
+      
+      history.pushState = function() {
+        console.log('🚫 history.pushState bloqué dans 404');
+        return false;
+      };
+      
+      history.replaceState = function() {
+        console.log('🚫 history.replaceState bloqué dans 404');
+        return false;
+      };
+      
+      console.log('✅ 404 - Protection de navigation activée');
+    })();
   </script>
 </body>
 </html>`;
