@@ -32,6 +32,7 @@ import { analyzeIntent, identifyRelevantFiles } from '@/utils/intentAnalyzer';
 import { useModifySite, applyPatch, type PatchAction } from '@/hooks/useModifySite';
 import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
+import { IndexedDBCache } from '@/services/indexedDBCache';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -147,8 +148,26 @@ export default function BuilderSession() {
   };
 
 
+  // Charger la session depuis le cache puis Supabase
   useEffect(() => {
-    loadSession();
+    const loadSessionWithCache = async () => {
+      if (!sessionId) return;
+      
+      setSessionLoading(true);
+      
+      // 1. Charger d'abord depuis le cache IndexedDB (instantané)
+      const cachedProject = await IndexedDBCache.getProject(sessionId);
+      if (cachedProject?.projectFiles && Object.keys(cachedProject.projectFiles).length > 0) {
+        console.log('📦 Loaded from IndexedDB cache:', Object.keys(cachedProject.projectFiles).length, 'files');
+        updateFiles(cachedProject.projectFiles, false); // Ne pas trigger de save
+      }
+      
+      // 2. Charger depuis Supabase en arrière-plan (pour sync)
+      await loadSession();
+      setSessionLoading(false);
+    };
+    
+    loadSessionWithCache();
     checkAuth();
   }, [sessionId]);
 

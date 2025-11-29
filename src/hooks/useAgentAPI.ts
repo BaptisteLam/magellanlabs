@@ -19,6 +19,7 @@ export function useAgentAPI() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [tokenUsage, setTokenUsage] = useState({ input: 0, output: 0, total: 0 });
   const abortControllerRef = useRef<AbortController | null>(null);
+  const filesInProgressRef = useRef<Set<string>>(new Set());
 
   const callAgent = async (
     message: string,
@@ -134,16 +135,33 @@ export function useAgentAPI() {
                 options.onIntent?.(event);
                 break;
               case 'code_update':
-                options.onCodeUpdate?.(event.path, event.code);
-                // Distinguish between create (new file) and edit (existing file)
+                // Emit in-progress event if this is the first update for this file
                 const isNewFile = !projectFiles[event.path];
                 const eventType = isNewFile ? 'create' : 'edit';
+                
+                if (!filesInProgressRef.current.has(event.path)) {
+                  filesInProgressRef.current.add(event.path);
+                  options.onGenerationEvent?.({ 
+                    type: eventType, 
+                    message: event.path, 
+                    file: event.path,
+                    status: 'in-progress'
+                  });
+                }
+                
+                // Apply the code update
+                options.onCodeUpdate?.(event.path, event.code);
+                
+                // Emit completed event after code is applied
                 options.onGenerationEvent?.({ 
                   type: eventType, 
                   message: event.path, 
                   file: event.path,
                   status: 'completed'
                 });
+                
+                // Remove from in-progress tracking
+                filesInProgressRef.current.delete(event.path);
                 break;
               case 'complete':
                 console.log('🎉 Complete event received');
@@ -210,6 +228,7 @@ export function useAgentAPI() {
       setIsLoading(false);
       setIsStreaming(false);
       abortControllerRef.current = null;
+      filesInProgressRef.current.clear();
     }
   };
 
