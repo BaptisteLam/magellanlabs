@@ -104,21 +104,36 @@ export default function BuilderSession() {
   // Fonction pour générer automatiquement un nom de projet
   const generateProjectName = async (prompt: string) => {
     try {
+      console.log('🎯 Génération du nom de projet pour:', prompt.substring(0, 100));
       const { data, error } = await supabase.functions.invoke('generate-project-name', {
         body: { prompt }
       });
 
       if (error) {
-        console.error('Erreur génération nom:', error);
+        console.error('❌ Erreur génération nom:', error);
         return;
       }
 
       if (data?.projectName) {
-        console.log('📝 Nom de projet généré:', data.projectName);
+        console.log('✅ Nom de projet généré:', data.projectName);
         setWebsiteTitle(data.projectName);
+        
+        // Sauvegarder immédiatement le titre dans la session
+        if (sessionId) {
+          const { error: updateError } = await supabase
+            .from('build_sessions')
+            .update({ title: data.projectName })
+            .eq('id', sessionId);
+          
+          if (updateError) {
+            console.error('❌ Erreur sauvegarde titre:', updateError);
+          } else {
+            console.log('💾 Titre sauvegardé dans la session:', data.projectName);
+          }
+        }
       }
     } catch (error) {
-      console.error('Erreur lors de la génération du nom:', error);
+      console.error('❌ Erreur lors de la génération du nom:', error);
     }
   };
 
