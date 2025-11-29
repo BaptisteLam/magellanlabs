@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { generate404Page } from '@/lib/generate404Page';
+import { usePreviewNavigation } from '@/hooks/usePreviewNavigation';
 
 interface CustomIframePreviewProps {
   projectFiles: Record<string, string>;
@@ -15,21 +16,17 @@ export function CustomIframePreview({
   onElementSelect 
 }: CustomIframePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [currentFile, setCurrentFile] = useState<string>('index.html');
+  const navigation = usePreviewNavigation('index.html');
   const [reloadKey, setReloadKey] = useState(0);
   const [iframeReady, setIframeReady] = useState(false);
-  
-  // Gestion de l'historique de navigation
-  const [navigationHistory, setNavigationHistory] = useState<string[]>(['index.html']);
-  const [navigationIndex, setNavigationIndex] = useState(0);
 
   // Générer le HTML complet avec script d'inspection intégré
   const generatedHTML = useMemo(() => {
-    console.log('📦 CustomIframePreview - currentFile:', currentFile);
+    console.log('📦 CustomIframePreview - currentFile:', navigation.currentFile);
     console.log('📦 CustomIframePreview - projectFiles:', Object.keys(projectFiles));
     
     // Si on demande la page 404
-    if (currentFile === '__404__') {
+    if (navigation.is404) {
       console.log('🚫 Affichage de la page 404');
       return generate404Page(isDark);
     }
@@ -65,7 +62,7 @@ export function CustomIframePreview({
     // Trouver le fichier HTML demandé
     let htmlContent = '';
     const htmlFile = Object.entries(projectFiles).find(([path]) => 
-      path === currentFile || path.endsWith('/' + currentFile)
+      path === navigation.currentFile || path.endsWith('/' + navigation.currentFile)
     );
     
     if (htmlFile) {
@@ -409,7 +406,7 @@ export function CustomIframePreview({
     }
 
     return finalHTML;
-  }, [projectFiles, currentFile]);
+  }, [projectFiles, navigation.currentFile, navigation.is404, isDark]);
 
   // Écouter les messages de l'iframe
   useEffect(() => {
@@ -428,7 +425,7 @@ export function CustomIframePreview({
       // Gérer la navigation multi-pages
       if (event.data.type === 'navigate') {
         const filename = event.data.file;
-        console.log('🔄 Navigation vers:', filename);
+        console.log('🔄 Navigation request:', filename);
         
         // Vérifier si le fichier existe
         const fileExists = Object.keys(projectFiles).some(path => 
@@ -436,43 +433,24 @@ export function CustomIframePreview({
         );
         
         if (fileExists) {
-          // Ajouter à l'historique
-          setNavigationHistory(prev => {
-            const newHistory = prev.slice(0, navigationIndex + 1);
-            return [...newHistory, filename];
-          });
-          setNavigationIndex(prev => prev + 1);
-          setCurrentFile(filename);
+          console.log('✅ File exists, navigating to:', filename);
+          navigation.navigateTo(filename);
         } else {
-          console.error('❌ Fichier non trouvé:', filename);
-          // Afficher la page 404
-          setNavigationHistory(prev => {
-            const newHistory = prev.slice(0, navigationIndex + 1);
-            return [...newHistory, '__404__'];
-          });
-          setNavigationIndex(prev => prev + 1);
-          setCurrentFile('__404__');
+          console.error('❌ File not found - showing 404:', filename);
+          navigation.show404();
         }
       }
       
       // Gérer la navigation arrière
       if (event.data.type === 'navigate-back') {
         console.log('⬅️ Navigation arrière');
-        if (navigationIndex > 0) {
-          const newIndex = navigationIndex - 1;
-          setNavigationIndex(newIndex);
-          setCurrentFile(navigationHistory[newIndex]);
-        }
+        navigation.navigateBack();
       }
       
       // Gérer la navigation avant
       if (event.data.type === 'navigate-forward') {
         console.log('➡️ Navigation avant');
-        if (navigationIndex < navigationHistory.length - 1) {
-          const newIndex = navigationIndex + 1;
-          setNavigationIndex(newIndex);
-          setCurrentFile(navigationHistory[newIndex]);
-        }
+        navigation.navigateForward();
       }
       
       // Gérer le rechargement de la preview
@@ -484,19 +462,16 @@ export function CustomIframePreview({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onElementSelect, projectFiles, navigationIndex, navigationHistory]);
+  }, [onElementSelect, projectFiles, navigation]);
   
   // Envoyer l'état de navigation au parent
   useEffect(() => {
-    const canGoBack = navigationIndex > 0;
-    const canGoForward = navigationIndex < navigationHistory.length - 1;
-    
     window.parent.postMessage({
       type: 'navigation-state',
-      canGoBack,
-      canGoForward
+      canGoBack: navigation.canGoBack,
+      canGoForward: navigation.canGoForward
     }, '*');
-  }, [navigationIndex, navigationHistory]);
+  }, [navigation.canGoBack, navigation.canGoForward]);
 
   // Fonction pour envoyer le mode inspect avec retry intelligent et backoff exponentiel
   const sendInspectModeToIframe = useCallback((retryCount = 0, maxRetries = 5) => {
