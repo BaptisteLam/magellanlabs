@@ -155,7 +155,7 @@ const PromptBar = ({
           }}
         />
         {!inputValue && showPlaceholderAnimation && !modificationMode && (
-          <div className="absolute top-3 left-3 pointer-events-none text-slate-400" style={{ fontSize: '14px' }}>
+          <div className="absolute top-3 left-3 right-3 pointer-events-none text-slate-400 whitespace-normal" style={{ fontSize: '14px' }}>
             <TextType
               text={[
                 "Développe mon site web pour mon cabinet d'avocat",
@@ -165,11 +165,10 @@ const PromptBar = ({
                 "Génère un site e-commerce minimaliste pour vendre des t-shirts pour marque.",
                 "Conçois mon site web de prise de rendez-vous pour coiffeurs avec calendrier.",
                 "Crée une app mobile iOS/Android de suivi nutritionnel, suivi des calories et notifications ect.",
-                "Crée un SaaS de gestion de projets avec tableau Kanban, espace équipes et collaboration en temps réel.",
                 "Crée moi un site pour mon cabinet de consultant."
               ]}
-              typingSpeed={60}
-              deletingSpeed={40}
+              typingSpeed={30}
+              deletingSpeed={20}
               pauseDuration={3000}
               showCursor={true}
               cursorCharacter="|"
