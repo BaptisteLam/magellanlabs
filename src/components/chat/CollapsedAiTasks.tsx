@@ -9,7 +9,9 @@ interface CollapsedAiTasksProps {
   isLoading?: boolean;
   autoExpand?: boolean;
   autoCollapse?: boolean;
-  startTime?: number; // Timestamp de début de génération
+  startTime?: number;
+  defaultCollapsed?: boolean;
+  summary?: string;
 }
 
 export function CollapsedAiTasks({ 
@@ -18,9 +20,11 @@ export function CollapsedAiTasks({
   isLoading = false, 
   autoExpand = false, 
   autoCollapse = false,
-  startTime 
+  startTime,
+  defaultCollapsed = false,
+  summary
 }: CollapsedAiTasksProps) {
-  const [isExpanded, setIsExpanded] = useState(autoExpand);
+  const [isExpanded, setIsExpanded] = useState(defaultCollapsed ? false : autoExpand);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [estimatedTime, setEstimatedTime] = useState<number | null>(null);
   
