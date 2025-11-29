@@ -1,4 +1,4 @@
-import { ArrowUp, Paperclip, Settings, Globe, Monitor, Smartphone, X, MousePointer2 } from 'lucide-react';
+import { ArrowUp, Paperclip, Settings, Globe, Monitor, Smartphone, X, MousePointer2, Square } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import TextType from '@/components/ui/TextType';
@@ -24,6 +24,7 @@ interface PromptBarProps {
   setInputValue: (value: string) => void;
   onSubmit: () => void;
   isLoading: boolean;
+  onStop?: () => void;
   placeholder?: string;
   showPlaceholderAnimation?: boolean;
   onFileSelect?: (files: File[]) => void;
@@ -42,6 +43,7 @@ const PromptBar = ({
   setInputValue, 
   onSubmit, 
   isLoading,
+  onStop,
   placeholder = "",
   showPlaceholderAnimation = true,
   onFileSelect,
@@ -363,21 +365,31 @@ const PromptBar = ({
             )}
           </div>
 
-          {/* Bouton d'envoi */}
+          {/* Bouton d'envoi / Stop */}
           <Tooltip>
             <TooltipTrigger asChild>
                 <Button
-                  onClick={onSubmit}
+                  onClick={isLoading && onStop ? onStop : onSubmit}
                   type="button"
-                  disabled={isLoading}
-                  className="w-9 h-9 rounded-full p-0 transition-all hover:scale-105 disabled:opacity-50 border-0"
-                  style={{ backgroundColor: '#03A5C0' }}
+                  disabled={isLoading && !onStop}
+                  className="transition-all hover:scale-105 border-0"
+                  style={{ 
+                    backgroundColor: '#03A5C0',
+                    width: isLoading ? '36px' : '36px',
+                    height: isLoading ? '36px' : '36px',
+                    borderRadius: isLoading ? '8px' : '50%',
+                    padding: 0
+                  }}
                 >
-                  <ArrowUp className="w-4 h-4 text-white" />
+                  {isLoading ? (
+                    <Square className="w-4 h-4 text-white" fill="white" />
+                  ) : (
+                    <ArrowUp className="w-4 h-4 text-white" />
+                  )}
                 </Button>
             </TooltipTrigger>
             <TooltipContent side="top">
-              <p className="text-xs">Envoyer</p>
+              <p className="text-xs">{isLoading ? 'Arrêter la génération' : 'Envoyer'}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

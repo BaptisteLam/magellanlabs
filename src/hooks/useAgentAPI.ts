@@ -2,6 +2,14 @@ import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { AIEvent } from '@/types/agent';
 
+// Configuration du retry avec backoff exponentiel
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  initialDelay: 1000, // 1 seconde
+  maxDelay: 10000, // 10 secondes
+  backoffMultiplier: 2
+};
+
 interface UseAgentAPIOptions {
   onStatus?: (status: string) => void;
   onMessage?: (message: string) => void;
@@ -61,8 +69,10 @@ export function useAgentAPI() {
       options.onGenerationEvent?.({ type: 'complete', message: 'Generation completed (timeout)' });
     }, 120000);
 
-    try {
-      const response = await fetch(
+    // Fonction de retry avec backoff exponentiel
+    const fetchWithRetry = async (attemptNumber: number = 0): Promise<Response> => {
+      try {
+        const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent`,
         {
           method: 'POST',
@@ -81,10 +91,54 @@ export function useAgentAPI() {
           }),
           signal: abortController.signal,
         }
-      );
+        );
+
+        // Vérifier le statut
+        if (!response.ok) {
+          // Erreur 429 (rate limit) ou 500+ (server error) : retry possible
+          if ((response.status === 429 || response.status >= 500) && attemptNumber < RETRY_CONFIG.maxRetries) {
+            const delay = Math.min(
+              RETRY_CONFIG.initialDelay * Math.pow(RETRY_CONFIG.backoffMultiplier, attemptNumber),
+              RETRY_CONFIG.maxDelay
+            );
+            
+            console.warn(`⚠️ Request failed (status ${response.status}), retrying in ${delay}ms (attempt ${attemptNumber + 1}/${RETRY_CONFIG.maxRetries})...`);
+            options.onStatus?.(`Retry in progress (${attemptNumber + 1}/${RETRY_CONFIG.maxRetries})...`);
+            
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return fetchWithRetry(attemptNumber + 1);
+          }
+          
+          // Erreurs non-retryables ou max retries atteints
+          throw new Error(`Agent API error: ${response.status}`);
+        }
+
+        return response;
+      } catch (error: any) {
+        // Retry pour les erreurs réseau si on n'a pas dépassé maxRetries
+        if (attemptNumber < RETRY_CONFIG.maxRetries && error.name !== 'AbortError') {
+          const delay = Math.min(
+            RETRY_CONFIG.initialDelay * Math.pow(RETRY_CONFIG.backoffMultiplier, attemptNumber),
+            RETRY_CONFIG.maxDelay
+          );
+          
+          console.warn(`⚠️ Network error, retrying in ${delay}ms (attempt ${attemptNumber + 1}/${RETRY_CONFIG.maxRetries})...`);
+          options.onStatus?.(`Connection issue, retrying (${attemptNumber + 1}/${RETRY_CONFIG.maxRetries})...`);
+          
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return fetchWithRetry(attemptNumber + 1);
+        }
+        
+        throw error;
+      }
+    };
+
+    try {
+      const response = await fetchWithRetry();
 
       if (!response.ok) {
-        throw new Error(`Agent API error: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`Agent API error: ${response.status} - ${errorText}`);
       }
 
       const reader = response.body?.getReader();

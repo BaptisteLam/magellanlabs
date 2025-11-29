@@ -28,7 +28,7 @@ import { MessageActions } from '@/components/chat/MessageActions';
 import html2canvas from 'html2canvas';
 import { TokenCounter } from '@/components/TokenCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
-import { analyzeIntent, identifyRelevantFiles } from '@/utils/intentAnalyzer';
+import { analyzeIntent, identifyRelevantFiles, estimateGenerationTime } from '@/utils/intentAnalyzer';
 import { useModifySite, applyPatch, type PatchAction } from '@/hooks/useModifySite';
 import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
@@ -1342,6 +1342,9 @@ export default function BuilderSession() {
 
     // ⚡ ANALYSE DE L'INTENT : Décider entre modification rapide ou génération complète
     const intent = analyzeIntent(prompt, projectFiles);
+    const timeEstimate = estimateGenerationTime(prompt, projectFiles);
+    
+    console.log(`⏱️ Temps estimé: ${timeEstimate.estimatedTime}s (${timeEstimate.range.min}-${timeEstimate.range.max}s)`);
     
     if (intent === 'quick-modification' && attachedFiles.length === 0) {
       // MODE RAPIDE : Pas de loading preview, modification ciblée
@@ -2058,6 +2061,7 @@ export default function BuilderSession() {
                 setInputValue={setInputValue}
                 onSubmit={handleSubmit}
                 isLoading={agent.isLoading}
+                onStop={() => agent.abort()}
                 showPlaceholderAnimation={false}
                 showConfigButtons={false}
                 modificationMode={true}
