@@ -240,7 +240,7 @@ export function HotReloadableIframe({
           console.log('✅ Event listeners attachés');
         }
         
-        // Intercepter les clics sur liens pour navigation interne
+         // Intercepter les clics sur liens pour navigation interne
         // IMPORTANT: Ne pas intercepter en mode inspection
         document.addEventListener('click', function(e) {
           // Si mode inspection actif, ne rien faire - laisser le clickHandler gérer
@@ -257,6 +257,14 @@ export function HotReloadableIframe({
               e.preventDefault();
               e.stopPropagation();
               alert('❌ Les liens externes sont bloqués dans la preview.');
+              return false;
+            }
+            
+            // CRITICAL: Bloquer ABSOLUMENT tout lien vers /builder
+            if (href.includes('/builder') || href.includes('builder')) {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('🚫 Navigation vers /builder bloquée');
               return false;
             }
             
