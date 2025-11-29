@@ -327,27 +327,45 @@ export default function BuilderSession() {
               });
             }
             
-            if (Object.keys(filesMap).length > 0) {
+            // 🔍 Validation: S'assurer que les clés sont des noms de fichiers valides
+            const validatedFilesMap: Record<string, string> = {};
+            let hasInvalidKeys = false;
+            
+            Object.entries(filesMap).forEach(([key, value]) => {
+              // Vérifier que la clé est un nom de fichier valide (pas juste un chiffre)
+              if (typeof key === 'string' && key.includes('.') && !(/^\d+$/.test(key))) {
+                validatedFilesMap[key] = value;
+              } else {
+                console.warn('⚠️ Invalid file key detected and skipped:', key);
+                hasInvalidKeys = true;
+              }
+            });
+            
+            if (hasInvalidKeys) {
+              console.warn('⚠️ Some invalid file keys were found and removed from the project');
+            }
+            
+            if (Object.keys(validatedFilesMap).length > 0) {
               console.log('✅ =====================================');
               console.log('✅ PROJECT FILES RESTORATION SUCCESS');
-              console.log('✅ Total files restored:', Object.keys(filesMap).length);
-              console.log('✅ Files:', Object.keys(filesMap).join(', '));
+              console.log('✅ Total files restored:', Object.keys(validatedFilesMap).length);
+              console.log('✅ Files:', Object.keys(validatedFilesMap).join(', '));
               console.log('✅ =====================================');
               
-              updateFiles(filesMap, false); // Pas de sync car c'est un chargement initial
-              setGeneratedHtml(filesMap['index.html'] || '');
+              updateFiles(validatedFilesMap, false); // Pas de sync car c'est un chargement initial
+              setGeneratedHtml(validatedFilesMap['index.html'] || '');
               
               // Charger le favicon s'il existe
-              const faviconFile = Object.keys(filesMap).find(path => path.startsWith('public/favicon.'));
+              const faviconFile = Object.keys(validatedFilesMap).find(path => path.startsWith('public/favicon.'));
               if (faviconFile) {
-                setCurrentFavicon(filesMap[faviconFile]);
+                setCurrentFavicon(validatedFilesMap[faviconFile]);
                 console.log('✅ Favicon restored:', faviconFile);
               }
               
-              const firstFile = Object.keys(filesMap)[0];
+              const firstFile = Object.keys(validatedFilesMap)[0];
               if (firstFile) {
                 setSelectedFile(firstFile);
-                setSelectedFileContent(filesMap[firstFile]);
+                setSelectedFileContent(validatedFilesMap[firstFile]);
                 console.log('✅ First file selected:', firstFile);
               }
             } else {
@@ -1644,14 +1662,6 @@ export default function BuilderSession() {
           </button>
 
           <TokenCounter isDark={isDark} userId={user?.id} />
-          
-          <SyncStatusIndicator 
-            status={syncStatus}
-            lastSyncTime={lastSyncTime}
-            pendingChanges={pendingChanges}
-            isOnline={isOnline}
-            className="ml-2"
-          />
         </div>
 
         {/* Input caché pour le favicon */}
