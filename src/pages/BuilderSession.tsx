@@ -25,6 +25,7 @@ import { useAgentAPI } from "@/hooks/useAgentAPI";
 import type { AIEvent, GenerationEvent } from '@/types/agent';
 import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
+import AiGenerationMessage from '@/components/chat/AiGenerationMessage';
 import html2canvas from 'html2canvas';
 import { TokenCounter } from '@/components/TokenCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
@@ -39,12 +40,19 @@ interface Message {
   token_count?: number;
   id?: string;
   metadata?: {
-    type?: 'intro' | 'recap';
+    type?: 'intro' | 'recap' | 'generation';
+    thought_duration?: number;
+    intent_message?: string;
     generation_events?: any[];
     files_updated?: number;
+    files_created?: number;
+    files_modified?: number;
     new_files?: string[];
     modified_files?: string[];
     project_files?: Record<string, string>;
+    input_tokens?: number;
+    output_tokens?: number;
+    total_tokens?: number;
     [key: string]: any;
   };
 }
@@ -108,8 +116,10 @@ export default function BuilderSession() {
   // Événements IA pour la TaskList
   const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
   
-  // Événements de génération pour l'affichage de pensée
+  // État pour gérer les événements de génération en temps réel
   const [generationEvents, setGenerationEvents] = useState<GenerationEvent[]>([]);
+  const [generationStartTime, setGenerationStartTime] = useState<number>(0);
+  const [currentVersionIndex, setCurrentVersionIndex] = useState<number | null>(null);
   
   // Flag pour savoir si on est en première génération
   const [isInitialGeneration, setIsInitialGeneration] = useState(false);
@@ -123,9 +133,6 @@ export default function BuilderSession() {
   
   // Mode d'affichage de la preview (desktop/mobile)
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
-  
-  // Index de la version actuellement affichée (null = dernière version)
-  const [currentVersionIndex, setCurrentVersionIndex] = useState<number | null>(null);
 
   // Fonction pour générer automatiquement un nom de projet
   const generateProjectName = async (prompt: string) => {
@@ -774,6 +781,7 @@ export default function BuilderSession() {
     // Réinitialiser les événements pour une nouvelle requête
     setAiEvents([]);
     setGenerationEvents([]);
+    setGenerationStartTime(Date.now());
     
     // 🔒 TOUJOURS activer le mode "génération en cours" pour bloquer la preview jusqu'à completion
     setIsInitialGeneration(true);
@@ -979,80 +987,64 @@ export default function BuilderSession() {
           const newFiles = filesChangedList.filter(path => !projectFiles[path]);
           const modifiedFiles = filesChangedList.filter(path => projectFiles[path]);
           
-          // Message d'introduction
-          let introMessage = '';
-          if (isInitialGenerationRef.current) {
-            introMessage = "Je vais créer votre site...";
-          } else {
-            if (newFiles.length > 0 && modifiedFiles.length > 0) {
-              introMessage = `Je vais créer ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} et modifier ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}...`;
-            } else if (newFiles.length > 0) {
-              introMessage = `Je vais créer ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''}...`;
-            } else if (modifiedFiles.length > 0) {
-              introMessage = `Je vais modifier ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}...`;
-            } else {
-              introMessage = 'Je vais appliquer les modifications...';
-            }
-          }
+          // Calculer la durée de génération
+          const generationDuration = Date.now() - generationStartTime;
           
-          // Message de récapitulatif
-          let recapMessage = '';
-          if (isInitialGenerationRef.current) {
-            if (newFiles.length > 0) {
-              recapMessage = `J'ai créé votre site avec ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} : ${newFiles.join(', ')}`;
+          // Générer le message d'intent
+          const intentMessage = isInitialGenerationRef.current
+            ? "Je vais créer votre site..."
+            : newFiles.length > 0 && modifiedFiles.length > 0
+            ? `Je vais créer ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} et modifier ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}...`
+            : newFiles.length > 0
+            ? `Je vais créer ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''}...`
+            : modifiedFiles.length > 0
+            ? `Je vais modifier ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}...`
+            : 'Je vais appliquer les modifications...';
+          
+          // Générer un message de conclusion court et contextuel
+          const getShortConclusion = (): string => {
+            if (isInitialGenerationRef.current) {
+              return 'Site créé avec succès.';
             }
-          } else {
-            if (newFiles.length > 0 && modifiedFiles.length > 0) {
-              recapMessage = `J'ai créé ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} (${newFiles.join(', ')}) et modifié ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''} (${modifiedFiles.join(', ')}).`;
-            } else if (newFiles.length > 0) {
-              recapMessage = `J'ai créé ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} : ${newFiles.join(', ')}`;
-            } else if (modifiedFiles.length > 0) {
-              recapMessage = `J'ai modifié ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''} : ${modifiedFiles.join(', ')}`;
-            } else {
-              recapMessage = 'Modifications appliquées.';
+            if (newFiles.length > 0 && modifiedFiles.length === 0) {
+              return `${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} créé${newFiles.length > 1 ? 's' : ''} avec succès.`;
             }
-          }
+            if (modifiedFiles.length > 0 && newFiles.length === 0) {
+              return `Modifications appliquées avec succès.`;
+            }
+            return 'Changements effectués avec succès.';
+          };
+          
+          const conclusionMessage = getShortConclusion();
 
-
-          // 💾 Sauvegarder les messages intro + recap avec état complet du projet
+          // 💾 Sauvegarder UN SEUL message unifié style Lovable
           console.log('💾 =====================================');
-          console.log('💾 SAVING INTRO + RECAP MESSAGES WITH PROJECT STATE');
+          console.log('💾 SAVING UNIFIED GENERATION MESSAGE');
           console.log('💾 Files to save:', Object.keys(updatedFiles).length);
           console.log('💾 File list:', Object.keys(updatedFiles).join(', '));
           console.log('💾 Total tokens:', usedTokens.total);
+          console.log('💾 Generation duration:', generationDuration, 'ms');
           console.log('💾 Generation events:', generationEvents.length);
           console.log('💾 =====================================');
           
-          // Insérer le message d'intro avec les generation_events
-          const { data: insertedIntro } = await supabase
+          // Insérer le message unifié avec toutes les métadonnées
+          const { data: insertedMessage } = await supabase
             .from('chat_messages')
             .insert([{
               session_id: sessionId,
               role: 'assistant',
-              content: introMessage,
+              content: conclusionMessage,
+              token_count: usedTokens.total,
               metadata: { 
-                type: 'intro' as const,
-                generation_events: generationEvents
-              }
-            }])
-            .select()
-            .single();
-
-          // Insérer le message de recap avec tous les détails
-          const { data: insertedRecap } = await supabase
-            .from('chat_messages')
-            .insert([{
-              session_id: sessionId,
-              role: 'assistant',
-              content: recapMessage,
-              token_count: usedTokens.total, // Tokens réels de Claude
-              metadata: { 
-                type: 'recap' as const,
-                files_updated: Object.keys(updatedFiles).length,
+                type: 'generation' as const,
+                thought_duration: generationDuration,
+                intent_message: intentMessage,
+                generation_events: generationEvents,
+                files_created: newFiles.length,
+                files_modified: modifiedFiles.length,
                 new_files: newFiles,
                 modified_files: modifiedFiles,
-                project_files: updatedFiles, // État complet du projet sauvegardé ici
-                generation_events: generationEvents,
+                project_files: updatedFiles,
                 input_tokens: usedTokens.input,
                 output_tokens: usedTokens.output,
                 total_tokens: usedTokens.total,
@@ -1062,34 +1054,28 @@ export default function BuilderSession() {
             .select()
             .single();
 
-          // Mettre à jour l'interface avec les messages intro + recap
+          // Mettre à jour l'interface avec le message unifié
           setMessages(prev => {
-            // Retirer le message intro temporaire (UI uniquement)
-            const withoutTempIntro = prev.filter(m => !(m.role === 'assistant' && m.metadata?.type === 'intro' && !m.id));
+            // Retirer tous les messages temporaires
+            const withoutTemp = prev.filter(m => !(m.role === 'assistant' && !m.id));
             
             return [
-              ...withoutTempIntro,
+              ...withoutTemp,
               { 
                 role: 'assistant' as const, 
-                content: introMessage,
-                id: insertedIntro?.id,
-                metadata: { 
-                  type: 'intro' as const,
-                  generation_events: generationEvents
-                }
-              },
-              { 
-                role: 'assistant' as const, 
-                content: recapMessage,
+                content: conclusionMessage,
                 token_count: usedTokens.total,
-                id: insertedRecap?.id,
+                id: insertedMessage?.id,
                 metadata: { 
-                  type: 'recap' as const, 
-                  files_updated: Object.keys(updatedFiles).length,
+                  type: 'generation' as const,
+                  thought_duration: generationDuration,
+                  intent_message: intentMessage,
+                  generation_events: generationEvents,
+                  files_created: newFiles.length,
+                  files_modified: modifiedFiles.length,
                   new_files: newFiles,
                   modified_files: modifiedFiles,
                   project_files: updatedFiles,
-                  generation_events: generationEvents,
                   input_tokens: usedTokens.input,
                   output_tokens: usedTokens.output,
                   total_tokens: usedTokens.total
@@ -1841,194 +1827,133 @@ export default function BuilderSession() {
                         )}
                       </div>
                     </div>
+                  ) : msg.metadata?.type === 'generation' ? (
+                    // Nouveau message unifié style Lovable
+                    <AiGenerationMessage
+                      message={msg}
+                      messageIndex={idx}
+                      isLatestMessage={idx === messages.length - 1}
+                      isDark={isDark}
+                      isLoading={idx === messages.length - 1 && agent.isLoading}
+                      onRestore={async (messageIdx) => {
+                        const targetMessage = messages[messageIdx];
+                        if (!targetMessage.id || !sessionId) return;
+                        
+                        console.log('🔄 RESTORING VERSION FROM MESSAGE', messageIdx);
+                        
+                        const { data: chatMessage } = await supabase
+                          .from('chat_messages')
+                          .select('metadata')
+                          .eq('id', targetMessage.id)
+                          .single();
+                        
+                        if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
+                          const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                          
+                          console.log('✅ Files to restore:', Object.keys(restoredFiles).length);
+                          
+                          updateFiles(restoredFiles, false);
+                          setGeneratedHtml(restoredFiles['index.html'] || '');
+                          
+                          if (selectedFile && restoredFiles[selectedFile]) {
+                            setSelectedFileContent(restoredFiles[selectedFile]);
+                          } else {
+                            const firstFile = Object.keys(restoredFiles)[0];
+                            if (firstFile) {
+                              setSelectedFile(firstFile);
+                              setSelectedFileContent(restoredFiles[firstFile]);
+                            }
+                          }
+                          
+                          setCurrentVersionIndex(messageIdx);
+                          
+                          await supabase
+                            .from('build_sessions')
+                            .update({
+                              project_files: convertFilesToArray(restoredFiles),
+                              updated_at: new Date().toISOString()
+                            })
+                            .eq('id', sessionId);
+                          
+                          console.log('✅ Version restored successfully');
+                          sonnerToast.success('Version restaurée');
+                        } else {
+                          console.error('❌ No project_files found in message metadata');
+                          sonnerToast.error('Impossible de restaurer cette version');
+                        }
+                      }}
+                      onGoToPrevious={async () => {
+                        const generationMessages = messages
+                          .map((m, i) => ({ message: m, index: i }))
+                          .filter(({ message }) => message.role === 'assistant' && message.metadata?.type === 'generation')
+                          .slice(-15);
+                        
+                        const currentGenIndex = currentVersionIndex !== null
+                          ? generationMessages.findIndex(r => r.index === currentVersionIndex)
+                          : generationMessages.length - 1;
+                        
+                        if (currentGenIndex <= 0) {
+                          sonnerToast.error('Aucune version précédente disponible');
+                          return;
+                        }
+                        
+                        const previousGen = generationMessages[currentGenIndex - 1];
+                        const targetMessage = previousGen.message;
+                        
+                        if (!targetMessage.id || !sessionId) return;
+                        
+                        const { data: chatMessage } = await supabase
+                          .from('chat_messages')
+                          .select('metadata')
+                          .eq('id', targetMessage.id)
+                          .single();
+                        
+                        if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
+                          const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                          
+                          updateFiles(restoredFiles, false);
+                          setGeneratedHtml(restoredFiles['index.html'] || '');
+                          
+                          if (selectedFile && restoredFiles[selectedFile]) {
+                            setSelectedFileContent(restoredFiles[selectedFile]);
+                          } else {
+                            const firstFile = Object.keys(restoredFiles)[0];
+                            if (firstFile) {
+                              setSelectedFile(firstFile);
+                              setSelectedFileContent(restoredFiles[firstFile]);
+                            }
+                          }
+                          
+                          setCurrentVersionIndex(previousGen.index);
+                          
+                          await supabase
+                            .from('build_sessions')
+                            .update({
+                              project_files: convertFilesToArray(restoredFiles),
+                              updated_at: new Date().toISOString()
+                            })
+                            .eq('id', sessionId);
+                          
+                          sonnerToast.success('Version précédente restaurée');
+                        } else {
+                          sonnerToast.error('Impossible de restaurer cette version');
+                        }
+                      }}
+                    />
                   ) : (
                     <div className="space-y-3">
-                      {/* Message d'introduction - texte simple sans icône */}
-                      {msg.metadata?.type === 'intro' && (
-                        <>
-                          <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap mb-3`}>
-                            {typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
+                      {/* Message simple (ancien format) - pour compatibilité */}
+                      <div className="flex items-start gap-3">
+                        <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
+                            {typeof msg.content === 'string' 
+                              ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
+                              : 'Contenu généré'
+                            }
                           </p>
-                          
-                          {/* AI Tasks - toujours affichés après le message intro */}
-                          <CollapsedAiTasks 
-                            events={msg.metadata?.generation_events || []} 
-                            isDark={isDark} 
-                            autoExpand={true}
-                            autoCollapse={idx !== messages.length - 1}
-                            isLoading={idx === messages.length - 1 && agent.isLoading}
-                          />
-                        </>
-                      )}
-                      
-                      {/* Message de récapitulatif - texte simple avec boutons */}
-                      {msg.metadata?.type === 'recap' && (
-                        <div>
-                          <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap mb-3`}>
-                            {typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
-                          </p>
-                          
-                          {/* Boutons d'action UNIQUEMENT sous le récap */}
-                          <MessageActions
-                            content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
-                            messageIndex={idx}
-                            isLatestMessage={idx === messages.length - 1}
-                            tokenCount={msg.metadata && typeof msg.metadata === 'object' && 'total_tokens' in msg.metadata
-                              ? (msg.metadata.total_tokens as number)
-                              : msg.token_count}
-                            onRestore={async (messageIdx) => {
-                              const targetMessage = messages[messageIdx];
-                              if (!targetMessage.id || !sessionId) return;
-                              
-                              console.log('🔄 =====================================');
-                              console.log('🔄 RESTORING VERSION FROM MESSAGE', messageIdx);
-                              console.log('🔄 Message ID:', targetMessage.id);
-                              console.log('🔄 =====================================');
-                              
-                              const { data: chatMessage } = await supabase
-                                .from('chat_messages')
-                                .select('metadata')
-                                .eq('id', targetMessage.id)
-                                .single();
-                              
-                              if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
-                                const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
-                                
-                                console.log('✅ Project files found in metadata');
-                                console.log('✅ Files to restore:', Object.keys(restoredFiles).length);
-                                console.log('✅ File list:', Object.keys(restoredFiles).join(', '));
-                                
-                                updateFiles(restoredFiles, false); // Restauration de version, pas de sync
-                                setGeneratedHtml(restoredFiles['index.html'] || '');
-                                
-                                // Mettre à jour le fichier sélectionné si nécessaire
-                                if (selectedFile && restoredFiles[selectedFile]) {
-                                  setSelectedFileContent(restoredFiles[selectedFile]);
-                                } else {
-                                  const firstFile = Object.keys(restoredFiles)[0];
-                                  if (firstFile) {
-                                    setSelectedFile(firstFile);
-                                    setSelectedFileContent(restoredFiles[firstFile]);
-                                  }
-                                }
-                                
-                                // Ne pas tronquer les messages, juste marquer la version courante
-                                setCurrentVersionIndex(messageIdx);
-                                
-                                await supabase
-                                  .from('build_sessions')
-                                  .update({
-                                    project_files: convertFilesToArray(restoredFiles),
-                                    updated_at: new Date().toISOString()
-                                  })
-                                  .eq('id', sessionId);
-                                
-                                console.log('✅ Version restored successfully');
-                                sonnerToast.success('Version restaurée');
-                              } else {
-                                console.error('❌ No project_files found in message metadata');
-                                sonnerToast.error('Impossible de restaurer cette version');
-                              }
-                            }}
-                            onGoToPrevious={async () => {
-                              // Trouver le message recap précédent (limité aux 15 derniers)
-                              const recapMessages = messages
-                                .map((m, i) => ({ message: m, index: i }))
-                                .filter(({ message }) => message.role === 'assistant' && message.metadata?.type === 'recap')
-                                .slice(-15); // Limiter aux 15 dernières versions
-                              
-                              console.log('⏮️ =====================================');
-                              console.log('⏮️ GOING TO PREVIOUS VERSION');
-                              console.log('⏮️ Total recap messages:', recapMessages.length);
-                              console.log('⏮️ Current version index:', currentVersionIndex);
-                              console.log('⏮️ =====================================');
-                              
-                              // Trouver l'index actuel dans la liste des recaps
-                              const currentRecapIndex = currentVersionIndex !== null
-                                ? recapMessages.findIndex(r => r.index === currentVersionIndex)
-                                : recapMessages.length - 1;
-                              
-                              console.log('⏮️ Current recap index in list:', currentRecapIndex);
-                              
-                              if (currentRecapIndex <= 0) {
-                                console.warn('⚠️ No previous version available');
-                                sonnerToast.error('Aucune version précédente disponible');
-                                return;
-                              }
-                              
-                              // Prendre le message recap précédent
-                              const previousRecap = recapMessages[currentRecapIndex - 1];
-                              const targetMessage = previousRecap.message;
-                              
-                              console.log('⏮️ Previous recap index:', previousRecap.index);
-                              console.log('⏮️ Target message ID:', targetMessage.id);
-                              
-                              if (!targetMessage.id || !sessionId) return;
-                              
-                              const { data: chatMessage } = await supabase
-                                .from('chat_messages')
-                                .select('metadata')
-                                .eq('id', targetMessage.id)
-                                .single();
-                              
-                              if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
-                                const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
-                                
-                                console.log('✅ Project files found in metadata');
-                                console.log('✅ Files to restore:', Object.keys(restoredFiles).length);
-                                console.log('✅ File list:', Object.keys(restoredFiles).join(', '));
-                                
-                                updateFiles(restoredFiles, false); // Restauration de version, pas de sync
-                                setGeneratedHtml(restoredFiles['index.html'] || '');
-                                
-                                // Mettre à jour le fichier sélectionné si nécessaire
-                                if (selectedFile && restoredFiles[selectedFile]) {
-                                  setSelectedFileContent(restoredFiles[selectedFile]);
-                                } else {
-                                  const firstFile = Object.keys(restoredFiles)[0];
-                                  if (firstFile) {
-                                    setSelectedFile(firstFile);
-                                    setSelectedFileContent(restoredFiles[firstFile]);
-                                  }
-                                }
-                                
-                                // Ne pas tronquer les messages, juste marquer la version courante
-                                setCurrentVersionIndex(previousRecap.index);
-                                
-                                await supabase
-                                  .from('build_sessions')
-                                  .update({
-                                    project_files: convertFilesToArray(restoredFiles),
-                                    updated_at: new Date().toISOString()
-                                  })
-                                  .eq('id', sessionId);
-                                
-                                console.log('✅ Previous version restored successfully');
-                                sonnerToast.success('Version précédente restaurée');
-                              } else {
-                                console.error('❌ No project_files found in message metadata');
-                                sonnerToast.error('Impossible de restaurer cette version');
-                              }
-                            }}
-                            isDark={isDark}
-                          />
                         </div>
-                      )}
-                      
-                       {/* Message simple (ancien format) - pour compatibilité */}
-                      {!msg.metadata?.type && (
-                        <div className="flex items-start gap-3">
-                          <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
-                              {typeof msg.content === 'string' 
-                                ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
-                                : 'Contenu généré'
-                              }
-                            </p>
-                          </div>
-                        </div>
-                      )}
+                      </div>
                     </div>
                   )}
                 </div>
