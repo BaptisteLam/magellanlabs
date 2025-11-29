@@ -159,13 +159,13 @@ const PromptBar = ({
             <TextType
               text={[
                 "Développe mon site web pour mon cabinet d'avocat",
-                "Crée une landing page pour une application mobile de coaching sportif avec formulaire de contact.",
+                "Créer une landing page pour une application mobile de coaching sportif avec formulaire de contact.",
                 "Développe une marketplace pour louer des voiture entre particuliers avec système de comptes et avis utilisateurs.",
                 "Génère un site pour l'association de mon école.",
                 "Génère un site e-commerce minimaliste pour vendre des t-shirts pour marque.",
                 "Conçois mon site web de prise de rendez-vous pour coiffeurs avec calendrier.",
-                "Crée une app mobile iOS/Android de suivi nutritionnel, suivi des calories et notifications ect.",
-                "Crée moi un site pour mon cabinet de consultant."
+                "Créer une app mobile iOS/Android de suivi nutritionnel, suivi des calories et notifications ect.",
+                "Créer moi un site pour mon cabinet de consultant."
               ]}
               typingSpeed={30}
               deletingSpeed={20}
