@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowUp, X } from 'lucide-react';
+import { ArrowUp, Trash2 } from 'lucide-react';
 
 interface ElementInfo {
   tagName: string;
@@ -106,6 +106,17 @@ export function FloatingEditBar({ isOpen, onClose, elementInfo, onModify }: Floa
           placeholder="modifier cet élément..."
           className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground"
         />
+        <button
+          onClick={onClose}
+          className="w-7 h-7 rounded-full p-0 transition-all hover:scale-105 border flex items-center justify-center flex-shrink-0"
+          style={{ 
+            borderColor: '#03A5C0',
+            backgroundColor: 'rgba(3, 165, 192, 0.1)',
+            color: '#03A5C0'
+          }}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
         <button
           onClick={handleSubmit}
           disabled={!prompt.trim()}
