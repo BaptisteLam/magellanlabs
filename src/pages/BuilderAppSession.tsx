@@ -2111,7 +2111,7 @@ export default function BuilderSession() {
                         />
                         <div className="w-full h-full">
                           <Sandpack
-                            key={JSON.stringify(Object.keys(projectFiles).sort())}
+                            key={`sandpack-${Object.keys(projectFiles).length}`}
                             theme={isDark ? "dark" : "light"}
                             template="react-ts"
                             files={Object.fromEntries(
@@ -2158,7 +2158,7 @@ export default function BuilderSession() {
                         />
                         <div className="w-full h-full">
                           <Sandpack
-                            key={JSON.stringify(Object.keys(projectFiles).sort())}
+                            key={`sandpack-${Object.keys(projectFiles).length}`}
                             theme={isDark ? "dark" : "light"}
                             template="react-ts"
                             files={Object.fromEntries(

@@ -232,13 +232,31 @@ IMAGES ET RESSOURCES:
 - ⚠️ **MINIMUM ABSOLU** : 150-200 lignes de CSS pour un site simple, 300-500 lignes pour un site complet
 - ❌ **INTERDIT** : Générer un HTML avec un CSS quasi-vide ou minimaliste → le site doit être BEAU dès la génération
 
-QUALITÉ DU CODE:
+QUALITÉ DU CODE ET CONTEXTE:
+- **RÈGLE CRITIQUE - CONTEXTE DU PROMPT**: Analyse ATTENTIVEMENT le prompt utilisateur et génère un site 100% ADAPTÉ au contexte demandé
+  * Si l'utilisateur demande un "cabinet d'avocat" → design SOBRE, professionnel, élégant, couleurs neutres (bleu marine, gris, blanc)
+  * Si l'utilisateur demande une "startup tech" → design moderne, dynamique, couleurs vives mais pas excessives
+  * Si l'utilisateur demande un "portfolio d'artiste" → design créatif mais épuré, mise en avant des visuels
+  * **INTERDIT ABSOLU**: Générer un design générique "coloré et enjoué" pour TOUS les projets
+  * **CRITIQUE**: Le ton, les couleurs, le style doivent CORRESPONDRE exactement au secteur et contexte demandé
+  
+- **INTERDICTION TOTALE DES EMOJIS**: 
+  * ❌ AUCUN emoji/smiley dans le HTML (ni 🚀 ni 💼 ni 👥 ni aucun autre)
+  * ❌ AUCUN emoji dans les titres, textes, boutons, ou n'importe où
+  * ✅ Utilise UNIQUEMENT des icônes SVG inline professionnelles (Heroicons, Lucide, Font Awesome)
+  * ✅ Si tu dois représenter un concept : utilise du texte clair ou une icône SVG, JAMAIS un emoji
+  
+- **DESIGN SOBRE ET PROFESSIONNEL**:
+  * Évite les designs "too much" avec trop de couleurs, animations excessives, ou effets tape-à-l'œil
+  * Privilégie l'élégance, la clarté, la lisibilité
+  * Animations subtiles et professionnelles seulement (pas d'effets "wow" partout)
+  * Respecte TOUJOURS le contexte du secteur demandé (avocat = sobre, startup = moderne mais clean)
+
 - Si le projet existe déjà (projectContext non vide): modifie UNIQUEMENT les fichiers concernés
 - Utilise du HTML5 sémantique (<header>, <nav>, <main>, <section>, <footer>)
 - CSS moderne (flexbox, grid, variables CSS, animations, transitions)
 - JavaScript vanilla moderne (ES6+, async/await, fetch API, DOM manipulation)
 - Design responsive et mobile-first
-- **IMPORTANT**: N'utilise JAMAIS de smileys/emojis dans le code HTML/CSS/JS. Utilise UNIQUEMENT des icônes SVG inline ou des bibliothèques d'icônes (Font Awesome, Lucide icons, Heroicons, etc.). Les emojis sont INTERDITS dans tout le code.
 - NE JAMAIS générer de boutons flottants ou en position fixe sauf si demandé
 - Code propre, fonctionnel et sans widgets inutiles
 - Pas de markdown, pas de backticks, juste du JSON valide NDJSON
