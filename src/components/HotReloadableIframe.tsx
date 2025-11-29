@@ -164,6 +164,12 @@ export function HotReloadableIframe({
           };
           
           clickHandler = (e) => {
+            // Vérifier que le mode inspection est bien actif
+            if (!isInspectMode) {
+              console.log('⚠️ Click handler appelé mais mode inspection désactivé');
+              return;
+            }
+            
             console.log('👆 Click détecté sur:', e.target.tagName);
             e.preventDefault();
             e.stopPropagation();
@@ -205,9 +211,15 @@ export function HotReloadableIframe({
         }
         
         // Intercepter les clics sur liens pour navigation interne
+        // IMPORTANT: Ne pas intercepter en mode inspection
         document.addEventListener('click', function(e) {
+          // Si mode inspection actif, ne rien faire - laisser le clickHandler gérer
+          if (isInspectMode) {
+            return;
+          }
+          
           const target = e.target.closest('a');
-          if (target && target.href && !isInspectMode) {
+          if (target && target.href) {
             const href = target.getAttribute('href') || '';
             
             // Bloquer les liens externes
