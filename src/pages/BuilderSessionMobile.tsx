@@ -1185,17 +1185,15 @@ Now generate the mobile app based on this request:`;
 
       // Transformer en format attendu par l'API
       const files = Object.entries(filesToDeploy).map(([name, content]) => {
-        const extension = name.split('.').pop() || '';
-        const type = extension === 'html' ? 'html' : 
-                    extension === 'css' ? 'stylesheet' : 
-                    extension === 'js' ? 'javascript' :
-                    extension === 'tsx' || extension === 'ts' ? 'typescript' :
-                    extension === 'jsx' ? 'javascript' : 'text';
+        // Déterminer si le fichier est binaire (images, fonts, etc.)
+        const extension = name.split('.').pop()?.toLowerCase() || '';
+        const binaryExtensions = ['png', 'jpg', 'jpeg', 'gif', 'ico', 'svg', 'woff', 'woff2', 'ttf', 'eot', 'otf'];
+        const isBinary = binaryExtensions.includes(extension);
         
         return {
-          name,
+          name: name.startsWith('/') ? name : `/${name}`,
           content,
-          type
+          type: isBinary ? 'binary' as const : 'text' as const
         };
       });
 
