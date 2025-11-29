@@ -45,10 +45,14 @@ export function CollapsedAiTasks({
   // Auto-collapse quand la génération est terminée
   useEffect(() => {
     if (autoCollapse && !isLoading && events.length > 0) {
-      const timer = setTimeout(() => setIsExpanded(false), 500);
+      const timer = setTimeout(() => setIsExpanded(false), 800);
       return () => clearTimeout(timer);
     }
-  }, [autoCollapse, isLoading, events.length]);
+    // Auto-expand pendant le chargement
+    if (autoExpand && isLoading) {
+      setIsExpanded(true);
+    }
+  }, [autoCollapse, autoExpand, isLoading, events.length]);
 
   // Calcul du fichier en cours de modification
   const currentFile = useMemo(() => {
@@ -210,28 +214,6 @@ export function CollapsedAiTasks({
           </div>
         </div>
       )}
-
-      {/* Bouton collapse/expand */}
-      {!autoExpand && (
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="absolute right-0 top-0 z-10 flex h-6 items-center justify-center rounded px-2 py-1 text-xs font-normal transition-all duration-200 ease-out"
-          aria-label={isExpanded ? "Collapse tool uses" : "Expand tool uses"}
-          style={{
-            color: isDark ? '#94a3b8' : '#64748b',
-            backgroundColor: isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(148, 163, 184, 0.2)',
-            border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.5)' : 'rgba(148, 163, 184, 0.3)'}`
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = isDark ? 'rgba(51, 65, 85, 0.7)' : 'rgba(148, 163, 184, 0.3)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(148, 163, 184, 0.2)';
-          }}
-        >
-          {isExpanded ? 'masquer' : 'voir'}
-        </button>
-      )}
       
       <div 
         className="relative overflow-hidden transition-all duration-300 ease-in-out"
@@ -324,6 +306,32 @@ export function CollapsedAiTasks({
           )}
         </div>
       </div>
+
+      {/* Bouton "voir plus" centré en dessous - affiché uniquement quand terminé */}
+      {!autoExpand && !isLoading && (
+        <div className="flex justify-center pt-1">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex h-7 items-center justify-center rounded-full px-4 py-1 text-xs font-medium transition-all duration-200 ease-out"
+            aria-label={isExpanded ? "Masquer les détails" : "Voir plus de détails"}
+            style={{
+              color: isDark ? '#cbd5e1' : '#475569',
+              backgroundColor: isDark ? 'rgba(51, 65, 85, 0.6)' : 'rgba(148, 163, 184, 0.15)',
+              border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.5)' : 'rgba(148, 163, 184, 0.3)'}`
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = isDark ? 'rgba(51, 65, 85, 0.8)' : 'rgba(148, 163, 184, 0.25)';
+              e.currentTarget.style.color = '#03A5C0';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = isDark ? 'rgba(51, 65, 85, 0.6)' : 'rgba(148, 163, 184, 0.15)';
+              e.currentTarget.style.color = isDark ? '#cbd5e1' : '#475569';
+            }}
+          >
+            {isExpanded ? '✕ masquer' : '+ voir plus'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

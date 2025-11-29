@@ -76,16 +76,16 @@ export default function AiGenerationMessage({
         </p>
       )}
 
-      {/* 2. CollapsedAiTasks - EXPANDED by default to show all tasks */}
+      {/* 2. CollapsedAiTasks - Auto-collapse à la fin de la génération avec bouton "voir plus" */}
       {generation_events.length > 0 && (
         <CollapsedAiTasks 
           events={generation_events}
           isDark={isDark}
           isLoading={isLoading}
-          defaultCollapsed={false}
+          defaultCollapsed={!isLoading}
           summary={summary}
-          autoExpand={true}
-          autoCollapse={false}
+          autoExpand={isLoading}
+          autoCollapse={true}
         />
       )}
 
