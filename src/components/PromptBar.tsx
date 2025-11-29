@@ -155,7 +155,7 @@ const PromptBar = ({
           }}
         />
         {!inputValue && showPlaceholderAnimation && !modificationMode && (
-          <div className="absolute top-3 left-3 right-3 pointer-events-none text-slate-400 whitespace-normal" style={{ fontSize: '14px' }}>
+          <div className="absolute top-3 left-3 right-3 pointer-events-none text-slate-400 whitespace-normal text-left" style={{ fontSize: '14px', textAlign: 'left' }}>
             <TextType
               text={[
                 "Développe mon site web pour mon cabinet d'avocat",
