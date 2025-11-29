@@ -49,26 +49,31 @@ export function analyzeIntentDetailed(
   
   // Patterns de modification simple (points négatifs = favorise quick-mod)
   const simplePatterns = [
-    { regex: /change\s+(le|la|les)?\s*(titre|texte|couleur|prix)/i, points: -15, reason: 'Changement de contenu simple' },
-    { regex: /modifie\s+(le|la|les)?\s*(titre|texte|couleur)/i, points: -15, reason: 'Modification de contenu' },
-    { regex: /remplace\s+["'].*["']\s+par\s+["'].*["']/i, points: -20, reason: 'Remplacement textuel direct' },
-    { regex: /met(s)?\s+(en)?\s+(rouge|bleu|vert|jaune|noir|blanc)/i, points: -10, reason: 'Changement de couleur' },
-    { regex: /corrige\s+(la|le|les)?\s*(faute|orthographe|grammaire)/i, points: -15, reason: 'Correction mineure' },
-    { regex: /plus\s+(grand|petit|gros)/i, points: -8, reason: 'Ajustement de taille' },
-    { regex: /(gras|italique|souligné|bold|italic|underline)/i, points: -8, reason: 'Style de texte' },
-    { regex: /enlève|supprime|retire/i, points: -12, reason: 'Suppression d\'élément' },
+    { regex: /change\s+(le|la|les)?\s*(titre|texte|couleur|prix|description|nom|photo|image)/i, points: -30, reason: 'Changement de contenu simple' },
+    { regex: /modifie\s+(le|la|les)?\s*(titre|texte|couleur|taille|police|padding|margin)/i, points: -30, reason: 'Modification de contenu' },
+    { regex: /remplace\s+["'].*["']\s+par\s+["'].*["']/i, points: -35, reason: 'Remplacement textuel direct' },
+    { regex: /met(s)?\s+(en)?\s+(rouge|bleu|vert|jaune|noir|blanc|gris|rose|violet|orange)/i, points: -25, reason: 'Changement de couleur' },
+    { regex: /corrige\s+(la|le|les)?\s*(faute|orthographe|grammaire|typo)/i, points: -25, reason: 'Correction mineure' },
+    { regex: /plus\s+(grand|petit|gros|fin|épais|large|étroit)/i, points: -20, reason: 'Ajustement de taille' },
+    { regex: /(gras|italique|souligné|bold|italic|underline)/i, points: -20, reason: 'Style de texte' },
+    { regex: /enlève|supprime|retire/i, points: -25, reason: 'Suppression d\'élément' },
+    { regex: /ajoute\s+(une|un)?\s*(espace|marge|padding|border)/i, points: -20, reason: 'Ajustement CSS simple' },
+    { regex: /centre|aligne\s+(à\s+)?(gauche|droite|centre)/i, points: -20, reason: 'Alignement' },
+    { regex: /augmente|diminue|réduit/i, points: -18, reason: 'Ajustement de valeur' },
+    { regex: /change\s+(la|le)\s*(background|fond|arrière-plan)/i, points: -22, reason: 'Modification background' },
   ];
   
   // Patterns de génération complète (points positifs)
   const complexPatterns = [
-    { regex: /(ajoute|crée|créer)\s+(une)?\s*page/i, points: 40, reason: 'Création de page' },
-    { regex: /(ajoute|crée)\s+(une|un)?\s*(section|formulaire|galerie)/i, points: 35, reason: 'Nouvelle section/fonctionnalité' },
-    { regex: /(refais|refait|redesign|restructure)/i, points: 45, reason: 'Restructuration majeure' },
-    { regex: /change\s+(tout|le\s+design|la\s+structure)/i, points: 40, reason: 'Changement global' },
-    { regex: /(navigation|menu|carrousel|slider|système)/i, points: 30, reason: 'Composant complexe' },
-    { regex: /(responsive|mobile|desktop|tablette)/i, points: 25, reason: 'Adaptation responsive' },
-    { regex: /(animation|transition|effet)/i, points: 20, reason: 'Animations' },
-    { regex: /(api|intégration|backend|database)/i, points: 35, reason: 'Intégration externe' },
+    { regex: /(ajoute|crée|créer)\s+(une|plusieurs)?\s*page/i, points: 50, reason: 'Création de page' },
+    { regex: /(ajoute|crée)\s+(une|un)?\s+(nouvelle\s+)?(section\s+complète|page\s+entière)/i, points: 45, reason: 'Section majeure' },
+    { regex: /(refais|refait|redesign|restructure)\s+(tout|complètement|entièrement)/i, points: 55, reason: 'Restructuration majeure' },
+    { regex: /change\s+(tout|entièrement|complètement)\s+(le\s+design|la\s+structure)/i, points: 50, reason: 'Changement global' },
+    { regex: /(crée|ajoute)\s+(un|une)?\s+(système\s+de\s+)?(navigation|menu\s+complet|carrousel|slider)/i, points: 40, reason: 'Composant complexe' },
+    { regex: /rend\s+(tout|le\s+site)?\s*(responsive|adaptatif)/i, points: 35, reason: 'Adaptation responsive globale' },
+    { regex: /ajoute\s+(des|plusieurs)?\s*(animations|transitions|effets)\s+partout/i, points: 30, reason: 'Animations globales' },
+    { regex: /(api|intégration|backend|database|base\s+de\s+données)/i, points: 45, reason: 'Intégration externe' },
+    { regex: /(multipage|multi-page|plusieurs\s+pages)/i, points: 50, reason: 'Site multipage' },
   ];
   
   // Évaluer les patterns simples
@@ -95,13 +100,13 @@ export function analyzeIntentDetailed(
   const hasConjunctions = /\s+(et|ou|puis|ensuite|également|aussi)\s+/i.test(prompt);
   
   if (wordCount < 10) {
-    score -= 10;
+    score -= 15;
     reasons.push('Prompt très court (modification ciblée)');
   } else if (wordCount < 30) {
-    score -= 5;
+    score -= 8;
     reasons.push('Prompt court');
   } else if (wordCount > 50) {
-    score += 10;
+    score += 8;
     reasons.push('Prompt long et détaillé');
   }
   
@@ -178,8 +183,8 @@ export function analyzeIntentDetailed(
   else if (score < 30) complexity = 'moderate';
   else complexity = 'complex';
   
-  // Décision: seuil à 15 (favorise quick-mod pour meilleure UX)
-  const type = score < 15 ? 'quick-modification' : 'full-generation';
+  // Décision: seuil à 35 (favorise fortement quick-mod pour meilleure UX et précision)
+  const type = score < 35 ? 'quick-modification' : 'full-generation';
   
   const reasoning = reasons.length > 0 
     ? reasons.slice(0, 3).join(', ')
