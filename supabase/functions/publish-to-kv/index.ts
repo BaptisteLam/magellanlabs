@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       console.log(`📤 Uploading to KV: ${kvKey}`);
       
       // Préparer le contenu
-      let content: string | Uint8Array = file.content;
+      let bodyContent: BodyInit = file.content;
       
       // Si c'est du binaire, décoder le base64
       if (file.type === 'binary') {
@@ -83,8 +83,9 @@ Deno.serve(async (req) => {
             ? file.content.split('base64,')[1]
             : file.content;
           
-          // Décoder le base64
-          content = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
+          // Décoder le base64 et convertir en ArrayBuffer
+          const uint8Array = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
+          bodyContent = uint8Array.buffer;
         } catch (error) {
           console.error(`❌ Error decoding base64 for ${kvKey}:`, error);
           throw new Error(`Failed to decode base64 for ${file.name}`);
@@ -100,7 +101,7 @@ Deno.serve(async (req) => {
           'Authorization': `Bearer ${cloudflareApiToken}`,
           'Content-Type': file.type === 'binary' ? 'application/octet-stream' : 'text/plain',
         },
-        body: content,
+        body: bodyContent,
       });
 
       if (!response.ok) {

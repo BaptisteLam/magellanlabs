@@ -1571,9 +1571,20 @@ export default function BuilderSession() {
         return;
       }
 
-      sonnerToast.info("Déploiement sur Cloudflare Pages...");
+      // Générer le nom du projet à partir du titre
+      const projectName = cloudflareProjectName || (websiteTitle || 'mon-projet')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .substring(0, 50);
+
+      sonnerToast.info("⚡ Publication instantanée via KV...");
       
-      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-cloudflare`, {
+      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/publish-to-kv`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -1582,63 +1593,32 @@ export default function BuilderSession() {
         body: JSON.stringify({
           sessionId,
           projectFiles: files,
+          projectName,
         }),
       });
 
       const result = await deployRes.json();
       
       if (!deployRes.ok) {
-        throw new Error(result?.error || 'Erreur de déploiement');
+        throw new Error(result?.error || 'Erreur de publication');
       }
       
       if (!result?.success) {
-        throw new Error(result?.error || 'Erreur de déploiement');
+        throw new Error(result?.error || 'Erreur de publication');
       }
 
-      if (result.url) {
-        setDeployedUrl(result.url);
+      if (result.publicUrl) {
+        setDeployedUrl(result.publicUrl);
+        setCloudflareProjectName(projectName);
         
-        // Update websiteId if returned
-        if (result.websiteId) {
-          setWebsiteId(result.websiteId);
-        }
-
-        // Publier/mettre à jour sur builtbymagellan.com
-        try {
-          console.log('🚀 Publishing/updating project on builtbymagellan.com...');
-          const { data: publishData, error: publishError } = await supabase.functions.invoke('publish-project', {
-            body: { sessionId }
-          });
-
-          if (publishError) {
-            console.error('❌ Error publishing to builtbymagellan.com:', publishError);
-          } else if (publishData?.publicUrl) {
-            console.log('✅ Project published/updated at:', publishData.publicUrl);
-          }
-        } catch (publishErr) {
-          console.error('❌ Error calling publish function:', publishErr);
-        }
-        
-        // Afficher popup de succès (sans redirection)
-        if (result.state === 'ready') {
-          sonnerToast.success("✅ Site publié avec succès !", {
-            description: result.url,
-            duration: 10000,
-            action: {
-              label: 'Voir le site',
-              onClick: () => window.open(result.url, '_blank')
-            }
-          });
-        } else {
-          sonnerToast.info(`Déploiement en cours (${result.state})`, {
-            description: result.url,
-            duration: 8000,
-          });
-        }
+        sonnerToast.success(`✅ Publié en ${result.uploadTime} !`, {
+          description: result.publicUrl,
+          duration: 5000,
+        });
       }
     } catch (error: any) {
       console.error('Error publishing:', error);
-      sonnerToast.error(error.message || "❌ Erreur lors du déploiement");
+      sonnerToast.error(error.message || "❌ Erreur lors de la publication");
     } finally {
       setIsPublishing(false);
     }
