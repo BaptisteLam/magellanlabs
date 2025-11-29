@@ -81,7 +81,7 @@ export function HotReloadableIframe({
               outline-offset: 2px !important;
               cursor: pointer !important;
               position: relative;
-              z-index: 999998;
+              z-index: 999998 !important;
             }
             .magellan-inspect-highlight::after {
               content: attr(data-magellan-tag);
@@ -100,7 +100,6 @@ export function HotReloadableIframe({
               box-shadow: 0 2px 8px rgba(0,0,0,0.2);
               white-space: nowrap;
             }
-            .magellan-inspect-dashed {
           \`;
           document.head.appendChild(style);
           console.log('✅ Styles d\\'inspection injectés');
@@ -145,12 +144,16 @@ export function HotReloadableIframe({
           console.log('🎧 Attachement des event listeners');
           
           mouseMoveHandler = (e) => {
+            if (!isInspectMode) return;
+            
             const target = e.target;
             if (target === hoveredElement) return;
             if (target === document.body || target === document.documentElement) return;
             
             const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV','UL','LI'];
             if (!selectableTags.includes(target.tagName)) return;
+            
+            console.log('🎯 Hover sur:', target.tagName, target.textContent?.substring(0, 30));
             
             if (hoveredElement) {
               hoveredElement.classList.remove('magellan-inspect-highlight');
@@ -161,6 +164,8 @@ export function HotReloadableIframe({
             const elementType = getElementDescription(target);
             target.setAttribute('data-magellan-tag', elementType);
             target.classList.add('magellan-inspect-highlight');
+            
+            console.log('✨ Outline appliqué sur:', elementType);
           };
           
           clickHandler = (e) => {
