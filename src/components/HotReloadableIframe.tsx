@@ -24,6 +24,7 @@ export function HotReloadableIframe({
   const [inspectReady, setInspectReady] = useState(false);
   const initialLoadRef = useRef(true);
   const lastReloadTimeRef = useRef(0);
+  const hadFilesRef = useRef(false);
 
   // Hook de Hot Reload
   const { isUpdating, lastUpdateType } = useHotReload(projectFiles, {
@@ -360,7 +361,19 @@ export function HotReloadableIframe({
     }
 
     if (!projectFiles || Object.keys(projectFiles).length === 0) {
-      return '<html><body><div style="display:flex;align-items:center;justify-center;height:100vh;font-family:system-ui">Generating preview...</div></body></html>';
+      return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Preview</title>
+  ${inspectionScript}
+</head>
+<body>
+  <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui;color:#666">
+    Generating preview...
+  </div>
+</body>
+</html>`;
     }
 
     // Collecter CSS
@@ -497,6 +510,9 @@ export function HotReloadableIframe({
     const iframe = iframeRef.current;
     if (!iframe) return;
 
+    console.log('🔄 Full reload');
+    setInspectReady(false); // Réinitialiser pour attendre le nouveau script
+
     // Sauvegarder l'état de scroll
     const scrollX = iframe.contentWindow?.scrollX || 0;
     const scrollY = iframe.contentWindow?.scrollY || 0;
@@ -510,7 +526,7 @@ export function HotReloadableIframe({
         iframe.contentWindow.scrollTo(scrollX, scrollY);
       }
       setIframeReady(true);
-      // Ne pas réinitialiser inspectReady - l'iframe renverra 'inspect-ready' automatiquement
+      console.log('✅ Iframe rechargée complètement');
     };
   };
 
@@ -582,32 +598,29 @@ export function HotReloadableIframe({
       return true;
     };
 
-    // Envoyer immédiatement si l'iframe est prête
-    if (inspectReady) {
+    // Toujours essayer d'envoyer le message si iframe est prête
+    if (iframeReady) {
       sendToggleMessage();
-    } else if (inspectMode) {
-      // Si inspect mode activé mais iframe pas encore prête, réessayer
-      console.log('⏳ Iframe pas prête, activation du retry pour toggle-inspect');
+    }
+    
+    // Si le mode inspect est activé mais pas encore confirmé, réessayer périodiquement
+    if (inspectMode && !inspectReady && iframeReady) {
       const retryInterval = setInterval(() => {
-        if (inspectReady) {
-          console.log('✅ Iframe prête, envoi du toggle-inspect');
-          sendToggleMessage();
-          clearInterval(retryInterval);
-        }
-      }, 100);
+        console.log('🔄 Retry toggle-inspect (waiting for inspect-ready)');
+        sendToggleMessage();
+      }, 200);
       
-      // Cleanup après 2 secondes max
       const timeout = setTimeout(() => {
-        console.log('⏱️ Timeout du retry toggle-inspect');
         clearInterval(retryInterval);
-      }, 2000);
+        console.log('⏱️ Timeout du retry toggle-inspect');
+      }, 3000);
       
       return () => {
         clearInterval(retryInterval);
         clearTimeout(timeout);
       };
     }
-  }, [inspectMode, inspectReady]);
+  }, [inspectMode, iframeReady, inspectReady]);
 
   // Charger l'iframe uniquement au premier mount
   useEffect(() => {
@@ -625,6 +638,19 @@ export function HotReloadableIframe({
     // Ne pas re-exécuter ce useEffect après le premier mount
     // Les changements suivants sont gérés exclusivement par useHotReload
   }, []); // Dépendances vides = exécuté uniquement au premier mount
+
+  // Forcer un reload complet quand les fichiers arrivent pour la première fois
+  useEffect(() => {
+    const hasFiles = Object.keys(projectFiles).length > 0;
+    
+    // Si on passe de "pas de fichiers" à "fichiers présents", forcer reload complet
+    if (!hadFilesRef.current && hasFiles) {
+      console.log('📁 Fichiers reçus pour la première fois, reload complet');
+      fullReload();
+    }
+    
+    hadFilesRef.current = hasFiles;
+  }, [projectFiles]);
 
   // Recharger l'iframe quand currentFile change (navigation entre pages ou affichage 404)
   useEffect(() => {
