@@ -58,44 +58,62 @@ export function HotReloadableIframe({
 
   // Script d'inspection pour le click-to-edit
   const inspectionScript = `
-    <style id="__magellan_inspect_styles__">
-      .magellan-inspect-highlight {
-        outline: 2px solid #03A5C0 !important;
-        outline-offset: 2px !important;
-        cursor: pointer !important;
-        position: relative;
-      }
-      .magellan-inspect-highlight::after {
-        content: attr(data-magellan-tag);
-        position: absolute;
-        top: -24px;
-        left: 0;
-        background: #03A5C0;
-        color: white;
-        padding: 2px 8px;
-        font-size: 11px;
-        font-family: monospace;
-        font-weight: 600;
-        border-radius: 4px;
-        pointer-events: none;
-        z-index: 999999;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      }
-      .magellan-inspect-dashed {
-        outline: 1px dashed rgba(3, 165, 192, 0.3) !important;
-        outline-offset: 2px;
-      }
-    </style>
-    <script>
+    <script id="__magellan_inspect_script__">
       (function() {
+        console.log('🔍 Magellan Inspect Script initialized');
+        
         let isInspectMode = false;
         let hoveredElement = null;
         let mouseMoveHandler = null;
         let clickHandler = null;
         
+        // Injecter les styles d'inspection
+        const injectStyles = () => {
+          if (document.getElementById('__magellan_inspect_styles__')) return;
+          
+          const style = document.createElement('style');
+          style.id = '__magellan_inspect_styles__';
+          style.textContent = \`
+            .magellan-inspect-highlight {
+              outline: 2px solid #03A5C0 !important;
+              outline-offset: 2px !important;
+              cursor: pointer !important;
+              position: relative;
+              z-index: 999998;
+            }
+            .magellan-inspect-highlight::after {
+              content: attr(data-magellan-tag);
+              position: absolute;
+              top: -24px;
+              left: 0;
+              background: #03A5C0;
+              color: white;
+              padding: 2px 8px;
+              font-size: 11px;
+              font-family: monospace;
+              font-weight: 600;
+              border-radius: 4px;
+              pointer-events: none;
+              z-index: 999999;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+              white-space: nowrap;
+            }
+            .magellan-inspect-dashed {
+              outline: 1px dashed rgba(3, 165, 192, 0.5) !important;
+              outline-offset: 2px;
+            }
+          \`;
+          document.head.appendChild(style);
+          console.log('✅ Styles d\\'inspection injectés');
+        };
+        
         function init() {
+          console.log('🎯 Init inspect mode listener');
+          
           window.addEventListener('message', (e) => {
+            console.log('📨 Message reçu:', e.data);
             if (e.data.type === 'toggle-inspect') {
+              console.log('🔄 Toggle inspect mode:', e.data.enabled);
               isInspectMode = e.data.enabled;
               if (isInspectMode) {
                 activateInspection();
@@ -107,12 +125,15 @@ export function HotReloadableIframe({
         }
         
         function activateInspection() {
+          console.log('✨ Activation du mode inspection');
+          injectStyles();
           document.body.style.cursor = 'crosshair';
           showAllOutlines();
           attachEventListeners();
         }
         
         function deactivateInspection() {
+          console.log('🔚 Désactivation du mode inspection');
           document.body.style.cursor = 'default';
           if (hoveredElement) {
             hoveredElement.classList.remove('magellan-inspect-highlight');
@@ -124,12 +145,14 @@ export function HotReloadableIframe({
         }
         
         function attachEventListeners() {
+          console.log('🎧 Attachement des event listeners');
+          
           mouseMoveHandler = (e) => {
             const target = e.target;
             if (target === hoveredElement) return;
             if (target === document.body || target === document.documentElement) return;
             
-            const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
+            const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV','UL','LI'];
             if (!selectableTags.includes(target.tagName)) return;
             
             if (hoveredElement) {
@@ -144,6 +167,7 @@ export function HotReloadableIframe({
           };
           
           clickHandler = (e) => {
+            console.log('👆 Click détecté sur:', e.target.tagName);
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
@@ -169,6 +193,7 @@ export function HotReloadableIframe({
               }
             };
             
+            console.log('📤 Envoi de element-selected:', elementInfo);
             window.parent.postMessage({
               type: 'element-selected',
               data: elementInfo
@@ -179,9 +204,11 @@ export function HotReloadableIframe({
           
           document.addEventListener('mousemove', mouseMoveHandler, true);
           document.addEventListener('click', clickHandler, true);
+          console.log('✅ Event listeners attachés');
         }
         
         function detachEventListeners() {
+          console.log('🔌 Détachement des event listeners');
           if (mouseMoveHandler) {
             document.removeEventListener('mousemove', mouseMoveHandler, true);
             mouseMoveHandler = null;
@@ -193,8 +220,9 @@ export function HotReloadableIframe({
         }
         
         function showAllOutlines() {
-          const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
+          const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV','UL','LI'];
           const elements = document.querySelectorAll(selectableTags.join(','));
+          console.log('📝 Affichage des outlines pour', elements.length, 'éléments');
           elements.forEach(el => {
             if (el !== document.body && el !== document.documentElement) {
               el.classList.add('magellan-inspect-dashed');
@@ -217,6 +245,9 @@ export function HotReloadableIframe({
           if (tag === 'a') return 'Lien';
           if (tag === 'p') return 'Paragraphe';
           if (tag === 'img') return 'Image';
+          if (tag === 'svg') return 'Icône';
+          if (tag === 'div') return 'Conteneur';
+          if (tag === 'section') return 'Section';
           return tag.toUpperCase();
         }
         
@@ -243,8 +274,18 @@ export function HotReloadableIframe({
           return path.join(' > ');
         }
         
-        init();
-        window.parent.postMessage({ type: 'inspect-ready' }, '*');
+        // Initialiser après le chargement du DOM
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', () => {
+            init();
+            console.log('✅ Inspect mode ready (DOMContentLoaded)');
+            window.parent.postMessage({ type: 'inspect-ready' }, '*');
+          });
+        } else {
+          init();
+          console.log('✅ Inspect mode ready (immediate)');
+          window.parent.postMessage({ type: 'inspect-ready' }, '*');
+        }
       })();
     </script>
   `;
@@ -294,8 +335,9 @@ export function HotReloadableIframe({
     }
 
     // Injecter le script d'inspection, CSS et JS dans le HTML
+    // On injecte le script d'inspection en premier dans le head pour qu'il soit toujours actif
     const processedHTML = htmlContent
-      .replace('</head>', `${inspectionScript}<style id="__hot_css__">${cssFiles}</style></head>`)
+      .replace('</head>', `<style id="__hot_css__">${cssFiles}</style>${inspectionScript}</head>`)
       .replace('</body>', `<script id="__hot_js__">${jsFiles}</script></body>`);
 
     return processedHTML;
