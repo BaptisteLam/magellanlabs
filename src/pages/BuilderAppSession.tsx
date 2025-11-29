@@ -1086,6 +1086,52 @@ export default function BuilderSession() {
             })
             .eq('id', sessionId);
 
+          // 💰 Décompter les tokens du profil utilisateur
+          if (user?.id && usedTokens.total > 0) {
+            console.log('💰 Mise à jour des tokens utilisés:', usedTokens.total);
+            
+            try {
+              // Récupérer les tokens actuels
+              const { data: profile, error: fetchError } = await supabase
+                .from('profiles')
+                .select('tokens_used')
+                .eq('id', user.id)
+                .single();
+              
+              if (fetchError) {
+                console.error('❌ Erreur récupération profil:', fetchError);
+                throw fetchError;
+              }
+              
+              if (profile) {
+                const newTokensUsed = (profile.tokens_used || 0) + usedTokens.total;
+                
+                console.log('💰 Tokens actuels:', profile.tokens_used || 0);
+                console.log('💰 Nouveaux tokens utilisés:', newTokensUsed);
+                
+                // Mettre à jour le profil avec les nouveaux tokens
+                const { error: updateError } = await supabase
+                  .from('profiles')
+                  .update({ 
+                    tokens_used: newTokensUsed
+                  })
+                  .eq('id', user.id);
+                
+                if (updateError) {
+                  console.error('❌ Erreur mise à jour tokens:', updateError);
+                  throw updateError;
+                }
+                
+                console.log('✅ Tokens mis à jour avec succès:', newTokensUsed);
+              } else {
+                console.warn('⚠️ Profil utilisateur introuvable');
+              }
+            } catch (error) {
+              console.error('❌ Erreur déduction tokens:', error);
+              sonnerToast.error('Erreur lors de la mise à jour des tokens');
+            }
+          }
+
           // 📸 Capturer le thumbnail UNIQUEMENT après une génération réussie
           console.log('📸 Capture du thumbnail après génération...');
           await captureThumbnail(updatedFiles['index.html'] || updatedFiles['app.html'] || Object.values(updatedFiles).find(f => typeof f === 'string' && f.includes('<html')));
