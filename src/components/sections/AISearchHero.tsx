@@ -434,7 +434,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
 
         {/* Main title */}
         <h1 className={`text-4xl md:text-5xl font-bold mb-4 leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          Crée ton site web en quelques secondes avec l'IA
+          Créer ton site web en quelques secondes avec l'IA
         </h1>
 
         {/* Subtitle */}

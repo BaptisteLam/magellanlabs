@@ -102,7 +102,7 @@ const AIBuilder = () => {
 
         {/* Main title */}
         <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 leading-tight">
-          Crée ton site web en quelques secondes avec l'IA
+          Créer ton site web en quelques secondes avec l'IA
         </h1>
 
         {/* Subtitle */}
