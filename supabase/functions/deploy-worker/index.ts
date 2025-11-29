@@ -100,12 +100,10 @@ Deno.serve(async (req) => {
     const deployData = await deployResponse.json();
     console.log('✅ Worker deployed successfully:', deployData);
 
-    // Configurer le sous-domaine (route)
-    const subdomain = `${projectName}.builtbymagellan.com`;
-    await configureWorkerRoute(cloudflareApiToken, cloudflareAccountId, projectName, subdomain);
-
     const deployTime = Date.now() - startTime;
-    const publicUrl = `https://${subdomain}`;
+    
+    // Utiliser l'URL workers.dev par défaut
+    const publicUrl = `https://${projectName}.${cloudflareAccountId}.workers.dev`;
 
     // Mettre à jour la session avec l'URL publique
     const { error: updateError } = await supabase
@@ -372,21 +370,3 @@ function generate404Page(projectName) {
 `.trim();
 }
 
-/**
- * Configure la route du Worker pour le sous-domaine
- */
-async function configureWorkerRoute(
-  apiToken: string,
-  accountId: string,
-  workerName: string,
-  subdomain: string
-): Promise<void> {
-  // Note: Cette configuration suppose que le domaine builtbymagellan.com est déjà dans Cloudflare
-  // et que le wildcard DNS (*.builtbymagellan.com) pointe vers les Workers
-  
-  console.log(`📝 Configuring route for ${subdomain} -> ${workerName}`);
-  
-  // Pour l'instant, on se contente de déployer le Worker
-  // La configuration DNS wildcard doit être faite manuellement dans Cloudflare
-  // Ou via l'API Zones si nécessaire
-}
