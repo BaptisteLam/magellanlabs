@@ -732,8 +732,8 @@ export default function BuilderSession() {
     setInputValue('');
     setAttachedFiles([]);
 
-    // Créer immédiatement le message d'intro avec toutes les métadonnées nécessaires
-    const introMessage: Message = {
+    // Créer immédiatement le message unifié de génération avec toutes les métadonnées
+    const generationMessage: Message = {
       role: 'assistant',
       content: "Je vais analyser votre demande et effectuer les modifications nécessaires...",
       metadata: {
@@ -745,11 +745,14 @@ export default function BuilderSession() {
         files_modified: 0,
         new_files: [],
         modified_files: [],
-        total_tokens: 0
+        total_tokens: 0,
+        input_tokens: 0,
+        output_tokens: 0,
+        project_files: {}
       }
     };
     
-    setMessages(prev => [...prev, introMessage]);
+    setMessages(prev => [...prev, generationMessage]);
     setGenerationStartTime(Date.now());
 
     // Préparer les fichiers pertinents
@@ -1024,36 +1027,58 @@ export default function BuilderSession() {
             }
           }
 
-          // Sauvegarder le message d'introduction avec les generation_events
-          const { data: insertedIntro } = await supabase
-            .from('chat_messages')
-            .insert({
-              session_id: sessionId,
-              role: 'assistant',
-              content: introMessage,
-              metadata: { 
-                type: 'intro' as const,
-                generation_events: generationEvents
-              }
-            })
-            .select()
-            .single();
+          // Calculer la durée totale de génération
+          const thoughtDuration = Date.now() - generationStartTime;
 
-          // Sauvegarder le message de récapitulatif avec les détails et tokens réels de Claude
-          const { data: insertedRecap } = await supabase
+          // Mettre à jour le message de génération existant avec toutes les métadonnées finales
+          setMessages(prev => {
+            const updatedMessages = [...prev];
+            const lastMsgIndex = updatedMessages.length - 1;
+            const lastMsg = updatedMessages[lastMsgIndex];
+            
+            if (lastMsg && lastMsg.metadata?.type === 'generation') {
+              updatedMessages[lastMsgIndex] = {
+                ...lastMsg,
+                content: recapMessage,
+                token_count: usedTokens.total,
+                metadata: {
+                  type: 'generation',
+                  thought_duration: thoughtDuration,
+                  intent_message: introMessage,
+                  generation_events: generationEvents,
+                  files_created: newFiles.length,
+                  files_modified: modifiedFiles.length,
+                  new_files: newFiles,
+                  modified_files: modifiedFiles,
+                  total_tokens: usedTokens.total,
+                  input_tokens: usedTokens.input,
+                  output_tokens: usedTokens.output,
+                  project_files: updatedFiles
+                }
+              };
+            }
+            
+            return updatedMessages;
+          });
+
+          // Sauvegarder UN SEUL message unifié en DB avec toutes les métadonnées
+          const { data: insertedMessage } = await supabase
             .from('chat_messages')
             .insert({
               session_id: sessionId,
               role: 'assistant',
               content: recapMessage,
-              token_count: usedTokens.total, // Tokens réels de Claude
+              token_count: usedTokens.total,
               metadata: { 
-                type: 'recap' as const,
-                files_updated: Object.keys(updatedFiles).length,
+                type: 'generation',
+                thought_duration: thoughtDuration,
+                intent_message: introMessage,
+                generation_events: generationEvents,
+                files_created: newFiles.length,
+                files_modified: modifiedFiles.length,
                 new_files: newFiles,
                 modified_files: modifiedFiles,
                 project_files: updatedFiles,
-                generation_events: generationEvents,
                 input_tokens: usedTokens.input,
                 output_tokens: usedTokens.output,
                 total_tokens: usedTokens.total
@@ -1062,46 +1087,72 @@ export default function BuilderSession() {
             .select()
             .single();
 
-          // Mettre à jour les messages dans l'interface (intro + tasks + recap)
-          const updatedMessagesWithDetails: Message[] = [
-            ...newMessages,
-            { 
-              role: 'assistant' as const, 
-              content: introMessage,
-              id: insertedIntro?.id,
-              metadata: { 
-                type: 'intro' as const, 
-                generation_events: generationEvents
-              }
-            },
-            { 
-              role: 'assistant' as const, 
-              content: recapMessage,
-              token_count: usedTokens.total,
-              id: insertedRecap?.id,
-              metadata: { 
-                type: 'recap' as const, 
-                generation_events: generationEvents,
-                input_tokens: usedTokens.input,
-                output_tokens: usedTokens.output,
-                total_tokens: usedTokens.total
-              }
+          // Mettre à jour l'ID du message après sauvegarde
+          setMessages(prev => {
+            const updated = [...prev];
+            const lastIdx = updated.length - 1;
+            if (updated[lastIdx]) {
+              updated[lastIdx] = {
+                ...updated[lastIdx],
+                id: insertedMessage?.id
+              };
             }
-          ];
-          setMessages(updatedMessagesWithDetails);
+            return updated;
+          });
           
           // Sauvegarder automatiquement le projet avec le nom généré
           if (websiteTitle && websiteTitle !== 'Sans titre') {
             console.log('💾 Sauvegarde automatique du projet:', websiteTitle);
-            await saveSessionWithTitle(websiteTitle, filesArray, updatedMessagesWithDetails);
+            // Utiliser les messages à jour après toutes les modifications
+            await saveSessionWithTitle(websiteTitle, filesArray, [...newMessages, {
+              role: 'assistant',
+              content: recapMessage,
+              token_count: usedTokens.total,
+              id: insertedMessage?.id,
+              metadata: {
+                type: 'generation',
+                thought_duration: thoughtDuration,
+                intent_message: introMessage,
+                generation_events: generationEvents,
+                files_created: newFiles.length,
+                files_modified: modifiedFiles.length,
+                new_files: newFiles,
+                modified_files: modifiedFiles,
+                project_files: updatedFiles,
+                input_tokens: usedTokens.input,
+                output_tokens: usedTokens.output,
+                total_tokens: usedTokens.total
+              }
+            }]);
           }
 
           // Mettre à jour build_sessions avec format array
+          const finalMessages = [...newMessages, {
+            role: 'assistant',
+            content: recapMessage,
+            token_count: usedTokens.total,
+            id: insertedMessage?.id,
+            metadata: {
+              type: 'generation',
+              thought_duration: thoughtDuration,
+              intent_message: introMessage,
+              generation_events: generationEvents,
+              files_created: newFiles.length,
+              files_modified: modifiedFiles.length,
+              new_files: newFiles,
+              modified_files: modifiedFiles,
+              project_files: updatedFiles,
+              input_tokens: usedTokens.input,
+              output_tokens: usedTokens.output,
+              total_tokens: usedTokens.total
+            }
+          }];
+          
           await supabase
             .from('build_sessions')
             .update({
               project_files: convertFilesToArray(updatedFiles),
-              messages: updatedMessagesWithDetails as any,
+              messages: finalMessages as any,
               updated_at: new Date().toISOString()
             })
             .eq('id', sessionId);
@@ -1919,8 +1970,8 @@ export default function BuilderSession() {
                         )}
                       </div>
                     </div>
-                  ) : msg.metadata?.type === 'generation' ? (
-                    // Nouveau message unifié style Lovable
+                  ) : (msg.metadata?.type === 'generation' || msg.metadata?.type === 'recap' || msg.metadata?.type === 'intro') ? (
+                    // Message unifié style Lovable (supporte aussi les anciens formats intro/recap)
                     <AiGenerationMessage
                       message={msg}
                       messageIndex={idx}
@@ -2215,10 +2266,16 @@ export default function BuilderSession() {
               );
               })}
 
-              {/* Affichage des événements de génération pour les reprompts */}
-              {(generationEvents.length > 0 || agent.isLoading) && !isInitialGeneration && (
+              {/* Affichage des événements de génération en temps réel */}
+              {(generationEvents.length > 0 || agent.isLoading) && (
                 <div className="flex flex-col space-y-2 mb-4 px-4">
-                  <CollapsedAiTasks events={generationEvents} isDark={isDark} isLoading={agent.isLoading} />
+                  <CollapsedAiTasks 
+                    events={generationEvents} 
+                    isDark={isDark} 
+                    isLoading={agent.isLoading}
+                    autoExpand={true}
+                    autoCollapse={true}
+                  />
                 </div>
               )}
 
