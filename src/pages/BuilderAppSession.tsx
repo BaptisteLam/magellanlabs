@@ -1811,12 +1811,12 @@ export default function BuilderSession() {
                             {typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
                           </p>
                           
-                          {/* AI Tasks - toujours affichés après le message intro */}
+                          {/* AI Tasks - collapsibles manuellement */}
                           <CollapsedAiTasks 
                             events={msg.metadata?.generation_events || []} 
                             isDark={isDark} 
-                            autoExpand={true}
-                            autoCollapse={idx !== messages.length - 1}
+                            autoExpand={false}
+                            autoCollapse={false}
                             isLoading={idx === messages.length - 1 && agent.isLoading}
                           />
                         </>
@@ -1834,9 +1834,13 @@ export default function BuilderSession() {
                             content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
                             messageIndex={idx}
                             isLatestMessage={idx === messages.length - 1}
-                            tokenCount={msg.metadata && typeof msg.metadata === 'object' && 'total_tokens' in msg.metadata
-                              ? (msg.metadata.total_tokens as number)
-                              : msg.token_count}
+                            tokenCount={
+                              msg.metadata?.total_tokens || 
+                              msg.token_count || 
+                              (msg.metadata?.input_tokens && msg.metadata?.output_tokens 
+                                ? (msg.metadata.input_tokens as number) + (msg.metadata.output_tokens as number)
+                                : 0)
+                            }
                             onRestore={async (messageIdx) => {
                               const targetMessage = messages[messageIdx];
                               if (!targetMessage.id || !sessionId) return;
@@ -2107,6 +2111,7 @@ export default function BuilderSession() {
                         />
                         <div className="w-full h-full">
                           <Sandpack
+                            key={JSON.stringify(Object.keys(projectFiles).sort())}
                             theme={isDark ? "dark" : "light"}
                             template="react-ts"
                             files={Object.fromEntries(
@@ -2153,6 +2158,7 @@ export default function BuilderSession() {
                         />
                         <div className="w-full h-full">
                           <Sandpack
+                            key={JSON.stringify(Object.keys(projectFiles).sort())}
                             theme={isDark ? "dark" : "light"}
                             template="react-ts"
                             files={Object.fromEntries(
