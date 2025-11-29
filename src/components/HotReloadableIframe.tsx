@@ -2,12 +2,13 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import { useHotReload } from '@/hooks/useHotReload';
 import { HotReloadIndicator } from './HotReloadIndicator';
 import { generate404Page } from '@/lib/generate404Page';
+import { type ElementInfo } from './InspectOverlay';
 
 interface HotReloadableIframeProps {
   projectFiles: Record<string, string>;
   isDark?: boolean;
   inspectMode?: boolean;
-  onElementSelect?: (elementInfo: any) => void;
+  onElementSelect?: (elementInfo: ElementInfo) => void;
 }
 
 export function HotReloadableIframe({
