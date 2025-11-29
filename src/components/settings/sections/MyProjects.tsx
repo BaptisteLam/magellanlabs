@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { FileCode, Globe, Trash2, Edit, Eye, Plus, Search } from 'lucide-react';
+import { FileCode, Globe, Trash2, Edit, Eye, Plus, Search, Smartphone } from 'lucide-react';
 import { useSettingsStore } from '@/stores/settingsStore';
 
 interface Project {
@@ -17,6 +17,7 @@ interface Project {
   created_at: string;
   type: 'website' | 'builder' | 'app';
   build_session_id?: string;
+  project_type?: string | null;
 }
 
 export function MyProjects() {
@@ -61,6 +62,7 @@ export function MyProjects() {
           status: 'draft' as const,
           created_at: s.created_at,
           type: 'builder' as const,
+          project_type: s.project_type,
         }));
 
       setProjects([...websites, ...sessions]);
@@ -193,9 +195,9 @@ export function MyProjects() {
                   />
                   {/* Icône du type de projet en haut à droite */}
                   <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1.5">
-                    {project.type === 'website' && <Globe className="w-4 h-4 text-[#03A5C0]" />}
-                    {project.type === 'app' && <FileCode className="w-4 h-4 text-[#03A5C0]" />}
-                    {project.type === 'builder' && <FileCode className="w-4 h-4 text-[#03A5C0]" />}
+                    {project.project_type === 'website' && <Globe className="w-4 h-4 text-[#03A5C0]" />}
+                    {project.project_type === 'webapp' && <FileCode className="w-4 h-4 text-[#03A5C0]" />}
+                    {project.project_type === 'mobile' && <Smartphone className="w-4 h-4 text-[#03A5C0]" />}
                   </div>
                 </div>
               )}
