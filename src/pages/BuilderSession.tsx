@@ -118,7 +118,7 @@ export default function BuilderSession() {
   
   // État pour gérer les événements de génération en temps réel
   const [generationEvents, setGenerationEvents] = useState<GenerationEvent[]>([]);
-  const [generationStartTime, setGenerationStartTime] = useState<number>(0);
+  const generationStartTimeRef = useRef<number>(0);
   const [currentVersionIndex, setCurrentVersionIndex] = useState<number | null>(null);
   
   // Flag pour savoir si on est en première génération
@@ -800,7 +800,7 @@ export default function BuilderSession() {
     // Réinitialiser les événements pour une nouvelle requête
     setAiEvents([]);
     setGenerationEvents([]);
-    setGenerationStartTime(Date.now());
+    generationStartTimeRef.current = Date.now();
     
     // 🔒 TOUJOURS activer le mode "génération en cours" pour bloquer la preview jusqu'à completion
     setIsInitialGeneration(true);
@@ -860,8 +860,8 @@ export default function BuilderSession() {
                       metadata: { 
                         ...msg.metadata, 
                         generation_events: [...(msg.metadata.generation_events || []), event],
-                        thought_duration: event.type === 'thought' ? Date.now() - generationStartTime : msg.metadata.thought_duration
-                      } 
+                        thought_duration: event.type === 'thought' ? Date.now() - generationStartTimeRef.current : msg.metadata.thought_duration
+                      }
                     }
                   : msg
               );
@@ -904,8 +904,8 @@ export default function BuilderSession() {
                       metadata: { 
                         ...msg.metadata, 
                         generation_events: [...(msg.metadata.generation_events || []), { type: 'complete' as const, message: 'Generation completed' }],
-                        thought_duration: Date.now() - generationStartTime
-                      } 
+                        thought_duration: Date.now() - generationStartTimeRef.current
+                      }
                     }
                   : msg
               );
@@ -1011,8 +1011,8 @@ export default function BuilderSession() {
           const newFiles = filesChangedList.filter(path => !projectFiles[path]);
           const modifiedFiles = filesChangedList.filter(path => projectFiles[path]);
           
-          // Calculer la durée de génération
-          const generationDuration = Date.now() - generationStartTime;
+          // Calculer la durée de génération en millisecondes
+          const generationDuration = Date.now() - generationStartTimeRef.current;
           
           // Générer le message d'intent
           const intentMessage = isInitialGenerationRef.current

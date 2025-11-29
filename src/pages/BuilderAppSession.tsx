@@ -136,8 +136,8 @@ export default function BuilderSession() {
   // Événements de génération pour l'affichage de pensée
   const [generationEvents, setGenerationEvents] = useState<GenerationEvent[]>([]);
   
-  // Temps de début de génération pour calculer la durée
-  const [generationStartTime, setGenerationStartTime] = useState<number>(0);
+  // Temps de début de génération pour calculer la durée (utilise ref pour éviter les problèmes de timing)
+  const generationStartTimeRef = useRef<number>(0);
   
   // Flag pour savoir si on est en première génération
   const [isInitialGeneration, setIsInitialGeneration] = useState(false);
@@ -753,7 +753,7 @@ export default function BuilderSession() {
     };
     
     setMessages(prev => [...prev, generationMessage]);
-    setGenerationStartTime(Date.now());
+    generationStartTimeRef.current = Date.now();
 
     // Préparer les fichiers pertinents
     const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
@@ -853,7 +853,7 @@ export default function BuilderSession() {
                       metadata: { 
                         ...msg.metadata, 
                         generation_events: [...(msg.metadata.generation_events || []), event],
-                        thought_duration: event.type === 'thought' ? Date.now() - generationStartTime : msg.metadata.thought_duration
+                        thought_duration: event.type === 'thought' ? Date.now() - generationStartTimeRef.current : msg.metadata.thought_duration
                       } 
                     }
                   : msg
@@ -1027,8 +1027,8 @@ export default function BuilderSession() {
             }
           }
 
-          // Calculer la durée totale de génération
-          const thoughtDuration = Date.now() - generationStartTime;
+          // Calculer la durée totale de génération en millisecondes
+          const thoughtDuration = Date.now() - generationStartTimeRef.current;
 
           // Mettre à jour le message de génération existant avec toutes les métadonnées finales
           setMessages(prev => {
