@@ -100,10 +100,32 @@ export function HotReloadableIframe({
               box-shadow: 0 2px 8px rgba(0,0,0,0.2);
               white-space: nowrap;
             }
+            .magellan-inspect-dashed {
+              outline: 1px dashed rgba(3, 165, 192, 0.3) !important;
+              outline-offset: 2px;
+            }
           \`;
           document.head.appendChild(style);
           console.log('✅ Styles d\\'inspection injectés');
         };
+        
+        function showAllOutlines() {
+          console.log('👁️ Affichage des outlines');
+          const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV','UL','LI'];
+          const elements = document.querySelectorAll(selectableTags.join(','));
+          console.log('📊 Éléments trouvés:', elements.length);
+          elements.forEach(el => {
+            if (el !== document.body && el !== document.documentElement) {
+              el.classList.add('magellan-inspect-dashed');
+            }
+          });
+        }
+        
+        function hideAllOutlines() {
+          document.querySelectorAll('.magellan-inspect-dashed').forEach(el => {
+            el.classList.remove('magellan-inspect-dashed');
+          });
+        }
         
         function init() {
           console.log('🎯 Init inspect mode listener');
@@ -126,6 +148,7 @@ export function HotReloadableIframe({
           console.log('✨ Activation du mode inspection');
           injectStyles();
           document.body.style.cursor = 'crosshair';
+          showAllOutlines();
           attachEventListeners();
         }
         
@@ -137,6 +160,7 @@ export function HotReloadableIframe({
             hoveredElement.removeAttribute('data-magellan-tag');
             hoveredElement = null;
           }
+          hideAllOutlines();
           detachEventListeners();
         }
         
