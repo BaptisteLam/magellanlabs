@@ -18,6 +18,8 @@ export function HotReloadableIframe({
 }: HotReloadableIframeProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [currentFile, setCurrentFile] = useState<string>('index.html');
+  const [navigationHistory, setNavigationHistory] = useState<string[]>(['index.html']);
+  const [navigationIndex, setNavigationIndex] = useState(0);
   const [iframeReady, setIframeReady] = useState(false);
   const [inspectReady, setInspectReady] = useState(false);
   const initialLoadRef = useRef(true);
@@ -201,6 +203,41 @@ export function HotReloadableIframe({
           document.addEventListener('click', clickHandler, true);
           console.log('✅ Event listeners attachés');
         }
+        
+        // Intercepter les clics sur liens pour navigation interne
+        document.addEventListener('click', function(e) {
+          const target = e.target.closest('a');
+          if (target && target.href && !isInspectMode) {
+            const href = target.getAttribute('href') || '';
+            
+            // Bloquer les liens externes
+            if (href.startsWith('http') || href.startsWith('//') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+              e.preventDefault();
+              e.stopPropagation();
+              alert('❌ Les liens externes sont bloqués dans la preview.');
+              return false;
+            }
+            
+            // Ancres (navigation dans la même page)
+            if (href.startsWith('#')) {
+              return true;
+            }
+            
+            // Navigation multi-pages interne
+            const pathname = href.replace(/^\//, '');
+            if (pathname && pathname !== '' && pathname !== '/') {
+              e.preventDefault();
+              e.stopPropagation();
+              
+              console.log('🔗 Navigation interne vers:', pathname);
+              window.parent.postMessage({
+                type: 'navigate',
+                file: pathname
+              }, '*');
+              return false;
+            }
+          }
+        }, true);
         
         function detachEventListeners() {
           console.log('🔌 Détachement des event listeners');
@@ -446,7 +483,7 @@ export function HotReloadableIframe({
     setTimeout(() => style.remove(), 400);
   };
 
-  // Écouter les messages de l'iframe pour l'inspection
+  // Écouter les messages de l'iframe pour l'inspection et navigation
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data.type === 'inspect-ready') {
@@ -455,12 +492,35 @@ export function HotReloadableIframe({
       } else if (event.data.type === 'element-selected' && onElementSelect) {
         console.log('📥 Element selected:', event.data.data);
         onElementSelect(event.data.data);
+      } else if (event.data.type === 'navigate') {
+        const filename = event.data.file;
+        console.log('🔗 Message de navigation reçu:', filename);
+        
+        // Vérifier si le fichier existe dans projectFiles
+        const fileExists = Object.keys(projectFiles).some(path => 
+          path === filename || path.endsWith('/' + filename)
+        );
+        
+        if (fileExists) {
+          // Ajouter à l'historique et naviguer
+          setNavigationHistory(prev => {
+            const newHistory = prev.slice(0, navigationIndex + 1);
+            return [...newHistory, filename];
+          });
+          setNavigationIndex(prev => prev + 1);
+          setCurrentFile(filename);
+          console.log('✅ Navigation vers:', filename);
+        } else {
+          // Afficher la page 404
+          console.log('❌ Fichier non trouvé:', filename);
+          setCurrentFile('__404__');
+        }
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onElementSelect]);
+  }, [onElementSelect, projectFiles, navigationIndex]);
 
   // Envoyer le toggle inspect mode à l'iframe
   useEffect(() => {
