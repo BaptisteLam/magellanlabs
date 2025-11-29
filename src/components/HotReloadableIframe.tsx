@@ -34,11 +34,6 @@ export function HotReloadableIframe({
       }
       lastReloadTimeRef.current = now;
 
-      if (initialLoadRef.current) {
-        initialLoadRef.current = false;
-        return;
-      }
-
       console.log('🔥 Hot Reload trigger:', type, file);
 
       if (!iframeRef.current?.contentWindow) return;
