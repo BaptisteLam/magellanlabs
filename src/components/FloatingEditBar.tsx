@@ -86,7 +86,7 @@ export function FloatingEditBar({ isOpen, onClose, elementInfo, onModify }: Floa
 
       {/* Barre d'édition simple */}
       <div
-        className="z-[9999] bg-background border border-border rounded-full shadow-2xl flex items-center px-4 py-2.5 gap-2"
+        className="z-[9999] bg-background border border-border rounded-full shadow-lg flex items-center px-3 py-2 gap-2"
         style={position}
       >
         <input
@@ -109,12 +109,12 @@ export function FloatingEditBar({ isOpen, onClose, elementInfo, onModify }: Floa
         <button
           onClick={handleSubmit}
           disabled={!prompt.trim()}
-          className="w-8 h-8 rounded-full p-0 transition-all hover:scale-105 disabled:opacity-50 border-0 flex items-center justify-center flex-shrink-0"
+          className="w-7 h-7 rounded-full p-0 transition-all hover:scale-105 disabled:opacity-50 border-0 flex items-center justify-center flex-shrink-0"
           style={{ 
             backgroundColor: '#03A5C0'
           }}
         >
-          <ArrowUp className="w-4 h-4 text-white" />
+          <ArrowUp className="w-3.5 h-3.5 text-white" />
         </button>
       </div>
     </>
