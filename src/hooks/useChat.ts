@@ -6,6 +6,7 @@ export interface Message {
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
   token_count?: number;
   id?: string;
+  created_at?: string;
   metadata?: {
     type?: 'intro' | 'recap';
     generation_events?: any[];
@@ -48,6 +49,7 @@ export function useChat(sessionId?: string) {
           content: msg.content,
           token_count: msg.token_count ?? undefined,
           id: msg.id,
+          created_at: msg.created_at,
           metadata: msg.metadata as any
         }));
         setMessages(loadedMessages);

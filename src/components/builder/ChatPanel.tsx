@@ -2,6 +2,8 @@ import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
 import type { Message } from '@/hooks/useChat';
 import type { GenerationEvent } from '@/types/agent';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface ChatPanelProps {
   messages: Message[];
@@ -38,6 +40,13 @@ export function ChatPanel({
     return index > currentVersionIndex;
   };
 
+  // Formater la date du message
+  const formatMessageDate = (created_at?: string) => {
+    if (!created_at) return '';
+    const date = new Date(created_at);
+    return format(date, "d MMM 'à' HH:mm", { locale: fr });
+  };
+
   return (
     <div className="h-full flex flex-col bg-background">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -55,8 +64,15 @@ export function ChatPanel({
               }`}
             >
               {msg.role === 'user' ? (
-                <div className="inline-block max-w-[80%] bg-primary text-primary-foreground rounded-lg px-4 py-2">
-                  {typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}
+                <div className="space-y-1">
+                  {msg.created_at && (
+                    <div className="text-center text-xs text-muted-foreground">
+                      {formatMessageDate(msg.created_at)}
+                    </div>
+                  )}
+                  <div className="inline-block max-w-[80%] bg-primary text-primary-foreground rounded-lg px-4 py-2">
+                    {typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}
+                  </div>
                 </div>
               ) : (
                 <div className="inline-block max-w-[90%] space-y-2">
