@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { HotReloadableIframe } from './HotReloadableIframe';
 import { VisualEditToolbar } from './VisualEditToolbar';
+import { type ElementInfo } from './InspectOverlay';
 
 interface InteractivePreviewProps {
   projectFiles: Record<string, string>;
@@ -10,22 +11,7 @@ interface InteractivePreviewProps {
   onInspectModeChange: (mode: boolean) => void;
 }
 
-export interface ElementInfo {
-  tagName: string;
-  textContent: string;
-  classList: string[];
-  path: string;
-  innerHTML: string;
-  id?: string;
-  boundingRect?: {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-    bottom: number;
-    right: number;
-  };
-}
+export type { ElementInfo };
 
 export function InteractivePreview({ projectFiles, isDark = false, onElementModify, inspectMode, onInspectModeChange }: InteractivePreviewProps) {
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);

@@ -14,23 +14,7 @@ import { FileTree } from "@/components/FileTree";
 import { SandpackInteractivePreview } from "@/components/SandpackInteractivePreview";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
 import { VisualEditToolbar } from "@/components/VisualEditToolbar";
-
-export interface ElementInfo {
-  tagName: string;
-  textContent: string;
-  classList: string[];
-  path: string;
-  innerHTML: string;
-  id?: string;
-  boundingRect: {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-    bottom: number;
-    right: number;
-  };
-}
+import { type ElementInfo } from "@/components/InspectOverlay";
 import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
 import { FileTabs } from "@/components/CodeEditor/FileTabs";
