@@ -95,7 +95,7 @@ export function MessageActions({
             >
               <Coins className="h-2 w-2" style={{ color: '#03A5C0' }} />
               <span className="text-xs" style={{ color: '#03A5C0', fontSize: '10px' }}>
-                {tokenCount || 0}
+                {tokenCount ? tokenCount >= 1000 ? `${Math.round(tokenCount / 1000)}k` : tokenCount : '0'}
               </span>
             </Button>
           </TooltipTrigger>

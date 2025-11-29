@@ -1086,6 +1086,34 @@ export default function BuilderSession() {
               }
             ];
           });
+
+          // 💰 Décompter les tokens du profil utilisateur
+          if (user?.id && usedTokens.total > 0) {
+            console.log('💰 Mise à jour des tokens utilisés:', usedTokens.total);
+            
+            // Récupérer les tokens actuels
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('tokens_used')
+              .eq('id', user.id)
+              .single();
+            
+            if (profile) {
+              const newTokensUsed = (profile.tokens_used || 0) + usedTokens.total;
+              
+              // Mettre à jour le profil avec les nouveaux tokens
+              await supabase
+                .from('profiles')
+                .update({ 
+                  tokens_used: newTokensUsed,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', user.id);
+              
+              console.log('✅ Tokens mis à jour:', newTokensUsed);
+            }
+          }
+          
           
           // Sauvegarder automatiquement le projet avec le nom généré
           if (websiteTitle && websiteTitle !== 'Sans titre') {
