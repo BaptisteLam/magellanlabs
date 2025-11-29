@@ -626,6 +626,29 @@ export function HotReloadableIframe({
     // Les changements suivants sont gérés exclusivement par useHotReload
   }, []); // Dépendances vides = exécuté uniquement au premier mount
 
+  // Recharger l'iframe quand currentFile change (navigation entre pages ou affichage 404)
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || initialLoadRef.current) return; // Skip lors du premier mount
+    
+    console.log('🔄 Rechargement iframe pour nouvelle page:', currentFile);
+    
+    // Sauvegarder l'état de scroll si c'est une navigation normale
+    const scrollX = iframe.contentWindow?.scrollX || 0;
+    const scrollY = iframe.contentWindow?.scrollY || 0;
+    
+    // Recharger avec le nouveau contenu
+    iframe.srcdoc = generatedHTML;
+    
+    iframe.onload = () => {
+      // Ne restaurer le scroll que si ce n'est pas la page 404
+      if (currentFile !== '__404__' && iframe.contentWindow) {
+        iframe.contentWindow.scrollTo(scrollX, scrollY);
+      }
+      setIframeReady(true);
+    };
+  }, [currentFile, generatedHTML]);
+
   return (
     <>
       <HotReloadIndicator isUpdating={isUpdating} updateType={lastUpdateType} />
