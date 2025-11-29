@@ -89,6 +89,46 @@ function SandpackController({ inspectMode, onElementSelect }: { inspectMode: boo
             }
           }
         });
+        
+        // Block external navigation attempts
+        window.addEventListener('beforeunload', function(e) {
+          console.log('🚫 Tentative de navigation externe bloquée');
+          e.preventDefault();
+          e.returnValue = '';
+          return '';
+        });
+
+        // Intercept link clicks to prevent navigation outside preview
+        document.addEventListener('click', function(e) {
+          const target = e.target.closest('a');
+          if (target && target.href) {
+            const href = target.getAttribute('href') || '';
+            
+            // Block external links
+            if (href.startsWith('http') || href.startsWith('//') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+              e.preventDefault();
+              e.stopPropagation();
+              alert('❌ Les liens externes sont bloqués dans la preview.');
+              return false;
+            }
+            
+            // CRITICAL: Block ANY link to /builder
+            if (href.includes('/builder') || href.includes('builder')) {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('🚫 Navigation vers /builder bloquée');
+              return false;
+            }
+            
+            // Allow anchor links (same page navigation)
+            if (href.startsWith('#')) {
+              return true;
+            }
+            
+            // For internal React Router links, let Sandpack handle but log
+            console.log('🔗 Navigation interne:', href);
+          }
+        }, true);
       }
       
       function activateInspection() {
