@@ -1,0 +1,16 @@
+name = "magellan-sites-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[env.production]
+name = "magellan-sites-worker"
+
+[[kv_namespaces]]
+binding = "SITES_KV"
+id = "YOUR_KV_NAMESPACE_ID"  # À remplacer par l'ID du namespace KV créé dans Cloudflare
+
+# Routes pour gérer *.builtbymagellan.com
+# Alternative: configurer directement dans le dashboard Cloudflare
+# routes = [
+#   { pattern = "*.builtbymagellan.com/*", zone_name = "builtbymagellan.com" }
+# ]

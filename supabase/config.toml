@@ -1,5 +1,8 @@
 project_id = "mtmroennrczdcaasrilw"
 
+[functions.publish-to-kv]
+verify_jwt = true
+
 [functions.generate-embeddings]
 verify_jwt = true
 
