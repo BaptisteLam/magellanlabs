@@ -49,6 +49,8 @@ interface Message {
   };
 }
 
+import { IndexedDBCache } from '@/services/indexedDBCache';
+
 export default function BuilderSession() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
@@ -147,8 +149,26 @@ export default function BuilderSession() {
   };
 
 
+  // Charger la session depuis le cache puis Supabase
   useEffect(() => {
-    loadSession();
+    const loadSessionWithCache = async () => {
+      if (!sessionId) return;
+      
+      setSessionLoading(true);
+      
+      // 1. Charger d'abord depuis le cache IndexedDB (instantané)
+      const cachedProject = await IndexedDBCache.getProject(sessionId);
+      if (cachedProject?.projectFiles && Object.keys(cachedProject.projectFiles).length > 0) {
+        console.log('📦 Loaded from IndexedDB cache:', Object.keys(cachedProject.projectFiles).length, 'files');
+        updateFiles(cachedProject.projectFiles, false); // Ne pas trigger de save
+      }
+      
+      // 2. Charger depuis Supabase en arrière-plan (pour sync)
+      await loadSession();
+      setSessionLoading(false);
+    };
+    
+    loadSessionWithCache();
     checkAuth();
   }, [sessionId]);
 

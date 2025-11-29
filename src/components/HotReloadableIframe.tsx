@@ -133,14 +133,54 @@ export function HotReloadableIframe({
     flashChangedElements(iframe.contentWindow.document);
   };
 
-  // Hot reload HTML (mise à jour différentielle)
+  // Hot reload HTML avec DOM diffing basique
   const hotReloadHTML = () => {
     const iframe = iframeRef.current;
     if (!iframe?.contentWindow?.document) return;
 
-    // Pour HTML, on recharge complètement car la mise à jour différentielle
-    // du DOM est complexe et peut casser des event listeners
-    fullReload();
+    try {
+      // Sauvegarder l'état actuel
+      const scrollX = iframe.contentWindow.scrollX;
+      const scrollY = iframe.contentWindow.scrollY;
+      const formData = new Map<string, string>();
+      
+      // Sauvegarder les valeurs des formulaires
+      iframe.contentWindow.document.querySelectorAll('input, textarea, select').forEach((el: any) => {
+        if (el.name || el.id) {
+          const key = el.name || el.id;
+          formData.set(key, el.value);
+        }
+      });
+
+      // Parser le nouveau HTML
+      const parser = new DOMParser();
+      const newDoc = parser.parseFromString(generatedHTML, 'text/html');
+      
+      // Mettre à jour le body uniquement (préserve head et scripts)
+      if (iframe.contentWindow.document.body && newDoc.body) {
+        // Simple DOM replacement pour éviter la complexité du diffing complet
+        iframe.contentWindow.document.body.innerHTML = newDoc.body.innerHTML;
+        
+        // Restaurer les valeurs des formulaires
+        iframe.contentWindow.document.querySelectorAll('input, textarea, select').forEach((el: any) => {
+          const key = el.name || el.id;
+          if (key && formData.has(key)) {
+            el.value = formData.get(key);
+          }
+        });
+        
+        // Restaurer la position de scroll
+        iframe.contentWindow.scrollTo(scrollX, scrollY);
+        
+        console.log('📄 HTML mis à jour avec préservation de l\'état');
+      } else {
+        // Fallback si le DOM est trop différent
+        fullReload();
+      }
+    } catch (error) {
+      console.error('HTML hot reload error, falling back to full reload:', error);
+      fullReload();
+    }
   };
 
   // Rechargement complet
