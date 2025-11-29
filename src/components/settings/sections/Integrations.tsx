@@ -1,14 +1,16 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Database, Github, Figma } from 'lucide-react';
+import { Github, Figma } from 'lucide-react';
+import supabaseIcon from '@/assets/supabase-icon.webp';
 
 const integrations = [
   {
     id: 'supabase',
     name: 'Supabase',
     description: 'Base de données PostgreSQL pour vos projets IA',
-    icon: Database,
+    icon: 'custom',
+    customIcon: supabaseIcon,
     color: '#3ECF8E',
     connected: false,
   },
@@ -40,7 +42,7 @@ export function Integrations() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {integrations.map((integration) => {
-          const Icon = integration.icon;
+          const Icon = integration.icon !== 'custom' ? integration.icon : null;
           return (
             <Card key={integration.id} className="rounded-[8px]">
               <CardHeader>
@@ -50,7 +52,11 @@ export function Integrations() {
                       className="p-2 rounded-[8px]"
                       style={{ backgroundColor: `${integration.color}20` }}
                     >
-                      <Icon className="h-6 w-6" style={{ color: integration.color }} />
+                      {integration.icon === 'custom' && integration.customIcon ? (
+                        <img src={integration.customIcon} alt={integration.name} className="h-6 w-6" />
+                      ) : Icon ? (
+                        <Icon className="h-6 w-6" style={{ color: integration.color }} />
+                      ) : null}
                     </div>
                     <div>
                       <CardTitle>{integration.name}</CardTitle>
