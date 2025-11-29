@@ -21,10 +21,19 @@ export function HotReloadableIframe({
   const [iframeReady, setIframeReady] = useState(false);
   const [inspectReady, setInspectReady] = useState(false);
   const initialLoadRef = useRef(true);
+  const lastReloadTimeRef = useRef(0);
 
   // Hook de Hot Reload
   const { isUpdating, lastUpdateType } = useHotReload(projectFiles, {
     onUpdate: (type, file) => {
+      // Éviter les reloads trop fréquents (debounce 100ms)
+      const now = Date.now();
+      if (now - lastReloadTimeRef.current < 100) {
+        console.log('⏭️ Hot reload ignoré (debounce)');
+        return;
+      }
+      lastReloadTimeRef.current = now;
+
       if (initialLoadRef.current) {
         initialLoadRef.current = false;
         return;
@@ -245,7 +254,7 @@ export function HotReloadableIframe({
     </script>
   `;
 
-  // Générer le HTML complet
+  // Générer le HTML complet - stabilisé pour éviter re-génération inutile
   const generatedHTML = useMemo(() => {
     if (currentFile === '__404__') {
       return generate404Page(isDark);
@@ -295,7 +304,13 @@ export function HotReloadableIframe({
       .replace('</body>', `<script id="__hot_js__">${jsFiles}</script></body>`);
 
     return processedHTML;
-  }, [projectFiles, currentFile, isDark]);
+  }, [
+    // Dépendances stables basées sur le contenu réel
+    JSON.stringify(Object.keys(projectFiles).sort()),
+    ...Object.values(projectFiles),
+    currentFile,
+    isDark
+  ]);
 
   // Hot reload CSS uniquement
   const hotReloadCSS = () => {
@@ -442,22 +457,22 @@ export function HotReloadableIframe({
     );
   }, [inspectMode, inspectReady]);
 
-  // Charger l'iframe initialement et lors des changements
+  // Charger l'iframe uniquement au premier mount
   useEffect(() => {
     const iframe = iframeRef.current;
-    if (!iframe) return;
+    if (!iframe || !initialLoadRef.current) return;
 
-    // Première fois : chargement initial
-    if (initialLoadRef.current) {
-      iframe.srcdoc = generatedHTML;
-      iframe.onload = () => {
-        setIframeReady(true);
-        setInspectReady(false); // Reset inspect ready on reload
-        initialLoadRef.current = false;
-      };
-    }
-    // Les changements suivants sont gérés par useHotReload
-  }, [generatedHTML]); // Dépend de generatedHTML pour détecter les changements
+    // Première fois : chargement initial uniquement
+    iframe.srcdoc = generatedHTML;
+    iframe.onload = () => {
+      setIframeReady(true);
+      setInspectReady(false);
+      initialLoadRef.current = false;
+    };
+    
+    // Ne pas re-exécuter ce useEffect après le premier mount
+    // Les changements suivants sont gérés exclusivement par useHotReload
+  }, []); // Dépendances vides = exécuté uniquement au premier mount
 
   return (
     <>
