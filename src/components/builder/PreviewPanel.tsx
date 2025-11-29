@@ -25,7 +25,11 @@ export function PreviewPanel({
   onInspectModeChange = () => {},
   onElementModify
 }: PreviewPanelProps) {
-  if (isGenerating && Object.keys(projectFiles).length === 0) {
+  // Afficher GeneratingPreview seulement si génération ET pas encore de fichiers
+  // Dès qu'on a des fichiers, on affiche la preview même si isGenerating est encore true
+  const shouldShowLoading = isGenerating && Object.keys(projectFiles).length === 0;
+  
+  if (shouldShowLoading) {
     return <GeneratingPreview />;
   }
 
