@@ -1978,6 +1978,7 @@ export default function BuilderSession() {
                       isLatestMessage={idx === messages.length - 1}
                       isDark={isDark}
                       isLoading={idx === messages.length - 1 && agent.isLoading}
+                      generationStartTime={idx === messages.length - 1 && agent.isLoading ? generationStartTimeRef.current : undefined}
                       onRestore={async (messageIdx) => {
                         const targetMessage = messages[messageIdx];
                         if (!targetMessage.id || !sessionId) return;

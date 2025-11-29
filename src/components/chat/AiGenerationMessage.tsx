@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { Lightbulb } from "lucide-react";
 import { CollapsedAiTasks } from "./CollapsedAiTasks";
+import { LoadingProgress } from "./LoadingProgress";
 import { MessageActions } from "./MessageActions";
 import { GenerationEvent } from "@/types/agent";
 
@@ -27,6 +29,7 @@ interface AiGenerationMessageProps {
   isLatestMessage: boolean;
   isDark: boolean;
   isLoading?: boolean;
+  generationStartTime?: number;
   onRestore: (messageIdx: number) => Promise<void>;
   onGoToPrevious: () => Promise<void>;
 }
@@ -37,6 +40,7 @@ export default function AiGenerationMessage({
   isLatestMessage,
   isDark,
   isLoading = false,
+  generationStartTime,
   onRestore,
   onGoToPrevious,
 }: AiGenerationMessageProps) {
@@ -60,6 +64,34 @@ export default function AiGenerationMessage({
     ? message.content 
     : '';
 
+  // Trouver le fichier en cours de modification
+  const currentFile = useMemo(() => {
+    const inProgressEvents = generation_events.filter(e => e.status === 'in-progress');
+    const lastInProgress = inProgressEvents[inProgressEvents.length - 1];
+    return lastInProgress?.file || null;
+  }, [generation_events]);
+
+  // Calculer la progression
+  const progress = useMemo(() => {
+    if (!isLoading) return 100;
+    const totalEvents = Math.max(generation_events.length, 5);
+    const completedEvents = generation_events.filter(e => e.status === 'completed').length;
+    if (completedEvents === 0) return 5;
+    return Math.min(5 + (completedEvents / totalEvents) * 90, 95);
+  }, [generation_events, isLoading]);
+
+  // Générer un message de résumé court
+  const shortSummary = useMemo(() => {
+    if (files_created && files_modified) {
+      return `Created ${files_created} file${files_created > 1 ? 's' : ''} and modified ${files_modified} file${files_modified > 1 ? 's' : ''}.`;
+    } else if (files_created) {
+      return `Created ${files_created} new file${files_created > 1 ? 's' : ''}.`;
+    } else if (files_modified) {
+      return `Modified ${files_modified} file${files_modified > 1 ? 's' : ''}.`;
+    }
+    return 'Changes applied successfully.';
+  }, [files_created, files_modified]);
+
   return (
     <div className="space-y-3">
       {/* 1. Thought for Xs + Intent message */}
@@ -76,7 +108,18 @@ export default function AiGenerationMessage({
         </p>
       )}
 
-      {/* 2. CollapsedAiTasks - Auto-collapse à la fin de la génération avec bouton "voir plus" */}
+      {/* 2. Barre de chargement - Reste indéfiniment avec bouton "show all" discret */}
+      <LoadingProgress
+        isLoading={isLoading}
+        isDark={isDark}
+        startTime={generationStartTime}
+        currentFile={currentFile}
+        progress={progress}
+        completedSteps={generation_events.filter(e => e.status === 'completed').length}
+        totalSteps={generation_events.length}
+      />
+
+      {/* 3. CollapsedAiTasks - Reste indéfiniment avec bouton "show all" discret */}
       {generation_events.length > 0 && (
         <CollapsedAiTasks 
           events={generation_events}
@@ -89,12 +132,14 @@ export default function AiGenerationMessage({
         />
       )}
 
-      {/* 3. Short conclusion message */}
-      <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-        {contentString}
-      </p>
+      {/* 4. Message de résumé court (uniquement après génération) */}
+      {!isLoading && (
+        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          {shortSummary}
+        </p>
+      )}
 
-      {/* 4. Action buttons */}
+      {/* 5. Action buttons */}
       {!isLoading && (
         <MessageActions
           content={contentString}
