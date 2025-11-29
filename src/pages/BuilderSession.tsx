@@ -310,10 +310,10 @@ export default function BuilderSession() {
           const projectFilesData = data.project_files as any;
           console.log('📦 Raw project_files data type:', typeof projectFilesData, Array.isArray(projectFilesData) ? `(array, ${projectFilesData.length} items)` : '');
           
-          if (projectFilesData) {
+            if (projectFilesData) {
             let filesMap: Record<string, string> = {};
             
-            // Support des deux formats: array ET object
+            // 🔧 Support de 3 formats: array, object direct, ou object-qui-était-un-array
             if (Array.isArray(projectFilesData) && projectFilesData.length > 0) {
               // Format array: [{path, content}, ...]
               console.log('📦 Loading project files (array format):', projectFilesData.length, 'files');
@@ -326,24 +326,41 @@ export default function BuilderSession() {
                 }
               });
             } else if (typeof projectFilesData === 'object' && Object.keys(projectFilesData).length > 0) {
-              // Format object: {path: content, ...}
-              console.log('📦 Loading project files (object format):', Object.keys(projectFilesData).length, 'files');
-              filesMap = projectFilesData;
-              Object.entries(filesMap).forEach(([path, content], index) => {
-                console.log(`  ✅ [${index + 1}/${Object.keys(filesMap).length}] ${path} : ${content.length} chars`);
-              });
+              // Détecter si c'est un objet-qui-était-un-array: clés numériques avec {path, content}
+              const firstKey = Object.keys(projectFilesData)[0];
+              const firstValue = projectFilesData[firstKey];
+              
+              if (/^\d+$/.test(firstKey) && typeof firstValue === 'object' && firstValue.path && firstValue.content) {
+                // Format object-array corrompu: {"0": {path, content}, "1": {...}}
+                console.log('📦 Loading project files (corrupted array-as-object format):', Object.keys(projectFilesData).length, 'files');
+                Object.values(projectFilesData).forEach((file: any, index: number) => {
+                  if (file.path && file.content) {
+                    filesMap[file.path] = file.content;
+                    console.log(`  ✅ [${index + 1}] ${file.path} : ${file.content.length} chars`);
+                  } else {
+                    console.warn(`  ⚠️ [${index + 1}] Invalid file structure:`, { hasPath: !!file.path, hasContent: !!file.content });
+                  }
+                });
+              } else {
+                // Format object standard: {path: content, ...}
+                console.log('📦 Loading project files (object format):', Object.keys(projectFilesData).length, 'files');
+                filesMap = projectFilesData;
+                Object.entries(filesMap).forEach(([path, content], index) => {
+                  console.log(`  ✅ [${index + 1}/${Object.keys(filesMap).length}] ${path} : ${typeof content === 'string' ? content.length : 0} chars`);
+                });
+              }
             }
             
-            // 🔍 Validation: S'assurer que les clés sont des noms de fichiers valides
+            // 🔍 Validation finale des noms de fichiers
             const validatedFilesMap: Record<string, string> = {};
             let hasInvalidKeys = false;
             
             Object.entries(filesMap).forEach(([key, value]) => {
-              // Vérifier que la clé est un nom de fichier valide (pas juste un chiffre)
-              if (typeof key === 'string' && key.includes('.') && !(/^\d+$/.test(key))) {
+              // Vérifier que la clé est un nom de fichier valide ET que la valeur est une string
+              if (typeof key === 'string' && key.includes('.') && !(/^\d+$/.test(key)) && typeof value === 'string') {
                 validatedFilesMap[key] = value;
               } else {
-                console.warn('⚠️ Invalid file key detected and skipped:', key);
+                console.warn('⚠️ Invalid file entry detected and skipped:', { key, valueType: typeof value });
                 hasInvalidKeys = true;
               }
             });
@@ -438,14 +455,9 @@ export default function BuilderSession() {
     if (!sessionId) return;
 
     try {
-      // Convertir projectFiles en array de ProjectFile
-      const filesArray = Object.entries(projectFiles).map(([path, content]) => ({
-        path,
-        content,
-        type: path.endsWith('.html') ? 'html' : 
-              path.endsWith('.css') ? 'stylesheet' : 
-              path.endsWith('.js') ? 'javascript' : 'text'
-      }));
+      // 🔧 CORRECTION: Sauvegarder directement en format object {path: content}
+      // au lieu d'array pour éviter la corruption par PostgreSQL
+      const filesObject = { ...projectFiles };
 
       // Récupérer le thumbnail existant
       const { data: existingSession } = await supabase
@@ -457,7 +469,7 @@ export default function BuilderSession() {
       const { error } = await supabase
         .from('build_sessions')
         .update({
-          project_files: filesArray,
+          project_files: filesObject,
           messages: messages as any,
           title: websiteTitle,
           project_type: projectType,
@@ -536,14 +548,14 @@ export default function BuilderSession() {
   };
 
   // Fonction auxiliaire pour sauvegarder avec un titre spécifique
-  const saveSessionWithTitle = async (title: string, filesArray: any[], messagesArray: any[]) => {
+  const saveSessionWithTitle = async (title: string, filesObject: Record<string, string>, messagesArray: any[]) => {
     if (!sessionId) return;
 
     try {
       const { error } = await supabase
         .from('build_sessions')
         .update({
-          project_files: filesArray,
+          project_files: filesObject,
           messages: messagesArray as any,
           title: title,
           project_type: projectType,
@@ -972,15 +984,6 @@ export default function BuilderSession() {
           // ✅ VALIDATION RÉUSSIE
           console.log('✅ Validation réussie - Préparation de la sauvegarde');
           setGenerationEvents(prev => [...prev, { type: 'complete', message: 'All files generated successfully' }]);
-          
-          // Sauvegarder les fichiers
-          const filesArray = Object.entries(updatedFiles).map(([path, content]) => ({
-            path,
-            content,
-            type: path.endsWith('.html') ? 'html' : 
-                  path.endsWith('.css') ? 'stylesheet' : 
-                  path.endsWith('.js') ? 'javascript' : 'text'
-          }));
 
           // Créer les messages pour la conversation
           const filesChangedList = Object.keys(updatedFiles);
@@ -1087,23 +1090,14 @@ export default function BuilderSession() {
           // Sauvegarder automatiquement le projet avec le nom généré
           if (websiteTitle && websiteTitle !== 'Sans titre') {
             console.log('💾 Sauvegarde automatique du projet:', websiteTitle);
-            await saveSessionWithTitle(websiteTitle, filesArray, messages);
+            await saveSessionWithTitle(websiteTitle, updatedFiles, messages);
           }
 
-          // Convertir en array pour cohérence avec saveSessionWithTitle
-          const projectFilesArray = Object.entries(updatedFiles).map(([path, content]) => ({
-            path,
-            content,
-            type: path.endsWith('.html') ? 'html' : 
-                  path.endsWith('.css') ? 'stylesheet' : 
-                  path.endsWith('.js') ? 'javascript' : 'text'
-          }));
-
-          // Mettre à jour build_sessions avec format array
+          // Mettre à jour build_sessions avec format object
           await supabase
             .from('build_sessions')
             .update({
-              project_files: projectFilesArray,
+              project_files: updatedFiles,
               updated_at: new Date().toISOString()
             })
             .eq('id', sessionId);
@@ -1213,18 +1207,10 @@ export default function BuilderSession() {
           }
           
           // Sauvegarder
-          const filesArray = Object.entries(updatedFiles).map(([path, content]) => ({
-            path,
-            content,
-            type: path.endsWith('.html') ? 'html' : 
-                  path.endsWith('.css') ? 'stylesheet' : 
-                  path.endsWith('.js') ? 'javascript' : 'text'
-          }));
-          
           await supabase
             .from('build_sessions')
             .update({
-              project_files: filesArray,
+              project_files: updatedFiles,
               updated_at: new Date().toISOString()
             })
             .eq('id', sessionId!);
