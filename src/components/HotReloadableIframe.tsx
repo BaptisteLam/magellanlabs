@@ -265,19 +265,25 @@ export function HotReloadableIframe({
               return true;
             }
             
-            // Navigation multi-pages interne
-            const pathname = href.replace(/^\//, '');
-            if (pathname && pathname !== '' && pathname !== '/') {
-              e.preventDefault();
-              e.stopPropagation();
-              
-              console.log('🔗 Navigation interne vers:', pathname);
-              window.parent.postMessage({
-                type: 'navigate',
-                file: pathname
-              }, '*');
-              return false;
+            // TOUJOURS bloquer la navigation par défaut pour les liens internes
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Calculer le fichier cible
+            let targetFile = href.replace(/^\/+/, ''); // Enlever les slashes au début
+            
+            // Si vide ou "/", naviguer vers index.html
+            if (!targetFile || targetFile === '' || targetFile === '/') {
+              targetFile = 'index.html';
             }
+            
+            console.log('🔗 Navigation interne vers:', targetFile);
+            window.parent.postMessage({
+              type: 'navigate',
+              file: targetFile
+            }, '*');
+            
+            return false;
           }
         }, true);
         
@@ -350,6 +356,14 @@ export function HotReloadableIframe({
           console.log('🔄 Re-sending inspect-ready on window.load');
           window.parent.postMessage({ type: 'inspect-ready' }, '*');
         });
+        
+        // Bloquer toute tentative de navigation externe
+        window.addEventListener('beforeunload', function(e) {
+          console.log('🚫 Tentative de navigation externe bloquée');
+          e.preventDefault();
+          e.returnValue = '';
+          return '';
+        });
       })();
     </script>
   `;
@@ -357,7 +371,9 @@ export function HotReloadableIframe({
   // Générer le HTML complet - stabilisé pour éviter re-génération inutile
   const generatedHTML = useMemo(() => {
     if (currentFile === '__404__') {
-      return generate404Page(isDark);
+      // Injecter le script d'inspection dans la page 404 aussi
+      const page404 = generate404Page(isDark);
+      return page404.replace(/<\/head\s*>/i, `${inspectionScript}</head>`);
     }
 
     if (!projectFiles || Object.keys(projectFiles).length === 0) {
@@ -410,11 +426,11 @@ export function HotReloadableIframe({
 </html>`;
     }
 
-    // Injecter le script d'inspection, CSS et JS dans le HTML
+    // Injecter le script d'inspection, CSS et JS dans le HTML (insensible à la casse)
     // On injecte le script d'inspection en premier dans le head pour qu'il soit toujours actif
     const processedHTML = htmlContent
-      .replace('</head>', `<style id="__hot_css__">${cssFiles}</style>${inspectionScript}</head>`)
-      .replace('</body>', `<script id="__hot_js__">${jsFiles}</script></body>`);
+      .replace(/<\/head\s*>/i, `<style id="__hot_css__">${cssFiles}</style>${inspectionScript}</head>`)
+      .replace(/<\/body\s*>/i, `<script id="__hot_js__">${jsFiles}</script></body>`);
 
     return processedHTML;
   }, [
