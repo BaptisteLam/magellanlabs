@@ -53,18 +53,20 @@ Deno.serve(async (req) => {
 
     const cloudflareApiToken = Deno.env.get('CLOUDFLARE_API_TOKEN');
     const cloudflareAccountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
+    const cloudflareEmail = Deno.env.get('CLOUDFLARE_EMAIL');
 
     console.log('🔍 Cloudflare credentials check:', {
       hasToken: !!cloudflareApiToken,
       tokenLength: cloudflareApiToken?.length || 0,
+      hasEmail: !!cloudflareEmail,
       accountId: cloudflareAccountId,
       projectName
     });
 
-    if (!cloudflareApiToken || !cloudflareAccountId) {
+    if (!cloudflareApiToken || !cloudflareAccountId || !cloudflareEmail) {
       console.error('❌ Missing Cloudflare credentials');
       return new Response(
-        JSON.stringify({ error: 'Server configuration error: Missing Cloudflare credentials' }),
+        JSON.stringify({ error: 'Server configuration error: Missing Cloudflare credentials (API Key, Account ID, or Email)' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -95,7 +97,8 @@ Deno.serve(async (req) => {
     const deployResponse = await fetch(workerUrl, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${cloudflareApiToken}`,
+        'X-Auth-Email': cloudflareEmail,
+        'X-Auth-Key': cloudflareApiToken,
       },
       body: formData,
     });
