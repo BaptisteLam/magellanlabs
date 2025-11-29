@@ -31,14 +31,14 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
-  // Normaliser les fichiers
+  // Normaliser les fichiers avec stabilisation pour éviter les re-renders inutiles
   const normalizedFiles = useMemo(() => {
     const normalized: Record<string, string> = {};
     Object.entries(projectFiles).forEach(([path, content]) => {
       normalized[path] = content;
     });
     return normalized;
-  }, [projectFiles]);
+  }, [JSON.stringify(Object.keys(projectFiles).sort()), ...Object.values(projectFiles)]);
 
   // Gérer la sélection d'élément
   const handleElementSelect = (elementInfo: ElementInfo) => {

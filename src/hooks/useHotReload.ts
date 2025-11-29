@@ -17,8 +17,22 @@ export function useHotReload(
   const previousFilesRef = useRef<Record<string, string>>({});
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastUpdateType, setLastUpdateType] = useState<'css' | 'html' | 'full' | null>(null);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
+    // Skip initial mount to avoid unnecessary reload
+    if (isInitialMount.current) {
+      previousFilesRef.current = { ...projectFiles };
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Skip if previous files is empty (first load)
+    if (Object.keys(previousFilesRef.current).length === 0) {
+      previousFilesRef.current = { ...projectFiles };
+      return;
+    }
+
     const detectChanges = (): FileChange[] => {
       const changes: FileChange[] = [];
       const currentFiles = projectFiles;
