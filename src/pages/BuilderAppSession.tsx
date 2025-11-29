@@ -11,8 +11,26 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
-import { Sandpack } from "@codesandbox/sandpack-react";
+import { SandpackInteractivePreview } from "@/components/SandpackInteractivePreview";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
+import { VisualEditToolbar } from "@/components/VisualEditToolbar";
+
+export interface ElementInfo {
+  tagName: string;
+  textContent: string;
+  classList: string[];
+  path: string;
+  innerHTML: string;
+  id?: string;
+  boundingRect: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    bottom: number;
+    right: number;
+  };
+}
 import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
 import { FileTabs } from "@/components/CodeEditor/FileTabs";
@@ -130,6 +148,8 @@ export default function BuilderSession() {
   
   // Mode Inspect pour la preview interactive
   const [inspectMode, setInspectMode] = useState(false);
+  const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
+  const [showEditToolbar, setShowEditToolbar] = useState(false);
   
   // Mode d'affichage de la preview (desktop/mobile)
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
@@ -2284,23 +2304,37 @@ export default function BuilderSession() {
                           onTitleChange={setWebsiteTitle}
                           cloudflareProjectName={cloudflareProjectName || undefined}
                         />
-                        <div className="w-full h-full">
-                          <Sandpack
-                            key={`sandpack-${Object.keys(projectFiles).length}`}
-                            theme={isDark ? "dark" : "light"}
-                            template="react-ts"
+                        <div className="w-full h-full relative">
+                          <SandpackInteractivePreview
                             files={Object.fromEntries(
                               Object.entries(projectFiles).map(([path, content]) => [
                                 path.startsWith('/') ? path : `/${path}`,
-                                { code: content }
+                                content
                               ])
                             )}
-                            options={{
-                              showNavigator: false,
-                              showTabs: false,
-                              showLineNumbers: true,
-                              editorHeight: "100%",
-                              editorWidthPercentage: 0,
+                            isDark={isDark}
+                            inspectMode={inspectMode}
+                            onElementSelect={(elementInfo) => {
+                              console.log('📥 Element sélectionné dans BuilderAppSession:', elementInfo);
+                              setSelectedElement(elementInfo);
+                              setShowEditToolbar(true);
+                            }}
+                          />
+                          <VisualEditToolbar
+                            isOpen={showEditToolbar}
+                            onClose={() => {
+                              setShowEditToolbar(false);
+                              setSelectedElement(null);
+                            }}
+                            elementInfo={selectedElement}
+                            onModify={async (prompt) => {
+                              console.log('🔧 Modification demandée:', prompt);
+                              // Envoyer le prompt de modification via le chat
+                              if (prompt.trim()) {
+                                await handleFullGeneration(prompt);
+                              }
+                              setShowEditToolbar(false);
+                              setSelectedElement(null);
                             }}
                           />
                         </div>
@@ -2331,23 +2365,37 @@ export default function BuilderSession() {
                           onTitleChange={setWebsiteTitle}
                           cloudflareProjectName={cloudflareProjectName || undefined}
                         />
-                        <div className="w-full h-full">
-                          <Sandpack
-                            key={`sandpack-${Object.keys(projectFiles).length}`}
-                            theme={isDark ? "dark" : "light"}
-                            template="react-ts"
+                        <div className="w-full h-full relative">
+                          <SandpackInteractivePreview
                             files={Object.fromEntries(
                               Object.entries(projectFiles).map(([path, content]) => [
                                 path.startsWith('/') ? path : `/${path}`,
-                                { code: content }
+                                content
                               ])
                             )}
-                            options={{
-                              showNavigator: false,
-                              showTabs: false,
-                              showLineNumbers: true,
-                              editorHeight: "100%",
-                              editorWidthPercentage: 0,
+                            isDark={isDark}
+                            inspectMode={inspectMode}
+                            onElementSelect={(elementInfo) => {
+                              console.log('📥 Element sélectionné dans BuilderAppSession:', elementInfo);
+                              setSelectedElement(elementInfo);
+                              setShowEditToolbar(true);
+                            }}
+                          />
+                          <VisualEditToolbar
+                            isOpen={showEditToolbar}
+                            onClose={() => {
+                              setShowEditToolbar(false);
+                              setSelectedElement(null);
+                            }}
+                            elementInfo={selectedElement}
+                            onModify={async (prompt) => {
+                              console.log('🔧 Modification demandée:', prompt);
+                              // Envoyer le prompt de modification via le chat
+                              if (prompt.trim()) {
+                                await handleFullGeneration(prompt);
+                              }
+                              setShowEditToolbar(false);
+                              setSelectedElement(null);
                             }}
                           />
                         </div>
