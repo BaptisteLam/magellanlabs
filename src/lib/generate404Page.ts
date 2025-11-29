@@ -115,7 +115,7 @@ export function generate404Page(isDark: boolean = false): string {
     <div class="error-code">404</div>
     <h1>Page non trouvée</h1>
     <p>La page que vous recherchez n'existe pas ou n'a pas encore été créée dans ce projet.</p>
-    <button class="button" onclick="navigateToHome()">
+    <button class="button" onclick="navigateToHome(event)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
         <polyline points="9 22 9 12 15 12 15 22"></polyline>
@@ -129,10 +129,10 @@ export function generate404Page(isDark: boolean = false): string {
       console.log('🏠 404 Page - Script de navigation chargé');
       
       // Navigation isolée dans la preview uniquement - retour à index.html
-      window.navigateToHome = function() {
-        if (event) {
-          event.preventDefault();
-          event.stopPropagation();
+      window.navigateToHome = function(e) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
         }
         
         console.log('🏠 Retour à l\'accueil de la preview (index.html)');
@@ -146,75 +146,7 @@ export function generate404Page(isDark: boolean = false): string {
         return false;
       };
       
-      // Bloquer TOUS les liens et tentatives de navigation
-      function blockNavigation(e) {
-        const target = e.target;
-        
-        // Vérifier si c'est un lien
-        const link = target.closest('a');
-        if (link) {
-          const href = link.getAttribute('href') || '';
-          
-          // Bloquer liens externes (http, https, mailto, tel, //)
-          if (href.startsWith('http') || href.startsWith('//') || href.startsWith('mailto:') || href.startsWith('tel:')) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            console.log('🚫 Lien externe bloqué:', href);
-            
-            const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#dc2626;color:#fff;padding:1rem 2rem;border-radius:9999px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:999999;font-family:system-ui;font-size:14px;font-weight:500;';
-            errorDiv.textContent = '🚫 Liens externes bloqués dans la preview';
-            document.body.appendChild(errorDiv);
-            setTimeout(() => errorDiv.remove(), 2000);
-            return false;
-          }
-          
-          // Bloquer navigation interne (autre que #anchors)
-          if (href && !href.startsWith('#') && href !== '') {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            console.log('🚫 Navigation interne bloquée depuis 404:', href);
-            
-            // Envoyer au parent pour vérifier si le fichier existe
-            window.parent.postMessage({
-              type: 'navigate',
-              file: href.replace(/^\//, '')
-            }, '*');
-            return false;
-          }
-        }
-      }
-      
-      // Attacher les listeners avec capture pour intercepter avant tout
-      document.addEventListener('click', blockNavigation, true);
-      
-      // Bloquer window.location et autres tentatives programmatiques
-      const originalLocation = window.location;
-      Object.defineProperty(window, 'location', {
-        get: () => originalLocation,
-        set: (value) => {
-          console.log('🚫 Tentative de modification de window.location bloquée:', value);
-          return false;
-        }
-      });
-      
-      // Bloquer history.pushState et replaceState
-      const originalPushState = history.pushState;
-      const originalReplaceState = history.replaceState;
-      
-      history.pushState = function() {
-        console.log('🚫 history.pushState bloqué dans 404');
-        return false;
-      };
-      
-      history.replaceState = function() {
-        console.log('🚫 history.replaceState bloqué dans 404');
-        return false;
-      };
-      
-      console.log('✅ 404 - Protection de navigation activée');
+      console.log('✅ 404 - Bouton de navigation configuré');
     })();
   </script>
 </body>
