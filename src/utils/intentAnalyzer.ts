@@ -48,32 +48,38 @@ export function analyzeIntentDetailed(
   // === ANALYSE 1: Mots-clés et patterns (40 points max) ===
   
   // Patterns de modification simple (points négatifs = favorise quick-mod)
+  // RÈGLE: Tout ce qui modifie du contenu existant = quick-mod
   const simplePatterns = [
-    { regex: /change\s+(le|la|les)?\s*(titre|texte|couleur|prix|description|nom|photo|image)/i, points: -30, reason: 'Changement de contenu simple' },
-    { regex: /modifie\s+(le|la|les)?\s*(titre|texte|couleur|taille|police|padding|margin)/i, points: -30, reason: 'Modification de contenu' },
-    { regex: /remplace\s+["'].*["']\s+par\s+["'].*["']/i, points: -35, reason: 'Remplacement textuel direct' },
-    { regex: /met(s)?\s+(en)?\s+(rouge|bleu|vert|jaune|noir|blanc|gris|rose|violet|orange)/i, points: -25, reason: 'Changement de couleur' },
-    { regex: /corrige\s+(la|le|les)?\s*(faute|orthographe|grammaire|typo)/i, points: -25, reason: 'Correction mineure' },
-    { regex: /plus\s+(grand|petit|gros|fin|épais|large|étroit)/i, points: -20, reason: 'Ajustement de taille' },
-    { regex: /(gras|italique|souligné|bold|italic|underline)/i, points: -20, reason: 'Style de texte' },
-    { regex: /enlève|supprime|retire/i, points: -25, reason: 'Suppression d\'élément' },
-    { regex: /ajoute\s+(une|un)?\s*(espace|marge|padding|border)/i, points: -20, reason: 'Ajustement CSS simple' },
-    { regex: /centre|aligne\s+(à\s+)?(gauche|droite|centre)/i, points: -20, reason: 'Alignement' },
-    { regex: /augmente|diminue|réduit/i, points: -18, reason: 'Ajustement de valeur' },
-    { regex: /change\s+(la|le)\s*(background|fond|arrière-plan)/i, points: -22, reason: 'Modification background' },
+    { regex: /change\s+(le|la|les)?\s*(titre|texte|couleur|prix|description|nom|photo|image|bouton|lien)/i, points: -50, reason: 'Changement de contenu simple' },
+    { regex: /modifie\s+(le|la|les)?\s*(titre|texte|couleur|taille|police|padding|margin|style|aspect)/i, points: -50, reason: 'Modification de contenu' },
+    { regex: /remplace\s+["'].*["']\s+par\s+["'].*["']/i, points: -60, reason: 'Remplacement textuel direct' },
+    { regex: /met(s)?\s+(en)?\s+(rouge|bleu|vert|jaune|noir|blanc|gris|rose|violet|orange|cyan|magenta)/i, points: -45, reason: 'Changement de couleur' },
+    { regex: /corrige\s+(la|le|les)?\s*(faute|orthographe|grammaire|typo|erreur)/i, points: -45, reason: 'Correction mineure' },
+    { regex: /plus\s+(grand|petit|gros|fin|épais|large|étroit|haut|bas)/i, points: -40, reason: 'Ajustement de taille' },
+    { regex: /(gras|italique|souligné|bold|italic|underline|uppercase|lowercase)/i, points: -40, reason: 'Style de texte' },
+    { regex: /(enlève|supprime|retire|cache|masque)\s+(le|la|les|un|une)?/i, points: -45, reason: 'Suppression d\'élément' },
+    { regex: /ajoute\s+(une|un|des)?\s*(espace|marge|padding|border|ombre|shadow)/i, points: -40, reason: 'Ajustement CSS simple' },
+    { regex: /(centre|aligne|justifie)\s+(à\s+)?(gauche|droite|centre|justify)/i, points: -40, reason: 'Alignement' },
+    { regex: /(augmente|diminue|réduit|ajuste)\s+(la|le|les)?/i, points: -38, reason: 'Ajustement de valeur' },
+    { regex: /change\s+(la|le|les)?\s*(background|fond|arrière-plan|image\s+de\s+fond)/i, points: -42, reason: 'Modification background' },
+    { regex: /(ajoute|met|change)\s+(un|une|des)?\s*(icône|icon|emoji|symbole)/i, points: -35, reason: 'Ajout icône simple' },
+    { regex: /(améliore|optimise|peaufine|ajuste)\s+(le|la|les)?/i, points: -35, reason: 'Amélioration incrémentale' },
+    { regex: /rend\s+(le|la|les)?\s*\w+\s+(plus|moins)\s+(visible|lisible|clair|sombre)/i, points: -38, reason: 'Ajustement visibilité' },
+    { regex: /(anime|transition|effet)\s+(le|la|un|une)\s+\w+/i, points: -30, reason: 'Animation simple ciblée' },
+    { regex: /ajoute\s+(un|une)\s+(texte|paragraphe|phrase|mot|label)/i, points: -40, reason: 'Ajout texte simple' },
+    { regex: /(inverse|permute|échange)\s+(le|la|les)?/i, points: -35, reason: 'Réorganisation simple' },
   ];
   
   // Patterns de génération complète (points positifs)
+  // RÈGLE: Seulement les restructurations MAJEURES et créations de MULTIPLES éléments
   const complexPatterns = [
-    { regex: /(ajoute|crée|créer)\s+(une|plusieurs)?\s*page/i, points: 50, reason: 'Création de page' },
-    { regex: /(ajoute|crée)\s+(une|un)?\s+(nouvelle\s+)?(section\s+complète|page\s+entière)/i, points: 45, reason: 'Section majeure' },
-    { regex: /(refais|refait|redesign|restructure)\s+(tout|complètement|entièrement)/i, points: 55, reason: 'Restructuration majeure' },
-    { regex: /change\s+(tout|entièrement|complètement)\s+(le\s+design|la\s+structure)/i, points: 50, reason: 'Changement global' },
-    { regex: /(crée|ajoute)\s+(un|une)?\s+(système\s+de\s+)?(navigation|menu\s+complet|carrousel|slider)/i, points: 40, reason: 'Composant complexe' },
-    { regex: /rend\s+(tout|le\s+site)?\s*(responsive|adaptatif)/i, points: 35, reason: 'Adaptation responsive globale' },
-    { regex: /ajoute\s+(des|plusieurs)?\s*(animations|transitions|effets)\s+partout/i, points: 30, reason: 'Animations globales' },
-    { regex: /(api|intégration|backend|database|base\s+de\s+données)/i, points: 45, reason: 'Intégration externe' },
-    { regex: /(multipage|multi-page|plusieurs\s+pages)/i, points: 50, reason: 'Site multipage' },
+    { regex: /(crée|créer|génère|construis)\s+(un\s+nouveau\s+site|un\s+site\s+complet|from\s+scratch)/i, points: 80, reason: 'Création site complet' },
+    { regex: /(ajoute|crée)\s+(plusieurs|5|six|sept|huit|neuf|dix)\s+pages/i, points: 70, reason: 'Création multiples pages' },
+    { regex: /(refais|refait|redesign|restructure)\s+(tout|complètement|entièrement|à\s+zéro)\s+(le\s+site|from\s+scratch)/i, points: 75, reason: 'Restructuration totale' },
+    { regex: /change\s+(absolument\s+tout|radicalement|complètement\s+toute)\s+(la\s+structure|l'architecture)/i, points: 70, reason: 'Changement architectural' },
+    { regex: /(transforme|convertis)\s+en\s+(multipage|multi-page|application)/i, points: 65, reason: 'Transformation majeure' },
+    { regex: /(api|intégration|backend|database|base\s+de\s+données)\s+(complète|système|architecture)/i, points: 60, reason: 'Intégration backend complète' },
+    { regex: /ajoute\s+(un\s+système\s+complet\s+de|une\s+architecture\s+de)\s+(navigation|routing|pages)/i, points: 55, reason: 'Système complet' },
   ];
   
   // Évaluer les patterns simples
@@ -100,24 +106,30 @@ export function analyzeIntentDetailed(
   const hasConjunctions = /\s+(et|ou|puis|ensuite|également|aussi)\s+/i.test(prompt);
   
   if (wordCount < 10) {
-    score -= 15;
+    score -= 25;
     reasons.push('Prompt très court (modification ciblée)');
   } else if (wordCount < 30) {
-    score -= 8;
-    reasons.push('Prompt court');
+    score -= 15;
+    reasons.push('Prompt court (modification simple)');
+  } else if (wordCount > 80) {
+    score += 15;
+    reasons.push('Prompt très long et complexe');
   } else if (wordCount > 50) {
-    score += 8;
-    reasons.push('Prompt long et détaillé');
+    score += 5;
+    reasons.push('Prompt détaillé');
   }
   
-  if (hasMultipleSentences) {
-    score += 5;
-    reasons.push('Plusieurs phrases (instructions multiples)');
+  if (hasMultipleSentences && sentenceCount > 3) {
+    score += 10;
+    reasons.push('Nombreuses phrases (instructions multiples)');
   }
   
   if (hasConjunctions) {
-    score += 5;
-    reasons.push('Conjonctions multiples (tâches combinées)');
+    const conjunctionMatches = prompt.match(/\s+(et|ou|puis|ensuite|également|aussi)\s+/gi);
+    if (conjunctionMatches && conjunctionMatches.length > 2) {
+      score += 8;
+      reasons.push('Multiples conjonctions (tâches très combinées)');
+    }
   }
   
   // === ANALYSE 3: Mentions de fichiers/composants (20 points) ===
@@ -140,32 +152,41 @@ export function analyzeIntentDetailed(
   );
   
   if (mentionedSpecificFiles.length === 1) {
-    score -= 10;
+    score -= 30;
     reasons.push(`Fichier spécifique ciblé: ${mentionedSpecificFiles[0]}`);
-  } else if (mentionedSpecificFiles.length > 1) {
-    score += 15;
+  } else if (mentionedSpecificFiles.length === 2) {
+    score -= 10;
+    reasons.push('2 fichiers ciblés (modification précise)');
+  } else if (mentionedSpecificFiles.length > 2) {
+    score += 20;
     reasons.push('Multiples fichiers spécifiques ciblés');
   }
   
   // === ANALYSE 4: Scope de l'impact (20 points) ===
   
-  // Indicateurs d'impact limité
-  if (/(un|une|le|la)\s+(seul|unique|premier|dernier)/i.test(prompt)) {
-    score -= 8;
-    reasons.push('Impact limité à un élément');
+  // Indicateurs d'impact limité (FORTEMENT favorisés)
+  if (/(un|une|le|la|ce|cette|cet)\s+(seul|unique|premier|dernier|bouton|texte|titre|élément)/i.test(prompt)) {
+    score -= 30;
+    reasons.push('Impact limité à un élément unique');
   }
   
-  // Indicateurs d'impact large
-  if (/(tous|toutes|partout|chaque|global|entier)/i.test(prompt)) {
-    score += 15;
-    reasons.push('Impact global/multiple éléments');
+  // Indicateurs d'impact large (nécessite mots TRÈS forts)
+  if (/(absolument\s+tout|tous\s+les\s+éléments|partout\s+sur\s+le\s+site|chaque\s+page|l'ensemble\s+du\s+site)/i.test(prompt)) {
+    score += 25;
+    reasons.push('Impact global sur tout le site');
+  } else if (/(tous|toutes|partout|chaque)/i.test(prompt)) {
+    score += 8;
+    reasons.push('Impact potentiellement multiple');
   }
   
-  // Quantificateurs
+  // Quantificateurs (seulement si VRAIMENT nombreux)
   const numbers = prompt.match(/\d+/g);
-  if (numbers && numbers.some(n => parseInt(n) > 3)) {
+  if (numbers && numbers.some(n => parseInt(n) > 10)) {
+    score += 20;
+    reasons.push('Modifications très nombreuses demandées (>10)');
+  } else if (numbers && numbers.some(n => parseInt(n) > 5)) {
     score += 10;
-    reasons.push('Modifications nombreuses demandées');
+    reasons.push('Plusieurs modifications demandées (>5)');
   }
   
   // === DÉTERMINATION FINALE ===
@@ -183,8 +204,9 @@ export function analyzeIntentDetailed(
   else if (score < 30) complexity = 'moderate';
   else complexity = 'complex';
   
-  // Décision: seuil à 35 (favorise fortement quick-mod pour meilleure UX et précision)
-  const type = score < 35 ? 'quick-modification' : 'full-generation';
+  // Décision: seuil à 70 (full-generation SEULEMENT pour cas exceptionnels)
+  // 95% des prompts devraient être en quick-modification
+  const type = score < 70 ? 'quick-modification' : 'full-generation';
   
   const reasoning = reasons.length > 0 
     ? reasons.slice(0, 3).join(', ')
