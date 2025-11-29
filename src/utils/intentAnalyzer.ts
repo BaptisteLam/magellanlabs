@@ -198,6 +198,42 @@ export function analyzeIntentDetailed(
 }
 
 /**
+ * Estime le temps de génération en secondes basé sur la complexité
+ */
+export function estimateGenerationTime(
+  prompt: string,
+  projectFiles: Record<string, string>
+): { estimatedTime: number; range: { min: number; max: number } } {
+  const analysis = analyzeIntentDetailed(prompt, projectFiles);
+  
+  // Estimation basée sur la complexité et le type
+  const timeEstimates = {
+    'quick-modification': {
+      trivial: { base: 2, variance: 1 },      // 1-3s
+      simple: { base: 4, variance: 2 },       // 2-6s
+      moderate: { base: 8, variance: 3 },     // 5-11s
+      complex: { base: 15, variance: 5 }      // 10-20s
+    },
+    'full-generation': {
+      trivial: { base: 10, variance: 3 },     // 7-13s
+      simple: { base: 18, variance: 5 },      // 13-23s
+      moderate: { base: 30, variance: 8 },    // 22-38s
+      complex: { base: 50, variance: 15 }     // 35-65s
+    }
+  };
+  
+  const config = timeEstimates[analysis.type][analysis.complexity];
+  const estimatedTime = config.base;
+  const min = Math.max(1, config.base - config.variance);
+  const max = config.base + config.variance;
+  
+  return {
+    estimatedTime,
+    range: { min, max }
+  };
+}
+
+/**
  * Identifie les fichiers pertinents avec scoring amélioré
  */
 export function identifyRelevantFiles(
