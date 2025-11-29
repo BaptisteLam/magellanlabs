@@ -1209,9 +1209,10 @@ export default function BuilderSession() {
 
           // ✅ MAINTENANT on peut appliquer les fichiers à la preview
           console.log('📦 Application des fichiers à la preview:', Object.keys(updatedFiles));
-          updateFiles(updatedFiles, true);
+          await updateFiles(updatedFiles, true);
+          console.log('✅ Fichiers sauvegardés et prêts pour la preview');
           
-          // Attendre que Sandpack soit prêt avant de désactiver le mode génération
+          // Attendre que React re-rende avec les nouveaux fichiers avant d'afficher la preview
           setTimeout(() => {
             // Désactiver le mode "génération en cours"
             setIsInitialGeneration(false);
@@ -1221,7 +1222,7 @@ export default function BuilderSession() {
             if (viewMode !== 'preview') {
               setViewMode('preview');
             }
-          }, 1500); // Délai pour laisser Sandpack initialiser la preview
+          }, 300); // Délai réduit car les fichiers sont déjà sauvegardés
 
           sonnerToast.success('Modifications terminées !');
         },
