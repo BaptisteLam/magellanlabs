@@ -19,6 +19,7 @@ export function HotReloadableIframe({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [currentFile, setCurrentFile] = useState<string>('index.html');
   const [iframeReady, setIframeReady] = useState(false);
+  const [inspectReady, setInspectReady] = useState(false);
   const initialLoadRef = useRef(true);
 
   // Hook de Hot Reload
@@ -50,6 +51,199 @@ export function HotReloadableIframe({
       }
     },
   });
+
+  // Script d'inspection pour le click-to-edit
+  const inspectionScript = `
+    <style id="__magellan_inspect_styles__">
+      .magellan-inspect-highlight {
+        outline: 2px solid #03A5C0 !important;
+        outline-offset: 2px !important;
+        cursor: pointer !important;
+        position: relative;
+      }
+      .magellan-inspect-highlight::after {
+        content: attr(data-magellan-tag);
+        position: absolute;
+        top: -24px;
+        left: 0;
+        background: #03A5C0;
+        color: white;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-family: monospace;
+        font-weight: 600;
+        border-radius: 4px;
+        pointer-events: none;
+        z-index: 999999;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      }
+      .magellan-inspect-dashed {
+        outline: 1px dashed rgba(3, 165, 192, 0.3) !important;
+        outline-offset: 2px;
+      }
+    </style>
+    <script>
+      (function() {
+        let isInspectMode = false;
+        let hoveredElement = null;
+        let mouseMoveHandler = null;
+        let clickHandler = null;
+        
+        function init() {
+          window.addEventListener('message', (e) => {
+            if (e.data.type === 'toggle-inspect') {
+              isInspectMode = e.data.enabled;
+              if (isInspectMode) {
+                activateInspection();
+              } else {
+                deactivateInspection();
+              }
+            }
+          });
+        }
+        
+        function activateInspection() {
+          document.body.style.cursor = 'crosshair';
+          showAllOutlines();
+          attachEventListeners();
+        }
+        
+        function deactivateInspection() {
+          document.body.style.cursor = 'default';
+          if (hoveredElement) {
+            hoveredElement.classList.remove('magellan-inspect-highlight');
+            hoveredElement.removeAttribute('data-magellan-tag');
+            hoveredElement = null;
+          }
+          hideAllOutlines();
+          detachEventListeners();
+        }
+        
+        function attachEventListeners() {
+          mouseMoveHandler = (e) => {
+            const target = e.target;
+            if (target === hoveredElement) return;
+            if (target === document.body || target === document.documentElement) return;
+            
+            const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
+            if (!selectableTags.includes(target.tagName)) return;
+            
+            if (hoveredElement) {
+              hoveredElement.classList.remove('magellan-inspect-highlight');
+              hoveredElement.removeAttribute('data-magellan-tag');
+            }
+            
+            hoveredElement = target;
+            const elementType = getElementDescription(target);
+            target.setAttribute('data-magellan-tag', elementType);
+            target.classList.add('magellan-inspect-highlight');
+          };
+          
+          clickHandler = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
+            const target = e.target;
+            if (target === document.body || target === document.documentElement) return;
+            
+            const rect = target.getBoundingClientRect();
+            const elementInfo = {
+              tagName: target.tagName,
+              textContent: target.textContent?.substring(0, 200) || '',
+              classList: Array.from(target.classList).filter(c => !c.startsWith('magellan-inspect')),
+              path: getElementPath(target),
+              innerHTML: target.innerHTML,
+              id: target.id || undefined,
+              boundingRect: {
+                left: rect.left,
+                top: rect.top,
+                width: rect.width,
+                height: rect.height,
+                bottom: rect.bottom,
+                right: rect.right
+              }
+            };
+            
+            window.parent.postMessage({
+              type: 'element-selected',
+              data: elementInfo
+            }, '*');
+            
+            return false;
+          };
+          
+          document.addEventListener('mousemove', mouseMoveHandler, true);
+          document.addEventListener('click', clickHandler, true);
+        }
+        
+        function detachEventListeners() {
+          if (mouseMoveHandler) {
+            document.removeEventListener('mousemove', mouseMoveHandler, true);
+            mouseMoveHandler = null;
+          }
+          if (clickHandler) {
+            document.removeEventListener('click', clickHandler, true);
+            clickHandler = null;
+          }
+        }
+        
+        function showAllOutlines() {
+          const selectableTags = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','INPUT','IMG','SVG','DIV','SECTION','ARTICLE','HEADER','FOOTER','NAV'];
+          const elements = document.querySelectorAll(selectableTags.join(','));
+          elements.forEach(el => {
+            if (el !== document.body && el !== document.documentElement) {
+              el.classList.add('magellan-inspect-dashed');
+            }
+          });
+        }
+        
+        function hideAllOutlines() {
+          document.querySelectorAll('.magellan-inspect-dashed').forEach(el => {
+            el.classList.remove('magellan-inspect-dashed');
+          });
+        }
+        
+        function getElementDescription(el) {
+          const tag = el.tagName.toLowerCase();
+          if (tag === 'h1') return 'Titre H1';
+          if (tag === 'h2') return 'Titre H2';
+          if (tag === 'h3') return 'Titre H3';
+          if (tag === 'button') return 'Bouton';
+          if (tag === 'a') return 'Lien';
+          if (tag === 'p') return 'Paragraphe';
+          if (tag === 'img') return 'Image';
+          return tag.toUpperCase();
+        }
+        
+        function getElementPath(element) {
+          const path = [];
+          let current = element;
+          
+          while (current && current !== document.body && current !== document.documentElement) {
+            let selector = current.tagName.toLowerCase();
+            
+            if (current.id) {
+              selector += '#' + current.id;
+            } else if (current.className) {
+              const classes = Array.from(current.classList)
+                .filter(c => !c.startsWith('magellan-inspect'))
+                .join('.');
+              if (classes) selector += '.' + classes;
+            }
+            
+            path.unshift(selector);
+            current = current.parentElement;
+          }
+          
+          return path.join(' > ');
+        }
+        
+        init();
+        window.parent.postMessage({ type: 'inspect-ready' }, '*');
+      })();
+    </script>
+  `;
 
   // Générer le HTML complet
   const generatedHTML = useMemo(() => {
@@ -95,9 +289,9 @@ export function HotReloadableIframe({
 </html>`;
     }
 
-    // Injecter CSS et JS dans le HTML
+    // Injecter le script d'inspection, CSS et JS dans le HTML
     const processedHTML = htmlContent
-      .replace('</head>', `<style id="__hot_css__">${cssFiles}</style></head>`)
+      .replace('</head>', `${inspectionScript}<style id="__hot_css__">${cssFiles}</style></head>`)
       .replace('</body>', `<script id="__hot_js__">${jsFiles}</script></body>`);
 
     return processedHTML;
@@ -201,6 +395,7 @@ export function HotReloadableIframe({
         iframe.contentWindow.scrollTo(scrollX, scrollY);
       }
       setIframeReady(true);
+      setInspectReady(false); // Reset inspect ready on full reload
     };
   };
 
@@ -220,6 +415,33 @@ export function HotReloadableIframe({
     setTimeout(() => style.remove(), 400);
   };
 
+  // Écouter les messages de l'iframe pour l'inspection
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'inspect-ready') {
+        console.log('✅ Iframe inspection ready');
+        setInspectReady(true);
+      } else if (event.data.type === 'element-selected' && onElementSelect) {
+        console.log('📥 Element selected:', event.data.data);
+        onElementSelect(event.data.data);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [onElementSelect]);
+
+  // Envoyer le toggle inspect mode à l'iframe
+  useEffect(() => {
+    if (!inspectReady || !iframeRef.current?.contentWindow) return;
+
+    console.log('📤 Sending toggle-inspect:', inspectMode);
+    iframeRef.current.contentWindow.postMessage(
+      { type: 'toggle-inspect', enabled: inspectMode },
+      '*'
+    );
+  }, [inspectMode, inspectReady]);
+
   // Charger l'iframe initialement et lors des changements
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -230,6 +452,7 @@ export function HotReloadableIframe({
       iframe.srcdoc = generatedHTML;
       iframe.onload = () => {
         setIframeReady(true);
+        setInspectReady(false); // Reset inspect ready on reload
         initialLoadRef.current = false;
       };
     }
