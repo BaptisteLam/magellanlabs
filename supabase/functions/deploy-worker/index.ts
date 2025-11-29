@@ -54,6 +54,13 @@ Deno.serve(async (req) => {
     const cloudflareApiToken = Deno.env.get('CLOUDFLARE_API_TOKEN');
     const cloudflareAccountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
 
+    console.log('🔍 Cloudflare credentials check:', {
+      hasToken: !!cloudflareApiToken,
+      tokenLength: cloudflareApiToken?.length || 0,
+      accountId: cloudflareAccountId,
+      projectName
+    });
+
     if (!cloudflareApiToken || !cloudflareAccountId) {
       console.error('❌ Missing Cloudflare credentials');
       return new Response(
@@ -69,6 +76,8 @@ Deno.serve(async (req) => {
 
     // Déployer le Worker via l'API Cloudflare
     const workerUrl = `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/workers/scripts/${projectName}`;
+    
+    console.log('📡 Deploying to:', workerUrl);
     
     const formData = new FormData();
     
