@@ -1,5 +1,8 @@
 project_id = "mtmroennrczdcaasrilw"
 
+[functions.deploy-worker]
+verify_jwt = true
+
 [functions.publish-to-kv]
 verify_jwt = true
 

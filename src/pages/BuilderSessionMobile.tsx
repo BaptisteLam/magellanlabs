@@ -1234,9 +1234,9 @@ Now generate the mobile app based on this request:`;
         .replace(/-+/g, '-')
         .substring(0, 50);
 
-      sonnerToast.info("⚡ Publication instantanée via KV...");
+      sonnerToast.info("🚀 Déploiement du Worker Cloudflare...");
       
-      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/publish-to-kv`, {
+      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-worker`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
