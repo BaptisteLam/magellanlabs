@@ -10,6 +10,7 @@ Deno.serve(async (req) => {
 
   try {
     const { message, chatHistory } = await req.json();
+    const startTime = Date.now();
 
     const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
     if (!ANTHROPIC_API_KEY) {
@@ -44,7 +45,8 @@ Deno.serve(async (req) => {
 Tu peux discuter avec l'utilisateur, répondre à ses questions, donner des conseils sur le développement web, 
 expliquer des concepts, mais tu NE GÉNÈRES PAS de code dans ce mode. 
 Tu es là uniquement pour la conversation et l'aide.
-Réponds de manière claire, concise et amicale en français.`
+Réponds de manière claire, concise et amicale en français.
+Utilise le markdown pour formater tes réponses: **gras**, *italique*, ### titres, listes, etc.`
       })
     });
 
@@ -57,10 +59,12 @@ Réponds de manière claire, concise et amicale en français.`
     const data = await response.json();
     const content = data.content[0]?.text || '';
     const usage = data.usage || {};
+    const thoughtDuration = Date.now() - startTime;
 
     return new Response(
       JSON.stringify({
         response: content,
+        thoughtDuration,
         tokens: {
           input: usage.input_tokens || 0,
           output: usage.output_tokens || 0,
