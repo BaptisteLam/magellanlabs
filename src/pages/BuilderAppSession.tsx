@@ -137,6 +137,9 @@ export default function BuilderSession() {
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [showEditToolbar, setShowEditToolbar] = useState(false);
   
+  // Mode Chat pour discuter avec Claude sans générer de code
+  const [chatMode, setChatMode] = useState(false);
+  
   // Mode d'affichage de la preview (desktop/mobile)
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
   
@@ -1389,6 +1392,75 @@ export default function BuilderSession() {
       throw new Error('Authentication required');
     }
 
+    // MODE CHAT - Simple conversation sans génération de code
+    if (chatMode) {
+      const userMessage: Message = {
+        role: 'user',
+        content: prompt
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      setInputValue('');
+      
+      // Afficher un message de chargement
+      const loadingMessage: Message = {
+        role: 'assistant',
+        content: '...'
+      };
+      setMessages(prev => [...prev, loadingMessage]);
+      
+      try {
+        const chatHistory = messages.slice(-6).map(m => ({
+          role: m.role,
+          content: typeof m.content === 'string' ? m.content : '[message multimédia]'
+        }));
+        
+        const { data, error } = await supabase.functions.invoke('chat-only', {
+          body: {
+            message: prompt,
+            chatHistory
+          }
+        });
+        
+        if (error) throw error;
+        
+        // Remplacer le message de chargement par la réponse
+        setMessages(prev => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1] = {
+            role: 'assistant',
+            content: data.response,
+            token_count: data.tokens.total
+          };
+          return newMessages;
+        });
+        
+        // Déduire les tokens
+        if (user?.id && data.tokens.total) {
+          await supabase
+            .from('profiles')
+            .update({ 
+              tokens_used: (user.tokens_used || 0) + data.tokens.total 
+            })
+            .eq('id', user.id);
+          
+          setUser((prev: any) => ({
+            ...prev,
+            tokens_used: (prev.tokens_used || 0) + data.tokens.total
+          }));
+        }
+        
+      } catch (error) {
+        console.error('Chat error:', error);
+        sonnerToast.error('Erreur lors de la conversation');
+        // Supprimer le message de chargement
+        setMessages(prev => prev.slice(0, -1));
+      }
+      
+      return;
+    }
+
+    // MODE NORMAL - Génération de code (suite du code existant)
     // Construire le message utilisateur
     let userMessageContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
     
@@ -2317,6 +2389,8 @@ export default function BuilderSession() {
                 modificationMode={true}
                 inspectMode={inspectMode}
                 onInspectToggle={() => setInspectMode(!inspectMode)}
+                chatMode={chatMode}
+                onChatToggle={() => setChatMode(!chatMode)}
                 projectType={projectType}
                 onProjectTypeChange={setProjectType}
                 attachedFiles={attachedFiles}

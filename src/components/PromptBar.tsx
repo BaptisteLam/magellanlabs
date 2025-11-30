@@ -1,4 +1,4 @@
-import { ArrowUp, Paperclip, Settings, Globe, Monitor, Smartphone, X, MousePointer2, Square } from 'lucide-react';
+import { ArrowUp, Paperclip, Settings, Globe, Monitor, Smartphone, X, MousePointer2, Square, MessageSquare } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import TextType from '@/components/ui/TextType';
@@ -34,6 +34,8 @@ interface PromptBarProps {
   modificationMode?: boolean;
   inspectMode?: boolean;
   onInspectToggle?: () => void;
+  chatMode?: boolean;
+  onChatToggle?: () => void;
   projectType?: 'website' | 'webapp' | 'mobile';
   onProjectTypeChange?: (type: 'website' | 'webapp' | 'mobile') => void;
 }
@@ -53,6 +55,8 @@ const PromptBar = ({
   modificationMode = false,
   inspectMode = false,
   onInspectToggle,
+  chatMode = false,
+  onChatToggle,
   projectType = 'website',
   onProjectTypeChange
 }: PromptBarProps) => {
@@ -199,6 +203,26 @@ const PromptBar = ({
                 </TooltipTrigger>
                 <TooltipContent side="top">
                   <p className="text-xs">{inspectMode ? 'Désactiver inspection' : 'Mode Inspect'}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {/* Bouton Mode Chat - uniquement en mode modification */}
+            {modificationMode && onChatToggle && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    type="button"
+                    onClick={onChatToggle}
+                    className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
+                    style={iconButtonStyle(chatMode)}
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">{chatMode ? 'Désactiver chat' : 'Mode Chat'}</p>
                 </TooltipContent>
               </Tooltip>
             )}
