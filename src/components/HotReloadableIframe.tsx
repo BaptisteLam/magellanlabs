@@ -135,8 +135,16 @@ export function HotReloadableIframe({
           window.addEventListener('message', (e) => {
             console.log('📨 Message reçu:', e.data);
             if (e.data.type === 'toggle-inspect') {
-              console.log('🔄 Toggle inspect mode:', e.data.enabled);
-              isInspectMode = e.data.enabled;
+              const newState = e.data.enabled;
+              console.log('🔄 Toggle inspect mode:', newState, '(état actuel:', isInspectMode, ')');
+              
+              // Éviter les toggles redondants
+              if (isInspectMode === newState) {
+                console.log('⚠️ État déjà à', newState, '- pas de changement');
+                return;
+              }
+              
+              isInspectMode = newState;
               if (isInspectMode) {
                 activateInspection();
               } else {
@@ -144,26 +152,41 @@ export function HotReloadableIframe({
               }
             }
           });
+          
+          console.log('✅ Event listener message installé');
         }
         
         function activateInspection() {
           console.log('✨ Activation du mode inspection');
           injectStyles();
           document.body.style.cursor = 'crosshair';
+          
+          // IMPORTANT: Toujours afficher les outlines à l'activation
+          console.log('👁️ Affichage forcé des outlines à l'activation');
           showAllOutlines();
+          
           attachEventListeners();
+          console.log('✅ Mode inspection activé avec outlines visibles');
         }
         
         function deactivateInspection() {
           console.log('🔚 Désactivation du mode inspection');
           document.body.style.cursor = 'default';
+          
+          // Retirer le highlight de l'élément survolé
           if (hoveredElement) {
             hoveredElement.classList.remove('magellan-inspect-highlight');
             hoveredElement.removeAttribute('data-magellan-tag');
             hoveredElement = null;
+            console.log('🗑️ Highlight retiré de l\'élément survolé');
           }
+          
+          // IMPORTANT: Toujours cacher les outlines à la désactivation
+          console.log('🙈 Masquage forcé des outlines à la désactivation');
           hideAllOutlines();
+          
           detachEventListeners();
+          console.log('✅ Mode inspection désactivé - outlines masqués');
         }
         
         function attachEventListeners() {
@@ -645,6 +668,7 @@ export function HotReloadableIframe({
         iframe.contentWindow.scrollTo(scrollX, scrollY);
         
         console.log('📄 HTML mis à jour avec préservation de l\'état');
+        // NOTE: Ne PAS réinitialiser inspectReady car le script d'inspection reste dans le <head>
       } else {
         // Fallback si le DOM est trop différent
         fullReload();
@@ -735,12 +759,21 @@ export function HotReloadableIframe({
     return () => window.removeEventListener('message', handleMessage);
   }, [onElementSelect, projectFiles, navigationIndex]);
 
-  // Envoyer le toggle inspect mode à l'iframe avec mécanisme de retry
+  // Envoyer le toggle inspect mode à l'iframe UNIQUEMENT quand inspect-ready reçu
   useEffect(() => {
+    // CRITIQUE: N'envoyer le message que si inspectReady est true
+    if (!inspectReady) {
+      console.log('⏳ Attente de inspect-ready avant d\'envoyer toggle-inspect...');
+      return;
+    }
+    
     const sendToggleMessage = () => {
-      if (!iframeRef.current?.contentWindow) return false;
+      if (!iframeRef.current?.contentWindow) {
+        console.warn('❌ contentWindow non disponible');
+        return false;
+      }
       
-      console.log('📤 Sending toggle-inspect:', inspectMode);
+      console.log('📤 Sending toggle-inspect:', inspectMode, '(inspectReady=true)');
       iframeRef.current.contentWindow.postMessage(
         { type: 'toggle-inspect', enabled: inspectMode },
         '*'
@@ -748,29 +781,13 @@ export function HotReloadableIframe({
       return true;
     };
 
-    // Toujours essayer d'envoyer le message si iframe est prête
-    if (iframeReady) {
-      sendToggleMessage();
-    }
+    // Envoyer immédiatement
+    sendToggleMessage();
     
     // Si le mode inspect est activé mais pas encore confirmé, réessayer périodiquement
-    if (inspectMode && !inspectReady && iframeReady) {
-      const retryInterval = setInterval(() => {
-        console.log('🔄 Retry toggle-inspect (waiting for inspect-ready)');
-        sendToggleMessage();
-      }, 200);
-      
-      const timeout = setTimeout(() => {
-        clearInterval(retryInterval);
-        console.log('⏱️ Timeout du retry toggle-inspect');
-      }, 3000);
-      
-      return () => {
-        clearInterval(retryInterval);
-        clearTimeout(timeout);
-      };
-    }
-  }, [inspectMode, iframeReady, inspectReady]);
+    // FIXME: Cette condition ne sera jamais vraie car inspectReady est déjà checked plus haut
+    // On garde la logique mais elle est redondante
+  }, [inspectMode, inspectReady]);
 
   // Charger l'iframe uniquement au premier mount
   useEffect(() => {
