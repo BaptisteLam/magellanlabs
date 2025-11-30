@@ -33,6 +33,7 @@ import { analyzeIntent, identifyRelevantFiles, estimateGenerationTime } from '@/
 import { useModifySite, applyPatch, type PatchAction } from '@/hooks/useModifySite';
 import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
+import { PublishSuccessDialog } from '@/components/PublishSuccessDialog';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -76,6 +77,7 @@ export default function BuilderSession() {
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showPublishSuccess, setShowPublishSuccess] = useState(false);
   
   // Hook optimisé pour la gestion des fichiers avec cache et sync
   const {
@@ -1683,10 +1685,8 @@ export default function BuilderSession() {
         setDeployedUrl(result.publicUrl);
         setCloudflareProjectName(projectName);
         
-        sonnerToast.success(`✅ Publié en ${result.uploadTime} !`, {
-          description: result.publicUrl,
-          duration: 5000,
-        });
+        // Ouvrir la modale de succès au lieu du toast
+        setShowPublishSuccess(true);
       }
     } catch (error: any) {
       console.error('Error publishing:', error);
@@ -2509,6 +2509,16 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de succès de publication */}
+      <PublishSuccessDialog
+        open={showPublishSuccess}
+        onOpenChange={setShowPublishSuccess}
+        publicUrl={deployedUrl || ''}
+        projectName={cloudflareProjectName || websiteTitle}
+        sessionId={sessionId}
+        cloudflareProjectName={cloudflareProjectName || undefined}
+      />
     </div>
   );
 }
