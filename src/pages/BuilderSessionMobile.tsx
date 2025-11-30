@@ -1234,7 +1234,7 @@ Now generate the mobile app based on this request:`;
         .replace(/-+/g, '-')
         .substring(0, 50);
 
-      sonnerToast.info("🚀 Déploiement du Worker Cloudflare...");
+      sonnerToast.info("🚀 Déploiement en cours...");
       
       const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-worker`, {
         method: 'POST',
