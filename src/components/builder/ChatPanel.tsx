@@ -1,5 +1,6 @@
 import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
+import ChatOnlyMessage from '@/components/chat/ChatOnlyMessage';
 import type { Message } from '@/hooks/useChat';
 import type { GenerationEvent } from '@/types/agent';
 import { format } from 'date-fns';
@@ -54,6 +55,7 @@ export function ChatPanel({
           const isDimmed = shouldDimMessage(index);
           const isRecapMessage = msg.metadata?.type === 'recap';
           const isIntroMessage = msg.metadata?.type === 'intro';
+          const isChatMessage = msg.metadata?.type === 'message';
           const messageEvents = msg.metadata?.generation_events as GenerationEvent[] || [];
 
           return (
@@ -82,6 +84,17 @@ export function ChatPanel({
                     </div>
                   )}
 
+                  {isChatMessage && (
+                    <ChatOnlyMessage
+                      message={msg}
+                      messageIndex={index}
+                      isLatestMessage={index === messages.length - 1}
+                      isDark={isDark}
+                      onRestore={onRevertToVersion}
+                      onGoToPrevious={() => onRevertToVersion(Math.max(0, index - 1))}
+                    />
+                  )}
+
                   {messageEvents.length > 0 && (
                     <CollapsedAiTasks
                       events={messageEvents}
@@ -107,7 +120,7 @@ export function ChatPanel({
                     </div>
                   )}
 
-                  {!isIntroMessage && !isRecapMessage && (
+                  {!isIntroMessage && !isRecapMessage && !isChatMessage && (
                     <div className="text-foreground/90 bg-muted/50 rounded-lg px-4 py-2">
                       {typeof msg.content === 'string' ? msg.content : ''}
                     </div>

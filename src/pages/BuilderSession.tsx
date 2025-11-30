@@ -42,7 +42,7 @@ interface Message {
   id?: string;
   created_at?: string;
   metadata?: {
-    type?: 'intro' | 'recap' | 'generation';
+    type?: 'intro' | 'recap' | 'generation' | 'message';
     thought_duration?: number;
     intent_message?: string;
     generation_events?: any[];
@@ -1432,7 +1432,12 @@ export default function BuilderSession() {
           newMessages[newMessages.length - 1] = {
             role: 'assistant',
             content: data.response,
-            token_count: data.tokens.total
+            token_count: data.tokens.total,
+            metadata: {
+              type: 'message',
+              thought_duration: data.thoughtDuration || 0,
+              total_tokens: data.tokens.total
+            }
           };
           return newMessages;
         });

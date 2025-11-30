@@ -8,7 +8,7 @@ export interface Message {
   id?: string;
   created_at?: string;
   metadata?: {
-    type?: 'intro' | 'recap' | 'generation';
+    type?: 'intro' | 'recap' | 'generation' | 'message';
     generation_events?: any[];
     files_updated?: number;
     new_files?: string[];
