@@ -32,6 +32,7 @@ export type Database = {
           title: string | null
           updated_at: string
           user_id: string
+          web_analytics_site_token: string | null
           website_id: string | null
         }
         Insert: {
@@ -51,6 +52,7 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id: string
+          web_analytics_site_token?: string | null
           website_id?: string | null
         }
         Update: {
@@ -70,6 +72,7 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id?: string
+          web_analytics_site_token?: string | null
           website_id?: string | null
         }
         Relationships: [

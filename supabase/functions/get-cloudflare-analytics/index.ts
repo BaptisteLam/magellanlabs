@@ -1,11 +1,8 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 interface AnalyticsRequest {
@@ -13,148 +10,55 @@ interface AnalyticsRequest {
   period: '1d' | '7d' | '30d';
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 200,
-      headers: corsHeaders 
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('Missing authorization header');
-    }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Vérifier l'authentification
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      throw new Error('Unauthorized');
-    }
-
-    const { session_id, period }: AnalyticsRequest = await req.json();
-    
-    if (!session_id || !period) {
       return new Response(
-        JSON.stringify({ error: 'Missing session_id or period' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Récupérer les informations du projet
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { session_id, period }: AnalyticsRequest = await req.json();
+
+    // Get project details including Web Analytics site token
     const { data: session, error: sessionError } = await supabase
       .from('build_sessions')
-      .select('cloudflare_project_name, title')
+      .select('web_analytics_site_token, cloudflare_project_name')
       .eq('id', session_id)
       .eq('user_id', user.id)
       .single();
 
-    if (sessionError || !session?.cloudflare_project_name) {
+    if (sessionError || !session) {
       return new Response(
-        JSON.stringify({ error: 'Project not deployed to Cloudflare or not found' }),
+        JSON.stringify({ error: 'Session not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const CLOUDFLARE_ACCOUNT_ID = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
-    const CLOUDFLARE_EMAIL = Deno.env.get('CLOUDFLARE_EMAIL');
-    const CLOUDFLARE_API_TOKEN = Deno.env.get('CLOUDFLARE_API_TOKEN');
-
-    if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_EMAIL || !CLOUDFLARE_API_TOKEN) {
-      throw new Error('Cloudflare credentials not configured');
-    }
-
-    console.log(`📊 Fetching Worker analytics for ${session.cloudflare_project_name}`);
-
-    // Calculer les dates pour la période demandée
-    const now = new Date();
-    const endTime = now.toISOString();
-    let startTime: string;
-    
-    switch (period) {
-      case '1d':
-        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-        break;
-      case '7d':
-        startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        break;
-      case '30d':
-        startTime = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        break;
-    }
-
-    console.log(`📅 Period: ${startTime} to ${endTime}`);
-
-    // Utiliser l'API Workers Analytics avec GraphQL
-    const graphqlQuery = `
-      query {
-        viewer {
-          accounts(filter: { accountTag: "${CLOUDFLARE_ACCOUNT_ID}" }) {
-            workersInvocationsAdaptive(
-              filter: {
-                datetime_geq: "${startTime}"
-                datetime_leq: "${endTime}"
-                scriptName: "${session.cloudflare_project_name}"
-              }
-              limit: 10000
-            ) {
-              dimensions {
-                datetime
-                scriptName
-              }
-              sum {
-                requests
-                errors
-                subrequests
-              }
-              quantiles {
-                cpuTimeP50
-                cpuTimeP99
-              }
-            }
-          }
-        }
-      }
-    `;
-
-    console.log('🔄 Calling Cloudflare GraphQL API...');
-    
-    const response = await fetch('https://api.cloudflare.com/client/v4/graphql', {
-      method: 'POST',
-      headers: {
-        'X-Auth-Email': CLOUDFLARE_EMAIL,
-        'X-Auth-Key': CLOUDFLARE_API_TOKEN,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query: graphqlQuery }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Cloudflare API error:', errorText);
-      throw new Error(`Cloudflare API error: ${errorText}`);
-    }
-
-    const responseData = await response.json();
-    console.log('✅ Response received from Cloudflare');
-
-    if (responseData.errors && responseData.errors.length > 0) {
-      console.error('❌ GraphQL errors:', JSON.stringify(responseData.errors));
-      throw new Error(`GraphQL error: ${responseData.errors[0].message}`);
-    }
-
-    const workerData = responseData.data?.viewer?.accounts?.[0]?.workersInvocationsAdaptive || [];
-
-    if (workerData.length === 0) {
-      console.log('⚠️ No analytics data found for this Worker');
-      // Retourner des données vides mais valides
+    const siteToken = session.web_analytics_site_token;
+    if (!siteToken) {
+      // No analytics configured yet - return empty data
       return new Response(
         JSON.stringify({
           timeSeries: [],
@@ -173,80 +77,250 @@ serve(async (req) => {
           },
           last_updated: new Date().toISOString(),
         }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Transformer les données Worker en format analytics
-    const timeSeriesMap = new Map<string, { requests: number; errors: number }>();
-    
-    workerData.forEach((item: any) => {
-      const date = item.dimensions.datetime.split('T')[0]; // Extraire la date YYYY-MM-DD
-      const existing = timeSeriesMap.get(date) || { requests: 0, errors: 0 };
-      timeSeriesMap.set(date, {
-        requests: existing.requests + (item.sum.requests || 0),
-        errors: existing.errors + (item.sum.errors || 0),
-      });
+    // Calculate date range
+    const endDate = new Date();
+    const startDate = new Date();
+    if (period === '1d') {
+      startDate.setDate(endDate.getDate() - 1);
+    } else if (period === '7d') {
+      startDate.setDate(endDate.getDate() - 7);
+    } else {
+      startDate.setDate(endDate.getDate() - 30);
+    }
+
+    const cloudflareApiToken = Deno.env.get('CLOUDFLARE_API_TOKEN');
+    const cloudflareAccountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
+    const cloudflareEmail = Deno.env.get('CLOUDFLARE_EMAIL');
+
+    if (!cloudflareApiToken || !cloudflareAccountId || !cloudflareEmail) {
+      throw new Error('Missing Cloudflare credentials');
+    }
+
+    // GraphQL query for Web Analytics data
+    const graphqlQuery = {
+      query: `
+        query GetWebAnalytics($accountTag: string!, $siteTag: string!, $startDate: string!, $endDate: string!) {
+          viewer {
+            accounts(filter: { accountTag: $accountTag }) {
+              timeSeries: rumPageloadEventsAdaptiveGroups(
+                filter: {
+                  siteTag: $siteTag
+                  datetime_geq: $startDate
+                  datetime_leq: $endDate
+                }
+                limit: 1000
+                orderBy: [datetimeFifteenMinutes_ASC]
+              ) {
+                count
+                sum {
+                  visits
+                }
+                dimensions {
+                  date: datetimeFifteenMinutes
+                }
+              }
+              
+              pages: rumPageloadEventsAdaptiveGroups(
+                filter: {
+                  siteTag: $siteTag
+                  datetime_geq: $startDate
+                  datetime_leq: $endDate
+                }
+                limit: 10
+                orderBy: [count_DESC]
+              ) {
+                count
+                dimensions {
+                  requestPath
+                }
+              }
+              
+              countries: rumPageloadEventsAdaptiveGroups(
+                filter: {
+                  siteTag: $siteTag
+                  datetime_geq: $startDate
+                  datetime_leq: $endDate
+                }
+                limit: 10
+                orderBy: [count_DESC]
+              ) {
+                count
+                dimensions {
+                  countryName
+                }
+              }
+              
+              devices: rumPageloadEventsAdaptiveGroups(
+                filter: {
+                  siteTag: $siteTag
+                  datetime_geq: $startDate
+                  datetime_leq: $endDate
+                }
+                limit: 10
+                orderBy: [count_DESC]
+              ) {
+                count
+                dimensions {
+                  deviceType
+                }
+              }
+              
+              referrers: rumPageloadEventsAdaptiveGroups(
+                filter: {
+                  siteTag: $siteTag
+                  datetime_geq: $startDate
+                  datetime_leq: $endDate
+                }
+                limit: 10
+                orderBy: [count_DESC]
+              ) {
+                count
+                dimensions {
+                  refererHost
+                }
+              }
+            }
+          }
+        }
+      `,
+      variables: {
+        accountTag: cloudflareAccountId,
+        siteTag: siteToken,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      },
+    };
+
+    console.log('📊 Fetching Web Analytics data for site:', siteToken);
+
+    const analyticsResponse = await fetch('https://api.cloudflare.com/client/v4/graphql', {
+      method: 'POST',
+      headers: {
+        'X-Auth-Email': cloudflareEmail,
+        'X-Auth-Key': cloudflareApiToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(graphqlQuery),
+    });
+
+    if (!analyticsResponse.ok) {
+      const errorText = await analyticsResponse.text();
+      console.error('❌ Cloudflare API error:', analyticsResponse.status, errorText);
+      throw new Error(`Cloudflare API error: ${analyticsResponse.status}`);
+    }
+
+    const analyticsData = await analyticsResponse.json();
+    console.log('✅ Analytics data received');
+
+    if (analyticsData.errors) {
+      console.error('❌ GraphQL errors:', analyticsData.errors);
+      throw new Error('GraphQL query failed');
+    }
+
+    const result = analyticsData.data?.viewer?.accounts?.[0];
+    if (!result) {
+      throw new Error('No analytics data returned');
+    }
+
+    // Process time series data - aggregate by day
+    const timeSeriesMap = new Map<string, { visitors: number; pageviews: number }>();
+    result.timeSeries?.forEach((item: any) => {
+      const date = new Date(item.dimensions.date).toISOString().split('T')[0];
+      const existing = timeSeriesMap.get(date) || { visitors: 0, pageviews: 0 };
+      existing.visitors += item.count || 0;
+      existing.pageviews += item.sum?.visits || 0;
+      timeSeriesMap.set(date, existing);
     });
 
     const timeSeries = Array.from(timeSeriesMap.entries())
       .map(([date, data]) => ({
         date,
-        visitors: data.requests, // Utiliser les requêtes comme proxy pour les visiteurs
-        pageviews: data.requests,
-        requests: data.requests,
+        visitors: data.visitors,
+        pageviews: data.pageviews,
+        requests: data.pageviews,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    // Calculer les métriques totales
-    const totalRequests = workerData.reduce((sum: number, item: any) => sum + (item.sum.requests || 0), 0);
-    const totalErrors = workerData.reduce((sum: number, item: any) => sum + (item.sum.errors || 0), 0);
-    const avgCpuTime = workerData.reduce((sum: number, item: any) => sum + (item.quantiles?.cpuTimeP50 || 0), 0) / workerData.length;
+    // Calculate metrics
+    const totalVisitors = timeSeries.reduce((sum, d) => sum + d.visitors, 0);
+    const totalPageviews = timeSeries.reduce((sum, d) => sum + d.pageviews, 0);
+    const viewsPerVisit = totalVisitors > 0 ? Number((totalPageviews / totalVisitors).toFixed(2)) : 0;
+    
+    // Calculate bounce rate (simplified - pages with single pageview)
+    const singlePageVisits = result.pages?.filter((p: any) => p.count === 1).length || 0;
+    const totalVisits = result.pages?.length || 1;
+    const bounceRate = Math.round((singlePageVisits / totalVisits) * 100);
 
-    // Estimer le taux de rebond basé sur les erreurs
-    const bounceRate = totalRequests > 0 ? Math.round((totalErrors / totalRequests) * 100) : 0;
+    // Process pages
+    const pages = (result.pages || [])
+      .map((item: any) => ({
+        label: item.dimensions.requestPath || '/',
+        value: item.count || 0,
+      }))
+      .filter((p: any) => p.label !== null);
 
-    console.log(`📈 Processed ${workerData.length} data points`);
-    console.log(`📊 Total requests: ${totalRequests}, Errors: ${totalErrors}`);
+    // Process countries
+    const countries = (result.countries || [])
+      .map((item: any) => ({
+        label: item.dimensions.countryName || 'Unknown',
+        value: item.count || 0,
+      }))
+      .filter((c: any) => c.label !== 'Unknown');
 
-    const result = {
+    // Process devices
+    const deviceTotal = (result.devices || []).reduce((sum: number, d: any) => sum + (d.count || 0), 0);
+    const devices = (result.devices || [])
+      .map((item: any) => ({
+        label: item.dimensions.deviceType || 'Unknown',
+        value: deviceTotal > 0 ? Math.round(((item.count || 0) / deviceTotal) * 100) : 0,
+      }))
+      .filter((d: any) => d.label !== 'Unknown');
+
+    // Process referrers (sources)
+    const sources = (result.referrers || [])
+      .map((item: any) => ({
+        label: item.dimensions.refererHost || 'Direct',
+        value: item.count || 0,
+      }));
+
+    const responseData = {
       timeSeries,
       metrics: {
-        visitors: totalRequests,
-        pageviews: totalRequests,
-        viewsPerVisit: 1, // Workers n'ont pas cette métrique
-        visitDuration: Math.round(avgCpuTime / 1000), // Convertir µs en secondes
+        visitors: totalVisitors,
+        pageviews: totalPageviews,
+        viewsPerVisit,
+        visitDuration: 0,
         bounceRate,
       },
       lists: {
-        sources: [{ label: 'Direct', value: totalRequests }], // Workers n'ont pas le referer
-        pages: [{ label: '/', value: totalRequests }], // Workers n'ont pas les paths individuels par défaut
-        countries: [], // Nécessite une requête GraphQL supplémentaire
-        devices: [], // Nécessite une requête GraphQL supplémentaire
+        sources,
+        pages,
+        countries,
+        devices,
       },
       last_updated: new Date().toISOString(),
     };
 
-    console.log('✅ Analytics data successfully processed');
+    console.log('📊 Analytics summary:', {
+      visitors: totalVisitors,
+      pageviews: totalPageviews,
+      pagesCount: pages.length,
+      countriesCount: countries.length,
+    });
 
-    return new Response(
-      JSON.stringify(result),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
-
+    return new Response(JSON.stringify(responseData), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (error) {
-    console.error('❌ Error in get-cloudflare-analytics function:', error);
+    console.error('❌ Error in get-cloudflare-analytics:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
