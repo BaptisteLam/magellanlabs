@@ -1058,21 +1058,25 @@ export default function BuilderSession() {
             ? `Je vais modifier ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}...`
             : 'Je vais appliquer les modifications...';
           
-          // Générer un message de conclusion court et contextuel
-          const getShortConclusion = (): string => {
+          // Générer un message de conclusion détaillé et contextuel
+          const getDetailedConclusion = (): string => {
             if (isInitialGenerationRef.current) {
-              return 'Site créé avec succès.';
+              return `Votre site a été créé avec ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} incluant HTML, CSS, JavaScript${newFiles.some(f => f.includes('image')) ? ' et images' : ''}. Le site est maintenant prêt à être publié.`;
             }
-            if (newFiles.length > 0 && modifiedFiles.length === 0) {
-              return `${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} créé${newFiles.length > 1 ? 's' : ''} avec succès.`;
+            
+            const details: string[] = [];
+            if (newFiles.length > 0) {
+              details.push(`${newFiles.length} nouveau${newFiles.length > 1 ? 'x' : ''} fichier${newFiles.length > 1 ? 's' : ''} créé${newFiles.length > 1 ? 's' : ''}`);
             }
-            if (modifiedFiles.length > 0 && newFiles.length === 0) {
-              return `Modifications appliquées avec succès.`;
+            if (modifiedFiles.length > 0) {
+              details.push(`${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''} modifié${modifiedFiles.length > 1 ? 's' : ''}`);
             }
-            return 'Changements effectués avec succès.';
+            
+            const detailsStr = details.join(' et ');
+            return `${detailsStr.charAt(0).toUpperCase() + detailsStr.slice(1)}. Les modifications ont été appliquées avec succès au projet.`;
           };
           
-          const conclusionMessage = getShortConclusion();
+          const conclusionMessage = getDetailedConclusion();
 
           // 💾 Sauvegarder UN SEUL message unifié style Lovable
           console.log('💾 =====================================');

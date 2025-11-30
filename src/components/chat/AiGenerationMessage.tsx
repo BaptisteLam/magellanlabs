@@ -132,10 +132,10 @@ export default function AiGenerationMessage({
         />
       )}
 
-      {/* 4. Message de résumé court (uniquement après génération) */}
-      {!isLoading && (
-        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-          {shortSummary}
+      {/* 4. Message de conclusion détaillé (uniquement après génération) */}
+      {!isLoading && contentString && (
+        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+          {contentString}
         </p>
       )}
 
