@@ -48,5 +48,8 @@ verify_jwt = true
 [functions.get-cloudflare-analytics]
 verify_jwt = true
 
+[functions.check-cloudflare-config]
+verify_jwt = true
+
 [functions.add-custom-domain]
 verify_jwt = true
