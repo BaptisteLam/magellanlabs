@@ -11,6 +11,7 @@ interface MessageActionsProps {
   onRestore?: (messageIndex: number) => void;
   onGoToPrevious?: () => void;
   isDark?: boolean;
+  hideUndoButton?: boolean;
 }
 
 export function MessageActions({ 
@@ -20,7 +21,8 @@ export function MessageActions({
   tokenCount,
   onRestore,
   onGoToPrevious,
-  isDark 
+  isDark,
+  hideUndoButton 
 }: MessageActionsProps) {
   
   const handleCopy = async () => {
@@ -49,24 +51,26 @@ export function MessageActions({
   return (
     <div className="flex items-center gap-1 mt-2">
       <TooltipProvider>
-        {/* Bouton Retour en arrière - toujours visible */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleGoBack}
-              className="h-3 w-3 p-0 hover:bg-[#03A5C0]/10"
-            >
-              <Undo2 className="h-2 w-2" style={{ color: '#03A5C0' }} />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="text-xs">
-              {isLatestMessage ? 'Revenir à la version précédente' : 'Revenir à cette version'}
-            </p>
-          </TooltipContent>
-        </Tooltip>
+        {/* Bouton Retour en arrière - masqué pour les messages chat */}
+        {!hideUndoButton && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleGoBack}
+                className="h-3 w-3 p-0 hover:bg-[#03A5C0]/10"
+              >
+                <Undo2 className="h-2 w-2" style={{ color: '#03A5C0' }} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">
+                {isLatestMessage ? 'Revenir à la version précédente' : 'Revenir à cette version'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        )}
 
         {/* Bouton Copier */}
         <Tooltip>

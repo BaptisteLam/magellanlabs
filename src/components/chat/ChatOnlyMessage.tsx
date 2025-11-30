@@ -106,6 +106,7 @@ export default function ChatOnlyMessage({
           tokenCount={message.metadata?.total_tokens || message.token_count}
           onRestore={onRestore}
           onGoToPrevious={onGoToPrevious}
+          hideUndoButton={true}
         />
       )}
     </div>
