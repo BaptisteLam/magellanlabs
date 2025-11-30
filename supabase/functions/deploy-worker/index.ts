@@ -139,10 +139,44 @@ Deno.serve(async (req) => {
     const deployData = await deployResponse.json();
     console.log('✅ Worker deployed successfully:', deployData);
 
+    // Ajouter une route pour le domaine personnalisé *.builtbymagellan.com
+    const ZONE_ID = Deno.env.get('CLOUDFLARE_ZONE_ID'); // Zone ID de builtbymagellan.com
+    
+    if (ZONE_ID) {
+      console.log(`🔗 Adding route for ${projectName}.builtbymagellan.com...`);
+      
+      const routeResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/workers/routes`,
+        {
+          method: 'POST',
+          headers: {
+            'X-Auth-Email': cloudflareEmail,
+            'X-Auth-Key': cloudflareApiToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            pattern: `${projectName}.builtbymagellan.com/*`,
+            script: projectName,
+          }),
+        }
+      );
+
+      if (routeResponse.ok) {
+        const routeData = await routeResponse.json();
+        console.log('✅ Route added successfully:', routeData);
+      } else {
+        const routeError = await routeResponse.text();
+        console.error('⚠️ Failed to add route (non-blocking):', routeError);
+        // Non-bloquant: on continue même si la route échoue
+      }
+    } else {
+      console.warn('⚠️ CLOUDFLARE_ZONE_ID not set, skipping route creation');
+    }
+
     const deployTime = Date.now() - startTime;
     
-    // Utiliser l'URL workers.dev par défaut
-    const publicUrl = `https://${projectName}.${cloudflareAccountId}.workers.dev`;
+    // Utiliser le domaine personnalisé builtbymagellan.com
+    const publicUrl = `https://${projectName}.builtbymagellan.com`;
 
     // Mettre à jour la session avec l'URL publique
     const { error: updateError } = await supabase
