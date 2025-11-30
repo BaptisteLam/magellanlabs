@@ -53,7 +53,7 @@ export function Integrations() {
                       style={{ backgroundColor: `${integration.color}20` }}
                     >
                       {integration.icon === 'custom' && integration.customIcon ? (
-                        <img src={integration.customIcon} alt={integration.name} className="h-6 w-6" />
+                        <img src={integration.customIcon} alt={integration.name} className="h-6 w-6 object-contain" />
                       ) : Icon ? (
                         <Icon className="h-6 w-6" style={{ color: integration.color }} />
                       ) : null}
