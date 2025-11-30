@@ -205,12 +205,13 @@ function generateWorkerScript(projectName: string, projectFiles: ProjectFile[]):
     filesMap[file.name] = content;
   });
 
-  // Échapper les guillemets et caractères spéciaux dans le JSON
-  const filesJson = JSON.stringify(filesMap).replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+  // JSON.stringify gère déjà l'échappement correctement
+  const filesJson = JSON.stringify(filesMap);
 
-  return `
-// Worker généré automatiquement pour le projet: ${projectName}
-const PROJECT_FILES = ${filesJson};
+  // IMPORTANT: Utiliser des concaténations de strings au lieu de template literals
+  // pour éviter les conflits avec les backticks et ${} dans le contenu
+  return `// Worker généré automatiquement pour le projet: ${projectName}
+const PROJECT_FILES = ` + filesJson + `;
 
 export default {
   async fetch(request) {
@@ -245,7 +246,7 @@ export default {
       }
       
       // Page 404 par défaut
-      return new Response(generate404Page('${projectName}'), {
+      return new Response(generate404Page('` + projectName + `'), {
         status: 404,
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
