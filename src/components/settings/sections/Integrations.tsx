@@ -49,7 +49,7 @@ export function Integrations() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                   <div
-                      className="p-2 rounded-[8px]"
+                      className="p-2 rounded-[8px] w-10 h-10 flex items-center justify-center"
                       style={{ backgroundColor: `${integration.color}20` }}
                     >
                       {integration.icon === 'custom' && integration.customIcon ? (
