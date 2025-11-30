@@ -120,6 +120,7 @@ export default function BuilderSession() {
   
   // État pour gérer les événements de génération en temps réel
   const [generationEvents, setGenerationEvents] = useState<GenerationEvent[]>([]);
+  const generationEventsRef = useRef<GenerationEvent[]>([]); // Ref synchrone pour éviter stale state
   const generationStartTimeRef = useRef<number>(0);
   const [currentVersionIndex, setCurrentVersionIndex] = useState<number | null>(null);
   
@@ -820,6 +821,7 @@ export default function BuilderSession() {
     // Réinitialiser les événements pour une nouvelle requête
     setAiEvents([]);
     setGenerationEvents([]);
+    generationEventsRef.current = []; // Réinitialiser la ref
     generationStartTimeRef.current = Date.now();
     
     // 🔒 TOUJOURS activer le mode "génération en cours" pour bloquer la preview jusqu'à completion
@@ -867,6 +869,7 @@ export default function BuilderSession() {
         },
         onGenerationEvent: (event) => {
           console.log('🔄 Generation:', event);
+          generationEventsRef.current = [...generationEventsRef.current, event]; // Mettre à jour la ref de façon synchrone
           setGenerationEvents(prev => [...prev, event]);
           
           // Mettre à jour le message intro avec les nouveaux événements
@@ -1068,7 +1071,7 @@ export default function BuilderSession() {
           console.log('💾 File list:', Object.keys(updatedFiles).join(', '));
           console.log('💾 Total tokens:', usedTokens.total);
           console.log('💾 Generation duration:', generationDuration, 'ms');
-          console.log('💾 Generation events:', generationEvents.length);
+          console.log('💾 Generation events (ref):', generationEventsRef.current.length);
           console.log('💾 =====================================');
           
           // Insérer le message unifié avec toutes les métadonnées
@@ -1083,7 +1086,7 @@ export default function BuilderSession() {
                 type: 'generation' as const,
                 thought_duration: generationDuration,
                 intent_message: intentMessage,
-                generation_events: generationEvents,
+                generation_events: generationEventsRef.current, // Utiliser la ref au lieu du state
                 files_created: newFiles.length,
                 files_modified: modifiedFiles.length,
                 new_files: newFiles,
@@ -1114,7 +1117,7 @@ export default function BuilderSession() {
                   type: 'generation' as const,
                   thought_duration: generationDuration,
                   intent_message: intentMessage,
-                  generation_events: generationEvents,
+                  generation_events: generationEventsRef.current, // Utiliser la ref au lieu du state
                   files_created: newFiles.length,
                   files_modified: modifiedFiles.length,
                   new_files: newFiles,
