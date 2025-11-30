@@ -38,16 +38,9 @@ export function generate404Page(isDark: boolean = false): string {
       text-align: center;
     }
     
-    .logo {
-      width: 180px;
-      height: auto;
-      margin-bottom: 2rem;
-      animation: fadeInUp 0.6s ease-out;
-    }
-    
     .error-code {
       font-size: 8rem;
-      font-weight: 800;
+      font-weight: 400;
       line-height: 1;
       background: linear-gradient(135deg, #03A5C0 0%, #0284a8 100%);
       -webkit-background-clip: text;
@@ -66,7 +59,7 @@ export function generate404Page(isDark: boolean = false): string {
     }
     
     p {
-      font-size: 1.125rem;
+      font-size: 12px;
       color: ${isDark ? '#a3a3a3' : '#666666'};
       margin-bottom: 2rem;
       line-height: 1.6;
@@ -78,12 +71,13 @@ export function generate404Page(isDark: boolean = false): string {
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      padding: 0.75rem 2rem;
+      padding: 0 1.5rem;
+      height: auto;
       background: rgba(3, 165, 192, 0.1);
       border: 1px solid rgb(3, 165, 192);
       color: rgb(3, 165, 192);
       border-radius: 9999px;
-      font-size: 1rem;
+      font-size: 12px;
       font-weight: 500;
       text-decoration: none;
       transition: all 0.2s ease;
@@ -92,9 +86,7 @@ export function generate404Page(isDark: boolean = false): string {
     }
     
     .button:hover {
-      background: rgba(3, 165, 192, 0.2);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(3, 165, 192, 0.3);
+      background: rgba(3, 165, 192, 0.15);
     }
     
     @keyframes fadeInUp {
@@ -111,7 +103,6 @@ export function generate404Page(isDark: boolean = false): string {
 </head>
 <body>
   <div class="container">
-    <img src="${logoUrl}" alt="Magellan" class="logo" />
     <div class="error-code">404</div>
     <h1>Page non trouvée</h1>
     <p>La page que vous recherchez n'existe pas ou n'a pas encore été créée dans ce projet.</p>

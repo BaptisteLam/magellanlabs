@@ -168,22 +168,9 @@ function generate404Page(projectName: string): string {
       text-align: center;
       max-width: 600px;
     }
-    .logo {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 30px;
-      background: #03A5C0;
-      border-radius: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 40px;
-      font-weight: bold;
-      color: white;
-    }
     h1 {
       font-size: 72px;
-      font-weight: 700;
+      font-weight: 400;
       margin-bottom: 20px;
       background: linear-gradient(135deg, #03A5C0, #0288a3);
       -webkit-background-clip: text;
@@ -191,37 +178,38 @@ function generate404Page(projectName: string): string {
       background-clip: text;
     }
     p {
-      font-size: 20px;
+      font-size: 12px;
       color: #888;
       margin-bottom: 40px;
       line-height: 1.6;
     }
     .btn {
-      display: inline-block;
-      padding: 14px 32px;
-      background: #03A5C0;
-      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 24px;
+      height: auto;
+      background: rgba(3, 165, 192, 0.1);
+      color: rgb(3, 165, 192);
       text-decoration: none;
-      border-radius: 100px;
-      font-weight: 600;
-      transition: all 0.3s ease;
-      border: 2px solid #03A5C0;
+      border-radius: 9999px;
+      font-weight: 500;
+      font-size: 12px;
+      transition: all 0.2s ease;
+      border: 1px solid rgb(3, 165, 192);
     }
     .btn:hover {
-      background: transparent;
-      color: #03A5C0;
-      transform: translateY(-2px);
+      background: rgba(3, 165, 192, 0.15);
     }
     .project-name {
       margin-top: 40px;
-      font-size: 14px;
+      font-size: 12px;
       color: #666;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="logo">M</div>
     <h1>404</h1>
     <p>
       Désolé, cette page n'existe pas sur ce projet.<br>
