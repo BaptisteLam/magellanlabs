@@ -82,6 +82,35 @@ Deno.serve(async (req) => {
     const cloudflareAccountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
     const cloudflareEmail = Deno.env.get('CLOUDFLARE_EMAIL');
 
+    // Step 1: Create Web Analytics site for this project
+    console.log('📊 Creating Web Analytics site...');
+    const analyticsHost = `${projectName}.builtbymagellan.com`;
+    const analyticsResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/rum/site_info`,
+      {
+        method: 'POST',
+        headers: {
+          'X-Auth-Email': cloudflareEmail,
+          'X-Auth-Key': cloudflareApiToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          host: analyticsHost,
+          auto_install: false,
+        }),
+      }
+    );
+
+    let siteToken = '';
+    if (analyticsResponse.ok) {
+      const analyticsData = await analyticsResponse.json();
+      siteToken = analyticsData.result?.site_token || '';
+      console.log('✅ Web Analytics site created:', siteToken);
+    } else {
+      const errorText = await analyticsResponse.text();
+      console.warn('⚠️ Failed to create Web Analytics site (non-blocking):', errorText);
+    }
+
     console.log('🔍 Cloudflare credentials check:', {
       hasToken: !!cloudflareApiToken,
       tokenLength: cloudflareApiToken?.length || 0,
@@ -99,6 +128,29 @@ Deno.serve(async (req) => {
     }
 
     const startTime = Date.now();
+
+    // Step 2: Inject Web Analytics beacon into HTML files
+    if (siteToken) {
+      console.log('💉 Injecting Web Analytics beacon into HTML files...');
+      const beaconScript = `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "${siteToken}"}'></script>`;
+      
+      projectFiles = projectFiles.map((file: ProjectFile) => {
+        if (file.name.endsWith('.html') && file.type === 'text') {
+          const content = file.content;
+          // Inject before closing </head> tag if exists, otherwise before </body>
+          if (content.includes('</head>')) {
+            file.content = content.replace('</head>', `  ${beaconScript}\n</head>`);
+          } else if (content.includes('</body>')) {
+            file.content = content.replace('</body>', `  ${beaconScript}\n</body>`);
+          } else {
+            // Append at the end if no head/body tags
+            file.content = content + '\n' + beaconScript;
+          }
+          console.log(`  ✅ Beacon injected in ${file.name}`);
+        }
+        return file;
+      });
+    }
 
     // Générer le Worker script avec tous les fichiers embarqués
     const workerScript = generateWorkerScript(projectName, projectFiles);
@@ -178,12 +230,13 @@ Deno.serve(async (req) => {
     // Utiliser le domaine personnalisé builtbymagellan.com
     const publicUrl = `https://${projectName}.builtbymagellan.com`;
 
-    // Mettre à jour la session avec l'URL publique
+    // Mettre à jour la session avec l'URL publique et le site token
     const { error: updateError } = await supabase
       .from('build_sessions')
       .update({ 
         public_url: publicUrl,
         cloudflare_project_name: projectName,
+        web_analytics_site_token: siteToken || null,
         updated_at: new Date().toISOString()
       })
       .eq('id', sessionId);
