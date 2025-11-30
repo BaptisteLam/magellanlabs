@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Lightbulb } from "lucide-react";
 import { CollapsedAiTasks } from "./CollapsedAiTasks";
 import { LoadingProgress } from "./LoadingProgress";
 import { MessageActions } from "./MessageActions";
 import { GenerationEvent } from "@/types/agent";
+import { TypewriterText } from "./TypewriterText";
+import { MarkdownText } from "./MarkdownText";
 
 interface AiGenerationMessageProps {
   message: {
@@ -64,6 +66,11 @@ export default function AiGenerationMessage({
     ? message.content 
     : '';
 
+  // State pour contrôler l'affichage du typewriter
+  const [showThoughtTypewriter, setShowThoughtTypewriter] = useState(!isLoading && thought_duration > 0);
+  const [showIntentTypewriter, setShowIntentTypewriter] = useState(false);
+  const [showContentTypewriter, setShowContentTypewriter] = useState(false);
+
   // Trouver le fichier en cours de modification
   const currentFile = useMemo(() => {
     const inProgressEvents = generation_events.filter(e => e.status === 'in-progress');
@@ -94,18 +101,34 @@ export default function AiGenerationMessage({
 
   return (
     <div className="space-y-3">
-      {/* 1. Thought for Xs + Intent message */}
-      {thought_duration > 0 && (
+      {/* 1. Thought for Xs + Intent message avec effet typewriter */}
+      {thought_duration > 0 && !isLoading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Lightbulb className="h-4 w-4" />
-          <span>Thought for {thoughtSeconds}s</span>
+          {showThoughtTypewriter ? (
+            <TypewriterText 
+              text={`Thought for ${thoughtSeconds}s`}
+              speed={15}
+              onComplete={() => setShowIntentTypewriter(true)}
+            />
+          ) : (
+            <span>Thought for {thoughtSeconds}s</span>
+          )}
         </div>
       )}
       
-      {intent_message && (
-        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-          {intent_message}
-        </p>
+      {intent_message && !isLoading && (
+        <div className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+          {showIntentTypewriter ? (
+            <TypewriterText 
+              text={intent_message}
+              speed={15}
+              onComplete={() => setShowContentTypewriter(true)}
+            />
+          ) : (
+            <MarkdownText text={intent_message} />
+          )}
+        </div>
       )}
 
       {/* 2. Barre de chargement - Reste indéfiniment avec bouton "show all" discret */}
@@ -132,11 +155,18 @@ export default function AiGenerationMessage({
         />
       )}
 
-      {/* 4. Message de conclusion détaillé (uniquement après génération) */}
+      {/* 4. Message de conclusion détaillé avec effet typewriter et markdown */}
       {!isLoading && contentString && (
-        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-          {contentString}
-        </p>
+        <div className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+          {showContentTypewriter ? (
+            <TypewriterText 
+              text={contentString}
+              speed={15}
+            />
+          ) : (
+            <MarkdownText text={contentString} />
+          )}
+        </div>
       )}
 
       {/* 5. Action buttons */}
