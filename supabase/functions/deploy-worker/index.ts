@@ -86,9 +86,9 @@ Deno.serve(async (req) => {
     // Ajouter le script Worker
     formData.append('worker.js', new Blob([workerScript], { type: 'application/javascript' }), 'worker.js');
     
-    // Ajouter les métadonnées
+    // Ajouter les métadonnées (format Service Worker, pas ES Module)
     const metadata = {
-      main_module: 'worker.js',
+      body_part: 'worker.js',
       compatibility_date: '2024-01-01',
       compatibility_flags: []
     };
@@ -213,40 +213,33 @@ function generateWorkerScript(projectName: string, projectFiles: ProjectFile[]):
   return `// Worker généré automatiquement pour le projet: ${projectName}
 const PROJECT_FILES = ` + filesJson + `;
 
-export default {
-  async fetch(request) {
-    const url = new URL(request.url);
-    let path = url.pathname;
-    
-    // Route racine -> index.html
-    if (path === '/' || path === '') {
-      path = '/index.html';
-    }
-    
-    // Chercher le fichier exact
-    let content = PROJECT_FILES[path];
-    
-    // Si pas trouvé et pas d'extension, essayer avec .html
-    if (!content && !path.includes('.')) {
-      content = PROJECT_FILES[path + '.html'];
-    }
-    
-    // Si toujours pas trouvé, retourner 404
-    if (!content) {
-      // Essayer la page 404 custom
-      content = PROJECT_FILES['/404.html'];
-      if (content) {
-        return new Response(content, {
-          status: 404,
-          headers: {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Cache-Control': 'public, max-age=3600',
-          },
-        });
-      }
-      
-      // Page 404 par défaut
-      return new Response(generate404Page('` + projectName + `'), {
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request));
+});
+
+async function handleRequest(request) {
+  const url = new URL(request.url);
+  let path = url.pathname;
+  
+  // Route racine -> index.html
+  if (path === '/' || path === '') {
+    path = '/index.html';
+  }
+  
+  // Chercher le fichier exact
+  let content = PROJECT_FILES[path];
+  
+  // Si pas trouvé et pas d'extension, essayer avec .html
+  if (!content && !path.includes('.')) {
+    content = PROJECT_FILES[path + '.html'];
+  }
+  
+  // Si toujours pas trouvé, retourner 404
+  if (!content) {
+    // Essayer la page 404 custom
+    content = PROJECT_FILES['/404.html'];
+    if (content) {
+      return new Response(content, {
         status: 404,
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
@@ -255,36 +248,45 @@ export default {
       });
     }
     
-    // Si c'est un fichier binaire (data: URL), on doit le décoder
-    if (content.startsWith('data:')) {
-      const [header, base64Data] = content.split(',');
-      const mimeMatch = header.match(/data:([^;]+)/);
-      const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-      
-      // Décoder le base64
-      const binaryString = atob(base64Data);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      
-      return new Response(bytes, {
-        headers: {
-          'Content-Type': mimeType,
-          'Cache-Control': 'public, max-age=31536000',
-        },
-      });
-    }
-    
-    // Fichier texte normal
-    return new Response(content, {
+    // Page 404 par défaut
+    return new Response(generate404Page('` + projectName + `'), {
+      status: 404,
       headers: {
-        'Content-Type': getMimeType(path),
+        'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'public, max-age=3600',
       },
     });
-  },
-};
+  }
+  
+  // Si c'est un fichier binaire (data: URL), on doit le décoder
+  if (content.startsWith('data:')) {
+    const [header, base64Data] = content.split(',');
+    const mimeMatch = header.match(/data:([^;]+)/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    
+    // Décoder le base64
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    return new Response(bytes, {
+      headers: {
+        'Content-Type': mimeType,
+        'Cache-Control': 'public, max-age=31536000',
+      },
+    });
+  }
+  
+  // Fichier texte normal
+  return new Response(content, {
+    headers: {
+      'Content-Type': getMimeType(path),
+      'Cache-Control': 'public, max-age=3600',
+    },
+  });
+}
 
 function getMimeType(path) {
   const ext = path.split('.').pop()?.toLowerCase();
