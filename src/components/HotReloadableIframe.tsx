@@ -70,6 +70,7 @@ export function HotReloadableIframe({
         let hoveredElement = null;
         let mouseMoveHandler = null;
         let clickHandler = null;
+        let pendingInspectMode = null;
         
         // Injecter les styles d'inspection
         const injectStyles = () => {
@@ -138,6 +139,13 @@ export function HotReloadableIframe({
               const newState = e.data.enabled;
               console.log('🔄 Toggle inspect mode:', newState, '(état actuel:', isInspectMode, ')');
               
+              // Si le document n'est pas prêt, stocker le mode en attente
+              if (document.readyState !== 'complete') {
+                console.log('⏳ Document pas prêt, mode stocké en attente');
+                pendingInspectMode = newState;
+                return;
+              }
+              
               // Éviter les toggles redondants
               if (isInspectMode === newState) {
                 console.log('⚠️ État déjà à', newState, '- pas de changement');
@@ -154,6 +162,48 @@ export function HotReloadableIframe({
           });
           
           console.log('✅ Event listener message installé');
+          
+          // Envoyer inspect-ready immédiatement
+          console.log('📤 Envoi de inspect-ready (immédiat)');
+          window.parent.postMessage({ type: 'inspect-ready' }, '*');
+          
+          // Envoyer également après DOMContentLoaded
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+              console.log('📤 Envoi de inspect-ready (DOMContentLoaded)');
+              window.parent.postMessage({ type: 'inspect-ready' }, '*');
+            });
+          }
+          
+          // Et après window.load
+          window.addEventListener('load', () => {
+            console.log('📤 Envoi de inspect-ready (window.load)');
+            window.parent.postMessage({ type: 'inspect-ready' }, '*');
+            
+            // Appliquer le mode en attente si présent
+            if (pendingInspectMode !== null) {
+              console.log('✅ Application du mode en attente:', pendingInspectMode);
+              isInspectMode = pendingInspectMode;
+              if (isInspectMode) {
+                activateInspection();
+              } else {
+                deactivateInspection();
+              }
+              pendingInspectMode = null;
+            }
+          });
+          
+          // Répéter périodiquement pendant 2 secondes pour garantir réception
+          let readyAttempts = 0;
+          const readyInterval = setInterval(() => {
+            console.log('📤 Envoi de inspect-ready (retry', readyAttempts + 1, ')');
+            window.parent.postMessage({ type: 'inspect-ready' }, '*');
+            readyAttempts++;
+            if (readyAttempts > 6) {
+              clearInterval(readyInterval);
+              console.log('✅ Fin des retries inspect-ready');
+            }
+          }, 300);
         }
         
         function activateInspection() {
@@ -759,21 +809,15 @@ export function HotReloadableIframe({
     return () => window.removeEventListener('message', handleMessage);
   }, [onElementSelect, projectFiles, navigationIndex]);
 
-  // Envoyer le toggle inspect mode à l'iframe UNIQUEMENT quand inspect-ready reçu
+  // Envoyer le toggle inspect mode à l'iframe avec approche optimiste + retry
   useEffect(() => {
-    // CRITIQUE: N'envoyer le message que si inspectReady est true
-    if (!inspectReady) {
-      console.log('⏳ Attente de inspect-ready avant d\'envoyer toggle-inspect...');
-      return;
-    }
-    
     const sendToggleMessage = () => {
       if (!iframeRef.current?.contentWindow) {
         console.warn('❌ contentWindow non disponible');
         return false;
       }
       
-      console.log('📤 Sending toggle-inspect:', inspectMode, '(inspectReady=true)');
+      console.log('📤 Sending toggle-inspect:', inspectMode, '(approche optimiste)');
       iframeRef.current.contentWindow.postMessage(
         { type: 'toggle-inspect', enabled: inspectMode },
         '*'
@@ -781,13 +825,23 @@ export function HotReloadableIframe({
       return true;
     };
 
-    // Envoyer immédiatement
+    // Envoyer immédiatement, même si l'iframe n'est pas encore prête
+    // Le script stockera la demande et l'appliquera au chargement
     sendToggleMessage();
     
-    // Si le mode inspect est activé mais pas encore confirmé, réessayer périodiquement
-    // FIXME: Cette condition ne sera jamais vraie car inspectReady est déjà checked plus haut
-    // On garde la logique mais elle est redondante
-  }, [inspectMode, inspectReady]);
+    // Retry quelques fois pour s'assurer que le message arrive
+    const retries = [100, 300, 500, 1000];
+    const timeouts = retries.map((delay) => 
+      setTimeout(sendToggleMessage, delay)
+    );
+    
+    console.log('🔄 Retry planifiés pour toggle-inspect');
+    
+    return () => {
+      timeouts.forEach(clearTimeout);
+      console.log('🧹 Cleanup retries toggle-inspect');
+    };
+  }, [inspectMode]);
 
   // Charger l'iframe uniquement au premier mount
   useEffect(() => {
@@ -825,6 +879,9 @@ export function HotReloadableIframe({
     if (!iframe || initialLoadRef.current) return; // Skip lors du premier mount
     
     console.log('🔄 Rechargement iframe pour nouvelle page:', currentFile);
+    
+    // CRITIQUE: Réinitialiser inspectReady car le script sera rechargé
+    setInspectReady(false);
     
     // Sauvegarder l'état de scroll si c'est une navigation normale
     const scrollX = iframe.contentWindow?.scrollX || 0;
