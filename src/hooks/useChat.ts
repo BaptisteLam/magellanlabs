@@ -8,7 +8,7 @@ export interface Message {
   id?: string;
   created_at?: string;
   metadata?: {
-    type?: 'intro' | 'recap';
+    type?: 'intro' | 'recap' | 'generation';
     generation_events?: any[];
     files_updated?: number;
     new_files?: string[];
@@ -18,6 +18,11 @@ export interface Message {
     output_tokens?: number;
     total_tokens?: number;
     attachedFiles?: Array<{ name: string; base64: string; type: string }>;
+    thought_duration?: number;
+    intent_message?: string;
+    files_created?: number;
+    files_modified?: number;
+    has_images?: boolean;
     [key: string]: any;
   };
 }
@@ -96,6 +101,7 @@ export function useChat(sessionId?: string) {
         role: msg.role,
         content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
         token_count: msg.token_count ?? null,
+        created_at: msg.created_at ?? new Date().toISOString(),
         metadata: msg.metadata ?? null
       }));
 

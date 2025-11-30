@@ -40,6 +40,7 @@ interface Message {
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
   token_count?: number;
   id?: string;
+  created_at?: string;
   metadata?: {
     type?: 'intro' | 'recap' | 'generation';
     thought_duration?: number;
@@ -740,7 +741,11 @@ export default function BuilderSession() {
     }
 
     const shouldAddMessage = inputValue.trim() || messages.length === 0 || messages[messages.length - 1]?.content !== userMessageContent;
-    const newMessages = shouldAddMessage ? [...messages, { role: 'user' as const, content: userMessageContent }] : messages;
+    const newMessages = shouldAddMessage ? [...messages, { 
+      role: 'user' as const, 
+      content: userMessageContent,
+      created_at: new Date().toISOString()
+    }] : messages;
     
     if (shouldAddMessage) {
       setMessages(newMessages);
@@ -757,7 +762,11 @@ export default function BuilderSession() {
           session_id: sessionId,
           role: 'user',
           content: userMessageText,
-          metadata: { has_images: attachedFiles.length > 0 }
+          created_at: new Date().toISOString(),
+          metadata: { 
+            has_images: attachedFiles.length > 0,
+            attachedFiles: attachedFiles.length > 0 ? attachedFiles : undefined
+          }
         });
     }
     
@@ -768,6 +777,7 @@ export default function BuilderSession() {
     const introMessage: Message = {
       role: 'assistant',
       content: "Je vais analyser votre demande et effectuer les modifications nécessaires...",
+      created_at: new Date().toISOString(),
       metadata: {
         type: 'generation',
         thought_duration: 0,
@@ -1082,6 +1092,7 @@ export default function BuilderSession() {
               role: 'assistant',
               content: conclusionMessage,
               token_count: usedTokens.total,
+              created_at: new Date().toISOString(),
               metadata: { 
                 type: 'generation' as const,
                 thought_duration: generationDuration,
@@ -1113,6 +1124,7 @@ export default function BuilderSession() {
                 content: conclusionMessage,
                 token_count: usedTokens.total,
                 id: insertedMessage?.id,
+                created_at: new Date().toISOString(),
                 metadata: { 
                   type: 'generation' as const,
                   thought_duration: generationDuration,
