@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { sessionId, projectFiles, projectName } = await req.json();
+    let { sessionId, projectFiles, projectName } = await req.json();
 
     if (!sessionId || !projectFiles || !projectName) {
       return new Response(
@@ -49,7 +49,34 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Validation et conversion de projectFiles si nécessaire
+    console.log('📋 Type de projectFiles reçu:', typeof projectFiles, Array.isArray(projectFiles));
+    
+    if (!Array.isArray(projectFiles)) {
+      console.log('⚠️ projectFiles n\'est pas un tableau, tentative de conversion...');
+      if (typeof projectFiles === 'object' && projectFiles !== null) {
+        // Convertir l'objet en tableau
+        projectFiles = Object.entries(projectFiles).map(([name, content]) => ({
+          name: name.startsWith('/') ? name : `/${name}`,
+          content: String(content),
+          type: 'text' as const
+        }));
+        console.log('✅ Conversion réussie:', projectFiles.length, 'fichiers');
+      } else {
+        console.error('❌ Impossible de convertir projectFiles');
+        return new Response(
+          JSON.stringify({ error: 'Invalid projectFiles format' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     console.log(`🚀 Deploying Worker for project: ${projectName} (${projectFiles.length} files)`);
+    console.log('📋 Fichiers reçus:', projectFiles.map((f: ProjectFile) => ({
+      name: f.name,
+      contentLength: f.content?.length || 0,
+      type: f.type
+    })));
 
     const cloudflareApiToken = Deno.env.get('CLOUDFLARE_API_TOKEN');
     const cloudflareAccountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
@@ -189,10 +216,21 @@ Deno.serve(async (req) => {
  * Génère le script du Worker avec tous les fichiers embarqués
  */
 function generateWorkerScript(projectName: string, projectFiles: ProjectFile[]): string {
+  console.log('🔧 Génération du Worker script...');
+  console.log('📦 Nombre de fichiers à embarquer:', projectFiles.length);
+  
   // Créer un objet de fichiers avec les contenus encodés
   const filesMap: Record<string, string> = {};
   
-  projectFiles.forEach(file => {
+  projectFiles.forEach((file, index) => {
+    console.log(`  [${index + 1}/${projectFiles.length}] Traitement: ${file.name} (${file.content?.length || 0} chars, type: ${file.type})`);
+    
+    // Validation du fichier
+    if (!file.name || !file.content) {
+      console.warn(`  ⚠️ Fichier invalide ignoré:`, file);
+      return;
+    }
+    
     let content = file.content;
     
     // Pour les fichiers binaires, on les garde en base64
@@ -202,15 +240,22 @@ function generateWorkerScript(projectName: string, projectFiles: ProjectFile[]):
       }
     }
     
-    filesMap[file.name] = content;
+    // S'assurer que le nom commence par /
+    const fileName = file.name.startsWith('/') ? file.name : `/${file.name}`;
+    filesMap[fileName] = content;
+    console.log(`  ✅ Ajouté: ${fileName}`);
   });
 
+  console.log('📦 Fichiers dans filesMap:', Object.keys(filesMap));
+  
   // JSON.stringify gère déjà l'échappement correctement
   const filesJson = JSON.stringify(filesMap);
+  console.log('📦 Taille du JSON généré:', filesJson.length, 'caractères');
+  console.log('📦 Aperçu du JSON (premiers 500 chars):', filesJson.substring(0, 500));
 
   // IMPORTANT: Utiliser des concaténations de strings au lieu de template literals
   // pour éviter les conflits avec les backticks et ${} dans le contenu
-  return `// Worker généré automatiquement pour le projet: ${projectName}
+  const workerScript = `// Worker généré automatiquement pour le projet: ${projectName}
 const PROJECT_FILES = ` + filesJson + `;
 
 addEventListener('fetch', event => {
@@ -383,5 +428,10 @@ function generate404Page(projectName) {
 </html>\`;
 }
 `.trim();
+  
+  console.log('📦 Taille totale du Worker script:', workerScript.length, 'caractères');
+  console.log('📦 Aperçu du script (premiers 1000 chars):', workerScript.substring(0, 1000));
+  
+  return workerScript;
 }
 
