@@ -207,7 +207,32 @@ Deno.serve(async (req) => {
     const deployData = await deployResponse.json();
     console.log('✅ Worker deployed successfully:', deployData);
 
-    // Ajouter une route pour le domaine personnalisé *.builtbymagellan.com
+    // Step 3: Enable workers.dev subdomain
+    console.log('🌐 Enabling workers.dev subdomain...');
+    const subdomainResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/workers/scripts/${projectName}/subdomain`,
+      {
+        method: 'POST',
+        headers: {
+          'X-Auth-Email': cloudflareEmail,
+          'X-Auth-Key': cloudflareApiToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          enabled: true
+        }),
+      }
+    );
+
+    if (subdomainResponse.ok) {
+      const subdomainData = await subdomainResponse.json();
+      console.log('✅ Workers.dev subdomain enabled:', subdomainData);
+    } else {
+      const subdomainError = await subdomainResponse.text();
+      console.warn('⚠️ Failed to enable workers.dev subdomain (non-blocking):', subdomainError);
+    }
+
+    // Step 4: Ajouter une route pour le domaine personnalisé *.builtbymagellan.com
     const ZONE_ID = Deno.env.get('CLOUDFLARE_ZONE_ID'); // Zone ID de builtbymagellan.com
     
     if (ZONE_ID) {
@@ -241,17 +266,51 @@ Deno.serve(async (req) => {
       console.warn('⚠️ CLOUDFLARE_ZONE_ID not set, skipping route creation');
     }
 
+    // Step 5: Configure Preview URLs (associer builtbymagellan.com comme preview)
+    console.log('🔗 Configuring Preview URLs...');
+    const settingsResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/workers/scripts/${projectName}/settings`,
+      {
+        method: 'PATCH',
+        headers: {
+          'X-Auth-Email': cloudflareEmail,
+          'X-Auth-Key': cloudflareApiToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          usage_model: 'bundled',
+          bindings: [],
+          compatibility_date: '2024-01-01',
+          compatibility_flags: [],
+        }),
+      }
+    );
+
+    if (settingsResponse.ok) {
+      const settingsData = await settingsResponse.json();
+      console.log('✅ Preview URLs configured:', settingsData);
+    } else {
+      const settingsError = await settingsResponse.text();
+      console.warn('⚠️ Failed to configure Preview URLs (non-blocking):', settingsError);
+    }
+
     const deployTime = Date.now() - startTime;
     
-    // Utiliser le domaine personnalisé builtbymagellan.com
-    const publicUrl = `https://${projectName}.builtbymagellan.com`;
+    // Construire les URLs publiques
+    const workersDevUrl = `https://${projectName}.${cloudflareAccountId}.workers.dev`;
+    const customDomainUrl = `https://${projectName}.builtbymagellan.com`;
 
-    // Mettre à jour la session avec l'URL publique et le site token
+    console.log('🌐 URLs générées:');
+    console.log('  - Workers.dev:', workersDevUrl);
+    console.log('  - Custom domain:', customDomainUrl);
+
+    // Mettre à jour la session avec l'URL publique custom domain comme principale
     const { error: updateError } = await supabase
       .from('build_sessions')
       .update({ 
-        public_url: publicUrl,
+        public_url: customDomainUrl,
         cloudflare_project_name: projectName,
+        cloudflare_deployment_url: workersDevUrl, // Stocker aussi l'URL workers.dev
         web_analytics_site_token: siteToken || null,
         updated_at: new Date().toISOString()
       })
@@ -289,16 +348,19 @@ Deno.serve(async (req) => {
     supabase.functions.invoke('generate-screenshot', {
       body: { 
         sessionId,
-        url: publicUrl
+        url: customDomainUrl
       }
     }).catch(err => console.error('Screenshot generation failed:', err));
 
-    console.log(`✅ Worker deployed successfully: ${publicUrl} (${deployTime}ms)`);
+    console.log(`✅ Worker deployed successfully: ${customDomainUrl} (${deployTime}ms)`);
+    console.log(`   Workers.dev URL: ${workersDevUrl}`);
 
     return new Response(
       JSON.stringify({ 
         success: true,
-        publicUrl,
+        publicUrl: customDomainUrl,
+        workersDevUrl,
+        previewUrls: [customDomainUrl, workersDevUrl], // Les deux URLs comme Preview URLs
         projectName,
         deployTime: `${deployTime}ms`
       }),
