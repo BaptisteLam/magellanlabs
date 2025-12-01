@@ -809,39 +809,25 @@ export function HotReloadableIframe({
     return () => window.removeEventListener('message', handleMessage);
   }, [onElementSelect, projectFiles, navigationIndex]);
 
-  // Envoyer le toggle inspect mode à l'iframe avec approche optimiste + retry
+  // Envoyer le toggle inspect mode à l'iframe - ATTENDRE que l'iframe soit prête
   useEffect(() => {
-    const sendToggleMessage = () => {
-      if (!iframeRef.current?.contentWindow) {
-        console.warn('❌ contentWindow non disponible');
-        return false;
-      }
-      
-      console.log('📤 Sending toggle-inspect:', inspectMode, '(approche optimiste)');
-      iframeRef.current.contentWindow.postMessage(
-        { type: 'toggle-inspect', enabled: inspectMode },
-        '*'
-      );
-      return true;
-    };
+    // CRITIQUE: Attendre que l'iframe inspection soit prête avant d'envoyer le message
+    if (!inspectReady) {
+      console.log('⏳ En attente de inspect-ready avant d\'envoyer toggle-inspect');
+      return;
+    }
 
-    // Envoyer immédiatement, même si l'iframe n'est pas encore prête
-    // Le script stockera la demande et l'appliquera au chargement
-    sendToggleMessage();
+    if (!iframeRef.current?.contentWindow) {
+      console.warn('❌ contentWindow non disponible');
+      return;
+    }
     
-    // Retry quelques fois pour s'assurer que le message arrive
-    const retries = [100, 300, 500, 1000];
-    const timeouts = retries.map((delay) => 
-      setTimeout(sendToggleMessage, delay)
+    console.log('📤 Sending toggle-inspect:', inspectMode, '(iframe prête)');
+    iframeRef.current.contentWindow.postMessage(
+      { type: 'toggle-inspect', enabled: inspectMode },
+      '*'
     );
-    
-    console.log('🔄 Retry planifiés pour toggle-inspect');
-    
-    return () => {
-      timeouts.forEach(clearTimeout);
-      console.log('🧹 Cleanup retries toggle-inspect');
-    };
-  }, [inspectMode]);
+  }, [inspectMode, inspectReady]);
 
   // Charger l'iframe uniquement au premier mount
   useEffect(() => {
