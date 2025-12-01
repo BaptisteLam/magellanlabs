@@ -108,9 +108,11 @@ Deno.serve(async (req) => {
       period
     });
 
-    // Try REST API first for more reliable results
-    const rumResponse = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/rum/site_info/${siteToken}`,
+    // Use Cloudflare REST API for Web Analytics
+    console.log('📊 Fetching aggregate analytics data...');
+    
+    const analyticsResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/rum/site_info/${siteToken}/aggregate?since=${startDate.toISOString()}&until=${endDate.toISOString()}`,
       {
         method: 'GET',
         headers: {
@@ -120,137 +122,35 @@ Deno.serve(async (req) => {
       }
     );
 
-    console.log('🔍 RUM site info response:', rumResponse.status);
-    
-    if (rumResponse.ok) {
-      const rumData = await rumResponse.json();
-      console.log('✅ RUM site found:', rumData);
-    } else {
-      const errorText = await rumResponse.text();
-      console.error('❌ RUM site not found:', errorText);
-    }
-
-    // GraphQL query for Web Analytics data - Fixed types to String! instead of string!
-    const graphqlQuery = {
-      query: `
-        query GetWebAnalytics($accountTag: String!, $filter: AccountRumPageloadEventsAdaptiveGroupsFilter_InputObject!) {
-          viewer {
-            accounts(filter: { accountTag: $accountTag }) {
-              timeSeries: rumPageloadEventsAdaptiveGroups(
-                filter: $filter
-                limit: 1000
-                orderBy: [datetimeMinute_ASC]
-              ) {
-                count
-                sum {
-                  visits
-                }
-                dimensions {
-                  datetimeMinute
-                }
-              }
-              
-              pages: rumPageloadEventsAdaptiveGroups(
-                filter: $filter
-                limit: 10
-                orderBy: [count_DESC]
-              ) {
-                count
-                dimensions {
-                  requestPath
-                }
-              }
-              
-              countries: rumPageloadEventsAdaptiveGroups(
-                filter: $filter
-                limit: 10
-                orderBy: [count_DESC]
-              ) {
-                count
-                dimensions {
-                  countryName
-                }
-              }
-              
-              devices: rumPageloadEventsAdaptiveGroups(
-                filter: $filter
-                limit: 10
-                orderBy: [count_DESC]
-              ) {
-                count
-                dimensions {
-                  deviceType
-                }
-              }
-              
-              referrers: rumPageloadEventsAdaptiveGroups(
-                filter: $filter
-                limit: 10
-                orderBy: [count_DESC]
-              ) {
-                count
-                dimensions {
-                  refererHost
-                }
-              }
-            }
-          }
-        }
-      `,
-      variables: {
-        accountTag: cloudflareAccountId,
-        filter: {
-          siteTag: siteToken,
-          datetime_geq: startDate.toISOString(),
-          datetime_leq: endDate.toISOString(),
-        },
-      },
-    };
-
-    console.log('📤 Sending GraphQL query with filter:', graphqlQuery.variables.filter);
-
-    console.log('📊 Fetching Web Analytics data for site:', siteToken);
-
-    const analyticsResponse = await fetch('https://api.cloudflare.com/client/v4/graphql', {
-      method: 'POST',
-      headers: {
-        'X-Auth-Email': cloudflareEmail,
-        'X-Auth-Key': cloudflareApiToken,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(graphqlQuery),
-    });
-
     if (!analyticsResponse.ok) {
-      const errorText = await analyticsResponse.text();
-      console.error('❌ Cloudflare API error:', analyticsResponse.status, errorText);
-      throw new Error(`Cloudflare API error: ${analyticsResponse.status}`);
+      const errorData = await analyticsResponse.json();
+      console.error('❌ Failed to fetch analytics:', errorData);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Les données peuvent prendre 24-48h à apparaître après la première publication.',
+          details: errorData 
+        }),
+        { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
     const analyticsData = await analyticsResponse.json();
-    console.log('✅ Analytics data received:', JSON.stringify(analyticsData, null, 2));
+    console.log('✅ Analytics data received');
 
-    if (analyticsData.errors) {
-      console.error('❌ GraphQL errors:', JSON.stringify(analyticsData.errors, null, 2));
-      throw new Error('GraphQL query failed: ' + JSON.stringify(analyticsData.errors));
-    }
+    const data = analyticsData.result || {};
 
-    const result = analyticsData.data?.viewer?.accounts?.[0];
-    if (!result) {
-      throw new Error('No analytics data returned');
-    }
-
-    // Process time series data - aggregate by day
+    // Process time series data from timeseries bucket
     const timeSeriesMap = new Map<string, { visitors: number; pageviews: number }>();
-    result.timeSeries?.forEach((item: any) => {
-      const date = new Date(item.dimensions.datetimeMinute).toISOString().split('T')[0];
-      const existing = timeSeriesMap.get(date) || { visitors: 0, pageviews: 0 };
-      existing.visitors += item.count || 0;
-      existing.pageviews += item.sum?.visits || 0;
-      timeSeriesMap.set(date, existing);
+    (data.timeseries || []).forEach((item: any) => {
+      const date = new Date(item.timestamp).toISOString().split('T')[0];
+      timeSeriesMap.set(date, {
+        visitors: item.visits || 0,
+        pageviews: item.pageViews || 0,
+      });
     });
-
-    console.log('📊 Time series processed:', timeSeriesMap.size, 'days');
 
     const timeSeries = Array.from(timeSeriesMap.entries())
       .map(([date, data]) => ({
@@ -261,47 +161,45 @@ Deno.serve(async (req) => {
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    // Calculate metrics
-    const totalVisitors = timeSeries.reduce((sum, d) => sum + d.visitors, 0);
-    const totalPageviews = timeSeries.reduce((sum, d) => sum + d.pageviews, 0);
+    // Calculate metrics from totals
+    const totalVisitors = data.totals?.visits || 0;
+    const totalPageviews = data.totals?.pageViews || 0;
     const viewsPerVisit = totalVisitors > 0 ? Number((totalPageviews / totalVisitors).toFixed(2)) : 0;
-    
-    // Calculate bounce rate (simplified - pages with single pageview)
-    const singlePageVisits = result.pages?.filter((p: any) => p.count === 1).length || 0;
-    const totalVisits = result.pages?.length || 1;
-    const bounceRate = Math.round((singlePageVisits / totalVisits) * 100);
+    const bounceRate = data.totals?.bounceRate || 0;
+
+    console.log('📊 Metrics calculated:', { totalVisitors, totalPageviews, viewsPerVisit, bounceRate });
 
     // Process pages
-    const pages = (result.pages || [])
+    const pages = (data.topPages || [])
       .map((item: any) => ({
-        label: item.dimensions.requestPath || '/',
-        value: item.count || 0,
+        label: item.page || '/',
+        value: item.pageViews || 0,
       }))
-      .filter((p: any) => p.label !== null);
+      .slice(0, 10);
 
     // Process countries
-    const countries = (result.countries || [])
+    const countries = (data.topLocations || [])
       .map((item: any) => ({
-        label: item.dimensions.countryName || 'Unknown',
-        value: item.count || 0,
+        label: item.location || 'Unknown',
+        value: item.visits || 0,
       }))
-      .filter((c: any) => c.label !== 'Unknown');
+      .slice(0, 10);
 
     // Process devices
-    const deviceTotal = (result.devices || []).reduce((sum: number, d: any) => sum + (d.count || 0), 0);
-    const devices = (result.devices || [])
+    const deviceTotal = (data.topDeviceTypes || []).reduce((sum: number, d: any) => sum + (d.visits || 0), 0);
+    const devices = (data.topDeviceTypes || [])
       .map((item: any) => ({
-        label: item.dimensions.deviceType || 'Unknown',
-        value: deviceTotal > 0 ? Math.round(((item.count || 0) / deviceTotal) * 100) : 0,
-      }))
-      .filter((d: any) => d.label !== 'Unknown');
+        label: item.deviceType || 'Unknown',
+        value: deviceTotal > 0 ? Math.round(((item.visits || 0) / deviceTotal) * 100) : 0,
+      }));
 
     // Process referrers (sources)
-    const sources = (result.referrers || [])
+    const sources = (data.topReferrers || [])
       .map((item: any) => ({
-        label: item.dimensions.refererHost || 'Direct',
-        value: item.count || 0,
-      }));
+        label: item.referrer || 'Direct',
+        value: item.visits || 0,
+      }))
+      .slice(0, 10);
 
     const responseData = {
       timeSeries,
