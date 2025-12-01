@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { ASTModification } from '@/types/ast';
 
 export interface PatchAction {
   path: string;
@@ -11,6 +12,7 @@ export interface PatchAction {
 interface UseModifySiteOptions {
   onMessage?: (message: string) => void;
   onPatch?: (actions: PatchAction[]) => void;
+  onASTModifications?: (modifications: ASTModification[]) => void;
   onComplete?: () => void;
   onError?: (error: string) => void;
   onGenerationEvent?: (event: import('@/types/agent').GenerationEvent) => void;
@@ -124,9 +126,9 @@ export function useModifySite() {
                 });
                 break;
               case 'complete':
-                // Récupérer les actions de patch
-                const { actions, message: finalMessage } = event.data;
-                console.log('⚡ Modifications rapides reçues:', actions.length, 'actions');
+                // Récupérer les modifications AST
+                const { modifications, message: finalMessage } = event.data;
+                console.log('⚡ Modifications AST reçues:', modifications?.length || 0, 'modifications');
                 console.log('💬 Message final de Claude:', finalMessage);
                 
                 // ✅ CORRECTION : Émettre les événements completed ICI
@@ -148,12 +150,12 @@ export function useModifySite() {
                   options.onIntentMessage?.(finalMessage);
                 }
                 
-                // Emit edit events for each patched file
-                actions?.forEach((action: PatchAction) => {
+                // Emit edit events for each modified file
+                modifications?.forEach((mod: ASTModification) => {
                   options.onGenerationEvent?.({ 
                     type: 'edit', 
-                    message: action.path, 
-                    file: action.path,
+                    message: mod.path, 
+                    file: mod.path,
                     status: 'completed'
                   });
                 });
@@ -162,8 +164,8 @@ export function useModifySite() {
                 setIsStreaming(false);
                 setIsLoading(false);
                 
-                // Appliquer les patches
-                options.onPatch?.(actions);
+                // Appliquer les modifications AST
+                options.onASTModifications?.(modifications || []);
                 options.onGenerationEvent?.({ type: 'complete', message: 'Changes applied', status: 'completed' });
                 options.onComplete?.();
                 break;
@@ -205,7 +207,7 @@ export function useModifySite() {
               clearTimeout(safetyTimeout);
               setIsStreaming(false);
               setIsLoading(false);
-              options.onPatch?.(event.data?.actions || []);
+              options.onASTModifications?.(event.data?.modifications || []);
               options.onComplete?.();
             }
           } catch (e) {

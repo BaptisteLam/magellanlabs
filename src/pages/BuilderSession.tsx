@@ -32,6 +32,7 @@ import { TokenCounter } from '@/components/TokenCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
 import { analyzeIntent, identifyRelevantFiles, estimateGenerationTime } from '@/utils/intentAnalyzer';
 import { useModifySite, applyPatch, type PatchAction } from '@/hooks/useModifySite';
+import { ASTModification } from '@/types/ast';
 import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { PublishSuccessDialog } from '@/components/PublishSuccessDialog';
@@ -1354,35 +1355,36 @@ export default function BuilderSession() {
             return prev;
           });
         },
-        onPatch: async (actions: PatchAction[]) => {
-          console.log('⚡ Patches reçus:', actions.length);
+        onASTModifications: async (modifications) => {
+          console.log('⚡ AST Modifications reçues:', modifications.length);
           
-          // 🔄 FALLBACK AUTOMATIQUE si aucun patch
-          if (actions.length === 0) {
-            console.log('⚠️ Aucun patch reçu, fallback sur génération complète');
+          // 🔄 FALLBACK AUTOMATIQUE si aucune modification
+          if (modifications.length === 0) {
+            console.log('⚠️ Aucune modification AST reçue, fallback sur génération complète');
             return handleFullGeneration(userPrompt);
           }
           
-          console.log('⚡ Application de', actions.length, 'patches');
+          console.log('⚡ Application de', modifications.length, 'modifications AST');
           
-          // Appliquer tous les patches
-          const updatedFiles = { ...projectFiles };
-          let modifiedFilesList: string[] = [];
+          // Importer le service AST
+          const { applyModificationsToFiles } = await import('@/services/ast/astModifier');
           
-          for (const action of actions) {
-            const currentContent = updatedFiles[action.path];
-            if (!currentContent) {
-              console.warn('⚠️ Fichier non trouvé:', action.path);
-              continue;
-            }
-            
-            const newContent = applyPatch(currentContent, action);
-            if (newContent !== currentContent) {
-              updatedFiles[action.path] = newContent;
-              modifiedFilesList.push(action.path);
-              console.log('✅ Patch appliqué:', action.path);
-            }
+          // Appliquer toutes les modifications AST
+          const result = await applyModificationsToFiles(projectFiles, modifications);
+          
+          if (!result.success) {
+            console.error('❌ Échec des modifications AST:', result.errors);
+            sonnerToast.error('Échec des modifications, génération complète en cours...');
+            return handleFullGeneration(userPrompt);
           }
+          
+          const updatedFiles = result.updatedFiles;
+          const modifiedFilesList = Object.keys(updatedFiles).filter(
+            path => updatedFiles[path] !== projectFiles[path]
+          );
+          
+          console.log('✅ Modifications AST appliquées:', modifiedFilesList);
+        
           
           // Mettre à jour l'état avec les nouveaux fichiers
           updateFiles(updatedFiles, true);

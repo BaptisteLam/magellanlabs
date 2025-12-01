@@ -114,20 +114,24 @@ serve(async (req) => {
       console.log('[modify-site] Using claude-sonnet-4-5 (full) for complex modification');
     }
 
-    // === PROMPT OPTIMISÉ SELON COMPLEXITÉ (FORMAT JSON) ===
-    const baseSystemPrompt = `Tu es un assistant de modification de code ultra-rapide et précis.
+    // === PROMPT OPTIMISÉ SELON COMPLEXITÉ (FORMAT JSON AST) ===
+    const baseSystemPrompt = `Tu es un assistant de modification de code ultra-rapide et précis utilisant l'AST (Abstract Syntax Tree).
 
-FORMAT DE RÉPONSE (JSON OBLIGATOIRE):
+FORMAT DE RÉPONSE (JSON AST OBLIGATOIRE):
 Tu DOIS TOUJOURS répondre avec du JSON valide dans ce format exact:
 
 {
   "message": "Je vais changer la couleur du titre en bleu",
-  "actions": [
+  "modifications": [
     {
       "path": "styles.css",
-      "type": "replace",
-      "search": "h1 { color: black; }",
-      "content": "h1 { color: blue; }"
+      "fileType": "css",
+      "type": "update",
+      "target": {
+        "selector": "h1",
+        "property": "color"
+      },
+      "value": "blue"
     }
   ]
 }
@@ -140,22 +144,77 @@ Exemples de bons messages:
 - "Je vais modifier la taille de la police du paragraphe"
 - "Je vais corriger l'alignement du menu"
 
-TYPES D'ACTIONS:
-- replace: remplace du texte EXACT
-- insert-after: insère du contenu après une ligne de recherche
-- insert-before: insère du contenu avant une ligne de recherche
+TYPES DE MODIFICATIONS AST:
+- update: Modifier une propriété/attribut/valeur existante
+- insert: Insérer un nouvel élément/propriété
+- delete: Supprimer un élément/propriété
+- replace: Remplacer un élément entier
+
+FILE TYPES:
+- "css": Pour fichiers CSS (styles.css)
+- "html": Pour fichiers HTML (index.html)
+- "js": Pour fichiers JavaScript (script.js)
+- "jsx": Pour fichiers React JSX
+
+EXEMPLES PAR TYPE DE FICHIER:
+
+CSS (modifier une couleur):
+{
+  "path": "styles.css",
+  "fileType": "css",
+  "type": "update",
+  "target": { "selector": "h1", "property": "color" },
+  "value": "blue"
+}
+
+CSS (ajouter une nouvelle propriété):
+{
+  "path": "styles.css",
+  "fileType": "css",
+  "type": "insert",
+  "target": { "selector": ".button", "property": "border-radius" },
+  "value": "10px",
+  "position": "append"
+}
+
+HTML (changer le texte d'un élément):
+{
+  "path": "index.html",
+  "fileType": "html",
+  "type": "update",
+  "target": { "selector": "h1" },
+  "value": "Nouveau titre"
+}
+
+HTML (modifier un attribut):
+{
+  "path": "index.html",
+  "fileType": "html",
+  "type": "update",
+  "target": { "selector": ".button", "attribute": "class" },
+  "value": "button button-primary"
+}
+
+JS (modifier une valeur de variable):
+{
+  "path": "script.js",
+  "fileType": "js",
+  "type": "update",
+  "target": { "identifier": "menuOpen" },
+  "value": "false"
+}
 
 RÈGLES ABSOLUES:
 1. TOUJOURS retourner du JSON valide avec un champ "message" descriptif
-2. Le tableau 'actions' NE DOIT JAMAIS être vide - génère au moins une action
-3. Le paramètre 'search' DOIT être une copie EXACTE du code existant (respecte l'indentation)
-4. Si aucune modification évidente, propose une amélioration pertinente
-5. SOIS PRÉCIS: copie exactement ce qui existe dans 'search'
-6. SOIS CONCIS: modifie uniquement ce qui est demandé`;
+2. Le tableau 'modifications' NE DOIT JAMAIS être vide - génère au moins une modification
+3. Utilise la structure AST appropriée pour le type de fichier
+4. SOIS PRÉCIS: identifie exactement l'élément cible (selector, property, attribute, identifier)
+5. SOIS CONCIS: modifie uniquement ce qui est demandé
+6. Les modifications AST sont STRUCTURELLES, pas textuelles - pas besoin de copier le code existant`;
 
-    const trivialPrompt = baseSystemPrompt + '\n\nMODE ULTRA-RAPIDE: Génère 1 action ciblée minimum. JSON obligatoire.';
-    const simplePrompt = baseSystemPrompt + '\n\nMODE RAPIDE: Génère 1-3 actions simples. JSON obligatoire.';
-    const complexPrompt = baseSystemPrompt + '\n\nMODE STANDARD: Modifications multiples possibles. JSON obligatoire.';
+    const trivialPrompt = baseSystemPrompt + '\n\nMODE ULTRA-RAPIDE: Génère 1 modification ciblée minimum. JSON AST obligatoire.';
+    const simplePrompt = baseSystemPrompt + '\n\nMODE RAPIDE: Génère 1-3 modifications simples. JSON AST obligatoire.';
+    const complexPrompt = baseSystemPrompt + '\n\nMODE STANDARD: Modifications multiples possibles. JSON AST obligatoire.';
 
     const systemPrompt = complexity === 'trivial' ? trivialPrompt 
                        : complexity === 'simple' ? simplePrompt 
@@ -299,29 +358,29 @@ RÈGLES ABSOLUES:
           const duration = Date.now() - startTime;
           console.log(`[modify-site] Generation completed in ${duration}ms`);
 
-          // === PARSER LE JSON ===
-          let actions: Array<{path: string, type: string, search?: string, content?: string}> = [];
+          // === PARSER LE JSON AST ===
+          let modifications: Array<any> = [];
           let parsedMessage = conversationalResponse.trim();
           
           try {
             // Extraire le JSON de la réponse (peut être entouré de texte)
-            const jsonMatch = fullResponse.match(/\{[\s\S]*?"actions"[\s\S]*?\[[\s\S]*?\][\s\S]*?\}/);
+            const jsonMatch = fullResponse.match(/\{[\s\S]*?"modifications"[\s\S]*?\[[\s\S]*?\][\s\S]*?\}/);
             
             if (jsonMatch) {
               const parsed = JSON.parse(jsonMatch[0]);
-              actions = parsed.actions || [];
+              modifications = parsed.modifications || [];
               parsedMessage = parsed.message || conversationalResponse.trim();
-              console.log(`[modify-site] ✅ ${actions.length} action${actions.length > 1 ? 's' : ''} parsée${actions.length > 1 ? 's' : ''} depuis JSON`);
+              console.log(`[modify-site] ✅ ${modifications.length} modification${modifications.length > 1 ? 's' : ''} AST parsée${modifications.length > 1 ? 's' : ''} depuis JSON`);
             } else {
-              console.warn('[modify-site] ⚠️ Aucun JSON valide trouvé dans la réponse');
+              console.warn('[modify-site] ⚠️ Aucun JSON AST valide trouvé dans la réponse');
               console.log('[modify-site] Réponse brute:', fullResponse.substring(0, 500));
             }
           } catch (parseError) {
-            console.error('[modify-site] ❌ Erreur parsing JSON:', parseError);
+            console.error('[modify-site] ❌ Erreur parsing JSON AST:', parseError);
             console.log('[modify-site] Réponse brute:', fullResponse.substring(0, 500));
           }
 
-          console.log(`[modify-site] ✅ ${actions.length} action${actions.length > 1 ? 's' : ''} finale${actions.length > 1 ? 's' : ''}`);
+          console.log(`[modify-site] ✅ ${modifications.length} modification${modifications.length > 1 ? 's' : ''} AST finale${modifications.length > 1 ? 's' : ''}`);
 
           // Émettre les tokens d'utilisation AVANT le complete
           const totalTokens = inputTokens + outputTokens;
@@ -337,7 +396,7 @@ RÈGLES ABSOLUES:
           // Mettre en cache pour patterns fréquents (seulement si trivial/simple)
           if (complexity === 'trivial' || complexity === 'simple') {
             patternCache.set(cacheKey, {
-              response: { actions, message: conversationalResponse.trim() },
+              response: { modifications, message: conversationalResponse.trim() },
               timestamp: Date.now()
             });
             
@@ -363,7 +422,7 @@ RÈGLES ABSOLUES:
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'complete',
             data: { 
-              actions,
+              modifications,
               message: parsedMessage,
               duration
             }
