@@ -75,8 +75,8 @@ serve(async (req) => {
       .map((f: any) => {
         const lines = f.content.split('\n');
         
-        // Stratégie adaptative selon la complexité
-        const maxLines = complexity === 'trivial' ? 50 : complexity === 'simple' ? 80 : 120;
+    // Stratégie adaptative selon la complexité (limites augmentées pour meilleur contexte)
+        const maxLines = complexity === 'trivial' ? 100 : complexity === 'simple' ? 150 : 250;
         
         if (lines.length > maxLines) {
           const headLines = Math.floor(maxLines * 0.4);
@@ -114,35 +114,40 @@ serve(async (req) => {
       console.log('[modify-site] Using claude-sonnet-4-5 (full) for complex modification');
     }
 
-    // === PROMPT OPTIMISÉ SELON COMPLEXITÉ ===
+    // === PROMPT OPTIMISÉ SELON COMPLEXITÉ (FORMAT JSON) ===
     const baseSystemPrompt = `Tu es un assistant de modification de code ultra-rapide et précis.
 
-FORMAT DE RÉPONSE:
-1. Une phrase courte décrivant l'action
-2. Les modifications au format XML
+FORMAT DE RÉPONSE (JSON OBLIGATOIRE):
+Tu DOIS TOUJOURS répondre avec du JSON valide dans ce format exact:
 
-EXEMPLE:
-Je modifie le titre en "Nouveau Titre".
-
-<file path="index.html">
-<action type="replace" search="<h1>Ancien Titre</h1>" content="<h1>Nouveau Titre</h1>" />
-</file>
+{
+  "message": "Je modifie le titre principal.",
+  "actions": [
+    {
+      "path": "index.html",
+      "type": "replace",
+      "search": "<h1>Ancien Titre</h1>",
+      "content": "<h1>Nouveau Titre</h1>"
+    }
+  ]
+}
 
 TYPES D'ACTIONS:
 - replace: remplace du texte EXACT
 - insert-after: insère du contenu après une ligne de recherche
 - insert-before: insère du contenu avant une ligne de recherche
 
-RÈGLES CRITIQUES:
-1. Le paramètre 'search' DOIT être une copie EXACTE du code existant
-2. Respecte l'indentation exacte dans 'search'
-3. Pour modifications multiples: plusieurs <action> dans le même <file>
-4. SOIS PRÉCIS: copie exactement ce qui existe
-5. SOIS CONCIS: modifie uniquement ce qui est demandé`;
+RÈGLES ABSOLUES:
+1. TOUJOURS retourner du JSON valide
+2. Le tableau 'actions' NE DOIT JAMAIS être vide - génère au moins une action
+3. Le paramètre 'search' DOIT être une copie EXACTE du code existant (respecte l'indentation)
+4. Si aucune modification évidente, propose une amélioration pertinente
+5. SOIS PRÉCIS: copie exactement ce qui existe dans 'search'
+6. SOIS CONCIS: modifie uniquement ce qui est demandé`;
 
-    const trivialPrompt = baseSystemPrompt + '\n\nMODE ULTRA-RAPIDE: Modification unique et ciblée. 1 action seulement.';
-    const simplePrompt = baseSystemPrompt + '\n\nMODE RAPIDE: Quelques modifications simples.';
-    const complexPrompt = baseSystemPrompt + '\n\nMODE STANDARD: Modifications multiples possibles.';
+    const trivialPrompt = baseSystemPrompt + '\n\nMODE ULTRA-RAPIDE: Génère 1 action ciblée minimum. JSON obligatoire.';
+    const simplePrompt = baseSystemPrompt + '\n\nMODE RAPIDE: Génère 1-3 actions simples. JSON obligatoire.';
+    const complexPrompt = baseSystemPrompt + '\n\nMODE STANDARD: Modifications multiples possibles. JSON obligatoire.';
 
     const systemPrompt = complexity === 'trivial' ? trivialPrompt 
                        : complexity === 'simple' ? simplePrompt 
@@ -272,29 +277,29 @@ RÈGLES CRITIQUES:
           const duration = Date.now() - startTime;
           console.log(`[modify-site] Generation completed in ${duration}ms`);
 
-          // === PARSER LES ACTIONS XML ===
-          const actions: Array<{path: string, type: string, search?: string, content?: string}> = [];
-          const fileRegex = /<file path="([^"]+)">([\s\S]*?)<\/file>/g;
-          let fileMatch;
+          // === PARSER LE JSON ===
+          let actions: Array<{path: string, type: string, search?: string, content?: string}> = [];
+          let parsedMessage = conversationalResponse.trim();
           
-          while ((fileMatch = fileRegex.exec(fullResponse)) !== null) {
-            const path = fileMatch[1];
-            const fileContent = fileMatch[2];
+          try {
+            // Extraire le JSON de la réponse (peut être entouré de texte)
+            const jsonMatch = fullResponse.match(/\{[\s\S]*?"actions"[\s\S]*?\[[\s\S]*?\][\s\S]*?\}/);
             
-            const actionRegex = /<action type="([^"]+)"(?:\s+search="([^"]*)")?(?:\s+content="([^"]*)")?\s*\/>/g;
-            let actionMatch;
-            
-            while ((actionMatch = actionRegex.exec(fileContent)) !== null) {
-              actions.push({
-                path,
-                type: actionMatch[1],
-                search: actionMatch[2]?.replace(/\\n/g, '\n').replace(/\\"/g, '"') || '',
-                content: actionMatch[3]?.replace(/\\n/g, '\n').replace(/\\"/g, '"') || ''
-              });
+            if (jsonMatch) {
+              const parsed = JSON.parse(jsonMatch[0]);
+              actions = parsed.actions || [];
+              parsedMessage = parsed.message || conversationalResponse.trim();
+              console.log(`[modify-site] ✅ ${actions.length} action${actions.length > 1 ? 's' : ''} parsée${actions.length > 1 ? 's' : ''} depuis JSON`);
+            } else {
+              console.warn('[modify-site] ⚠️ Aucun JSON valide trouvé dans la réponse');
+              console.log('[modify-site] Réponse brute:', fullResponse.substring(0, 500));
             }
+          } catch (parseError) {
+            console.error('[modify-site] ❌ Erreur parsing JSON:', parseError);
+            console.log('[modify-site] Réponse brute:', fullResponse.substring(0, 500));
           }
 
-          console.log(`[modify-site] ✅ ${actions.length} action${actions.length > 1 ? 's' : ''} générée${actions.length > 1 ? 's' : ''}`);
+          console.log(`[modify-site] ✅ ${actions.length} action${actions.length > 1 ? 's' : ''} finale${actions.length > 1 ? 's' : ''}`);
 
           // Mettre en cache pour patterns fréquents (seulement si trivial/simple)
           if (complexity === 'trivial' || complexity === 'simple') {
@@ -326,7 +331,7 @@ RÈGLES CRITIQUES:
             type: 'complete',
             data: { 
               actions,
-              message: conversationalResponse.trim(),
+              message: parsedMessage,
               duration
             }
           })}\n\n`));

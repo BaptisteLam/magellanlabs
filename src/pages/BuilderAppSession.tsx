@@ -1251,8 +1251,8 @@ export default function BuilderSession() {
     const analysis = analyzeIntentDetailed(userPrompt, projectFiles);
     console.log(`📊 Complexité: ${analysis.complexity}, Score: ${analysis.score}, Confidence: ${analysis.confidence}%`);
     
-    // Identifier les fichiers pertinents
-    const relevantFiles = identifyRelevantFiles(userPrompt, projectFiles, 3);
+    // Identifier les fichiers pertinents (augmenté de 3 à 5)
+    const relevantFiles = identifyRelevantFiles(userPrompt, projectFiles, 5);
     
     if (relevantFiles.length === 0) {
       console.warn('⚠️ Aucun fichier pertinent trouvé, fallback sur génération complète');
@@ -1261,13 +1261,26 @@ export default function BuilderSession() {
     
     console.log('📄 Fichiers pertinents:', relevantFiles.map(f => f.path).join(', '));
     
-    // Ajouter message intro
-    const introMessage: Message = {
+    // Créer message de génération unifié
+    const generationStartTime = Date.now();
+    
+    const generationMessage: Message = {
       role: 'assistant',
       content: 'Je vais appliquer vos modifications...',
-      metadata: { type: 'intro' }
+      metadata: { 
+        type: 'generation',
+        thought_duration: 0,
+        intent_message: 'Modification rapide en cours...',
+        generation_events: [],
+        files_modified: 0,
+        modified_files: [],
+        total_tokens: 0,
+        project_files: {}
+      }
     };
-    setMessages(prev => [...prev, introMessage]);
+    
+    setMessages(prev => [...prev, generationMessage]);
+    setGenerationEvents([]);
     
     // Appeler modify-site avec la complexité
     await modifySiteHook.modifySite(
@@ -1280,8 +1293,36 @@ export default function BuilderSession() {
         },
         onGenerationEvent: (event) => {
           setGenerationEvents(prev => [...prev, event]);
+          
+          // Mettre à jour le message avec les événements
+          setMessages(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage?.metadata?.type === 'generation') {
+              return prev.map((msg, idx) => 
+                idx === prev.length - 1
+                  ? { 
+                      ...msg, 
+                      metadata: { 
+                        ...msg.metadata, 
+                        generation_events: [...(msg.metadata.generation_events || []), event],
+                        thought_duration: Date.now() - generationStartTime
+                      } 
+                    }
+                  : msg
+              );
+            }
+            return prev;
+          });
         },
         onPatch: async (actions: PatchAction[]) => {
+          console.log('⚡ Patches reçus:', actions.length);
+          
+          // 🔄 FALLBACK AUTOMATIQUE si aucun patch
+          if (actions.length === 0) {
+            console.log('⚠️ Aucun patch reçu, fallback sur génération complète');
+            return handleFullGeneration(userPrompt);
+          }
+          
           console.log('⚡ Application de', actions.length, 'patches');
           
           // Appliquer tous les patches
@@ -1321,13 +1362,15 @@ export default function BuilderSession() {
             })
             .eq('id', sessionId!);
           
+          const generationDuration = Date.now() - generationStartTime;
+          
           // Message de récapitulatif
           const recapMessage = modifiedFilesList.length > 0
-            ? `Modifications appliquées sur ${modifiedFilesList.length} fichier${modifiedFilesList.length > 1 ? 's' : ''}: ${modifiedFilesList.join(', ')}`
-            : 'Aucune modification nécessaire.';
+            ? `✅ Modifications appliquées sur ${modifiedFilesList.length} fichier${modifiedFilesList.length > 1 ? 's' : ''}: ${modifiedFilesList.join(', ')}`
+            : 'Modifications analysées.';
           
-          // Sauvegarder le message de récap
-          const { data: insertedRecap } = await supabase
+          // Sauvegarder le message unifié final
+          const { data: insertedMessage } = await supabase
             .from('chat_messages')
             .insert([{
               session_id: sessionId,
@@ -1335,32 +1378,44 @@ export default function BuilderSession() {
               content: recapMessage,
               token_count: 0,
               metadata: { 
-                type: 'recap' as const,
-                files_updated: modifiedFilesList.length,
+                type: 'generation' as const,
+                thought_duration: generationDuration,
+                intent_message: 'Modification rapide appliquée',
+                generation_events: generationEvents,
+                files_modified: modifiedFilesList.length,
                 modified_files: modifiedFilesList,
                 project_files: updatedFiles,
+                total_tokens: 0,
                 saved_at: new Date().toISOString()
               }
             }])
             .select()
             .single();
           
-          // Mettre à jour l'interface avec le message de récap
-          setMessages(prev => [
-            ...prev.filter(m => m.metadata?.type !== 'intro' || m.id),
-            { 
-              role: 'assistant' as const, 
-              content: recapMessage,
-              token_count: 0,
-              id: insertedRecap?.id,
-              metadata: { 
-                type: 'recap' as const, 
-                files_updated: modifiedFilesList.length,
-                modified_files: modifiedFilesList,
-                project_files: updatedFiles
+          // Mettre à jour le message avec les données finales
+          setMessages(prev => {
+            const withoutTemp = prev.filter(m => !(m.role === 'assistant' && !m.id));
+            
+            return [
+              ...withoutTemp,
+              { 
+                role: 'assistant' as const, 
+                content: recapMessage,
+                token_count: 0,
+                id: insertedMessage?.id,
+                metadata: { 
+                  type: 'generation' as const,
+                  thought_duration: generationDuration,
+                  intent_message: 'Modification rapide appliquée',
+                  generation_events: generationEvents,
+                  files_modified: modifiedFilesList.length,
+                  modified_files: modifiedFilesList,
+                  project_files: updatedFiles,
+                  total_tokens: 0
+                }
               }
-            }
-          ]);
+            ];
+          });
           
           sonnerToast.success('Modifications appliquées !');
         },
