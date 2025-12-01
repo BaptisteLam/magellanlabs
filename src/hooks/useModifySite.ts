@@ -202,12 +202,43 @@ export function applyPatch(
   switch (type) {
     case 'replace':
       if (!search || !content) return fileContent;
-      // Remplacer la première occurrence exacte
-      const index = fileContent.indexOf(search);
+      
+      // Essayer d'abord le match exact
+      let index = fileContent.indexOf(search);
+      
+      // Si échec, essayer avec fuzzy matching (normalisation des espaces)
       if (index === -1) {
-        console.warn('⚠️ Search string not found:', search.substring(0, 50));
+        const normalizedContent = fileContent.replace(/\s+/g, ' ');
+        const normalizedSearch = search.replace(/\s+/g, ' ');
+        const fuzzyIndex = normalizedContent.indexOf(normalizedSearch);
+        
+        if (fuzzyIndex !== -1) {
+          // Retrouver l'index original en comptant les caractères
+          let charCount = 0;
+          let originalIndex = 0;
+          const contentNormalized = fileContent.replace(/\s+/g, ' ');
+          
+          for (let i = 0; i < fileContent.length && charCount < fuzzyIndex; i++) {
+            if (fileContent[i].match(/\s/)) {
+              if (contentNormalized[charCount] === ' ') charCount++;
+            } else {
+              charCount++;
+            }
+            originalIndex = i;
+          }
+          
+          console.log('✅ Fuzzy match trouvé à l\'index:', originalIndex);
+          index = originalIndex;
+        }
+      }
+      
+      if (index === -1) {
+        console.warn('⚠️ Search string not found (exact + fuzzy):', search.substring(0, 100));
+        console.warn('⚠️ Contexte fichier:', fileContent.substring(0, 200));
         return fileContent;
       }
+      
+      console.log('✅ Patch replace appliqué à l\'index:', index);
       return fileContent.substring(0, index) + content + fileContent.substring(index + search.length);
 
     case 'insert-after':
