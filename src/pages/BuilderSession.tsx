@@ -452,7 +452,7 @@ export default function BuilderSession() {
             id: msg.id,
             metadata: msg.metadata as any
           }));
-          setMessages(loadedMessages);
+        setMessages(loadedMessages);
           
           // Extraire les images attachées du premier message utilisateur s'il y en a
           const firstUserMessage = loadedMessages.find(m => m.role === 'user');
@@ -465,7 +465,11 @@ export default function BuilderSession() {
           const parsedMessages = Array.isArray(data.messages) ? data.messages as any[] : [];
           setMessages(parsedMessages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
         }
-        setWebsiteTitle(data.title || '');
+        
+        // Charger le titre et s'assurer qu'il est synchronisé avec cloudflare_project_name
+        const loadedTitle = data.title || '';
+        setWebsiteTitle(loadedTitle);
+        console.log('📋 Titre du projet chargé:', loadedTitle);
       }
     } catch (error) {
       console.error('Error loading session:', error);
@@ -1742,8 +1746,8 @@ export default function BuilderSession() {
         return;
       }
 
-      // Générer le nom du projet à partir du titre
-      const projectName = cloudflareProjectName || (websiteTitle || 'mon-projet')
+      // Générer le nom du projet à partir du titre (utiliser toujours le titre actuel)
+      const projectName = (websiteTitle || cloudflareProjectName || 'mon-projet')
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
@@ -1752,6 +1756,8 @@ export default function BuilderSession() {
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
         .substring(0, 50);
+      
+      console.log('🔍 Publishing with projectName:', projectName, 'from websiteTitle:', websiteTitle);
 
       sonnerToast.info("🚀 Déploiement en cours...");
       
@@ -1781,6 +1787,30 @@ export default function BuilderSession() {
       if (result.publicUrl) {
         setDeployedUrl(result.publicUrl);
         setCloudflareProjectName(projectName);
+        
+        // Sauvegarder le projectName comme titre si le titre est vide ou générique
+        if (!websiteTitle || websiteTitle === 'Nouveau projet' || websiteTitle.trim() === '') {
+          const formattedTitle = projectName
+            .split('-')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+          setWebsiteTitle(formattedTitle);
+          
+          // Sauvegarder dans la base de données
+          await supabase
+            .from('build_sessions')
+            .update({ 
+              title: formattedTitle,
+              cloudflare_project_name: projectName 
+            })
+            .eq('id', sessionId);
+        } else {
+          // Sauvegarder juste le cloudflare_project_name
+          await supabase
+            .from('build_sessions')
+            .update({ cloudflare_project_name: projectName })
+            .eq('id', sessionId);
+        }
         
         // Ouvrir la modale de succès au lieu du toast
         setShowPublishSuccess(true);

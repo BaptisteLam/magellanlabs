@@ -188,12 +188,20 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       // 🆕 MODE CRÉATION : Génération complète d'un nouveau projet
       console.log('🆕 Génération complète d\'un nouveau projet');
       
-      // Créer une session builder
+      // Générer d'abord le nom du projet avec Claude
+      const { data: nameData } = await supabase.functions.invoke('generate-project-name', {
+        body: { prompt }
+      });
+      
+      const generatedTitle = nameData?.projectName || null;
+      console.log('✅ Nom de projet généré:', generatedTitle);
+      
+      // Créer une session builder avec le nom généré
       const { data: session, error: sessionError } = await supabase
         .from('build_sessions')
         .insert({
           user_id: user.id,
-          title: 'Nouveau projet',
+          title: generatedTitle,
           project_files: [],
           project_type: projectType,
           messages: [{ role: 'user', content: prompt }]
