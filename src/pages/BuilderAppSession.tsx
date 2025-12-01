@@ -1276,7 +1276,7 @@ export default function BuilderSession() {
     generationStartTimeRef.current = generationStartTime;
     setIsQuickModLoading(true);
     
-    // Variable pour capturer le message d'intention de Claude
+    // Variable pour capturer le message d'intention de Claude depuis le JSON
     let capturedIntentMessage = '';
     
     const generationMessage: Message = {
@@ -1307,12 +1307,14 @@ export default function BuilderSession() {
       relevantFiles,
       sessionId!,
       {
+        onIntentMessage: (message) => {
+          // Capturer le message d'intention du JSON de Claude
+          capturedIntentMessage = message;
+          console.log('💬 Intent message capturé depuis JSON:', capturedIntentMessage);
+        },
         onMessage: (message) => {
-          // Capturer le premier message comme intent_message
-          if (!capturedIntentMessage && message.trim()) {
-            capturedIntentMessage = message.trim();
-            console.log('💬 Intent message capturé:', capturedIntentMessage);
-          }
+          // Messages conversationnels streamés (optionnel)
+          console.log('📝 Message streamé:', message);
         },
         onTokens: (tokens) => {
           console.log('💰 Tokens reçus dans BuilderAppSession:', tokens);
@@ -1396,8 +1398,11 @@ export default function BuilderSession() {
             ? `✅ Modifications appliquées sur ${modifiedFilesList.length} fichier${modifiedFilesList.length > 1 ? 's' : ''}: ${modifiedFilesList.join(', ')}`
             : 'Modifications analysées.';
           
-          // Sauvegarder le message unifié final
+          // Sauvegarder le message unifié final - utiliser le message de Claude depuis JSON
           const finalIntentMessage = capturedIntentMessage || 'Modifications appliquées';
+          
+          // Désactiver le loading après application des patches
+          setIsQuickModLoading(false);
           
           const { data: insertedMessage } = await supabase
             .from('chat_messages')

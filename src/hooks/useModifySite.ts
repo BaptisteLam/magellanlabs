@@ -15,6 +15,7 @@ interface UseModifySiteOptions {
   onError?: (error: string) => void;
   onGenerationEvent?: (event: import('@/types/agent').GenerationEvent) => void;
   onTokens?: (tokens: { input: number; output: number; total: number }) => void;
+  onIntentMessage?: (message: string) => void;
 }
 
 export function useModifySite() {
@@ -126,6 +127,7 @@ export function useModifySite() {
                 // Récupérer les actions de patch
                 const { actions, message: finalMessage } = event.data;
                 console.log('⚡ Modifications rapides reçues:', actions.length, 'actions');
+                console.log('💬 Message final de Claude:', finalMessage);
                 
                 // ✅ CORRECTION : Émettre les événements completed ICI
                 const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
@@ -140,6 +142,11 @@ export function useModifySite() {
                   message: 'Analysis complete', 
                   status: 'completed' 
                 });
+                
+                // Transmettre le message d'intent de Claude au parent
+                if (finalMessage) {
+                  options.onIntentMessage?.(finalMessage);
+                }
                 
                 // Emit edit events for each patched file
                 actions?.forEach((action: PatchAction) => {
