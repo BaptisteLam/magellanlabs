@@ -1253,6 +1253,14 @@ export default function BuilderSession() {
       throw new Error('Authentication required');
     }
     
+    // Ajouter le message utilisateur AVANT la génération
+    const userMessage: Message = {
+      role: 'user',
+      content: userPrompt,
+      created_at: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, userMessage]);
+    
     // Analyser la complexité de la modification
     const { analyzeIntentDetailed } = await import('@/utils/intentAnalyzer');
     const analysis = analyzeIntentDetailed(userPrompt, projectFiles);
@@ -1272,25 +1280,32 @@ export default function BuilderSession() {
     const generationStartTime = Date.now();
     generationStartTimeRef.current = generationStartTime;
     
+    // Variable pour capturer le message d'intention de Claude
+    let capturedIntentMessage = '';
+    
     const generationMessage: Message = {
       role: 'assistant',
-      content: 'Je vais appliquer vos modifications...',
+      content: '',
       created_at: new Date().toISOString(),
       metadata: { 
         type: 'generation',
         thought_duration: 0,
-        intent_message: 'Modification rapide en cours...',
+        intent_message: '',
         generation_events: [],
         files_modified: 0,
         modified_files: [],
         total_tokens: 0,
-        project_files: {}
+        project_files: {},
+        startTime: generationStartTime
       }
     };
     
     setMessages(prev => [...prev, generationMessage]);
     setGenerationEvents([]);
     generationEventsRef.current = [];
+    
+    // Variable pour stocker les tokens
+    let receivedTokens = { input: 0, output: 0, total: 0 };
     
     // Appeler modify-site avec la complexité
     await modifySiteHook.modifySite(
@@ -1299,7 +1314,15 @@ export default function BuilderSession() {
       sessionId!,
       {
         onMessage: (message) => {
-          console.log('💬 Message:', message);
+          // Capturer le premier message comme intent_message
+          if (!capturedIntentMessage && message.trim()) {
+            capturedIntentMessage = message.trim();
+            console.log('💬 Intent message capturé:', capturedIntentMessage);
+          }
+        },
+        onTokens: (tokens) => {
+          console.log('💰 Tokens reçus dans BuilderSession:', tokens);
+          receivedTokens = tokens;
         },
         onGenerationEvent: (event) => {
           generationEventsRef.current = [...generationEventsRef.current, event];
@@ -1381,23 +1404,27 @@ export default function BuilderSession() {
             : 'Modifications analysées.';
           
           // Sauvegarder le message unifié final
+          const finalIntentMessage = capturedIntentMessage || 'Modifications appliquées';
+          
           const { data: insertedMessage } = await supabase
             .from('chat_messages')
             .insert([{
               session_id: sessionId,
               role: 'assistant',
               content: recapMessage,
-              token_count: 0,
+              token_count: receivedTokens.total,
               created_at: new Date().toISOString(),
               metadata: { 
                 type: 'generation' as const,
                 thought_duration: generationDuration,
-                intent_message: 'Modification rapide appliquée',
+                intent_message: finalIntentMessage,
                 generation_events: generationEventsRef.current,
                 files_modified: modifiedFilesList.length,
                 modified_files: modifiedFilesList,
                 project_files: updatedFiles,
-                total_tokens: 0,
+                input_tokens: receivedTokens.input,
+                output_tokens: receivedTokens.output,
+                total_tokens: receivedTokens.total,
                 saved_at: new Date().toISOString()
               }
             }])
@@ -1413,22 +1440,50 @@ export default function BuilderSession() {
               { 
                 role: 'assistant' as const, 
                 content: recapMessage,
-                token_count: 0,
+                token_count: receivedTokens.total,
                 id: insertedMessage?.id,
                 created_at: new Date().toISOString(),
                 metadata: { 
                   type: 'generation' as const,
                   thought_duration: generationDuration,
-                  intent_message: 'Modification rapide appliquée',
+                  intent_message: finalIntentMessage,
                   generation_events: generationEventsRef.current,
                   files_modified: modifiedFilesList.length,
                   modified_files: modifiedFilesList,
                   project_files: updatedFiles,
-                  total_tokens: 0
+                  input_tokens: receivedTokens.input,
+                  output_tokens: receivedTokens.output,
+                  total_tokens: receivedTokens.total
                 }
               }
             ];
           });
+          
+          // 💰 Décompter les tokens du profil utilisateur
+          if (user?.id && receivedTokens.total > 0) {
+            console.log('💰 Mise à jour des tokens utilisés:', receivedTokens.total);
+            
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('tokens_used')
+                .eq('id', user.id)
+                .single();
+              
+              if (profile) {
+                const newTokensUsed = (profile.tokens_used || 0) + receivedTokens.total;
+                
+                await supabase
+                  .from('profiles')
+                  .update({ tokens_used: newTokensUsed })
+                  .eq('id', user.id);
+                
+                console.log('✅ Tokens mis à jour:', newTokensUsed);
+              }
+            } catch (error) {
+              console.error('❌ Erreur déduction tokens:', error);
+            }
+          }
           
           sonnerToast.success('Modifications appliquées !');
         },

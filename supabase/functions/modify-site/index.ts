@@ -172,7 +172,7 @@ RÈGLES ABSOLUES:
         messages: [
           {
             role: 'user',
-            content: `Contexte (fichiers pertinents):\n${minimalContext}\n\nTâche: ${message}\n\nRetourne les modifications XML uniquement.`
+            content: `Contexte (fichiers pertinents):\n${minimalContext}\n\nTâche: ${message}\n\nRetourne les modifications en JSON uniquement.`
           }
         ],
       }),
@@ -210,6 +210,8 @@ RÈGLES ABSOLUES:
         let conversationalResponse = '';
         let inXmlSection = false;
         let eventsSent = false;
+        let inputTokens = 0;
+        let outputTokens = 0;
         
         try {
           // Envoyer événement initial
@@ -237,6 +239,18 @@ RÈGLES ABSOLUES:
 
               try {
                 const json = JSON.parse(dataStr);
+                
+                // Capturer les tokens depuis les événements SSE
+                if (json.type === 'message_start') {
+                  inputTokens = json.message?.usage?.input_tokens || 0;
+                  console.log(`[modify-site] 💰 Input tokens: ${inputTokens}`);
+                }
+                
+                if (json.type === 'message_delta') {
+                  outputTokens = json.usage?.output_tokens || 0;
+                  console.log(`[modify-site] 💰 Output tokens: ${outputTokens}`);
+                }
+                
                 const delta = json?.delta?.text || '';
                 if (!delta) continue;
 
@@ -300,6 +314,17 @@ RÈGLES ABSOLUES:
           }
 
           console.log(`[modify-site] ✅ ${actions.length} action${actions.length > 1 ? 's' : ''} finale${actions.length > 1 ? 's' : ''}`);
+
+          // Émettre les tokens d'utilisation AVANT le complete
+          const totalTokens = inputTokens + outputTokens;
+          console.log(`[modify-site] 💰 Émission tokens: input=${inputTokens}, output=${outputTokens}, total=${totalTokens}`);
+          
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'tokens',
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            total_tokens: totalTokens
+          })}\n\n`));
 
           // Mettre en cache pour patterns fréquents (seulement si trivial/simple)
           if (complexity === 'trivial' || complexity === 'simple') {

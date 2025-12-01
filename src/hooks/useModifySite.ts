@@ -14,6 +14,7 @@ interface UseModifySiteOptions {
   onComplete?: () => void;
   onError?: (error: string) => void;
   onGenerationEvent?: (event: import('@/types/agent').GenerationEvent) => void;
+  onTokens?: (tokens: { input: number; output: number; total: number }) => void;
 }
 
 export function useModifySite() {
@@ -30,6 +31,14 @@ export function useModifySite() {
   ) => {
     setIsLoading(true);
     setIsStreaming(true);
+
+    // Émettre événement thought au démarrage
+    const startTime = Date.now();
+    options.onGenerationEvent?.({ 
+      type: 'thought', 
+      message: 'Analyzing request...', 
+      status: 'in-progress'
+    });
 
     // Emit initial events like full generation
     options.onGenerationEvent?.({ type: 'analyze', message: 'Analyzing changes...', status: 'in-progress' });
@@ -102,6 +111,15 @@ export function useModifySite() {
               case 'message':
                 // Stream du message conversationnel
                 options.onMessage?.(event.content);
+                break;
+              case 'tokens':
+                // Émettre les tokens via callback
+                console.log('💰 Tokens reçus:', event);
+                options.onTokens?.({
+                  input: event.input_tokens || 0,
+                  output: event.output_tokens || 0,
+                  total: event.total_tokens || 0
+                });
                 break;
               case 'complete':
                 // Récupérer les actions de patch
