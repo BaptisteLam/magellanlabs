@@ -26,6 +26,7 @@ import type { AIEvent, GenerationEvent } from '@/types/agent';
 import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
 import AiGenerationMessage from '@/components/chat/AiGenerationMessage';
+import ChatOnlyMessage from '@/components/chat/ChatOnlyMessage';
 import html2canvas from 'html2canvas';
 import { TokenCounter } from '@/components/TokenCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
@@ -2107,6 +2108,36 @@ export default function BuilderSession() {
                         }
                       }}
                     />
+                  ) : msg.metadata?.type === 'message' ? (
+                    // Message chat uniquement (plan d'action)
+                    <div className="flex items-start gap-3">
+                      <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <ChatOnlyMessage
+                          message={msg}
+                          messageIndex={idx}
+                          isLatestMessage={idx === messages.length - 1}
+                          isDark={isDark}
+                          onRestore={async (messageIdx) => {
+                            // Pas de restauration pour les messages chat
+                            sonnerToast.info('Les messages de conversation ne modifient pas les fichiers');
+                          }}
+                          onGoToPrevious={() => {
+                            // Pas de version précédente pour les messages chat
+                            sonnerToast.info('Les messages de conversation ne sont pas versionnés');
+                          }}
+                          onImplementPlan={(plan) => {
+                            // Passer en mode génération avec le plan
+                            setChatMode(false);
+                            setInputValue(plan);
+                            // Petit délai pour s'assurer que le mode chat est désactivé
+                            setTimeout(() => {
+                              handleSubmit();
+                            }, 100);
+                          }}
+                        />
+                      </div>
+                    </div>
                   ) : (
                     <div className="space-y-3">
                       {/* Message simple (ancien format) - pour compatibilité */}

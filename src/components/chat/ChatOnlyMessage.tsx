@@ -18,6 +18,7 @@ interface ChatOnlyMessageProps {
   isDark: boolean;
   onRestore: (messageIdx: number) => void;
   onGoToPrevious: () => void;
+  onImplementPlan?: (plan: string) => void;
 }
 
 export default function ChatOnlyMessage({
@@ -27,6 +28,7 @@ export default function ChatOnlyMessage({
   isDark,
   onRestore,
   onGoToPrevious,
+  onImplementPlan,
 }: ChatOnlyMessageProps) {
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
@@ -99,15 +101,32 @@ export default function ChatOnlyMessage({
 
       {/* Action buttons - seulement quand le typing est fini */}
       {!isTyping && (
-        <MessageActions
-          content={contentString}
-          messageIndex={messageIndex}
-          isLatestMessage={isLatestMessage}
-          tokenCount={message.metadata?.total_tokens || message.token_count}
-          onRestore={onRestore}
-          onGoToPrevious={onGoToPrevious}
-          hideUndoButton={true}
-        />
+        <div className="space-y-3">
+          {/* Bouton "Implémenter le plan" */}
+          {onImplementPlan && (
+            <button
+              onClick={() => onImplementPlan(contentString)}
+              className="inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-sm gap-2 transition-all border rounded-full px-4 py-0"
+              style={{
+                borderColor: 'rgb(3,165,192)',
+                backgroundColor: 'rgba(3,165,192,0.1)',
+                color: 'rgb(3,165,192)'
+              }}
+            >
+              Implémenter le plan
+            </button>
+          )}
+          
+          <MessageActions
+            content={contentString}
+            messageIndex={messageIndex}
+            isLatestMessage={isLatestMessage}
+            tokenCount={message.metadata?.total_tokens || message.token_count}
+            onRestore={onRestore}
+            onGoToPrevious={onGoToPrevious}
+            hideUndoButton={true}
+          />
+        </div>
       )}
     </div>
   );
