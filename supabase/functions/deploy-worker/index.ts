@@ -183,15 +183,15 @@ Deno.serve(async (req) => {
     bottom: 20px !important;
     right: 20px !important;
     z-index: 2147483647 !important;
-    width: 60px !important;
-    height: 60px !important;
+    width: 140px !important;
+    height: 48px !important;
     background: rgba(255, 255, 255, 0.95) !important;
     border: 1px solid rgba(3, 165, 192, 0.2) !important;
     border-radius: 12px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 12px !important;
+    padding: 8px 12px !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
     transition: all 0.2s ease !important;
     cursor: pointer !important;
@@ -208,9 +208,10 @@ Deno.serve(async (req) => {
     transform: translateY(-2px) !important;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
   }
-  #magellan-badge svg {
+  #magellan-badge img {
     width: 100% !important;
     height: 100% !important;
+    object-fit: contain !important;
   }
   @media (prefers-color-scheme: dark) {
     #magellan-badge .logo-light { display: block !important; }
@@ -222,24 +223,8 @@ Deno.serve(async (req) => {
   }
 </style>
 <a id="magellan-badge" href="https://builtbymagellan.com" target="_blank" rel="noopener" aria-label="Built with Magellan">
-  <svg class="logo-dark" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="250" cy="250" r="200" stroke="#03A5C0" stroke-width="3" fill="none"/>
-    <ellipse cx="250" cy="250" rx="200" ry="80" stroke="#03A5C0" stroke-width="3" fill="none"/>
-    <ellipse cx="250" cy="250" rx="200" ry="40" stroke="#03A5C0" stroke-width="3" fill="none"/>
-    <line x1="250" y1="50" x2="250" y2="450" stroke="#03A5C0" stroke-width="3"/>
-    <line x1="50" y1="250" x2="450" y2="250" stroke="#03A5C0" stroke-width="3"/>
-    <ellipse cx="250" cy="250" rx="80" ry="200" stroke="#03A5C0" stroke-width="3" fill="none"/>
-    <ellipse cx="250" cy="250" rx="40" ry="200" stroke="#03A5C0" stroke-width="3" fill="none"/>
-  </svg>
-  <svg class="logo-light" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="250" cy="250" r="200" stroke="#03A5C0" stroke-width="3" fill="none"/>
-    <ellipse cx="250" cy="250" rx="200" ry="80" stroke="#03A5C0" stroke-width="3" fill="none"/>
-    <ellipse cx="250" cy="250" rx="200" ry="40" stroke="#03A5C0" stroke-width="3" fill="none"/>
-    <line x1="250" y1="50" x2="250" y2="450" stroke="#03A5C0" stroke-width="3"/>
-    <line x1="50" y1="250" x2="450" y2="250" stroke="#03A5C0" stroke-width="3"/>
-    <ellipse cx="250" cy="250" rx="80" ry="200" stroke="#03A5C0" stroke-width="3" fill="none"/>
-    <ellipse cx="250" cy="250" rx="40" ry="200" stroke="#03A5C0" stroke-width="3" fill="none"/>
-  </svg>
+  <img class="logo-dark" src="https://mtmroennrczdcaasrilw.supabase.co/storage/v1/object/public/project-assets/magellan-logo-dark.png" alt="Magellan" />
+  <img class="logo-light" src="https://mtmroennrczdcaasrilw.supabase.co/storage/v1/object/public/project-assets/magellan-logo-light.png" alt="Magellan" />
 </a>
 <script>
 (function(){
