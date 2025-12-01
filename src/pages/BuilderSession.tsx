@@ -749,14 +749,19 @@ export default function BuilderSession() {
       userMessageContent = prompt;
     }
 
-    const shouldAddMessage = inputValue.trim() || messages.length === 0 || messages[messages.length - 1]?.content !== userMessageContent;
-    const newMessages = shouldAddMessage ? [...messages, { 
-      role: 'user' as const, 
-      content: userMessageContent,
-      created_at: new Date().toISOString()
-    }] : messages;
+    // Vérifier si le message utilisateur n'est pas déjà le dernier message
+    const lastMessage = messages[messages.length - 1];
+    const isUserMessageAlreadyAdded = lastMessage && 
+                                      lastMessage.role === 'user' && 
+                                      lastMessage.content === userMessageContent;
     
-    if (shouldAddMessage) {
+    if (!isUserMessageAlreadyAdded) {
+      const newMessages = [...messages, { 
+        role: 'user' as const, 
+        content: userMessageContent,
+        created_at: new Date().toISOString()
+      }];
+      
       setMessages(newMessages);
       
       const userMessageText = typeof userMessageContent === 'string' 
