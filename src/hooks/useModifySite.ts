@@ -127,6 +127,20 @@ export function useModifySite() {
                 const { actions, message: finalMessage } = event.data;
                 console.log('⚡ Modifications rapides reçues:', actions.length, 'actions');
                 
+                // ✅ CORRECTION : Émettre les événements completed ICI
+                const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
+                options.onGenerationEvent?.({ 
+                  type: 'thought', 
+                  message: `Thought for ${duration}s`, 
+                  status: 'completed', 
+                  duration 
+                });
+                options.onGenerationEvent?.({ 
+                  type: 'analyze', 
+                  message: 'Analysis complete', 
+                  status: 'completed' 
+                });
+                
                 // Emit edit events for each patched file
                 actions?.forEach((action: PatchAction) => {
                   options.onGenerationEvent?.({ 
