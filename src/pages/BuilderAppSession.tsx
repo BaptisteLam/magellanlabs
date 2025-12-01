@@ -410,13 +410,22 @@ export default function BuilderSession() {
           .order('created_at', { ascending: true });
 
         if (!chatError && chatMessages && chatMessages.length > 0) {
-          const loadedMessages: Message[] = chatMessages.map(msg => ({
-            role: msg.role as 'user' | 'assistant',
-            content: msg.content,
-            token_count: msg.token_count ?? undefined,
-            id: msg.id,
-            metadata: msg.metadata as any
-          }));
+          const loadedMessages: Message[] = chatMessages.map(msg => {
+            const metadata = msg.metadata as any;
+            return {
+              role: msg.role as 'user' | 'assistant',
+              content: msg.content,
+              token_count: msg.token_count ?? metadata?.total_tokens ?? undefined,
+              id: msg.id,
+              created_at: msg.created_at,
+              metadata: metadata ? {
+                ...metadata,
+                total_tokens: metadata.total_tokens ?? msg.token_count ?? 0,
+                input_tokens: metadata.input_tokens ?? 0,
+                output_tokens: metadata.output_tokens ?? 0
+              } : undefined
+            };
+          });
           setMessages(loadedMessages);
           
           // Extraire les images attachées du premier message utilisateur s'il y en a
@@ -732,14 +741,20 @@ export default function BuilderSession() {
             ? userMessageContent.find(c => c.type === 'text')?.text || '[message multimédia]'
             : String(userMessageContent));
 
-      await supabase
+      const { error: insertError } = await supabase
         .from('chat_messages')
         .insert({
           session_id: sessionId,
           role: 'user',
           content: userMessageText,
+          created_at: new Date().toISOString(),
+          token_count: 0,
           metadata: { has_images: attachedFiles.length > 0 }
         });
+      
+      if (insertError) {
+        console.error('❌ Erreur insertion message utilisateur:', insertError);
+      }
     }
     
     setInputValue('');
@@ -1620,14 +1635,20 @@ export default function BuilderSession() {
             ? userMessageContent.find(c => c.type === 'text')?.text || '[message multimédia]'
             : String(userMessageContent));
 
-      await supabase
+      const { error: insertError } = await supabase
         .from('chat_messages')
         .insert({
           session_id: sessionId,
           role: 'user',
           content: userMessageText,
+          created_at: new Date().toISOString(),
+          token_count: 0,
           metadata: { has_images: attachedFiles.length > 0 }
         });
+      
+      if (insertError) {
+        console.error('❌ Erreur insertion message utilisateur:', insertError);
+      }
     }
     
     setInputValue('');
