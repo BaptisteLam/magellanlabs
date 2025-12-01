@@ -100,36 +100,58 @@ Deno.serve(async (req) => {
       throw new Error('Missing Cloudflare credentials');
     }
 
-    // GraphQL query for Web Analytics data
+    console.log('📊 Fetching analytics for:', {
+      siteToken,
+      accountId: cloudflareAccountId,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      period
+    });
+
+    // Try REST API first for more reliable results
+    const rumResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/rum/site_info/${siteToken}`,
+      {
+        method: 'GET',
+        headers: {
+          'X-Auth-Email': cloudflareEmail,
+          'X-Auth-Key': cloudflareApiToken,
+        },
+      }
+    );
+
+    console.log('🔍 RUM site info response:', rumResponse.status);
+    
+    if (rumResponse.ok) {
+      const rumData = await rumResponse.json();
+      console.log('✅ RUM site found:', rumData);
+    } else {
+      const errorText = await rumResponse.text();
+      console.error('❌ RUM site not found:', errorText);
+    }
+
+    // GraphQL query for Web Analytics data - Fixed types to String! instead of string!
     const graphqlQuery = {
       query: `
-        query GetWebAnalytics($accountTag: string!, $siteTag: string!, $startDate: string!, $endDate: string!) {
+        query GetWebAnalytics($accountTag: String!, $filter: AccountRumPageloadEventsAdaptiveGroupsFilter_InputObject!) {
           viewer {
             accounts(filter: { accountTag: $accountTag }) {
               timeSeries: rumPageloadEventsAdaptiveGroups(
-                filter: {
-                  siteTag: $siteTag
-                  datetime_geq: $startDate
-                  datetime_leq: $endDate
-                }
+                filter: $filter
                 limit: 1000
-                orderBy: [datetimeFifteenMinutes_ASC]
+                orderBy: [datetimeMinute_ASC]
               ) {
                 count
                 sum {
                   visits
                 }
                 dimensions {
-                  date: datetimeFifteenMinutes
+                  datetimeMinute
                 }
               }
               
               pages: rumPageloadEventsAdaptiveGroups(
-                filter: {
-                  siteTag: $siteTag
-                  datetime_geq: $startDate
-                  datetime_leq: $endDate
-                }
+                filter: $filter
                 limit: 10
                 orderBy: [count_DESC]
               ) {
@@ -140,11 +162,7 @@ Deno.serve(async (req) => {
               }
               
               countries: rumPageloadEventsAdaptiveGroups(
-                filter: {
-                  siteTag: $siteTag
-                  datetime_geq: $startDate
-                  datetime_leq: $endDate
-                }
+                filter: $filter
                 limit: 10
                 orderBy: [count_DESC]
               ) {
@@ -155,11 +173,7 @@ Deno.serve(async (req) => {
               }
               
               devices: rumPageloadEventsAdaptiveGroups(
-                filter: {
-                  siteTag: $siteTag
-                  datetime_geq: $startDate
-                  datetime_leq: $endDate
-                }
+                filter: $filter
                 limit: 10
                 orderBy: [count_DESC]
               ) {
@@ -170,11 +184,7 @@ Deno.serve(async (req) => {
               }
               
               referrers: rumPageloadEventsAdaptiveGroups(
-                filter: {
-                  siteTag: $siteTag
-                  datetime_geq: $startDate
-                  datetime_leq: $endDate
-                }
+                filter: $filter
                 limit: 10
                 orderBy: [count_DESC]
               ) {
@@ -189,11 +199,15 @@ Deno.serve(async (req) => {
       `,
       variables: {
         accountTag: cloudflareAccountId,
-        siteTag: siteToken,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+        filter: {
+          siteTag: siteToken,
+          datetime_geq: startDate.toISOString(),
+          datetime_leq: endDate.toISOString(),
+        },
       },
     };
+
+    console.log('📤 Sending GraphQL query with filter:', graphqlQuery.variables.filter);
 
     console.log('📊 Fetching Web Analytics data for site:', siteToken);
 
@@ -214,11 +228,11 @@ Deno.serve(async (req) => {
     }
 
     const analyticsData = await analyticsResponse.json();
-    console.log('✅ Analytics data received');
+    console.log('✅ Analytics data received:', JSON.stringify(analyticsData, null, 2));
 
     if (analyticsData.errors) {
-      console.error('❌ GraphQL errors:', analyticsData.errors);
-      throw new Error('GraphQL query failed');
+      console.error('❌ GraphQL errors:', JSON.stringify(analyticsData.errors, null, 2));
+      throw new Error('GraphQL query failed: ' + JSON.stringify(analyticsData.errors));
     }
 
     const result = analyticsData.data?.viewer?.accounts?.[0];
@@ -229,12 +243,14 @@ Deno.serve(async (req) => {
     // Process time series data - aggregate by day
     const timeSeriesMap = new Map<string, { visitors: number; pageviews: number }>();
     result.timeSeries?.forEach((item: any) => {
-      const date = new Date(item.dimensions.date).toISOString().split('T')[0];
+      const date = new Date(item.dimensions.datetimeMinute).toISOString().split('T')[0];
       const existing = timeSeriesMap.get(date) || { visitors: 0, pageviews: 0 };
       existing.visitors += item.count || 0;
       existing.pageviews += item.sum?.visits || 0;
       timeSeriesMap.set(date, existing);
     });
+
+    console.log('📊 Time series processed:', timeSeriesMap.size, 'days');
 
     const timeSeries = Array.from(timeSeriesMap.entries())
       .map(([date, data]) => ({

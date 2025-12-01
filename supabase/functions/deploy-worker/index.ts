@@ -148,6 +148,8 @@ Deno.serve(async (req) => {
     // Step 2: Inject Web Analytics beacon into HTML files
     if (siteToken) {
       console.log('💉 Injecting Web Analytics beacon into HTML files...');
+      console.log('📊 Site token:', siteToken);
+      console.log('🌐 Analytics host:', analyticsHost);
       const beaconScript = `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "${siteToken}"}'></script>`;
       
       projectFiles = projectFiles.map((file: ProjectFile) => {
@@ -163,9 +165,12 @@ Deno.serve(async (req) => {
             file.content = content + '\n' + beaconScript;
           }
           console.log(`  ✅ Beacon injected in ${file.name}`);
+          console.log(`  📄 HTML preview (first 500 chars):`, file.content.substring(0, 500));
         }
         return file;
       });
+    } else {
+      console.warn('⚠️ No siteToken available, analytics beacon not injected');
     }
 
     // Step 3: Inject Magellan badge for all published sites
