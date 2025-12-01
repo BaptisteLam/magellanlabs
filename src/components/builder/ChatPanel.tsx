@@ -67,11 +67,11 @@ export function ChatPanel({
             >
               {msg.role === 'user' ? (
                 <div className="space-y-1">
-                  {msg.created_at && (
-                    <div className="text-center text-xs text-muted-foreground">
-                      {formatMessageDate(msg.created_at)}
-                    </div>
-                  )}
+                {msg.created_at && (
+                  <div className="text-center text-muted-foreground" style={{ fontSize: '12px' }}>
+                    {formatMessageDate(msg.created_at)}
+                  </div>
+                )}
                   <div className="inline-block max-w-[80%] bg-primary text-primary-foreground rounded-lg px-4 py-2">
                     {typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}
                   </div>
