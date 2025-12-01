@@ -64,7 +64,8 @@ export function HotReloadableIframe({
   const inspectionScript = `
     <script id="__magellan_inspect_script__">
       (function() {
-        console.log('🔍 Magellan Inspect Script initialized');
+        try {
+          console.log('🔍 Magellan Inspect Script initialized');
         
         let isInspectMode = false;
         let hoveredElement = null;
@@ -132,7 +133,11 @@ export function HotReloadableIframe({
         
         function init() {
           console.log('🎯 Init inspect mode listener');
-          
+
+          // Envoyer inspect-ready IMMÉDIATEMENT au démarrage
+          console.log('📤 Envoi de inspect-ready (démarrage immédiat)');
+          window.parent.postMessage({ type: 'inspect-ready' }, '*');
+
           window.addEventListener('message', (e) => {
             console.log('📨 Message reçu:', e.data);
             if (e.data.type === 'toggle-inspect') {
@@ -571,6 +576,12 @@ export function HotReloadableIframe({
           e.returnValue = '';
           return '';
         });
+
+        } catch (error) {
+          console.error('❌ Erreur dans le script d\'inspection Magellan:', error);
+          // Envoyer quand même inspect-ready pour ne pas bloquer le parent
+          window.parent.postMessage({ type: 'inspect-ready' }, '*');
+        }
       })();
     </script>
   `;
@@ -635,9 +646,20 @@ export function HotReloadableIframe({
 
     // Injecter le script d'inspection, CSS et JS dans le HTML (insensible à la casse)
     // On injecte le script d'inspection en premier dans le head pour qu'il soit toujours actif
+    const hasHeadTag = /<\/head\s*>/i.test(htmlContent);
+    const hasBodyTag = /<\/body\s*>/i.test(htmlContent);
+
+    if (!hasHeadTag) {
+      console.warn('⚠️ Aucune balise </head> trouvée dans le HTML - injection du script impossible');
+    }
+
     const processedHTML = htmlContent
       .replace(/<\/head\s*>/i, `<style id="__hot_css__">${cssFiles}</style>${inspectionScript}</head>`)
       .replace(/<\/body\s*>/i, `<script id="__hot_js__">${jsFiles}</script></body>`);
+
+    if (hasHeadTag) {
+      console.log('✅ Script d\'inspection injecté dans le HTML');
+    }
 
     return processedHTML;
   }, [
@@ -809,24 +831,42 @@ export function HotReloadableIframe({
     return () => window.removeEventListener('message', handleMessage);
   }, [onElementSelect, projectFiles, navigationIndex]);
 
-  // Envoyer le toggle inspect mode à l'iframe - ATTENDRE que l'iframe soit prête
+  // Envoyer le toggle inspect mode à l'iframe avec timeout de sécurité
   useEffect(() => {
-    // CRITIQUE: Attendre que l'iframe inspection soit prête avant d'envoyer le message
-    if (!inspectReady) {
-      console.log('⏳ En attente de inspect-ready avant d\'envoyer toggle-inspect');
-      return;
-    }
-
     if (!iframeRef.current?.contentWindow) {
       console.warn('❌ contentWindow non disponible');
       return;
     }
-    
-    console.log('📤 Sending toggle-inspect:', inspectMode, '(iframe prête)');
-    iframeRef.current.contentWindow.postMessage(
-      { type: 'toggle-inspect', enabled: inspectMode },
-      '*'
-    );
+
+    const sendToggleMessage = () => {
+      if (!iframeRef.current?.contentWindow) return;
+
+      console.log('📤 Sending toggle-inspect:', inspectMode, '(ready:', inspectReady, ')');
+      iframeRef.current.contentWindow.postMessage(
+        { type: 'toggle-inspect', enabled: inspectMode },
+        '*'
+      );
+    };
+
+    // Si inspect-ready est déjà reçu, envoyer immédiatement
+    if (inspectReady) {
+      sendToggleMessage();
+    } else {
+      // Sinon, attendre 500ms puis envoyer quand même (fallback)
+      console.log('⏳ En attente de inspect-ready (timeout 500ms)...');
+      const timeoutId = setTimeout(() => {
+        console.log('⏰ Timeout atteint - envoi de toggle-inspect sans attendre inspect-ready');
+        sendToggleMessage();
+      }, 500);
+
+      // Si inspect-ready arrive pendant le timeout, l'envoyer immédiatement
+      if (inspectReady) {
+        clearTimeout(timeoutId);
+        sendToggleMessage();
+      }
+
+      return () => clearTimeout(timeoutId);
+    }
   }, [inspectMode, inspectReady]);
 
   // Charger l'iframe uniquement au premier mount
