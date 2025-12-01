@@ -13,24 +13,42 @@ export function TokenCounter({ isDark, userId }: TokenCounterProps) {
   const [tokensQuota, setTokensQuota] = useState(1000000);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      console.log('⚠️ TokenCounter: Pas de userId fourni');
+      return;
+    }
+
+    console.log('💰 TokenCounter: Initialisation pour userId:', userId);
 
     const fetchTokenData = async () => {
+      console.log('💰 TokenCounter: Récupération des tokens...');
       const { data, error } = await supabase
         .from('profiles')
         .select('tokens_used, tokens_quota')
         .eq('id', userId)
         .maybeSingle();
 
-      if (data && !error) {
+      if (error) {
+        console.error('❌ TokenCounter: Erreur lors de la récupération:', error);
+        return;
+      }
+
+      if (data) {
+        console.log('✅ TokenCounter: Tokens récupérés:', {
+          used: data.tokens_used || 0,
+          quota: data.tokens_quota || 1000000
+        });
         setTokensUsed(data.tokens_used || 0);
         setTokensQuota(data.tokens_quota || 1000000);
+      } else {
+        console.warn('⚠️ TokenCounter: Aucune donnée trouvée pour userId:', userId);
       }
     };
 
     fetchTokenData();
 
     // Écouter les changements en temps réel
+    console.log('🔔 TokenCounter: Mise en place de l\'écoute en temps réel');
     const channel = supabase
       .channel('token-updates')
       .on(
@@ -42,15 +60,22 @@ export function TokenCounter({ isDark, userId }: TokenCounterProps) {
           filter: `id=eq.${userId}`,
         },
         (payload) => {
+          console.log('🔔 TokenCounter: Mise à jour reçue en temps réel:', payload.new);
           if (payload.new) {
-            setTokensUsed(payload.new.tokens_used || 0);
-            setTokensQuota(payload.new.tokens_quota || 1000000);
+            const newUsed = payload.new.tokens_used || 0;
+            const newQuota = payload.new.tokens_quota || 1000000;
+            console.log('💰 TokenCounter: Nouveaux tokens:', { used: newUsed, quota: newQuota });
+            setTokensUsed(newUsed);
+            setTokensQuota(newQuota);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('🔔 TokenCounter: Statut de souscription:', status);
+      });
 
     return () => {
+      console.log('🔔 TokenCounter: Nettoyage du canal');
       supabase.removeChannel(channel);
     };
   }, [userId]);

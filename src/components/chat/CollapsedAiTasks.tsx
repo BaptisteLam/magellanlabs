@@ -54,12 +54,13 @@ export function CollapsedAiTasks({
     }
   }, [autoCollapse, autoExpand, isLoading, events.length]);
 
-  // Calcul du fichier en cours de modification
+  // Calcul du fichier en cours de modification (seulement si vraiment en cours de chargement)
   const currentFile = useMemo(() => {
+    if (!isLoading) return null; // Ne rien afficher si pas en chargement
     const inProgressEvents = events.filter(e => e.status === 'in-progress');
     const lastInProgress = inProgressEvents[inProgressEvents.length - 1];
     return lastInProgress?.file || null;
-  }, [events]);
+  }, [events, isLoading]);
 
   // Estimation du temps restant
   useEffect(() => {
@@ -84,17 +85,18 @@ export function CollapsedAiTasks({
     }
   }, [events, elapsedTime, isLoading]);
 
-  // Calcul de la progression
+  // Calcul de la progression (nettoyée pour éviter les bugs)
   const progress = useMemo(() => {
     if (!isLoading) return 100;
-    
+
     const totalEvents = Math.max(events.length, 5);
-    const completedEvents = events.filter(e => e.status === 'completed').length;
-    
+    const completedEvents = events.filter(e => e.status === 'completed' || e.type === 'complete').length;
+
     if (completedEvents === 0) return 5; // Début
-    
-    // Progress de 5% à 95% basé sur les événements complétés
-    return Math.min(5 + (completedEvents / totalEvents) * 90, 95);
+
+    // Progress de 5% à 100% basé sur les événements complétés
+    const calculated = Math.min(5 + (completedEvents / totalEvents) * 95, 100);
+    return calculated;
   }, [events, isLoading]);
 
   // Format du temps
