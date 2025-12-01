@@ -11,34 +11,24 @@ const Home = () => {
   
   const structuredData = {
     "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "Magellan Studio",
-    "description": "Agence web innovante spécialisée dans la création de sites internet sur-mesure pour artisans, restaurateurs et TPE/PME",
-    "url": "https://magellan-studio.fr",
-    "logo": "/lovable-uploads/magellan-logo-light.png",
-    "contactPoint": {
-      "@type": "ContactPoint",
-      "telephone": "+33-6-XX-XX-XX-XX",
-      "contactType": "Customer Service",
-      "availableLanguage": ["French", "English"]
-    },
-    "sameAs": [
-      "https://www.linkedin.com/company/magellan-studio",
-      "https://twitter.com/magellan-studio"
-    ],
+    "@type": "SoftwareApplication",
+    "name": "Magellan",
+    "description": "Plateforme IA pour créer des sites web et applications mobiles en quelques secondes",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Web",
     "offers": {
       "@type": "Offer",
-      "category": "Web Development Services",
-      "description": "Sites vitrine, e-commerce, réservation en ligne, CRM personnalisés"
+      "price": "0",
+      "priceCurrency": "EUR"
     }
   };
   
   return (
     <div className="min-h-screen">
       <SEOHead 
-        title="Magellan Studio - Agence Web Innovante | Sites sur-mesure pour TPE & PME"
-        description="Magellan Studio crée des sites web innovants et sur-mesure pour artisans, restaurateurs et TPE. Vitrine, e-commerce, réservation et CRM personnalisés. Devis gratuit."
-        keywords="agence web, création site internet, site vitrine, e-commerce, artisan, restaurant, TPE, PME, sur-mesure, réservation en ligne, CRM"
+        title="Magellan : Crée ton site web avec l'IA en un prompt."
+        description="Magellan créer votre site web ou votre app mobile en quelques secondes grâce à l'IA. Votre projet digital en un prompt."
+        keywords="création site web IA, générateur site internet, app mobile IA, création site automatique, intelligence artificielle, développement web rapide"
         canonicalUrl="https://magellan-studio.fr"
         structuredData={structuredData}
       />
