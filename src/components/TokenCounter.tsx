@@ -16,21 +16,33 @@ export function TokenCounter({ isDark, userId }: TokenCounterProps) {
     if (!userId) return;
 
     const fetchTokenData = async () => {
+      console.log('💰 TokenCounter: Récupération des tokens pour userId:', userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('tokens_used, tokens_quota')
         .eq('id', userId)
         .maybeSingle();
 
-      if (data && !error) {
+      if (error) {
+        console.error('💰 TokenCounter: Erreur récupération tokens:', error);
+      } else if (data) {
+        console.log('💰 TokenCounter: Tokens récupérés -', {
+          tokens_used: data.tokens_used || 0,
+          tokens_quota: data.tokens_quota || 1000000,
+          tokens_remaining: (data.tokens_quota || 1000000) - (data.tokens_used || 0)
+        });
         setTokensUsed(data.tokens_used || 0);
         setTokensQuota(data.tokens_quota || 1000000);
+      } else {
+        console.warn('💰 TokenCounter: Aucune donnée de profil trouvée');
       }
     };
 
     fetchTokenData();
 
     // Écouter les changements en temps réel
+    console.log('💰 TokenCounter: Abonnement aux mises à jour en temps réel');
     const channel = supabase
       .channel('token-updates')
       .on(
@@ -42,15 +54,24 @@ export function TokenCounter({ isDark, userId }: TokenCounterProps) {
           filter: `id=eq.${userId}`,
         },
         (payload) => {
+          console.log('💰 TokenCounter: Mise à jour en temps réel reçue:', payload.new);
           if (payload.new) {
-            setTokensUsed(payload.new.tokens_used || 0);
-            setTokensQuota(payload.new.tokens_quota || 1000000);
+            const newTokensUsed = payload.new.tokens_used || 0;
+            const newTokensQuota = payload.new.tokens_quota || 1000000;
+            console.log('💰 TokenCounter: Nouveaux tokens -', {
+              tokens_used: newTokensUsed,
+              tokens_quota: newTokensQuota,
+              tokens_remaining: newTokensQuota - newTokensUsed
+            });
+            setTokensUsed(newTokensUsed);
+            setTokensQuota(newTokensQuota);
           }
         }
       )
       .subscribe();
 
     return () => {
+      console.log('💰 TokenCounter: Désinscription des mises à jour');
       supabase.removeChannel(channel);
     };
   }, [userId]);
