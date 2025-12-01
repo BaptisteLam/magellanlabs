@@ -783,14 +783,19 @@ export default function BuilderSession() {
     setAttachedFiles([]);
 
     // Créer immédiatement le message d'intro avec toutes les métadonnées nécessaires
+    const isFirstGeneration = Object.keys(projectFiles).length === 0;
+    const introContent = isFirstGeneration
+      ? "🎨 Je crée votre site web de A à Z..."
+      : "✨ J'analyse votre demande et prépare les modifications...";
+
     const introMessage: Message = {
       role: 'assistant',
-      content: "Je vais analyser votre demande et effectuer les modifications nécessaires...",
+      content: introContent,
       created_at: new Date().toISOString(),
       metadata: {
         type: 'generation',
         thought_duration: 0,
-        intent_message: 'Analyzing your request...',
+        intent_message: isFirstGeneration ? 'Creating your website...' : 'Analyzing your request...',
         generation_events: [],
         files_created: 0,
         files_modified: 0,
@@ -842,10 +847,24 @@ export default function BuilderSession() {
     setGenerationEvents([]);
     generationEventsRef.current = []; // Réinitialiser la ref
     generationStartTimeRef.current = Date.now();
-    
-    // 🔒 TOUJOURS activer le mode "génération en cours" pour bloquer la preview jusqu'à completion
-    setIsInitialGeneration(true);
-    isInitialGenerationRef.current = true;
+
+    // 🔍 Détection intelligente : activer le loader UNIQUEMENT pour les gros changements
+    const isEmptyProject = Object.keys(projectFiles).length === 0;
+    const isMajorChange = isEmptyProject ||
+                          userPrompt.toLowerCase().includes('créer') ||
+                          userPrompt.toLowerCase().includes('génère') ||
+                          userPrompt.toLowerCase().includes('nouveau site') ||
+                          userPrompt.toLowerCase().includes('refaire') ||
+                          userPrompt.toLowerCase().includes('restructure');
+
+    // ✅ Activer le loader SEULEMENT pour les changements importants
+    if (isMajorChange) {
+      setIsInitialGeneration(true);
+      isInitialGenerationRef.current = true;
+      console.log('🔒 Changement majeur détecté - Loader de preview activé');
+    } else {
+      console.log('⚡ Petit changement détecté - Modifications en direct');
+    }
     
     // Générer automatiquement un nom de projet si les fichiers sont vides
     if (Object.keys(projectFiles).length === 0) {
@@ -1070,21 +1089,26 @@ export default function BuilderSession() {
           // Générer un message de conclusion détaillé et contextuel
           const getDetailedConclusion = (): string => {
             if (isInitialGenerationRef.current) {
-              return `Votre site a été créé avec ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} incluant HTML, CSS, JavaScript${newFiles.some(f => f.includes('image')) ? ' et images' : ''}. Le site est maintenant prêt à être publié.`;
+              return `✅ **Site créé avec succès !**\n\n📁 ${newFiles.length} fichier${newFiles.length > 1 ? 's créés' : ' créé'} : ${newFiles.slice(0, 3).join(', ')}${newFiles.length > 3 ? ` et ${newFiles.length - 3} autres` : ''}\n\n🚀 Votre site est prêt à être personnalisé et publié.`;
             }
-            
+
             const details: string[] = [];
-            if (newFiles.length > 0) {
-              details.push(`${newFiles.length} nouveau${newFiles.length > 1 ? 'x' : ''} fichier${newFiles.length > 1 ? 's' : ''} créé${newFiles.length > 1 ? 's' : ''}`);
+            let emoji = '✨';
+
+            if (newFiles.length > 0 && modifiedFiles.length > 0) {
+              emoji = '🔧';
+              return `${emoji} **Modifications appliquées**\n\n📝 ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's modifiés' : ' modifié'} : ${modifiedFiles.slice(0, 2).join(', ')}${modifiedFiles.length > 2 ? '...' : ''}\n➕ ${newFiles.length} fichier${newFiles.length > 1 ? 's créés' : ' créé'} : ${newFiles.slice(0, 2).join(', ')}${newFiles.length > 2 ? '...' : ''}\n\n✅ Changements appliqués avec succès.`;
+            } else if (newFiles.length > 0) {
+              emoji = '➕';
+              return `${emoji} **Nouveaux fichiers créés**\n\n📁 ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} : ${newFiles.slice(0, 3).join(', ')}${newFiles.length > 3 ? '...' : ''}\n\n✅ Fichiers ajoutés avec succès.`;
+            } else if (modifiedFiles.length > 0) {
+              emoji = '✏️';
+              return `${emoji} **Fichiers modifiés**\n\n📝 ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''} : ${modifiedFiles.slice(0, 3).join(', ')}${modifiedFiles.length > 3 ? '...' : ''}\n\n✅ Modifications appliquées.`;
             }
-            if (modifiedFiles.length > 0) {
-              details.push(`${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''} modifié${modifiedFiles.length > 1 ? 's' : ''}`);
-            }
-            
-            const detailsStr = details.join(' et ');
-            return `${detailsStr.charAt(0).toUpperCase() + detailsStr.slice(1)}. Les modifications ont été appliquées avec succès au projet.`;
+
+            return '✅ Modifications terminées.';
           };
-          
+
           const conclusionMessage = getDetailedConclusion();
 
           // 💾 Sauvegarder UN SEUL message unifié style Lovable
