@@ -822,11 +822,18 @@ export function HotReloadableIframe({
       return;
     }
     
-    console.log('📤 Sending toggle-inspect:', inspectMode, '(iframe prête)');
-    iframeRef.current.contentWindow.postMessage(
-      { type: 'toggle-inspect', enabled: inspectMode },
-      '*'
-    );
+    // Timeout de sécurité 500ms pour garantir que l'iframe est complètement prête
+    const securityTimeout = setTimeout(() => {
+      if (iframeRef.current?.contentWindow) {
+        console.log('📤 Sending toggle-inspect:', inspectMode, '(après timeout sécurité 500ms)');
+        iframeRef.current.contentWindow.postMessage(
+          { type: 'toggle-inspect', enabled: inspectMode },
+          '*'
+        );
+      }
+    }, 500);
+    
+    return () => clearTimeout(securityTimeout);
   }, [inspectMode, inspectReady]);
 
   // Charger l'iframe uniquement au premier mount
