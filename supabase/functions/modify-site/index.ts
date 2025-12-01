@@ -114,20 +114,29 @@ serve(async (req) => {
       console.log('[modify-site] Using claude-sonnet-4-5 (full) for complex modification');
     }
 
-    // === PROMPT OPTIMISÉ SELON COMPLEXITÉ (FORMAT JSON) ===
-    const baseSystemPrompt = `Tu es un assistant de modification de code ultra-rapide et précis.
+    // === PROMPT OPTIMISÉ SELON COMPLEXITÉ (FORMAT AST) ===
+    const baseSystemPrompt = `Tu es un assistant de modification de code ultra-rapide et précis utilisant l'AST (Abstract Syntax Tree).
 
-FORMAT DE RÉPONSE (JSON OBLIGATOIRE):
+FORMAT DE RÉPONSE (JSON AST-BASED):
 Tu DOIS TOUJOURS répondre avec du JSON valide dans ce format exact:
 
 {
   "message": "Je vais changer la couleur du titre en bleu",
-  "actions": [
+  "modifications": [
     {
       "path": "styles.css",
-      "type": "replace",
-      "search": "h1 { color: black; }",
-      "content": "h1 { color: blue; }"
+      "fileType": "css",
+      "modifications": [
+        {
+          "action": "update",
+          "target": {
+            "type": "property",
+            "selector": "h1",
+            "property": "color"
+          },
+          "value": "blue"
+        }
+      ]
     }
   ]
 }
@@ -138,20 +147,33 @@ Exemples de bons messages:
 - "Je vais changer la couleur du titre en bleu"
 - "Je vais ajouter un bouton de contact dans le header"
 - "Je vais modifier la taille de la police du paragraphe"
-- "Je vais corriger l'alignement du menu"
 
-TYPES D'ACTIONS:
-- replace: remplace du texte EXACT
-- insert-after: insère du contenu après une ligne de recherche
-- insert-before: insère du contenu avant une ligne de recherche
+TYPES DE MODIFICATIONS AST:
+
+1. CSS Modifications:
+   - Update property: { "action": "update", "target": { "type": "property", "selector": "h1", "property": "color" }, "value": "blue" }
+   - Add rule: { "action": "insert", "target": { "type": "rule", "position": "after", "relativeTo": ".header" }, "newNode": { "selector": ".new-class", "declarations": { "color": "red" } } }
+   - Delete rule: { "action": "delete", "target": { "type": "rule", "selector": ".old-class" } }
+   - Delete property: { "action": "delete", "target": { "type": "property", "selector": "h1", "property": "margin" } }
+
+2. HTML Modifications:
+   - Update text: { "action": "update", "target": { "type": "element", "selector": "#hero-title", "attribute": "textContent" }, "value": "New Title" }
+   - Update attribute: { "action": "update", "target": { "type": "element", "selector": ".button", "attribute": "class" }, "value": "button button-primary" }
+   - Add element: { "action": "insert", "target": { "type": "element", "selector": ".container", "position": "inside" }, "newNode": { "tagName": "div", "properties": { "class": "new-element" } } }
+   - Delete element: { "action": "delete", "target": { "type": "element", "selector": ".old-element" } }
+
+3. Selectors:
+   - CSS: "h1", ".class", "#id", "div > p", ".container .item"
+   - HTML: "#id", ".class", "tag", "[data-attr='value']"
 
 RÈGLES ABSOLUES:
 1. TOUJOURS retourner du JSON valide avec un champ "message" descriptif
-2. Le tableau 'actions' NE DOIT JAMAIS être vide - génère au moins une action
-3. Le paramètre 'search' DOIT être une copie EXACTE du code existant (respecte l'indentation)
-4. Si aucune modification évidente, propose une amélioration pertinente
-5. SOIS PRÉCIS: copie exactement ce qui existe dans 'search'
-6. SOIS CONCIS: modifie uniquement ce qui est demandé`;
+2. Le tableau 'modifications' NE DOIT JAMAIS être vide - génère au moins une modification
+3. Utilise des selectors structurels (PAS de search strings)
+4. Pour CSS: utilise toujours selector + property pour les updates
+5. Pour HTML: utilise toujours selector + attribute ou textContent
+6. SOIS PRÉCIS: identifie exactement l'élément à modifier
+7. SOIS CONCIS: modifie uniquement ce qui est demandé`;
 
     const trivialPrompt = baseSystemPrompt + '\n\nMODE ULTRA-RAPIDE: Génère 1 action ciblée minimum. JSON obligatoire.';
     const simplePrompt = baseSystemPrompt + '\n\nMODE RAPIDE: Génère 1-3 actions simples. JSON obligatoire.';
@@ -299,19 +321,19 @@ RÈGLES ABSOLUES:
           const duration = Date.now() - startTime;
           console.log(`[modify-site] Generation completed in ${duration}ms`);
 
-          // === PARSER LE JSON ===
-          let actions: Array<{path: string, type: string, search?: string, content?: string}> = [];
+          // === PARSER LE JSON AST ===
+          let modifications: Array<any> = [];
           let parsedMessage = conversationalResponse.trim();
-          
+
           try {
             // Extraire le JSON de la réponse (peut être entouré de texte)
-            const jsonMatch = fullResponse.match(/\{[\s\S]*?"actions"[\s\S]*?\[[\s\S]*?\][\s\S]*?\}/);
-            
+            const jsonMatch = fullResponse.match(/\{[\s\S]*?"modifications"[\s\S]*?\[[\s\S]*?\][\s\S]*?\}/);
+
             if (jsonMatch) {
               const parsed = JSON.parse(jsonMatch[0]);
-              actions = parsed.actions || [];
+              modifications = parsed.modifications || [];
               parsedMessage = parsed.message || conversationalResponse.trim();
-              console.log(`[modify-site] ✅ ${actions.length} action${actions.length > 1 ? 's' : ''} parsée${actions.length > 1 ? 's' : ''} depuis JSON`);
+              console.log(`[modify-site] ✅ ${modifications.length} modification${modifications.length > 1 ? 's' : ''} parsée${modifications.length > 1 ? 's' : ''} depuis JSON AST`);
             } else {
               console.warn('[modify-site] ⚠️ Aucun JSON valide trouvé dans la réponse');
               console.log('[modify-site] Réponse brute:', fullResponse.substring(0, 500));
@@ -321,7 +343,7 @@ RÈGLES ABSOLUES:
             console.log('[modify-site] Réponse brute:', fullResponse.substring(0, 500));
           }
 
-          console.log(`[modify-site] ✅ ${actions.length} action${actions.length > 1 ? 's' : ''} finale${actions.length > 1 ? 's' : ''}`);
+          console.log(`[modify-site] ✅ ${modifications.length} modification${modifications.length > 1 ? 's' : ''} finale${modifications.length > 1 ? 's' : ''}`);
 
           // Émettre les tokens d'utilisation AVANT le complete
           const totalTokens = inputTokens + outputTokens;
@@ -337,10 +359,10 @@ RÈGLES ABSOLUES:
           // Mettre en cache pour patterns fréquents (seulement si trivial/simple)
           if (complexity === 'trivial' || complexity === 'simple') {
             patternCache.set(cacheKey, {
-              response: { actions, message: conversationalResponse.trim() },
+              response: { modifications, message: conversationalResponse.trim() },
               timestamp: Date.now()
             });
-            
+
             // Nettoyer le cache (garder max 50 entrées)
             if (patternCache.size > 50) {
               const oldestKey = Array.from(patternCache.keys())[0];
@@ -359,11 +381,11 @@ RÈGLES ABSOLUES:
             }
           })}\n\n`));
 
-          // Envoyer résultat final
+          // Envoyer résultat final (format AST)
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'complete',
-            data: { 
-              actions,
+            data: {
+              modifications,
               message: parsedMessage,
               duration
             }

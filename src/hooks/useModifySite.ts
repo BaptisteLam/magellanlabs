@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { ASTModification } from '@/types/ast';
 
+// Legacy PatchAction for backwards compatibility
 export interface PatchAction {
   path: string;
   type: 'replace' | 'insert-after' | 'insert-before';
@@ -10,7 +12,7 @@ export interface PatchAction {
 
 interface UseModifySiteOptions {
   onMessage?: (message: string) => void;
-  onPatch?: (actions: PatchAction[]) => void;
+  onPatch?: (modifications: ASTModification[]) => void; // Changed to use ASTModification
   onComplete?: () => void;
   onError?: (error: string) => void;
   onGenerationEvent?: (event: import('@/types/agent').GenerationEvent) => void;
@@ -124,46 +126,46 @@ export function useModifySite() {
                 });
                 break;
               case 'complete':
-                // Récupérer les actions de patch
-                const { actions, message: finalMessage } = event.data;
-                console.log('⚡ Modifications rapides reçues:', actions.length, 'actions');
+                // Récupérer les modifications AST
+                const { modifications, message: finalMessage } = event.data;
+                console.log('⚡ Modifications AST reçues:', modifications?.length || 0, 'modifications');
                 console.log('💬 Message final de Claude:', finalMessage);
-                
+
                 // ✅ CORRECTION : Émettre les événements completed ICI
                 const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
-                options.onGenerationEvent?.({ 
-                  type: 'thought', 
-                  message: `Thought for ${duration}s`, 
-                  status: 'completed', 
-                  duration 
+                options.onGenerationEvent?.({
+                  type: 'thought',
+                  message: `Thought for ${duration}s`,
+                  status: 'completed',
+                  duration
                 });
-                options.onGenerationEvent?.({ 
-                  type: 'analyze', 
-                  message: 'Analysis complete', 
-                  status: 'completed' 
+                options.onGenerationEvent?.({
+                  type: 'analyze',
+                  message: 'Analysis complete',
+                  status: 'completed'
                 });
-                
+
                 // Transmettre le message d'intent de Claude au parent
                 if (finalMessage) {
                   options.onIntentMessage?.(finalMessage);
                 }
-                
-                // Emit edit events for each patched file
-                actions?.forEach((action: PatchAction) => {
-                  options.onGenerationEvent?.({ 
-                    type: 'edit', 
-                    message: action.path, 
-                    file: action.path,
+
+                // Emit edit events for each modified file
+                modifications?.forEach((mod: ASTModification) => {
+                  options.onGenerationEvent?.({
+                    type: 'edit',
+                    message: mod.path,
+                    file: mod.path,
                     status: 'completed'
                   });
                 });
-                
+
                 clearTimeout(safetyTimeout);
                 setIsStreaming(false);
                 setIsLoading(false);
-                
-                // Appliquer les patches
-                options.onPatch?.(actions);
+
+                // Appliquer les modifications AST
+                options.onPatch?.(modifications || []);
                 options.onGenerationEvent?.({ type: 'complete', message: 'Changes applied', status: 'completed' });
                 options.onComplete?.();
                 break;
@@ -205,7 +207,7 @@ export function useModifySite() {
               clearTimeout(safetyTimeout);
               setIsStreaming(false);
               setIsLoading(false);
-              options.onPatch?.(event.data?.actions || []);
+              options.onPatch?.(event.data?.modifications || []);
               options.onComplete?.();
             }
           } catch (e) {
