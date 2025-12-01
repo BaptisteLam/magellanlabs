@@ -3,20 +3,11 @@ project_id = "mtmroennrczdcaasrilw"
 [functions.deploy-worker]
 verify_jwt = true
 
-[functions.publish-to-kv]
-verify_jwt = true
-
-[functions.generate-embeddings]
-verify_jwt = true
-
 [functions.send-contact-email]
 verify_jwt = false
 
 [functions.claude]
 verify_jwt = false
-
-[functions.deploy-to-cloudflare]
-verify_jwt = true
 
 [functions.html-to-react]
 verify_jwt = true
@@ -35,9 +26,6 @@ verify_jwt = true
 
 [functions.claude-stream]
 verify_jwt = false
-
-[functions.get-analytics]
-verify_jwt = true
 
 [functions.agent]
 verify_jwt = true
