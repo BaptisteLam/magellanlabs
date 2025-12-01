@@ -2,16 +2,8 @@ import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ASTModification } from '@/types/ast';
 
-export interface PatchAction {
-  path: string;
-  type: 'replace' | 'insert-after' | 'insert-before';
-  search?: string;
-  content?: string;
-}
-
 interface UseModifySiteOptions {
   onMessage?: (message: string) => void;
-  onPatch?: (actions: PatchAction[]) => void;
   onASTModifications?: (modifications: ASTModification[]) => void;
   onComplete?: () => void;
   onError?: (error: string) => void;
@@ -246,79 +238,4 @@ export function useModifySite() {
     isLoading,
     isStreaming,
   };
-}
-
-/**
- * Applique un patch à un fichier
- */
-export function applyPatch(
-  fileContent: string,
-  action: PatchAction
-): string {
-  const { type, search, content } = action;
-
-  switch (type) {
-    case 'replace':
-      if (!search || !content) return fileContent;
-      
-      // Essayer d'abord le match exact
-      let index = fileContent.indexOf(search);
-      
-      // Si échec, essayer avec fuzzy matching (normalisation des espaces)
-      if (index === -1) {
-        const normalizedContent = fileContent.replace(/\s+/g, ' ');
-        const normalizedSearch = search.replace(/\s+/g, ' ');
-        const fuzzyIndex = normalizedContent.indexOf(normalizedSearch);
-        
-        if (fuzzyIndex !== -1) {
-          // Retrouver l'index original en comptant les caractères
-          let charCount = 0;
-          let originalIndex = 0;
-          const contentNormalized = fileContent.replace(/\s+/g, ' ');
-          
-          for (let i = 0; i < fileContent.length && charCount < fuzzyIndex; i++) {
-            if (fileContent[i].match(/\s/)) {
-              if (contentNormalized[charCount] === ' ') charCount++;
-            } else {
-              charCount++;
-            }
-            originalIndex = i;
-          }
-          
-          console.log('✅ Fuzzy match trouvé à l\'index:', originalIndex);
-          index = originalIndex;
-        }
-      }
-      
-      if (index === -1) {
-        console.warn('⚠️ Search string not found (exact + fuzzy):', search.substring(0, 100));
-        console.warn('⚠️ Contexte fichier:', fileContent.substring(0, 200));
-        return fileContent;
-      }
-      
-      console.log('✅ Patch replace appliqué à l\'index:', index);
-      return fileContent.substring(0, index) + content + fileContent.substring(index + search.length);
-
-    case 'insert-after':
-      if (!search || !content) return fileContent;
-      const afterIndex = fileContent.indexOf(search);
-      if (afterIndex === -1) {
-        console.warn('⚠️ Search string not found for insert-after:', search.substring(0, 50));
-        return fileContent;
-      }
-      return fileContent.substring(0, afterIndex + search.length) + '\n' + content + fileContent.substring(afterIndex + search.length);
-
-    case 'insert-before':
-      if (!search || !content) return fileContent;
-      const beforeIndex = fileContent.indexOf(search);
-      if (beforeIndex === -1) {
-        console.warn('⚠️ Search string not found for insert-before:', search.substring(0, 50));
-        return fileContent;
-      }
-      return fileContent.substring(0, beforeIndex) + content + '\n' + fileContent.substring(beforeIndex);
-
-    default:
-      console.warn('⚠️ Unknown patch type:', type);
-      return fileContent;
-  }
 }
