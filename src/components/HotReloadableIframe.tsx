@@ -635,9 +635,39 @@ export function HotReloadableIframe({
 
     // Injecter le script d'inspection, CSS et JS dans le HTML (insensible à la casse)
     // On injecte le script d'inspection en premier dans le head pour qu'il soit toujours actif
-    const processedHTML = htmlContent
-      .replace(/<\/head\s*>/i, `<style id="__hot_css__">${cssFiles}</style>${inspectionScript}</head>`)
-      .replace(/<\/body\s*>/i, `<script id="__hot_js__">${jsFiles}</script></body>`);
+    const hasHeadTag = /<\/head\s*>/i.test(htmlContent);
+    const hasBodyTag = /<\/body\s*>/i.test(htmlContent);
+
+    let processedHTML: string;
+
+    if (hasHeadTag && hasBodyTag) {
+      processedHTML = htmlContent
+        .replace(
+          /<\/head\s*>/i,
+          `<style id="__hot_css__">${cssFiles}</style>${inspectionScript}</head>`
+        )
+        .replace(
+          /<\/body\s*>/i,
+          `<script id="__hot_js__">${jsFiles}</script></body>`
+        );
+    } else {
+      // Fallback robuste si le HTML généré ne contient pas de <head> ou <body>
+      // On encapsule le contenu dans une structure complète et on injecte toujours l'inspection
+      processedHTML = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview</title>
+  <style id="__hot_css__">${cssFiles}</style>
+  ${inspectionScript}
+</head>
+<body>
+  ${htmlContent}
+  <script id="__hot_js__">${jsFiles}</script>
+</body>
+</html>`;
+    }
 
     return processedHTML;
   }, [
