@@ -809,31 +809,36 @@ export function HotReloadableIframe({
     return () => window.removeEventListener('message', handleMessage);
   }, [onElementSelect, projectFiles, navigationIndex]);
 
-  // Envoyer le toggle inspect mode à l'iframe - ATTENDRE que l'iframe soit prête
+  // Envoyer le toggle inspect mode à l'iframe avec fallback même si inspect-ready n'est pas reçu
   useEffect(() => {
-    // CRITIQUE: Attendre que l'iframe inspection soit prête avant d'envoyer le message
-    if (!inspectReady) {
-      console.log('⏳ En attente de inspect-ready avant d\'envoyer toggle-inspect');
-      return;
-    }
-
     if (!iframeRef.current?.contentWindow) {
       console.warn('❌ contentWindow non disponible');
       return;
     }
-    
-    // Timeout de sécurité 500ms pour garantir que l'iframe est complètement prête
-    const securityTimeout = setTimeout(() => {
+
+    // Si l'iframe a signalé inspect-ready, on attend 500ms pour être sûr que tout est initialisé
+    // Sinon, on utilise un fallback légèrement plus long pour laisser le temps au script de s'initialiser
+    const delay = inspectReady ? 500 : 800;
+
+    if (!inspectReady) {
+      console.log('⏳ inspect-ready non encore reçu, envoi toggle-inspect en fallback dans', delay, 'ms');
+    }
+
+    const timeoutId = window.setTimeout(() => {
       if (iframeRef.current?.contentWindow) {
-        console.log('📤 Sending toggle-inspect:', inspectMode, '(après timeout sécurité 500ms)');
+        console.log(
+          '📤 Sending toggle-inspect:',
+          inspectMode,
+          inspectReady ? '(après inspect-ready)' : '(fallback sans inspect-ready)'
+        );
         iframeRef.current.contentWindow.postMessage(
           { type: 'toggle-inspect', enabled: inspectMode },
           '*'
         );
       }
-    }, 500);
-    
-    return () => clearTimeout(securityTimeout);
+    }, delay);
+
+    return () => window.clearTimeout(timeoutId);
   }, [inspectMode, inspectReady]);
 
   // Charger l'iframe uniquement au premier mount
