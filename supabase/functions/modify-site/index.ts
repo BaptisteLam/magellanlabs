@@ -137,12 +137,16 @@ Tu DOIS TOUJOURS répondre avec du JSON valide dans ce format exact:
 }
 
 RÈGLE CRITIQUE POUR LE MESSAGE:
-Le champ "message" est OBLIGATOIRE et doit décrire l'action que tu vas accomplir en une phrase courte et précise.
+Le champ "message" est OBLIGATOIRE et doit décrire l'action que tu vas accomplir en une phrase courte, précise et contextuelle.
+Ce message sera affiché à l'utilisateur AVANT l'exécution des modifications.
 Exemples de bons messages:
 - "Je vais changer la couleur du titre en bleu"
 - "Je vais ajouter un bouton de contact dans le header"
 - "Je vais modifier la taille de la police du paragraphe"
 - "Je vais corriger l'alignement du menu"
+- "Je vais créer une nouvelle section testimonials avec carrousel"
+❌ INTERDIT: Messages génériques comme "Je vais modifier le code" ou "Je vais faire des changements"
+✅ OBLIGATOIRE: Message spécifique décrivant exactement ce qui sera modifié
 
 TYPES DE MODIFICATIONS AST:
 - update: Modifier une propriété/attribut/valeur existante
