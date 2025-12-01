@@ -1354,33 +1354,40 @@ export default function BuilderSession() {
             return prev;
           });
         },
-        onPatch: async (actions: PatchAction[]) => {
-          console.log('⚡ Patches reçus:', actions.length);
-          
-          // 🔄 FALLBACK AUTOMATIQUE si aucun patch
-          if (actions.length === 0) {
-            console.log('⚠️ Aucun patch reçu, fallback sur génération complète');
+        onPatch: async (modifications: import('@/types/ast').ASTModification[]) => {
+          console.log('⚡ Modifications AST reçues:', modifications?.length || 0);
+
+          // 🔄 FALLBACK AUTOMATIQUE si aucune modification
+          if (!modifications || modifications.length === 0) {
+            console.log('⚠️ Aucune modification reçue, fallback sur génération complète');
             return handleFullGeneration(userPrompt);
           }
-          
-          console.log('⚡ Application de', actions.length, 'patches');
-          
-          // Appliquer tous les patches
+
+          console.log('⚡ Application de', modifications.length, 'modifications AST');
+
+          // Appliquer toutes les modifications AST
+          const { applyASTModifications } = await import('@/services/ast/astModifier');
           const updatedFiles = { ...projectFiles };
           let modifiedFilesList: string[] = [];
-          
-          for (const action of actions) {
-            const currentContent = updatedFiles[action.path];
+
+          for (const modification of modifications) {
+            const currentContent = updatedFiles[modification.path];
             if (!currentContent) {
-              console.warn('⚠️ Fichier non trouvé:', action.path);
+              console.warn('⚠️ Fichier non trouvé:', modification.path);
               continue;
             }
-            
-            const newContent = applyPatch(currentContent, action);
-            if (newContent !== currentContent) {
-              updatedFiles[action.path] = newContent;
-              modifiedFilesList.push(action.path);
-              console.log('✅ Patch appliqué:', action.path);
+
+            try {
+              const result = await applyASTModifications(currentContent, modification);
+              if (result.success && result.newContent) {
+                updatedFiles[modification.path] = result.newContent;
+                modifiedFilesList.push(modification.path);
+                console.log('✅ AST modification appliquée:', modification.path);
+              } else {
+                console.error('❌ Échec modification AST:', modification.path, result.error);
+              }
+            } catch (error) {
+              console.error('❌ Erreur lors de l\'application AST:', modification.path, error);
             }
           }
           
