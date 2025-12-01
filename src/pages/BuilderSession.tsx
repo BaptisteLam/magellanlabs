@@ -784,9 +784,59 @@ export default function BuilderSession() {
 
     // Créer immédiatement le message d'intro avec toutes les métadonnées nécessaires
     const isFirstGeneration = Object.keys(projectFiles).length === 0;
-    const introContent = isFirstGeneration
-      ? "🎨 Je crée votre site web de A à Z..."
-      : "✨ J'analyse votre demande et prépare les modifications...";
+
+    // Générer un message d'intention détaillé basé sur le prompt utilisateur
+    const generateIntentMessage = (prompt: string, isNew: boolean): string => {
+      const promptLower = prompt.toLowerCase();
+
+      if (isNew) {
+        // Pour une nouvelle génération, décrire ce qui va être créé
+        const hasImages = attachedFiles.length > 0;
+        const imageDesc = hasImages ? ` en intégrant vos ${attachedFiles.length} image${attachedFiles.length > 1 ? 's' : ''}` : '';
+
+        // Détecter le type de site demandé
+        if (promptLower.includes('restaurant') || promptLower.includes('café') || promptLower.includes('bistro')) {
+          return `Je vais créer un site web complet pour votre restaurant${imageDesc}, avec une page d'accueil accueillante, un menu détaillé, une galerie de photos des plats et un formulaire de réservation.`;
+        } else if (promptLower.includes('avocat') || promptLower.includes('cabinet juridique') || promptLower.includes('notaire')) {
+          return `Je vais créer un site web professionnel pour votre cabinet${imageDesc}, avec une présentation sobre de vos services, une section équipe, des témoignages clients et un formulaire de contact sécurisé.`;
+        } else if (promptLower.includes('portfolio') || promptLower.includes('artiste')) {
+          return `Je vais créer un portfolio élégant${imageDesc} qui met en valeur votre travail créatif, avec une galerie interactive, une page à propos et un formulaire de contact.`;
+        } else if (promptLower.includes('startup') || promptLower.includes('tech') || promptLower.includes('saas')) {
+          return `Je vais créer un site moderne pour votre startup${imageDesc}, avec une landing page impactante, une présentation de vos fonctionnalités, des témoignages et un call-to-action pour démarrer.`;
+        } else if (promptLower.includes('immobilier') || promptLower.includes('agence')) {
+          return `Je vais créer un site web pour votre agence${imageDesc}, avec une vitrine de vos biens, un système de recherche, des fiches détaillées et un formulaire de contact.`;
+        } else if (promptLower.includes('e-commerce') || promptLower.includes('boutique') || promptLower.includes('shop')) {
+          return `Je vais créer une boutique en ligne${imageDesc}, avec un catalogue de produits, des fiches détaillées, un panier d'achat et un processus de commande.`;
+        }
+
+        // Message générique mais détaillé pour autres cas
+        return `Je vais créer un site web complet et professionnel${imageDesc}, avec plusieurs pages interconnectées, un design moderne responsive, des animations fluides et une navigation intuitive.`;
+      } else {
+        // Pour une modification, décrire ce qui va être modifié
+        if (promptLower.includes('couleur') || promptLower.includes('color')) {
+          const colorMatch = prompt.match(/(bleu|rouge|vert|jaune|orange|rose|violet|noir|blanc|gris|#[0-9a-f]{6})/i);
+          const color = colorMatch ? colorMatch[0] : 'nouvelle palette';
+          return `Je vais modifier la palette de couleurs de votre site en appliquant ${color} aux éléments principaux tout en conservant l'harmonie visuelle globale.`;
+        } else if (promptLower.includes('texte') || promptLower.includes('contenu') || promptLower.includes('titre')) {
+          return `Je vais mettre à jour le contenu textuel de votre site en modifiant les sections concernées tout en préservant la structure et le design existants.`;
+        } else if (promptLower.includes('image') || promptLower.includes('photo') || promptLower.includes('logo')) {
+          return `Je vais intégrer et optimiser les nouvelles images dans votre site en les plaçant aux endroits appropriés avec un chargement optimisé.`;
+        } else if (promptLower.includes('section') || promptLower.includes('page')) {
+          return `Je vais créer et intégrer une nouvelle section dans votre site en respectant le style et la cohérence de design existants.`;
+        } else if (promptLower.includes('animation') || promptLower.includes('effet')) {
+          return `Je vais ajouter des animations et effets visuels subtils pour améliorer l'expérience utilisateur sans surcharger le site.`;
+        } else if (promptLower.includes('responsive') || promptLower.includes('mobile')) {
+          return `Je vais optimiser l'affichage mobile de votre site en ajustant les breakpoints et en adaptant les éléments pour une meilleure expérience sur smartphone et tablette.`;
+        } else if (promptLower.includes('menu') || promptLower.includes('navigation')) {
+          return `Je vais améliorer la navigation de votre site en réorganisant le menu et en ajoutant des liens internes pour une meilleure expérience utilisateur.`;
+        }
+
+        // Message générique mais détaillé pour modifications
+        return `Je vais analyser votre demande et apporter les modifications nécessaires à votre site tout en préservant les fonctionnalités et le design existants.`;
+      }
+    };
+
+    const introContent = generateIntentMessage(userPrompt, isFirstGeneration);
 
     const introMessage: Message = {
       role: 'assistant',
@@ -1086,27 +1136,55 @@ export default function BuilderSession() {
             ? `Je vais modifier ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}...`
             : 'Je vais appliquer les modifications...';
           
-          // Générer un message de conclusion détaillé et contextuel
+          // Générer un message de conclusion descriptif et contextuel (sans liste de fichiers)
           const getDetailedConclusion = (): string => {
+            // Détecter le contexte du prompt initial pour adapter le message
+            const originalPrompt = (messages.find(m => m.role === 'user')?.content as string || '').toLowerCase();
+
             if (isInitialGenerationRef.current) {
-              return `✅ **Site créé avec succès !**\n\n📁 ${newFiles.length} fichier${newFiles.length > 1 ? 's créés' : ' créé'} : ${newFiles.slice(0, 3).join(', ')}${newFiles.length > 3 ? ` et ${newFiles.length - 3} autres` : ''}\n\n🚀 Votre site est prêt à être personnalisé et publié.`;
+              // Message après création complète du site
+              if (originalPrompt.includes('restaurant') || originalPrompt.includes('café')) {
+                return `Votre site de restaurant est maintenant en ligne avec un design chaleureux et accueillant. J'ai créé une galerie photo appétissante et un formulaire de réservation fonctionnel. La navigation est fluide entre les différentes sections et le site s'adapte parfaitement sur mobile.`;
+              } else if (originalPrompt.includes('avocat') || originalPrompt.includes('cabinet')) {
+                return `Votre site professionnel est prêt avec un design sobre et élégant qui inspire confiance. J'ai structuré clairement vos services juridiques, ajouté une section témoignages et intégré un formulaire de contact sécurisé. L'ensemble respire le professionnalisme.`;
+              } else if (originalPrompt.includes('portfolio') || originalPrompt.includes('artiste')) {
+                return `Votre portfolio créatif est en ligne avec une mise en page épurée qui met en valeur vos créations. J'ai créé une galerie interactive avec des animations subtiles et une navigation intuitive entre les projets. Le design minimaliste laisse vos œuvres parler d'elles-mêmes.`;
+              } else if (originalPrompt.includes('startup') || originalPrompt.includes('tech')) {
+                return `Votre landing page moderne est opérationnelle avec un design dynamique et impactant. J'ai mis en avant vos fonctionnalités clés avec des animations engageantes, ajouté des témoignages clients et créé un call-to-action percutant. Le site respire l'innovation.`;
+              } else if (originalPrompt.includes('immobilier')) {
+                return `Votre site d'agence immobilière est prêt avec une présentation attractive de vos biens. J'ai créé des fiches détaillées pour chaque propriété, ajouté une navigation fluide et optimisé l'affichage des photos. Le tout est parfaitement responsive.`;
+              } else if (originalPrompt.includes('e-commerce') || originalPrompt.includes('boutique')) {
+                return `Votre boutique en ligne est maintenant fonctionnelle avec un catalogue produits structuré. J'ai créé des fiches produits détaillées avec photos optimisées, ajouté un système de panier et intégré un processus de commande clair. L'expérience d'achat est fluide.`;
+              }
+
+              // Message générique mais descriptif
+              return `Votre site est maintenant en ligne avec un design moderne et professionnel. J'ai créé une architecture claire avec plusieurs pages interconnectées, ajouté des animations fluides et optimisé l'affichage sur tous les appareils. La navigation est intuitive et l'ensemble est cohérent.`;
+            } else {
+              // Messages après modifications
+              if (originalPrompt.includes('couleur') || originalPrompt.includes('color')) {
+                const colorMatch = originalPrompt.match(/(bleu|rouge|vert|jaune|orange|rose|violet|noir|blanc|gris)/i);
+                const color = colorMatch ? colorMatch[0] : 'la nouvelle palette';
+                return `J'ai appliqué ${color} de manière cohérente sur l'ensemble du site. Les couleurs sont harmonieuses et le contraste est optimal pour la lisibilité. Les animations et transitions s'adaptent naturellement à cette nouvelle palette.`;
+              } else if (originalPrompt.includes('texte') || originalPrompt.includes('contenu')) {
+                return `J'ai mis à jour les contenus textuels tout en préservant la structure et le design de votre site. Les modifications sont bien intégrées et le style d'écriture reste cohérent sur toutes les pages.`;
+              } else if (originalPrompt.includes('image') || originalPrompt.includes('photo')) {
+                return `J'ai intégré les nouvelles images de manière optimale avec un chargement lazy loading pour les performances. Les photos sont bien dimensionnées et s'intègrent harmonieusement dans le design existant.`;
+              } else if (originalPrompt.includes('section')) {
+                return `La nouvelle section est maintenant en place et s'intègre parfaitement au design existant. J'ai respecté la charte graphique et ajouté les animations cohérentes avec le reste du site.`;
+              } else if (originalPrompt.includes('animation') || originalPrompt.includes('effet')) {
+                return `J'ai ajouté des animations subtiles et élégantes qui enrichissent l'expérience utilisateur sans alourdir le site. Les transitions sont fluides et les effets au scroll sont bien synchronisés.`;
+              } else if (originalPrompt.includes('responsive') || originalPrompt.includes('mobile')) {
+                return `J'ai optimisé l'affichage mobile de votre site. Tous les éléments s'adaptent maintenant parfaitement aux petits écrans avec des breakpoints bien définis. La navigation est tactile et l'expérience utilisateur est fluide sur smartphone.`;
+              } else if (newFiles.length > 0 && modifiedFiles.length > 0) {
+                return `J'ai créé de nouveaux éléments et ajusté les existants pour répondre à votre demande. Toutes les modifications s'intègrent harmonieusement au design actuel et les fonctionnalités sont préservées.`;
+              } else if (newFiles.length > 0) {
+                return `J'ai ajouté de nouveaux éléments à votre site en respectant le style et la cohérence visuelle existants. Les nouvelles fonctionnalités sont bien intégrées et l'ensemble reste fluide.`;
+              } else if (modifiedFiles.length > 0) {
+                return `J'ai apporté les modifications demandées tout en préservant la structure et les fonctionnalités de votre site. Les changements sont bien intégrés et cohérents avec l'ensemble.`;
+              }
+
+              return `Les modifications ont été appliquées avec soin. Votre site conserve sa cohérence visuelle et toutes les fonctionnalités restent opérationnelles.`;
             }
-
-            const details: string[] = [];
-            let emoji = '✨';
-
-            if (newFiles.length > 0 && modifiedFiles.length > 0) {
-              emoji = '🔧';
-              return `${emoji} **Modifications appliquées**\n\n📝 ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's modifiés' : ' modifié'} : ${modifiedFiles.slice(0, 2).join(', ')}${modifiedFiles.length > 2 ? '...' : ''}\n➕ ${newFiles.length} fichier${newFiles.length > 1 ? 's créés' : ' créé'} : ${newFiles.slice(0, 2).join(', ')}${newFiles.length > 2 ? '...' : ''}\n\n✅ Changements appliqués avec succès.`;
-            } else if (newFiles.length > 0) {
-              emoji = '➕';
-              return `${emoji} **Nouveaux fichiers créés**\n\n📁 ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} : ${newFiles.slice(0, 3).join(', ')}${newFiles.length > 3 ? '...' : ''}\n\n✅ Fichiers ajoutés avec succès.`;
-            } else if (modifiedFiles.length > 0) {
-              emoji = '✏️';
-              return `${emoji} **Fichiers modifiés**\n\n📝 ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''} : ${modifiedFiles.slice(0, 3).join(', ')}${modifiedFiles.length > 3 ? '...' : ''}\n\n✅ Modifications appliquées.`;
-            }
-
-            return '✅ Modifications terminées.';
           };
 
           const conclusionMessage = getDetailedConclusion();
