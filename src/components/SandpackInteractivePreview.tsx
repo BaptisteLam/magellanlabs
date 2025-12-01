@@ -1,8 +1,9 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { SandpackProvider, SandpackLayout, SandpackPreview, useSandpack } from '@codesandbox/sandpack-react';
 import { generate404Page } from '@/lib/generate404Page';
-import { InspectOverlay, type ElementInfo } from './InspectOverlay';
+import { type ElementInfo } from './InspectOverlay';
 import { usePreviewNavigation } from '@/hooks/usePreviewNavigation';
+import { injectInspectorScript } from '@/lib/inspectorInjector';
 
 interface SandpackInteractivePreviewProps {
   files: Record<string, string>;
@@ -14,27 +15,28 @@ interface SandpackInteractivePreviewProps {
 function SandpackController({ 
   inspectMode, 
   onElementSelect,
-  files,
   onNavigationRequest
 }: { 
   inspectMode: boolean; 
   onElementSelect?: (elementInfo: ElementInfo) => void;
-  files: Record<string, string>;
   onNavigationRequest: (file: string) => void;
 }) {
   const { sandpack } = useSandpack();
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [iframeReady, setIframeReady] = useState(false);
 
+  // Écouter les messages de l'iframe (inspect-ready, element-selected, navigate)
   useEffect(() => {
-    const iframe = sandpack.clients.main?.iframe;
-    if (iframe) {
-      iframeRef.current = iframe;
-    }
-  }, [sandpack.clients]);
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'inspect-ready') {
+        console.log('📡 Iframe inspector ready');
+        setIframeReady(true);
+      }
+      
+      if (event.data.type === 'element-selected' && onElementSelect) {
+        console.log('✅ Element selected:', event.data.data);
+        onElementSelect(event.data.data);
+      }
 
-  // Intercepter les tentatives de navigation depuis l'iframe
-  useEffect(() => {
-    const handleNavigationMessage = (event: MessageEvent) => {
       if (event.data.type === 'navigate') {
         const targetFile = event.data.file;
         console.log('📨 Navigation request:', targetFile);
@@ -42,22 +44,38 @@ function SandpackController({
       }
     };
 
-    window.addEventListener('message', handleNavigationMessage);
-    return () => window.removeEventListener('message', handleNavigationMessage);
-  }, [onNavigationRequest]);
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [onElementSelect, onNavigationRequest]);
 
-  return (
-    <InspectOverlay 
-      isActive={inspectMode} 
-      iframeRef={iframeRef} 
-      onElementSelect={onElementSelect} 
-    />
-  );
+  // Envoyer le toggle-inspect à l'iframe quand le mode change
+  useEffect(() => {
+    if (!iframeReady) return;
+
+    const client = Object.values(sandpack.clients)[0];
+    const iframe = client?.iframe;
+
+    if (iframe?.contentWindow) {
+      console.log('🔄 Sending toggle-inspect:', inspectMode);
+      iframe.contentWindow.postMessage(
+        { type: 'toggle-inspect', enabled: inspectMode },
+        '*'
+      );
+    }
+  }, [inspectMode, iframeReady, sandpack.clients]);
+
+  return null;
 }
 
 export function SandpackInteractivePreview({ files, isDark, inspectMode = false, onElementSelect }: SandpackInteractivePreviewProps) {
   const navigation = usePreviewNavigation('App.tsx');
   const [show404, setShow404] = useState(false);
+
+  // Injecter le script d'inspection dans les fichiers avant de les passer à Sandpack
+  const filesWithInspector = useMemo(() => {
+    console.log('🔧 Injecting inspector script into files...');
+    return injectInspectorScript(files);
+  }, [files]);
 
   const handleNavigationRequest = (targetFile: string) => {
     console.log('🔍 Checking file existence:', targetFile);
@@ -81,7 +99,7 @@ export function SandpackInteractivePreview({ files, isDark, inspectMode = false,
 
   // Préparer les fichiers avec 404 si nécessaire
   const filesWithNotFound = show404 ? {
-    ...files,
+    ...filesWithInspector,
     '/App.tsx': `
 import { generate404Page } from './lib/generate404Page';
 
@@ -91,7 +109,7 @@ export default function App() {
   );
 }
     `
-  } : files;
+  } : filesWithInspector;
 
   return (
     <SandpackProvider
@@ -116,7 +134,6 @@ export default function App() {
         <SandpackController 
           inspectMode={inspectMode} 
           onElementSelect={onElementSelect}
-          files={files}
           onNavigationRequest={handleNavigationRequest}
         />
       </div>
