@@ -17,8 +17,8 @@ const SEOHead = ({
   ogImage = "/lovable-uploads/magellan-logo-light.png",
   structuredData 
 }: SEOHeadProps) => {
-  // Put Magellan Studio first for better SEO visibility
-  const fullTitle = title.includes('Magellan Studio') ? title : `Magellan Studio | ${title}`;
+  // Use title as-is if it already contains Magellan, otherwise add it
+  const fullTitle = title.includes('Magellan') ? title : `Magellan | ${title}`;
   const currentUrl = canonicalUrl || (typeof window !== 'undefined' ? window.location.href : '');
 
   return (
@@ -27,7 +27,7 @@ const SEOHead = ({
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
       <meta name="keywords" content={keywords} />
-      <meta name="author" content="Magellan Studio" />
+      <meta name="author" content="Magellan" />
       {currentUrl && <link rel="canonical" href={currentUrl} />}
 
       {/* Open Graph */}
@@ -36,7 +36,7 @@ const SEOHead = ({
       <meta property="og:type" content="website" />
       {currentUrl && <meta property="og:url" content={currentUrl} />}
       <meta property="og:image" content={ogImage} />
-      <meta property="og:site_name" content="Magellan Studio" />
+      <meta property="og:site_name" content="Magellan" />
       <meta property="og:locale" content="fr_FR" />
 
       {/* Twitter */}

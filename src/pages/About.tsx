@@ -24,28 +24,10 @@ const About = () => {
     "@context": "https://schema.org",
     "@type": "AboutPage",
     "mainEntity": {
-      "@type": "Organization",
-      "name": "Magellan Studio",
-      "description": "Agence web innovante spécialisée dans l'accompagnement digital des artisans, restaurateurs et TPE/PME avec des solutions sur-mesure",
-      "foundingDate": "2024",
-      "founder": [
-        {
-          "@type": "Person",
-          "name": "Guillaume",
-          "jobTitle": "Co-fondateur & Développeur Full-Stack"
-        },
-        {
-          "@type": "Person", 
-          "name": "Baptiste",
-          "jobTitle": "Co-fondateur & Expert Marketing Digital"
-        },
-        {
-          "@type": "Person",
-          "name": "Dylane", 
-          "jobTitle": "Co-fondateur & Designer UX/UI"
-        }
-      ],
-      "mission": "Démocratiser l'accès aux solutions digitales pour les petites entreprises"
+      "@type": "SoftwareApplication",
+      "name": "Magellan",
+      "description": "Plateforme IA révolutionnaire pour créer des sites web et applications mobiles instantanément",
+      "applicationCategory": "DeveloperApplication"
     }
   };
 
@@ -117,9 +99,9 @@ const About = () => {
   return (
     <div className="min-h-screen">
       <SEOHead 
-        title="À Propos de Magellan Studio | Agence Web Innovante pour TPE & PME"
-        description="Découvrez Magellan Studio : 3 experts passionnés qui révolutionnent le web pour artisans et TPE. Notre mission : des solutions digitales accessibles et sur-mesure."
-        keywords="à propos, agence web, équipe, expertise, artisan, TPE, PME, innovation web, Guillaume, Baptiste, Dylane"
+        title="À Propos de Magellan | Plateforme IA de Création Web"
+        description="Découvrez Magellan : la plateforme d'intelligence artificielle qui permet de créer des sites web et applications mobiles professionnels en quelques secondes."
+        keywords="Magellan, IA création web, intelligence artificielle, générateur site, plateforme développement, création automatique"
         canonicalUrl="https://magellan-studio.fr/about"
         structuredData={structuredData}
       />

@@ -30,25 +30,13 @@ const Contact = () => {
     "@context": "https://schema.org",
     "@type": "ContactPage",
     "mainEntity": {
-      "@type": "Organization",
-      "name": "Magellan Studio",
+      "@type": "SoftwareApplication",
+      "name": "Magellan",
       "contactPoint": {
         "@type": "ContactPoint",
-        "telephone": "+33 6 78 01 57 32",
-        "contactType": "Customer Service",
-        "email": "contact@magellan-studio.fr",
-        "availableLanguage": ["French", "English"],
-        "hoursAvailable": "Mo-Fr 09:00-18:00"
-      },
-      "address": {
-        "@type": "PostalAddress",
-        "addressCountry": "FR",
-        "addressLocality": "France"
+        "contactType": "Customer Support",
+        "availableLanguage": ["French", "English"]
       }
-    },
-    "potentialAction": {
-      "@type": "ContactAction",
-      "target": "https://magellan-studio.fr/contact"
     }
   };
   
@@ -186,9 +174,9 @@ const Contact = () => {
   return (
     <div className="min-h-screen">
       <SEOHead 
-        title="Contact Magellan Studio | Devis Gratuit Site Web sur-mesure"
-        description="Contactez Magellan Studio pour votre projet web. Devis gratuit et personnalisé pour sites vitrine, e-commerce, réservation. Réponse sous 24h garantie."
-        keywords="contact, devis gratuit, projet web, site internet, consultation, artisan, restaurant, TPE, sur-mesure"
+        title="Contact Magellan | Support & Assistance"
+        description="Contactez l'équipe Magellan pour toute question sur la création de votre site web ou application mobile avec notre IA. Support rapide et assistance personnalisée."
+        keywords="contact Magellan, support IA, assistance création site, aide développement web, questions plateforme"
         canonicalUrl="https://magellan-studio.fr/contact"
         structuredData={structuredData}
       />
