@@ -21,6 +21,7 @@ export function useModifySite() {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const startTimeRef = useRef<number>(0);
 
   const modifySite = async (
     message: string,
@@ -31,9 +32,9 @@ export function useModifySite() {
   ) => {
     setIsLoading(true);
     setIsStreaming(true);
+    startTimeRef.current = Date.now();
 
     // Émettre événement thought au démarrage
-    const startTime = Date.now();
     options.onGenerationEvent?.({ 
       type: 'thought', 
       message: 'Analyzing request...', 
@@ -164,6 +165,22 @@ export function useModifySite() {
           try {
             const event = JSON.parse(dataStr);
             if (event.type === 'complete') {
+              // Émettre les événements thought et analyze completed avant la fin
+              const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
+              
+              options?.onGenerationEvent?.({
+                type: 'thought',
+                message: `Thought for ${duration}s`,
+                status: 'completed',
+                duration
+              });
+              
+              options?.onGenerationEvent?.({
+                type: 'analyze',
+                message: 'Analysis complete',
+                status: 'completed'
+              });
+              
               clearTimeout(safetyTimeout);
               setIsStreaming(false);
               setIsLoading(false);

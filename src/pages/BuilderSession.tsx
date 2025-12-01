@@ -126,6 +126,9 @@ export default function BuilderSession() {
   const generationStartTimeRef = useRef<number>(0);
   const [currentVersionIndex, setCurrentVersionIndex] = useState<number | null>(null);
   
+  // État de chargement pour quick modification
+  const [isQuickModLoading, setIsQuickModLoading] = useState(false);
+  
   // Flag pour savoir si on est en première génération
   const [isInitialGeneration, setIsInitialGeneration] = useState(false);
   const isInitialGenerationRef = useRef(false);
@@ -1279,6 +1282,7 @@ export default function BuilderSession() {
     // Créer message de génération unifié
     const generationStartTime = Date.now();
     generationStartTimeRef.current = generationStartTime;
+    setIsQuickModLoading(true);
     
     // Variable pour capturer le message d'intention de Claude
     let capturedIntentMessage = '';
@@ -1489,9 +1493,11 @@ export default function BuilderSession() {
         },
         onComplete: () => {
           console.log('✅ Modification rapide terminée');
+          setIsQuickModLoading(false);
         },
         onError: (error) => {
           console.error('❌ Erreur modification rapide:', error);
+          setIsQuickModLoading(false);
           sonnerToast.error(`Erreur: ${error}`);
           // Fallback sur génération complète en cas d'erreur
           handleFullGeneration(userPrompt);
@@ -2147,8 +2153,8 @@ export default function BuilderSession() {
                       messageIndex={idx}
                       isLatestMessage={idx === messages.length - 1}
                       isDark={isDark}
-                      isLoading={idx === messages.length - 1 && agent.isLoading}
-                      generationStartTime={idx === messages.length - 1 && agent.isLoading ? generationStartTimeRef.current : undefined}
+                      isLoading={idx === messages.length - 1 && (agent.isLoading || isQuickModLoading)}
+                      generationStartTime={idx === messages.length - 1 && (agent.isLoading || isQuickModLoading) ? generationStartTimeRef.current : undefined}
                       onRestore={async (messageIdx) => {
                         const targetMessage = messages[messageIdx];
                         if (!targetMessage.id || !sessionId) return;
