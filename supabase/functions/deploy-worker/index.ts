@@ -168,6 +168,111 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Step 3: Inject Magellan badge for all published sites
+    console.log('🏷️ Injecting Magellan badge...');
+    const magellanBadge = `
+<!-- Magellan Badge -->
+<style>
+  #magellan-badge {
+    position: fixed !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    z-index: 2147483647 !important;
+    width: 60px !important;
+    height: 60px !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(3, 165, 192, 0.2) !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 12px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+    backdrop-filter: blur(10px) !important;
+  }
+  @media (prefers-color-scheme: dark) {
+    #magellan-badge {
+      background: rgba(10, 10, 10, 0.95) !important;
+      border-color: rgba(3, 165, 192, 0.3) !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    }
+  }
+  #magellan-badge:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
+  }
+  #magellan-badge svg {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  @media (prefers-color-scheme: dark) {
+    #magellan-badge .logo-light { display: block !important; }
+    #magellan-badge .logo-dark { display: none !important; }
+  }
+  @media (prefers-color-scheme: light) {
+    #magellan-badge .logo-light { display: none !important; }
+    #magellan-badge .logo-dark { display: block !important; }
+  }
+</style>
+<a id="magellan-badge" href="https://builtbymagellan.com" target="_blank" rel="noopener" aria-label="Built with Magellan">
+  <svg class="logo-dark" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="250" cy="250" r="200" stroke="#03A5C0" stroke-width="3" fill="none"/>
+    <ellipse cx="250" cy="250" rx="200" ry="80" stroke="#03A5C0" stroke-width="3" fill="none"/>
+    <ellipse cx="250" cy="250" rx="200" ry="40" stroke="#03A5C0" stroke-width="3" fill="none"/>
+    <line x1="250" y1="50" x2="250" y2="450" stroke="#03A5C0" stroke-width="3"/>
+    <line x1="50" y1="250" x2="450" y2="250" stroke="#03A5C0" stroke-width="3"/>
+    <ellipse cx="250" cy="250" rx="80" ry="200" stroke="#03A5C0" stroke-width="3" fill="none"/>
+    <ellipse cx="250" cy="250" rx="40" ry="200" stroke="#03A5C0" stroke-width="3" fill="none"/>
+  </svg>
+  <svg class="logo-light" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="250" cy="250" r="200" stroke="#03A5C0" stroke-width="3" fill="none"/>
+    <ellipse cx="250" cy="250" rx="200" ry="80" stroke="#03A5C0" stroke-width="3" fill="none"/>
+    <ellipse cx="250" cy="250" rx="200" ry="40" stroke="#03A5C0" stroke-width="3" fill="none"/>
+    <line x1="250" y1="50" x2="250" y2="450" stroke="#03A5C0" stroke-width="3"/>
+    <line x1="50" y1="250" x2="450" y2="250" stroke="#03A5C0" stroke-width="3"/>
+    <ellipse cx="250" cy="250" rx="80" ry="200" stroke="#03A5C0" stroke-width="3" fill="none"/>
+    <ellipse cx="250" cy="250" rx="40" ry="200" stroke="#03A5C0" stroke-width="3" fill="none"/>
+  </svg>
+</a>
+<script>
+(function(){
+  var badge = document.getElementById('magellan-badge');
+  if (!badge) return;
+  
+  var observer = new MutationObserver(function(mutations) {
+    if (!document.getElementById('magellan-badge')) {
+      document.body.appendChild(badge.cloneNode(true));
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  
+  setInterval(function() {
+    var b = document.getElementById('magellan-badge');
+    if (b) {
+      b.style.setProperty('display', 'flex', 'important');
+      b.style.setProperty('visibility', 'visible', 'important');
+      b.style.setProperty('opacity', '1', 'important');
+    }
+  }, 1000);
+})();
+</script>
+`;
+
+    projectFiles = projectFiles.map((file: ProjectFile) => {
+      if (file.name.endsWith('.html') && file.type === 'text') {
+        const content = file.content;
+        if (content.includes('</body>')) {
+          file.content = content.replace('</body>', `${magellanBadge}\n</body>`);
+        } else {
+          file.content = content + magellanBadge;
+        }
+        console.log(`  🏷️ Badge Magellan injecté dans ${file.name}`);
+      }
+      return file;
+    });
+
     // Générer le Worker script avec tous les fichiers embarqués
     const workerScript = generateWorkerScript(projectName, projectFiles);
 
