@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import { useHotReload } from '@/hooks/useHotReload';
 import { HotReloadIndicator } from './HotReloadIndicator';
 import { generate404Page } from '@/lib/generate404Page';
-import { type ElementInfo } from './InspectOverlay';
+import { InspectOverlay, type ElementInfo } from './InspectOverlay';
 
 interface HotReloadableIframeProps {
   projectFiles: Record<string, string>;
@@ -928,7 +928,7 @@ export function HotReloadableIframe({
   }, [currentFile, generatedHTML]);
 
   return (
-    <>
+    <div className="relative w-full h-full">
       <HotReloadIndicator isUpdating={isUpdating} updateType={lastUpdateType} />
       <iframe
         ref={iframeRef}
@@ -936,6 +936,16 @@ export function HotReloadableIframe({
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
         title="Preview"
       />
-    </>
+      {/* Overlay d'inspection au-dessus de l'iframe */}
+      <InspectOverlay
+        isActive={inspectMode}
+        iframeRef={iframeRef}
+        onElementSelect={(elementInfo) => {
+          if (onElementSelect) {
+            onElementSelect(elementInfo);
+          }
+        }}
+      />
+    </div>
   );
 }
