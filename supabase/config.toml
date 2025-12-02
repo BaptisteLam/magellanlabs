@@ -44,3 +44,6 @@ verify_jwt = true
 
 [functions.chat-only]
 verify_jwt = true
+
+[functions.agent-v2]
+verify_jwt = true
