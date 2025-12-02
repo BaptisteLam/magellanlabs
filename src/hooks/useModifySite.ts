@@ -106,6 +106,55 @@ export function useModifySite() {
             const event = JSON.parse(dataStr);
 
             switch (event.type) {
+              case 'generation_event':
+                // L'edge function envoie des events wrappés dans generation_event
+                if (event.event?.type === 'complete') {
+                  // Marquer thought et analyze comme completed
+                  const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
+                  
+                  options.onGenerationEvent?.({
+                    type: 'thought',
+                    message: `Request analyzed`,
+                    status: 'completed',
+                    duration
+                  });
+                  
+                  options.onGenerationEvent?.({
+                    type: 'analyze',
+                    message: 'Analysis complete',
+                    status: 'completed'
+                  });
+                  
+                  // Récupérer les modifications AST
+                  const { modifications, message: finalMessage } = event.event.data || {};
+                  console.log('⚡ Modifications AST reçues:', modifications?.length || 0, 'modifications');
+                  console.log('💬 Message final de Claude:', finalMessage);
+                  
+                  // Transmettre le message d'intent de Claude au parent
+                  if (finalMessage) {
+                    options.onIntentMessage?.(finalMessage);
+                  }
+                  
+                  // Emit edit events for each modified file
+                  modifications?.forEach((mod: ASTModification) => {
+                    options.onGenerationEvent?.({ 
+                      type: 'edit', 
+                      message: mod.path, 
+                      file: mod.path,
+                      status: 'completed'
+                    });
+                  });
+                  
+                  clearTimeout(safetyTimeout);
+                  setIsStreaming(false);
+                  setIsLoading(false);
+                  
+                  // Appliquer les modifications AST
+                  options.onASTModifications?.(modifications || []);
+                  options.onGenerationEvent?.({ type: 'complete', message: 'Changes applied', status: 'completed' });
+                  options.onComplete?.();
+                }
+                break;
               case 'message':
                 // Stream du message conversationnel
                 options.onMessage?.(event.content);
@@ -181,8 +230,32 @@ export function useModifySite() {
           if (!dataStr) continue;
           try {
             const event = JSON.parse(dataStr);
-            if (event.type === 'complete') {
-              // Émettre les événements thought et analyze completed avant la fin
+            
+            // Gérer les events wrappés dans generation_event
+            if (event.type === 'generation_event' && event.event?.type === 'complete') {
+              const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
+              
+              options?.onGenerationEvent?.({
+                type: 'thought',
+                message: `Request analyzed`,
+                status: 'completed',
+                duration
+              });
+              
+              options?.onGenerationEvent?.({
+                type: 'analyze',
+                message: 'Analysis complete',
+                status: 'completed'
+              });
+              
+              clearTimeout(safetyTimeout);
+              setIsStreaming(false);
+              setIsLoading(false);
+              options.onASTModifications?.(event.event.data?.modifications || []);
+              options.onComplete?.();
+            }
+            // Compatibilité avec l'ancien format
+            else if (event.type === 'complete') {
               const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
               
               options?.onGenerationEvent?.({
