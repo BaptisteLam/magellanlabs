@@ -168,18 +168,18 @@ export function InspectOverlay({ isActive, iframeRef, onElementSelect }: Inspect
 
   return (
     <>
-      {/* Overlay transparent pour capturer les événements */}
+      {/* Overlay transparent pour capturer les événements - z-index très élevé */}
       <div
         ref={overlayRef}
-        className="absolute inset-0 z-50 cursor-crosshair"
-        style={{ pointerEvents: 'auto' }}
+        className="absolute inset-0 cursor-crosshair"
+        style={{ pointerEvents: 'auto', zIndex: 9999 }}
       />
 
       {/* Outline visuel de l'élément survolé */}
       {hoveredRect && (
         <>
           <div
-            className="absolute z-[51] pointer-events-none"
+            className="absolute pointer-events-none"
             style={{
               left: `${hoveredRect.left}px`,
               top: `${hoveredRect.top}px`,
@@ -187,15 +187,17 @@ export function InspectOverlay({ isActive, iframeRef, onElementSelect }: Inspect
               height: `${hoveredRect.height}px`,
               outline: '2px solid #03A5C0',
               outlineOffset: '2px',
-              transition: 'all 0.1s ease'
+              transition: 'all 0.1s ease',
+              zIndex: 10000
             }}
           />
           <div
-            className="absolute z-[52] pointer-events-none px-2 py-1 text-xs font-semibold text-white bg-[#03A5C0] rounded shadow-lg"
+            className="absolute pointer-events-none px-2 py-1 text-xs font-semibold text-white bg-[#03A5C0] rounded shadow-lg"
             style={{
               left: `${hoveredRect.left}px`,
               top: `${hoveredRect.top - 24}px`,
-              fontFamily: 'monospace'
+              fontFamily: 'monospace',
+              zIndex: 10001
             }}
           >
             {hoveredLabel}
@@ -204,7 +206,10 @@ export function InspectOverlay({ isActive, iframeRef, onElementSelect }: Inspect
       )}
 
       {/* Message d'aide */}
-      <div className="absolute top-4 right-4 z-[53] bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg max-w-xs pointer-events-none">
+      <div 
+        className="absolute top-4 right-4 bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg max-w-xs pointer-events-none"
+        style={{ zIndex: 10002 }}
+      >
         <p className="text-sm text-muted-foreground">
           Survolez et cliquez sur un élément pour le modifier
         </p>
