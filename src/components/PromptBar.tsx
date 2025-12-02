@@ -1,4 +1,4 @@
-import { ArrowUp, Paperclip, Settings, Globe, Monitor, Smartphone, X, MousePointer2, Square, MessageSquare } from 'lucide-react';
+import { ArrowUp, Paperclip, Settings, Globe, Monitor, Smartphone, X, MousePointer2, Square, MessageSquare, Image, FileText } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import TextType from '@/components/ui/TextType';
@@ -81,6 +81,16 @@ const PromptBar = ({
     }
   };
 
+  const getFileIcon = (fileType: string) => {
+    if (fileType.startsWith('image/')) {
+      return <Image className="w-3 h-3" />;
+    }
+    if (fileType === 'application/pdf' || fileType.includes('document') || fileType.includes('text')) {
+      return <FileText className="w-3 h-3" />;
+    }
+    return <Paperclip className="w-3 h-3" />;
+  };
+
   const iconButtonStyle = (isSelected: boolean) => {
     const baseColor = isDark ? 'hsl(var(--foreground))' : '#64748b';
     return {
@@ -123,7 +133,7 @@ const PromptBar = ({
                 color: isDark ? 'hsl(var(--foreground))' : '#334155'
               }}
             >
-              <Paperclip className="w-3 h-3" />
+              {getFileIcon(file.type)}
               <span className="max-w-[200px] truncate">{file.name}</span>
               {onRemoveFile && (
                 <button
