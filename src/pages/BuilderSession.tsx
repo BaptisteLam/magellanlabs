@@ -888,9 +888,12 @@ export default function BuilderSession() {
     generationEventsRef.current = []; // Réinitialiser la ref
     generationStartTimeRef.current = Date.now();
     
-    // 🔒 TOUJOURS activer le mode "génération en cours" pour bloquer la preview jusqu'à completion
-    setIsInitialGeneration(true);
-    isInitialGenerationRef.current = true;
+    // 🔒 Activer le mode "génération en cours" UNIQUEMENT pour la première génération (pas de fichiers existants)
+    const isFirstGeneration = Object.keys(projectFiles).length === 0;
+    if (isFirstGeneration) {
+      setIsInitialGeneration(true);
+      isInitialGenerationRef.current = true;
+    }
     
     // Générer automatiquement un nom de projet si les fichiers sont vides
     if (Object.keys(projectFiles).length === 0) {
