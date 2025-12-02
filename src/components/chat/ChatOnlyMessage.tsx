@@ -1,7 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Lightbulb } from "lucide-react";
 import { MessageActions } from "./MessageActions";
+import { CollapsedAiTasks } from "./CollapsedAiTasks";
+import { LoadingProgress } from "./LoadingProgress";
 import ReactMarkdown from 'react-markdown';
+import type { GenerationEvent } from '@/types/agent';
 
 interface ChatOnlyMessageProps {
   message: {
@@ -9,6 +12,7 @@ interface ChatOnlyMessageProps {
     metadata?: {
       thought_duration?: number;
       total_tokens?: number;
+      generation_events?: GenerationEvent[];
     };
     token_count?: number;
     id?: string;
@@ -16,6 +20,8 @@ interface ChatOnlyMessageProps {
   messageIndex: number;
   isLatestMessage: boolean;
   isDark: boolean;
+  isLoading?: boolean;
+  generationStartTime?: number;
   onRestore: (messageIdx: number) => void;
   onGoToPrevious: () => void;
   onImplementPlan?: (plan: string) => void;
@@ -26,6 +32,8 @@ export default function ChatOnlyMessage({
   messageIndex,
   isLatestMessage,
   isDark,
+  isLoading = false,
+  generationStartTime,
   onRestore,
   onGoToPrevious,
   onImplementPlan,
@@ -36,6 +44,22 @@ export default function ChatOnlyMessage({
   const thoughtDuration = message.metadata?.thought_duration || 0;
   const thoughtSeconds = Math.round(thoughtDuration / 1000);
   const contentString = typeof message.content === 'string' ? message.content : '';
+  const generation_events = message.metadata?.generation_events || [];
+
+  // Calculer la progression pour la barre de chargement
+  const currentFile = useMemo(() => {
+    const inProgressEvents = generation_events.filter(e => e.status === 'in-progress');
+    const lastInProgress = inProgressEvents[inProgressEvents.length - 1];
+    return lastInProgress?.file || null;
+  }, [generation_events]);
+
+  const progress = useMemo(() => {
+    if (!isLoading) return 100;
+    const totalEvents = Math.max(generation_events.length, 5);
+    const completedEvents = generation_events.filter(e => e.status === 'completed').length;
+    if (completedEvents === 0) return 5;
+    return Math.min(5 + (completedEvents / totalEvents) * 90, 95);
+  }, [generation_events, isLoading]);
 
   // Effet machine à écrire rapide
   useEffect(() => {
@@ -69,6 +93,32 @@ export default function ChatOnlyMessage({
           <Lightbulb className="h-4 w-4" />
           <span>Thought for {thoughtSeconds}s</span>
         </div>
+      )}
+
+      {/* Barre de chargement - pendant la génération */}
+      {isLoading && (
+        <LoadingProgress
+          isLoading={isLoading}
+          isDark={isDark}
+          startTime={generationStartTime}
+          currentFile={currentFile}
+          progress={progress}
+          completedSteps={generation_events.filter(e => e.status === 'completed').length}
+          totalSteps={generation_events.length}
+        />
+      )}
+
+      {/* CollapsedAiTasks - toujours affiché si events présents */}
+      {generation_events.length > 0 && (
+        <CollapsedAiTasks 
+          events={generation_events}
+          isDark={isDark}
+          isLoading={isLoading}
+          defaultCollapsed={!isLoading}
+          summary={`${generation_events.filter(e => e.status === 'completed').length} tasks completed`}
+          autoExpand={isLoading}
+          autoCollapse={true}
+        />
       )}
 
       {/* Message avec formatage markdown */}
