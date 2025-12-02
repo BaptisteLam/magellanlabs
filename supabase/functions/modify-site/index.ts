@@ -367,6 +367,7 @@ RÈGLES ABSOLUES:
           // === PARSER LE JSON AST ===
           let modifications: Array<any> = [];
           let parsedMessage = conversationalResponse.trim();
+          let parseError: string | null = null;
           
           try {
             // Extraire le JSON de la réponse (peut être entouré de texte)
@@ -378,17 +379,17 @@ RÈGLES ABSOLUES:
               parsedMessage = parsed.message || conversationalResponse.trim();
               console.log(`[modify-site] ✅ ${modifications.length} modification${modifications.length > 1 ? 's' : ''} AST parsée${modifications.length > 1 ? 's' : ''} depuis JSON`);
             } else {
-              console.warn('[modify-site] ⚠️ Aucun JSON AST valide trouvé dans la réponse');
+              parseError = 'Aucun JSON AST valide trouvé dans la réponse';
+              console.error('[modify-site] ❌', parseError);
               console.log('[modify-site] Réponse brute:', fullResponse.substring(0, 500));
             }
-          } catch (parseError) {
-            console.error('[modify-site] ❌ Erreur parsing JSON AST:', parseError);
+          } catch (err) {
+            parseError = err instanceof Error ? err.message : 'Erreur parsing JSON AST';
+            console.error('[modify-site] ❌ Erreur parsing JSON AST:', err);
             console.log('[modify-site] Réponse brute:', fullResponse.substring(0, 500));
           }
 
-          console.log(`[modify-site] ✅ ${modifications.length} modification${modifications.length > 1 ? 's' : ''} AST finale${modifications.length > 1 ? 's' : ''}`);
-
-          // Émettre les tokens d'utilisation AVANT le complete
+          // Émettre les tokens d'utilisation AVANT le complete/error
           const totalTokens = inputTokens + outputTokens;
           console.log(`[modify-site] 💰 Émission tokens: input=${inputTokens}, output=${outputTokens}, total=${totalTokens}`);
           
@@ -399,7 +400,36 @@ RÈGLES ABSOLUES:
             total_tokens: totalTokens
           })}\n\n`));
 
-          // Mettre en cache pour patterns fréquents (seulement si trivial/simple)
+          // ❌ Si parsing a échoué ou 0 modifications → envoyer ERROR pas complete
+          if (parseError || modifications.length === 0) {
+            const errorMessage = parseError || 'Aucune modification générée par Claude';
+            console.error(`[modify-site] ❌ Échec: ${errorMessage}`);
+            
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'generation_event',
+              event: {
+                type: 'error',
+                message: errorMessage,
+                status: 'error',
+                duration
+              }
+            })}\n\n`));
+
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'error',
+              data: { 
+                message: errorMessage,
+                duration
+              }
+            })}\n\n`));
+            
+            controller.close();
+            return;
+          }
+
+          console.log(`[modify-site] ✅ ${modifications.length} modification${modifications.length > 1 ? 's' : ''} AST finale${modifications.length > 1 ? 's' : ''}`);
+
+          // Mettre en cache pour patterns fréquents (seulement si trivial/simple ET succès)
           if (complexity === 'trivial' || complexity === 'simple') {
             patternCache.set(cacheKey, {
               response: { modifications, message: conversationalResponse.trim() },
@@ -413,12 +443,12 @@ RÈGLES ABSOLUES:
             }
           }
 
-          // Événement de complétion
+          // ✅ Événement de complétion UNIQUEMENT si succès
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'generation_event',
             event: {
               type: 'complete',
-              message: `Modifications appliquées en ${duration}ms`,
+              message: `${modifications.length} modification${modifications.length > 1 ? 's' : ''} appliquée${modifications.length > 1 ? 's' : ''} en ${duration}ms`,
               status: 'completed',
               duration
             }
