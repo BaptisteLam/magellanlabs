@@ -159,6 +159,44 @@ export type Database = {
         }
         Relationships: []
       }
+      project_memory: {
+        Row: {
+          architecture: Json | null
+          created_at: string | null
+          known_issues: Json[] | null
+          recent_changes: Json[] | null
+          session_id: string
+          updated_at: string | null
+          user_preferences: Json | null
+        }
+        Insert: {
+          architecture?: Json | null
+          created_at?: string | null
+          known_issues?: Json[] | null
+          recent_changes?: Json[] | null
+          session_id: string
+          updated_at?: string | null
+          user_preferences?: Json | null
+        }
+        Update: {
+          architecture?: Json | null
+          created_at?: string | null
+          known_issues?: Json[] | null
+          recent_changes?: Json[] | null
+          session_id?: string
+          updated_at?: string | null
+          user_preferences?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_memory_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "build_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           ai_response: string | null
