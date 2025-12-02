@@ -1,5 +1,8 @@
 project_id = "mtmroennrczdcaasrilw"
 
+[functions.unified-agent]
+verify_jwt = true
+
 [functions.deploy-worker]
 verify_jwt = true
 
