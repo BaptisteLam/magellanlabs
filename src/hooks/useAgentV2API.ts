@@ -52,14 +52,18 @@ export function useAgentV2API() {
     const thinkStart = Date.now();
     options.onGenerationEvent?.({ type: 'thought', message: 'Analyzing your request...', status: 'in-progress' });
 
-    // Timeout de sécurité
+    // Timeout de sécurité - marquer comme ERROR pas completed
     const safetyTimeout = setTimeout(() => {
-      console.warn('⏱️ Timeout: Arrêt forcé agent-v2 après 120s');
+      console.error('⏱️ Timeout: Arrêt forcé agent-v2 après 240s');
       setIsStreaming(false);
       setIsLoading(false);
-      options.onComplete?.();
-      options.onGenerationEvent?.({ type: 'complete', message: 'Generation completed (timeout)' });
-    }, 120000);
+      options.onGenerationEvent?.({ 
+        type: 'error', 
+        message: 'Generation timeout (240s)', 
+        status: 'error' 
+      });
+      options.onError?.('Generation timed out after 240 seconds');
+    }, 240000); // 240s pour les générations complètes
 
     // Fonction de retry avec backoff exponentiel
     const fetchWithRetry = async (attemptNumber: number = 0): Promise<Response> => {

@@ -48,13 +48,18 @@ export function useModifySite() {
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    // Timeout de sécurité
+    // Timeout de sécurité - marquer comme ERROR pas completed
     const safetyTimeout = setTimeout(() => {
-      console.warn('⏱️ Timeout: Arrêt forcé modify-site après 30s');
+      console.error('⏱️ Timeout: Arrêt forcé modify-site après 60s');
       setIsStreaming(false);
       setIsLoading(false);
-      options.onComplete?.();
-    }, 30000); // 30s pour les modifications rapides
+      options.onGenerationEvent?.({ 
+        type: 'error', 
+        message: 'Modification timeout (60s)', 
+        status: 'error' 
+      });
+      options.onError?.('Modification timed out after 60 seconds');
+    }, 60000); // 60s pour les modifications rapides
 
     try {
       const response = await fetch(
