@@ -1,32 +1,32 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface ProjectArchitecture {
+export interface ProjectArchitecture {
   framework: string;
   patterns: string[];
   conventions: Record<string, string>;
 }
 
-interface RecentChange {
+export interface RecentChange {
   timestamp: string;
   description: string;
   filesAffected: string[];
   lessons: string[];
 }
 
-interface KnownIssue {
+export interface KnownIssue {
   issue: string;
   solution: string;
   frequency: number;
 }
 
-interface UserPreferences {
+export interface UserPreferences {
   codingStyle: string;
   preferredLibraries: string[];
   avoidances: string[];
 }
 
-interface ProjectMemory {
+export interface ProjectMemory {
   sessionId: string;
   architecture: ProjectArchitecture;
   recentChanges: RecentChange[];
@@ -34,7 +34,7 @@ interface ProjectMemory {
   userPreferences: UserPreferences;
 }
 
-interface CodeChange {
+export interface CodeChange {
   path: string;
   type: 'create' | 'modify' | 'delete';
   description: string;

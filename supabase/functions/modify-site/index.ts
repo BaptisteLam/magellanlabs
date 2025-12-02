@@ -42,7 +42,7 @@ serve(async (req) => {
       );
     }
 
-    const { message, relevantFiles, sessionId, complexity } = await req.json();
+    const { message, relevantFiles, sessionId, complexity, memoryContext } = await req.json();
 
     if (!message || !relevantFiles || !Array.isArray(relevantFiles)) {
       return new Response(
@@ -51,7 +51,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[modify-site] ${relevantFiles.length} files, ${message.length} chars, complexity: ${complexity || 'unknown'}`);
+    console.log(`[modify-site] ${relevantFiles.length} files, ${message.length} chars, complexity: ${complexity || 'unknown'}, has memory: ${!!memoryContext}`);
 
     // Vérifier le cache pour patterns fréquents
     const cacheKey = `${message.toLowerCase().trim()}_${relevantFiles.length}`;
@@ -115,7 +115,9 @@ serve(async (req) => {
     }
 
     // === PROMPT OPTIMISÉ SELON COMPLEXITÉ (FORMAT JSON AST) ===
-    const baseSystemPrompt = `Tu es un assistant de modification de code ultra-rapide et précis utilisant l'AST (Abstract Syntax Tree).
+    const memoryPrefix = memoryContext ? `# CONTEXT FROM MEMORY\n${memoryContext}\n\n` : '';
+    
+    const baseSystemPrompt = `${memoryPrefix}Tu es un assistant de modification de code ultra-rapide et précis utilisant l'AST (Abstract Syntax Tree).
 
 FORMAT DE RÉPONSE (JSON AST OBLIGATOIRE):
 Tu DOIS TOUJOURS répondre avec du JSON valide dans ce format exact:
