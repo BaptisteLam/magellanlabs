@@ -28,6 +28,206 @@ interface DependencyGraph {
   };
 }
 
+interface DependencyNode {
+  path: string;
+  imports: string[];
+  exports: string[];
+  usedBy: string[];
+  importance: number;
+  type: 'component' | 'hook' | 'util' | 'page' | 'config' | 'other';
+}
+
+class DependencyGraphClass {
+  private nodes: Map<string, DependencyNode> = new Map();
+  
+  async buildGraph(files: Record<string, string>): Promise<void> {
+    // Parse all files
+    for (const [path, content] of Object.entries(files)) {
+      const node = await this.parseFile(path, content);
+      this.nodes.set(path, node);
+    }
+    
+    // Calculate reverse edges
+    this.calculateReverseEdges();
+    
+    // Score importance
+    this.calculateImportance();
+  }
+  
+  getRelevantFiles(targetFiles: string[], maxFiles = 15): string[] {
+    const relevant = new Set<string>(targetFiles);
+    const visited = new Set<string>();
+    
+    for (const file of targetFiles) {
+      this.addRelatedFiles(file, relevant, visited, 2);
+    }
+    
+    return Array.from(relevant)
+      .sort((a, b) => {
+        const scoreA = this.nodes.get(a)?.importance ?? 0;
+        const scoreB = this.nodes.get(b)?.importance ?? 0;
+        return scoreB - scoreA;
+      })
+      .slice(0, maxFiles);
+  }
+  
+  private addRelatedFiles(
+    filePath: string,
+    relevant: Set<string>,
+    visited: Set<string>,
+    depth: number
+  ): void {
+    if (depth === 0 || visited.has(filePath)) return;
+    visited.add(filePath);
+    
+    const node = this.nodes.get(filePath);
+    if (!node) return;
+    
+    node.imports.forEach(imp => {
+      relevant.add(imp);
+      this.addRelatedFiles(imp, relevant, visited, depth - 1);
+    });
+    
+    node.usedBy.forEach(user => {
+      relevant.add(user);
+      this.addRelatedFiles(user, relevant, visited, depth - 1);
+    });
+  }
+  
+  private async parseFile(path: string, content: string): Promise<DependencyNode> {
+    const imports = this.extractImports(content, path);
+    const exports = this.extractExports(content);
+    const type = this.detectFileType(path);
+    
+    return { path, imports, exports, usedBy: [], importance: 0, type };
+  }
+  
+  private extractImports(content: string, fromPath: string): string[] {
+    const imports: string[] = [];
+    const importRegex = /import\s+(?:[\w\s{},*]+\s+from\s+)?['"]([^'"]+)['"]/g;
+    let match;
+    
+    while ((match = importRegex.exec(content)) !== null) {
+      const resolved = this.resolveImportPath(match[1], fromPath);
+      if (resolved) imports.push(resolved);
+    }
+    
+    return Array.from(new Set(imports));
+  }
+  
+  private extractExports(content: string): string[] {
+    const exports: string[] = [];
+    const exportRegex = /export\s+(?:default\s+)?(?:function|const|class|interface|type|enum)\s+(\w+)/g;
+    let match;
+    
+    while ((match = exportRegex.exec(content)) !== null) {
+      exports.push(match[1]);
+    }
+    
+    if (/export\s+default/.test(content)) exports.push('default');
+    
+    return Array.from(new Set(exports));
+  }
+  
+  private resolveImportPath(importPath: string, fromPath: string): string | null {
+    if (!importPath.startsWith('.') && !importPath.startsWith('@/')) return null;
+    
+    if (importPath.startsWith('@/')) {
+      return this.addExtensionIfNeeded(importPath.replace('@/', 'src/'));
+    }
+    
+    if (importPath.startsWith('./') || importPath.startsWith('../')) {
+      const fromDir = fromPath.substring(0, fromPath.lastIndexOf('/'));
+      const resolved = this.normalizePath(`${fromDir}/${importPath}`);
+      return this.addExtensionIfNeeded(resolved);
+    }
+    
+    return null;
+  }
+  
+  private addExtensionIfNeeded(path: string): string {
+    if (/\.(tsx?|jsx?)$/.test(path)) return path;
+    
+    const extensions = ['.tsx', '.ts', '.jsx', '.js'];
+    for (const ext of extensions) {
+      if (this.nodes.has(path + ext)) return path + ext;
+    }
+    
+    return path + '.tsx';
+  }
+  
+  private normalizePath(path: string): string {
+    const parts = path.split('/');
+    const normalized: string[] = [];
+    
+    for (const part of parts) {
+      if (part === '..') normalized.pop();
+      else if (part !== '.' && part !== '') normalized.push(part);
+    }
+    
+    return normalized.join('/');
+  }
+  
+  private calculateReverseEdges(): void {
+    for (const node of this.nodes.values()) {
+      node.usedBy = [];
+    }
+    
+    for (const [path, node] of this.nodes) {
+      for (const importPath of node.imports) {
+        const importedNode = this.nodes.get(importPath);
+        if (importedNode) importedNode.usedBy.push(path);
+      }
+    }
+  }
+  
+  private calculateImportance(): void {
+    for (const [path, node] of this.nodes) {
+      let score = 0;
+      
+      score += node.usedBy.length * 10;
+      score += node.exports.length * 5;
+      
+      if (this.isCriticalFile(path)) score += 50;
+      
+      switch (node.type) {
+        case 'component': score += 5; break;
+        case 'hook': score += 8; break;
+        case 'page': score += 15; break;
+        case 'config': score += 20; break;
+      }
+      
+      if (path.includes('src/components/')) score += 3;
+      
+      node.importance = score;
+    }
+  }
+  
+  private isCriticalFile(path: string): boolean {
+    const patterns = ['App.tsx', 'main.tsx', 'index.tsx', 'router', 'routes', 'config', 'constants', 'types', 'supabase/client'];
+    return patterns.some(p => path.includes(p));
+  }
+  
+  private detectFileType(path: string): DependencyNode['type'] {
+    if (path.includes('/components/') && !path.includes('/ui/')) return 'component';
+    if (path.includes('/hooks/')) return 'hook';
+    if (path.includes('/pages/')) return 'page';
+    if (path.includes('/utils/') || path.includes('/lib/') || path.includes('/services/')) return 'util';
+    if (path.includes('config') || path.includes('constants') || path.includes('types')) return 'config';
+    return 'other';
+  }
+  
+  getAllNodes(): DependencyNode[] {
+    return Array.from(this.nodes.values());
+  }
+  
+  getTopFiles(count = 10): DependencyNode[] {
+    return Array.from(this.nodes.values())
+      .sort((a, b) => b.importance - a.importance)
+      .slice(0, count);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -136,26 +336,26 @@ async function exploreDependencies(prompt: string, files: ProjectFile[]): Promis
   const explicitFiles = extractFileReferences(prompt, files);
   decisions.push(`Starting with ${explicitFiles.length} explicit files`);
 
-  // 2. Build dependency graph
-  const depGraph = buildDependencyGraph(files);
-  decisions.push(`Built dependency graph for ${Object.keys(depGraph).length} files`);
+  // 2. Build smart dependency graph
+  const graph = new DependencyGraphClass();
+  const filesRecord: Record<string, string> = {};
+  files.forEach(f => filesRecord[f.path] = f.content);
+  
+  await graph.buildGraph(filesRecord);
+  decisions.push(`Built dependency graph for ${graph.getAllNodes().length} files`);
 
-  // 3. Find all dependencies
-  const allDependencies = new Set<string>(explicitFiles);
-  explicitFiles.forEach(file => {
-    const deps = findAllDependencies(file, depGraph);
-    deps.forEach(dep => allDependencies.add(dep));
-  });
-  decisions.push(`Found ${allDependencies.size} files with dependencies`);
+  // 3. Get relevant files using smart graph
+  const relevantFiles = graph.getRelevantFiles(explicitFiles, 15);
+  decisions.push(`Found ${relevantFiles.length} relevant files with smart dependency analysis`);
 
-  // 4. Score and rank files
-  const scoredFiles = scoreFilesWithContext(Array.from(allDependencies), prompt, depGraph);
-  decisions.push(`Scored files by relevance`);
+  // 4. Show top important files
+  const topFiles = graph.getTopFiles(5);
+  decisions.push(`Top files: ${topFiles.map((n: DependencyNode) => n.path.split('/').pop()).join(', ')}`);
 
   return {
     type: 'explore',
-    description: 'Dependency exploration complete',
-    filesExplored: scoredFiles.slice(0, 15).map(f => f.path),
+    description: 'Smart dependency exploration complete',
+    filesExplored: relevantFiles,
     decisions,
     duration: Date.now() - startTime
   };
