@@ -1473,13 +1473,13 @@ export default function BuilderSession() {
           
           const generationDuration = Date.now() - generationStartTime;
           
-          // Message de récapitulatif
-          const recapMessage = modifiedFilesList.length > 0
-            ? `✅ Modifications appliquées sur ${modifiedFilesList.length} fichier${modifiedFilesList.length > 1 ? 's' : ''}: ${modifiedFilesList.join(', ')}`
-            : 'Modifications analysées.';
+          // Utiliser le message conversationnel de Claude comme message principal
+          const mainMessage = capturedIntentMessage || 'J\'ai appliqué vos modifications';
           
-          // Sauvegarder le message unifié final - utiliser parsed.message prioritairement
-          const finalIntentMessage = capturedIntentMessage || 'Modifications appliquées';
+          // Détails techniques en sous-texte (pour debug/metadata)
+          const technicalDetails = modifiedFilesList.length > 0
+            ? `Fichiers modifiés : ${modifiedFilesList.join(', ')}`
+            : 'Aucun fichier modifié';
           
           // Désactiver le loading après application des patches
           setIsQuickModLoading(false);
@@ -1489,16 +1489,17 @@ export default function BuilderSession() {
             .insert([{
               session_id: sessionId,
               role: 'assistant',
-              content: recapMessage,
+              content: mainMessage,
               token_count: receivedTokens.total,
               created_at: new Date().toISOString(),
               metadata: { 
                 type: 'generation' as const,
                 thought_duration: generationDuration,
-                intent_message: finalIntentMessage,
+                intent_message: mainMessage,
                 generation_events: generationEventsRef.current,
                 files_modified: modifiedFilesList.length,
                 modified_files: modifiedFilesList,
+                technical_summary: technicalDetails,
                 project_files: updatedFiles,
                 input_tokens: receivedTokens.input,
                 output_tokens: receivedTokens.output,
@@ -1517,17 +1518,18 @@ export default function BuilderSession() {
               ...withoutTemp,
               { 
                 role: 'assistant' as const, 
-                content: recapMessage,
+                content: mainMessage,
                 token_count: receivedTokens.total,
                 id: insertedMessage?.id,
                 created_at: new Date().toISOString(),
                 metadata: { 
                   type: 'generation' as const,
                   thought_duration: generationDuration,
-                  intent_message: finalIntentMessage,
+                  intent_message: mainMessage,
                   generation_events: generationEventsRef.current,
                   files_modified: modifiedFilesList.length,
                   modified_files: modifiedFilesList,
+                  technical_summary: technicalDetails,
                   project_files: updatedFiles,
                   input_tokens: receivedTokens.input,
                   output_tokens: receivedTokens.output,
