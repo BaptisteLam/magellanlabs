@@ -1640,34 +1640,7 @@ export default function BuilderSession() {
       userMessageContent = prompt;
     }
 
-    const shouldAddMessage = inputValue.trim() || messages.length === 0 || messages[messages.length - 1]?.content !== userMessageContent;
-    const newMessages = shouldAddMessage ? [...messages, { role: 'user' as const, content: userMessageContent }] : messages;
-    
-    if (shouldAddMessage) {
-      setMessages(newMessages);
-      
-      const userMessageText = typeof userMessageContent === 'string' 
-        ? userMessageContent 
-        : (Array.isArray(userMessageContent) 
-            ? userMessageContent.find(c => c.type === 'text')?.text || '[message multimédia]'
-            : String(userMessageContent));
-
-      const { error: insertError } = await supabase
-        .from('chat_messages')
-        .insert({
-          session_id: sessionId,
-          role: 'user',
-          content: userMessageText,
-          created_at: new Date().toISOString(),
-          token_count: 0,
-          metadata: { has_images: attachedFiles.length > 0 }
-        });
-      
-      if (insertError) {
-        console.error('❌ Erreur insertion message utilisateur:', insertError);
-      }
-    }
-    
+    // Ne PAS ajouter le message utilisateur ici - handleFullGeneration et handleQuickModification le font déjà
     setInputValue('');
     setAttachedFiles([]);
 
@@ -2294,48 +2267,38 @@ export default function BuilderSession() {
                     />
                   ) : msg.metadata?.type === 'message' ? (
                     // Message chat uniquement (plan d'action)
-                    <div className="flex items-start gap-3">
-                      <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <ChatOnlyMessage
-                          message={msg}
-                          messageIndex={idx}
-                          isLatestMessage={idx === messages.length - 1}
-                          isDark={isDark}
-                          onRestore={async (messageIdx) => {
-                            // Pas de restauration pour les messages chat
-                            sonnerToast.info('Les messages de conversation ne modifient pas les fichiers');
-                          }}
-                          onGoToPrevious={() => {
-                            // Pas de version précédente pour les messages chat
-                            sonnerToast.info('Les messages de conversation ne sont pas versionnés');
-                          }}
-                          onImplementPlan={(plan) => {
-                            // Passer en mode génération avec le plan
-                            setChatMode(false);
-                            setInputValue(plan);
-                            // Petit délai pour s'assurer que le mode chat est désactivé
-                            setTimeout(() => {
-                              handleSubmit();
-                            }, 100);
-                          }}
-                        />
-                      </div>
-                    </div>
+                    <ChatOnlyMessage
+                      message={msg}
+                      messageIndex={idx}
+                      isLatestMessage={idx === messages.length - 1}
+                      isDark={isDark}
+                      onRestore={async (messageIdx) => {
+                        // Pas de restauration pour les messages chat
+                        sonnerToast.info('Les messages de conversation ne modifient pas les fichiers');
+                      }}
+                      onGoToPrevious={() => {
+                        // Pas de version précédente pour les messages chat
+                        sonnerToast.info('Les messages de conversation ne sont pas versionnés');
+                      }}
+                      onImplementPlan={(plan) => {
+                        // Passer en mode génération avec le plan
+                        setChatMode(false);
+                        setInputValue(plan);
+                        // Petit délai pour s'assurer que le mode chat est désactivé
+                        setTimeout(() => {
+                          handleSubmit();
+                        }, 100);
+                      }}
+                    />
                   ) : (
                     <div className="space-y-3">
                       {/* Message simple (ancien format) - pour compatibilité */}
-                      <div className="flex items-start gap-3">
-                        <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
-                            {typeof msg.content === 'string' 
-                              ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
-                              : 'Contenu généré'
-                            }
-                          </p>
-                        </div>
-                      </div>
+                      <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
+                        {typeof msg.content === 'string' 
+                          ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
+                          : 'Contenu généré'
+                        }
+                      </p>
                     </div>
                   )}
                 </div>

@@ -1444,43 +1444,39 @@ Now generate the mobile app based on this request:`;
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-start gap-3">
-                      <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                            <Code2 className="w-3 h-3" />
-                            <span>Magellan</span>
-                          </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                          <Code2 className="w-3 h-3" />
+                          <span>Magellan</span>
                         </div>
-                        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
-                          {typeof msg.content === 'string' 
-                            ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
-                            : 'Contenu généré'
-                          }
-                        </p>
-                        
-                        {/* AI Tasks regroupées - uniquement pour les messages avec generation_events ET qui sont le dernier message assistant */}
-                        {msg.metadata && typeof msg.metadata === 'object' && 'generation_events' in msg.metadata && 
-                         idx === messages.filter(m => m.role === 'assistant').length + messages.filter(m => m.role === 'user').length - 1 && (
-                          <div className="mt-3">
-                            <CollapsedAiTasks 
-                              events={msg.metadata.generation_events as GenerationEvent[]} 
-                              isDark={isDark} 
-                            />
-                          </div>
-                        )}
-                        
-                        {/* MessageActions - uniquement pour le dernier message assistant (récap final) */}
-                        {idx === messages.filter(m => m.role === 'assistant').length + messages.filter(m => m.role === 'user').length - 1 && (
-                          <MessageActions
-                            content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
-                            messageIndex={idx}
-                            isLatestMessage={idx === messages.length - 1}
-                            tokenCount={msg.metadata && typeof msg.metadata === 'object' && 'total_tokens' in msg.metadata 
-                              ? (msg.metadata.total_tokens as number) 
-                              : msg.token_count}
-                            onRestore={async (messageIdx) => {
+                      </div>
+                      <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
+                        {typeof msg.content === 'string' 
+                          ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
+                          : 'Contenu généré'
+                        }
+                      </p>
+                      
+                      {/* AI Tasks regroupées - uniquement pour les messages avec generation_events ET qui sont le dernier message assistant */}
+                      {msg.metadata && typeof msg.metadata === 'object' && 'generation_events' in msg.metadata && 
+                       idx === messages.filter(m => m.role === 'assistant').length + messages.filter(m => m.role === 'user').length - 1 && (
+                        <div className="mt-3">
+                          <CollapsedAiTasks 
+                            events={msg.metadata.generation_events as GenerationEvent[]} 
+                            isDark={isDark} 
+                          />
+                        </div>
+                      )}
+                      
+                      {/* MessageActions - uniquement pour le dernier message assistant (récap final) */}
+                      {idx === messages.filter(m => m.role === 'assistant').length + messages.filter(m => m.role === 'user').length - 1 && (
+                        <MessageActions
+                          content={typeof msg.content === 'string' ? msg.content : 'Contenu généré'}
+                          messageIndex={idx}
+                          isLatestMessage={idx === messages.length - 1}
+                          tokenCount={msg.metadata && typeof msg.metadata === 'object' && 'total_tokens' in msg.metadata ? (msg.metadata.total_tokens as number) : msg.token_count}
+                          onRestore={async (messageIdx) => {
                               const targetMessage = messages[messageIdx];
                               
                               if (targetMessage?.metadata && typeof targetMessage.metadata === 'object' && 'project_files' in targetMessage.metadata) {
@@ -1507,8 +1503,8 @@ Now generate the mobile app based on this request:`;
                               } else {
                                 sonnerToast.error('Les fichiers de cette version ne sont pas disponibles');
                               }
-                            }}
-                            onGoToPrevious={async () => {
+                          }}
+                          onGoToPrevious={async () => {
                               const assistantMessages = messages
                                 .map((m, i) => ({ message: m, index: i }))
                                 .filter(({ message }) => message.role === 'assistant')
@@ -1549,24 +1545,20 @@ Now generate the mobile app based on this request:`;
                                   sonnerToast.error('Impossible de restaurer cette version (fichiers non sauvegardés)');
                                 }
                               }
-                            }}
-                            isDark={isDark}
-                          />
-                        )}
-                      </div>
+                          }}
+                          isDark={isDark}
+                        />
+                      )}
                     </div>
                   )}
                 </div>
               );
-              })}
+            })}
 
               {/* Affichage des événements de génération en cours - toujours sauf premier prompt */}
               {!isInitialGeneration && (
-                <div className="flex items-start gap-3 mb-4">
-                  <img src="/lovable-uploads/icon_magellan.svg" alt="Magellan" className="w-7 h-7 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <CollapsedAiTasks events={currentMessageEvents} isDark={isDark} isLoading={agent.isLoading} />
-                  </div>
+                <div className="flex flex-col space-y-2 mb-4">
+                  <CollapsedAiTasks events={currentMessageEvents} isDark={isDark} isLoading={agent.isLoading} />
                 </div>
               )}
               
