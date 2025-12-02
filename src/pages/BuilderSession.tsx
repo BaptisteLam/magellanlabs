@@ -21,10 +21,7 @@ import PromptBar from "@/components/PromptBar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import CloudflareAnalytics from "@/components/CloudflareAnalytics";
 import { AiDiffService } from "@/services/aiDiffService";
-import { useAgentAPI } from "@/hooks/useAgentAPI";
-import { useAgentV2API } from "@/hooks/useAgentV2API";
 import { useProjectMemory } from "@/hooks/useProjectMemory";
-import { DependencyGraph } from "@/services/dependencyGraph";
 import type { AIEvent, GenerationEvent } from '@/types/agent';
 import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
@@ -33,12 +30,11 @@ import ChatOnlyMessage from '@/components/chat/ChatOnlyMessage';
 import html2canvas from 'html2canvas';
 import { TokenCounter } from '@/components/TokenCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
-import { analyzeIntent, identifyRelevantFiles, estimateGenerationTime } from '@/utils/intentAnalyzer';
-import { useModifySite } from '@/hooks/useModifySite';
 import { ASTModification } from '@/types/ast';
 import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { PublishSuccessDialog } from '@/components/PublishSuccessDialog';
+import { useUnifiedModify } from '@/hooks/useUnifiedModify';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -115,17 +111,11 @@ export default function BuilderSession() {
   const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('website');
   const [cloudflareProjectName, setCloudflareProjectName] = useState<string | null>(null);
   
-  // Hook pour la nouvelle API Agent (v1 - legacy)
-  const agent = useAgentAPI();
-  
-  // Hook pour Agent v2 avec exploration
-  const agentV2 = useAgentV2API();
-  
+  // Hook pour le système unifié (remplace agent-v2 + modify-site)
+  const unifiedModify = useUnifiedModify();
+
   // Hook pour la mémoire de projet
   const { memory, buildContextWithMemory, updateMemory, initializeMemory } = useProjectMemory(sessionId);
-  
-  // Hook pour les modifications rapides
-  const modifySiteHook = useModifySite();
   
   // Événements IA pour la TaskList
   const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
@@ -1298,7 +1288,212 @@ export default function BuilderSession() {
   };
 
   // Fonction pour gérer les modifications rapides (sans rechargement preview)
-  const handleQuickModification = async (userPrompt: string) => {
+  const handleUnifiedModification = async (userPrompt: string) => {
+    console.log('⚡ MODE: UNIFIED MODIFICATION');
+
+    if (!user) {
+      navigate('/auth');
+      throw new Error('Authentication required');
+    }
+
+    // Ajouter le message utilisateur AVANT la génération
+    const userMessage: Message = {
+      role: 'user',
+      content: userPrompt,
+      created_at: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, userMessage]);
+
+    // Créer message de génération unifié
+    const generationStartTime = Date.now();
+    generationStartTimeRef.current = generationStartTime;
+    setIsQuickModLoading(true);
+
+    let capturedIntentMessage = '';
+
+    const generationMessage: Message = {
+      role: 'assistant',
+      content: '',
+      created_at: new Date().toISOString(),
+      metadata: {
+        type: 'generation',
+        thought_duration: 0,
+        intent_message: '',
+        generation_events: [],
+        files_modified: 0,
+        modified_files: [],
+        total_tokens: 0,
+        project_files: {},
+        startTime: generationStartTime
+      }
+    };
+
+    setMessages(prev => [...prev, generationMessage]);
+    setGenerationEvents([]);
+    generationEventsRef.current = [];
+
+    let receivedTokens = { input: 0, output: 0, total: 0 };
+
+    // 🔒 Activer le mode "génération en cours" UNIQUEMENT pour la première génération
+    const isFirstGeneration = Object.keys(projectFiles).length === 0;
+    if (isFirstGeneration) {
+      setIsInitialGeneration(true);
+      isInitialGenerationRef.current = true;
+    }
+
+    // 🚀 Appeler unified-modify (gère automatiquement la complexité)
+    console.log('🚀 Calling unified-modify...');
+    await unifiedModify.unifiedModify(
+      userPrompt,
+      projectFiles,
+      sessionId!,
+      memory,
+      {
+        onIntentMessage: (message) => {
+          capturedIntentMessage = message;
+          console.log('💬 Intent message capturé:', capturedIntentMessage);
+        },
+        onMessage: (message) => {
+          console.log('📝 Message streamé:', message);
+        },
+        onTokens: (tokens) => {
+          console.log('💰 Tokens reçus:', tokens);
+          receivedTokens = tokens;
+        },
+        onGenerationEvent: (event) => {
+          generationEventsRef.current = [...generationEventsRef.current, event];
+          setGenerationEvents(prev => [...prev, event]);
+
+          setMessages(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage?.metadata?.type === 'generation') {
+              return prev.map((msg, idx) =>
+                idx === prev.length - 1
+                  ? {
+                      ...msg,
+                      metadata: {
+                        ...msg.metadata,
+                        generation_events: generationEventsRef.current,
+                        thought_duration: Date.now() - generationStartTimeRef.current
+                      }
+                    }
+                  : msg
+              );
+            }
+            return prev;
+          });
+        },
+        onASTModifications: async (modifications) => {
+          console.log('⚡ AST Modifications reçues:', modifications.length);
+
+          if (modifications.length === 0) {
+            console.warn('⚠️ Aucune modification AST reçue');
+            sonnerToast.warning('Aucune modification générée');
+            return;
+          }
+
+          console.log('⚡ Application de', modifications.length, 'modifications AST');
+
+          const { applyModificationsToFiles } = await import('@/services/ast/astModifier');
+          const result = await applyModificationsToFiles(projectFiles, modifications);
+
+          if (!result.success) {
+            console.error('❌ Échec des modifications AST:', result.errors);
+            sonnerToast.error('Échec des modifications');
+            return;
+          }
+
+          const updatedFiles = result.updatedFiles;
+          const modifiedFilesList = Object.keys(updatedFiles).filter(
+            path => updatedFiles[path] !== projectFiles[path]
+          );
+
+          console.log('✅ Modifications AST appliquées:', modifiedFilesList);
+
+          // Mettre à jour les fichiers
+          await updateFiles(updatedFiles);
+
+          // Mettre à jour la mémoire
+          const codeChanges = modifiedFilesList.map(path => ({
+            path,
+            type: 'modify' as const,
+            description: `Modified ${path} via unified-modify`
+          }));
+
+          if (codeChanges.length > 0) {
+            await updateMemory(codeChanges, userPrompt);
+          }
+
+          // Mettre à jour le message final
+          const duration = Date.now() - generationStartTime;
+          setMessages(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage?.metadata?.type === 'generation') {
+              return prev.map((msg, idx) =>
+                idx === prev.length - 1
+                  ? {
+                      ...msg,
+                      content: capturedIntentMessage || `✅ ${modifiedFilesList.length} fichier(s) modifié(s)`,
+                      metadata: {
+                        ...msg.metadata,
+                        type: 'generation',
+                        thought_duration: duration,
+                        intent_message: capturedIntentMessage,
+                        files_modified: modifiedFilesList.length,
+                        modified_files: modifiedFilesList,
+                        project_files: updatedFiles,
+                        total_tokens: receivedTokens.total,
+                        input_tokens: receivedTokens.input,
+                        output_tokens: receivedTokens.output,
+                        generation_events: generationEventsRef.current
+                      }
+                    }
+                  : msg
+              );
+            }
+            return prev;
+          });
+
+          // Déduire les tokens
+          if (user?.id && receivedTokens.total) {
+            await supabase
+              .from('profiles')
+              .update({
+                tokens_used: (user.tokens_used || 0) + receivedTokens.total
+              })
+              .eq('id', user.id);
+
+            setUser((prev: any) => ({
+              ...prev,
+              tokens_used: (prev.tokens_used || 0) + receivedTokens.total
+            }));
+          }
+
+          setIsQuickModLoading(false);
+          setIsInitialGeneration(false);
+          isInitialGenerationRef.current = false;
+
+          sonnerToast.success(`✅ ${modifiedFilesList.length} fichier(s) modifié(s)`);
+        },
+        onComplete: () => {
+          console.log('✅ Unified modification completed');
+          setIsQuickModLoading(false);
+          setIsInitialGeneration(false);
+          isInitialGenerationRef.current = false;
+        },
+        onError: (error) => {
+          console.error('❌ Unified modification error:', error);
+          sonnerToast.error(`Erreur: ${error}`);
+          setIsQuickModLoading(false);
+          setIsInitialGeneration(false);
+          isInitialGenerationRef.current = false;
+        }
+      }
+    );
+  };
+
+  // Ancienne fonction handleQuickModification (remplacée par handleUnifiedModification)
+  const handleQuickModification_DEPRECATED = async (userPrompt: string) => {
     console.log('⚡ MODE: QUICK MODIFICATION');
     
     if (!user) {
@@ -1697,21 +1892,9 @@ export default function BuilderSession() {
     setInputValue('');
     setAttachedFiles([]);
 
-    // ⚡ ANALYSE DE L'INTENT : Décider entre modification rapide ou génération complète
-    const intent = analyzeIntent(prompt, projectFiles);
-    const timeEstimate = estimateGenerationTime(prompt, projectFiles);
-    
-    console.log(`⏱️ Temps estimé: ${timeEstimate.estimatedTime}s (${timeEstimate.range.min}-${timeEstimate.range.max}s)`);
-    
-    if (intent === 'quick-modification' && attachedFiles.length === 0) {
-      // MODE RAPIDE : Pas de loading preview, modification ciblée
-      console.log('🚀 Routing vers QUICK MODIFICATION');
-      await handleQuickModification(prompt);
-    } else {
-      // MODE COMPLET : Loading preview, régénération complète
-      console.log('🚀 Routing vers FULL GENERATION');
-      await handleFullGeneration(prompt);
-    }
+    // ⚡ SYSTÈME UNIFIÉ : Plus de routing, tout passe par unified-modify
+    console.log('🚀 Routing vers UNIFIED MODIFY (auto complexity detection)');
+    await handleUnifiedModification(prompt);
   };
 
   const handleSave = async () => {
