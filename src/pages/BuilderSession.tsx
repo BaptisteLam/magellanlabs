@@ -23,6 +23,7 @@ import CloudflareAnalytics from "@/components/CloudflareAnalytics";
 import { AiDiffService } from "@/services/aiDiffService";
 import { useAgentAPI } from "@/hooks/useAgentAPI";
 import { useAgentV2API } from "@/hooks/useAgentV2API";
+import { useUnifiedAgent } from "@/hooks/useUnifiedAgent";
 import { useProjectMemory } from "@/hooks/useProjectMemory";
 import { DependencyGraph } from "@/services/dependencyGraph";
 import type { AIEvent, GenerationEvent } from '@/types/agent';
@@ -39,6 +40,9 @@ import { ASTModification } from '@/types/ast';
 import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { PublishSuccessDialog } from '@/components/PublishSuccessDialog';
+
+// Feature flag pour utiliser l'agent unifié
+const USE_UNIFIED_AGENT = true;
 
 interface Message {
   role: 'user' | 'assistant';
@@ -121,10 +125,13 @@ export default function BuilderSession() {
   // Hook pour Agent v2 avec exploration
   const agentV2 = useAgentV2API();
   
+  // Hook unifié (nouveau - remplace agent + agent-v2 + modify-site)
+  const unifiedAgent = useUnifiedAgent();
+  
   // Hook pour la mémoire de projet
   const { memory, buildContextWithMemory, updateMemory, initializeMemory } = useProjectMemory(sessionId);
   
-  // Hook pour les modifications rapides
+  // Hook pour les modifications rapides (legacy)
   const modifySiteHook = useModifySite();
   
   // Événements IA pour la TaskList
@@ -1586,7 +1593,310 @@ export default function BuilderSession() {
     );
   };
 
-  // Nouveau handleSubmit qui route entre modifications rapides et génération complète
+  // ============= UNIFIED AGENT HANDLER =============
+  const handleSubmitUnified = async (prompt: string) => {
+    console.log('🚀 UNIFIED AGENT: Starting...');
+    
+    // Ajouter le message utilisateur
+    const userMessage: Message = {
+      role: 'user',
+      content: prompt,
+      created_at: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, userMessage]);
+    
+    // Sauvegarder le message utilisateur
+    await supabase
+      .from('chat_messages')
+      .insert({
+        session_id: sessionId,
+        role: 'user',
+        content: prompt,
+        created_at: new Date().toISOString()
+      });
+    
+    // Créer message de génération unifié
+    const generationStartTime = Date.now();
+    generationStartTimeRef.current = generationStartTime;
+    
+    const generationMessage: Message = {
+      role: 'assistant',
+      content: '',
+      created_at: new Date().toISOString(),
+      metadata: {
+        type: 'generation',
+        thought_duration: 0,
+        intent_message: '',
+        generation_events: [],
+        total_tokens: 0
+      }
+    };
+    setMessages(prev => [...prev, generationMessage]);
+    setGenerationEvents([]);
+    generationEventsRef.current = [];
+    
+    // Déterminer si c'est la première génération
+    const isFirstGeneration = Object.keys(projectFiles).length === 0;
+    if (isFirstGeneration) {
+      setIsInitialGeneration(true);
+      isInitialGenerationRef.current = true;
+      generateProjectName(prompt);
+    }
+    
+    // Variables pour accumuler les fichiers et tokens
+    const updatedFiles = { ...projectFiles };
+    let receivedTokens = { input: 0, output: 0, total: 0 };
+    let intentMessage = '';
+    
+    // Enrichir avec la mémoire
+    const enrichedContext = await buildContextWithMemory(prompt);
+    
+    // Historique chat pour contexte
+    const chatHistory = messages.slice(-6).map(m => ({
+      role: m.role,
+      content: typeof m.content === 'string' ? m.content : '[message multimédia]'
+    }));
+    
+    await unifiedAgent.callAgent(
+      {
+        message: prompt,
+        projectFiles,
+        sessionId: sessionId!,
+        projectType,
+        mode: chatMode ? 'chat' : 'auto',
+        attachedFiles,
+        chatHistory,
+        memoryContext: enrichedContext || undefined
+      },
+      {
+        onStatus: (status) => {
+          console.log('📊 Status:', status);
+        },
+        onAnalysis: (analysis) => {
+          console.log('🔍 Analysis:', analysis);
+        },
+        onMessage: (message) => {
+          intentMessage = message;
+        },
+        onGenerationEvent: (event) => {
+          console.log('🔄 Event:', event);
+          generationEventsRef.current = [...generationEventsRef.current, event];
+          setGenerationEvents(prev => [...prev, event]);
+          
+          // Mettre à jour le message avec les événements
+          setMessages(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage?.metadata?.type === 'generation') {
+              return prev.map((msg, idx) => 
+                idx === prev.length - 1
+                  ? { 
+                      ...msg, 
+                      metadata: { 
+                        ...msg.metadata, 
+                        generation_events: generationEventsRef.current,
+                        thought_duration: Date.now() - generationStartTimeRef.current
+                      } 
+                    }
+                  : msg
+              );
+            }
+            return prev;
+          });
+        },
+        onCodeUpdate: (path, code) => {
+          console.log('📦 Code update:', path);
+          updatedFiles[path] = code;
+          
+          if (path === 'index.html') {
+            setGeneratedHtml(code);
+          }
+          
+          if (selectedFile === path || !selectedFile) {
+            setSelectedFile(path);
+            setSelectedFileContent(code);
+          }
+        },
+        onASTModifications: async (modifications) => {
+          console.log('⚡ AST Modifications:', modifications.length);
+          
+          if (modifications.length === 0) {
+            console.log('⚠️ No AST modifications, fallback required');
+            return;
+          }
+          
+          // Appliquer les modifications AST
+          const { applyModificationsToFiles } = await import('@/services/ast/astModifier');
+          const result = await applyModificationsToFiles(projectFiles, modifications);
+          
+          if (result.success) {
+            Object.assign(updatedFiles, result.updatedFiles);
+            if (result.updatedFiles['index.html']) {
+              setGeneratedHtml(result.updatedFiles['index.html']);
+            }
+          }
+        },
+        onTokens: (tokens) => {
+          receivedTokens = tokens;
+        },
+        onFallbackRequired: async (reason) => {
+          console.log('⚠️ Fallback to full generation:', reason);
+          // Utiliser l'ancien système en fallback
+          await handleFullGeneration(prompt);
+        },
+        onComplete: async (data) => {
+          console.log('✅ Unified generation complete:', data);
+          
+          // Validation des fichiers
+          const hasHtml = 'index.html' in updatedFiles;
+          const hasCss = 'styles.css' in updatedFiles;
+          const hasJs = 'script.js' in updatedFiles;
+          
+          if (projectType === 'website' && (!hasHtml || !hasCss || !hasJs)) {
+            console.error('❌ Missing required files');
+            sonnerToast.error('Fichiers manquants - veuillez réessayer');
+            setIsInitialGeneration(false);
+            isInitialGenerationRef.current = false;
+            return;
+          }
+          
+          // Mettre à jour la mémoire
+          const codeChanges = Object.keys(updatedFiles)
+            .filter(path => updatedFiles[path] !== projectFiles[path])
+            .map(path => ({
+              path,
+              type: (projectFiles[path] ? 'modify' : 'create') as 'create' | 'modify' | 'delete',
+              description: `Updated ${path}`
+            }));
+          
+          if (codeChanges.length > 0) {
+            try {
+              await updateMemory(codeChanges, []);
+            } catch (e) {
+              console.warn('Memory update failed:', e);
+            }
+          }
+          
+          const generationDuration = Date.now() - generationStartTime;
+          const newFiles = Object.keys(updatedFiles).filter(p => !projectFiles[p]);
+          const modifiedFiles = Object.keys(updatedFiles).filter(p => projectFiles[p] && updatedFiles[p] !== projectFiles[p]);
+          
+          const conclusionMessage = intentMessage || 
+            (isFirstGeneration ? 'Site créé avec succès' : `${newFiles.length + modifiedFiles.length} fichier(s) modifié(s)`);
+          
+          // Sauvegarder le message
+          const { data: insertedMessage } = await supabase
+            .from('chat_messages')
+            .insert([{
+              session_id: sessionId,
+              role: 'assistant',
+              content: conclusionMessage,
+              token_count: receivedTokens.total,
+              created_at: new Date().toISOString(),
+              metadata: {
+                type: 'generation',
+                thought_duration: generationDuration,
+                intent_message: intentMessage,
+                generation_events: generationEventsRef.current,
+                files_created: newFiles.length,
+                files_modified: modifiedFiles.length,
+                new_files: newFiles,
+                modified_files: modifiedFiles,
+                project_files: updatedFiles,
+                input_tokens: receivedTokens.input,
+                output_tokens: receivedTokens.output,
+                total_tokens: receivedTokens.total
+              }
+            }])
+            .select()
+            .single();
+          
+          // Mettre à jour l'UI
+          setMessages(prev => {
+            const withoutTemp = prev.filter(m => !(m.role === 'assistant' && !m.id));
+            return [
+              ...withoutTemp,
+              {
+                role: 'assistant' as const,
+                content: conclusionMessage,
+                token_count: receivedTokens.total,
+                id: insertedMessage?.id,
+                created_at: new Date().toISOString(),
+                metadata: {
+                  type: 'generation' as const,
+                  thought_duration: generationDuration,
+                  intent_message: intentMessage,
+                  generation_events: generationEventsRef.current,
+                  files_created: newFiles.length,
+                  files_modified: modifiedFiles.length,
+                  project_files: updatedFiles,
+                  total_tokens: receivedTokens.total
+                }
+              }
+            ];
+          });
+          
+          // Déduire les tokens
+          if (user?.id && receivedTokens.total > 0) {
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('tokens_used')
+                .eq('id', user.id)
+                .single();
+              
+              if (profile) {
+                await supabase
+                  .from('profiles')
+                  .update({ tokens_used: (profile.tokens_used || 0) + receivedTokens.total })
+                  .eq('id', user.id);
+              }
+            } catch (e) {
+              console.error('Token deduction error:', e);
+            }
+          }
+          
+          // Sauvegarder les fichiers
+          await updateFiles(updatedFiles, true);
+          
+          await supabase
+            .from('build_sessions')
+            .update({
+              project_files: updatedFiles,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', sessionId);
+          
+          // Capturer thumbnail
+          await captureThumbnail(updatedFiles['index.html'] || updatedFiles['app.html']);
+          
+          // Désactiver le mode génération
+          setTimeout(() => {
+            setIsInitialGeneration(false);
+            isInitialGenerationRef.current = false;
+            if (viewMode !== 'preview') setViewMode('preview');
+          }, 300);
+          
+          sonnerToast.success('Modifications terminées !');
+        },
+        onError: async (error, snapshot) => {
+          console.error('❌ Unified agent error:', error);
+          sonnerToast.error(`Erreur: ${error}`);
+          
+          // Rollback atomique si snapshot disponible
+          if (snapshot) {
+            console.log('🔄 Rolling back to snapshot...');
+            await updateFiles(snapshot.files, true);
+            sonnerToast.info('Changements annulés suite à une erreur');
+          }
+          
+          setIsInitialGeneration(false);
+          isInitialGenerationRef.current = false;
+        }
+      }
+    );
+  };
+
+  // Nouveau handleSubmit qui route entre unified agent et legacy
   const handleSubmit = async () => {
     const prompt = inputValue.trim() || (messages.length === 1 && typeof messages[0].content === 'string' ? messages[0].content : '');
     
@@ -1600,6 +1910,17 @@ export default function BuilderSession() {
       throw new Error('Authentication required');
     }
 
+    setInputValue('');
+    setAttachedFiles([]);
+
+    // ✨ UTILISER L'AGENT UNIFIÉ SI ACTIVÉ
+    if (USE_UNIFIED_AGENT) {
+      console.log('🚀 Using UNIFIED AGENT');
+      await handleSubmitUnified(prompt);
+      return;
+    }
+
+    // ============= LEGACY CODE (fallback) =============
     // MODE CHAT - Simple conversation sans génération de code
     if (chatMode) {
       const userMessage: Message = {
@@ -1608,7 +1929,6 @@ export default function BuilderSession() {
       };
       
       setMessages(prev => [...prev, userMessage]);
-      setInputValue('');
       
       // Afficher un message de chargement
       const loadingMessage: Message = {
@@ -1673,43 +1993,17 @@ export default function BuilderSession() {
       return;
     }
 
-    // MODE NORMAL - Génération de code (suite du code existant)
-    // Construire le message utilisateur
-    let userMessageContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
-    
-    if (attachedFiles.length > 0) {
-      const contentArray: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
-      if (prompt) {
-        contentArray.push({ type: 'text', text: prompt });
-      }
-      attachedFiles.forEach(file => {
-        contentArray.push({ 
-          type: 'image_url', 
-          image_url: { url: file.base64 }
-        });
-      });
-      userMessageContent = contentArray;
-    } else {
-      userMessageContent = prompt;
-    }
-
-    // Ne PAS ajouter le message utilisateur ici - handleFullGeneration et handleQuickModification le font déjà
-    setInputValue('');
-    setAttachedFiles([]);
-
-    // ⚡ ANALYSE DE L'INTENT : Décider entre modification rapide ou génération complète
+    // MODE NORMAL - Génération de code (legacy)
     const intent = analyzeIntent(prompt, projectFiles);
     const timeEstimate = estimateGenerationTime(prompt, projectFiles);
     
-    console.log(`⏱️ Temps estimé: ${timeEstimate.estimatedTime}s (${timeEstimate.range.min}-${timeEstimate.range.max}s)`);
+    console.log(`⏱️ Legacy - Temps estimé: ${timeEstimate.estimatedTime}s`);
     
-    if (intent === 'quick-modification' && attachedFiles.length === 0) {
-      // MODE RAPIDE : Pas de loading preview, modification ciblée
-      console.log('🚀 Routing vers QUICK MODIFICATION');
+    if (intent === 'quick-modification') {
+      console.log('🚀 Legacy: QUICK MODIFICATION');
       await handleQuickModification(prompt);
     } else {
-      // MODE COMPLET : Loading preview, régénération complète
-      console.log('🚀 Routing vers FULL GENERATION');
+      console.log('🚀 Legacy: FULL GENERATION');
       await handleFullGeneration(prompt);
     }
   };
