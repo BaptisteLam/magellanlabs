@@ -240,9 +240,16 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Convert projectFiles from Record<string, string> to ProjectFile[]
+    const filesArray: ProjectFile[] = projectFiles 
+      ? (Array.isArray(projectFiles) 
+          ? projectFiles 
+          : Object.entries(projectFiles).map(([path, content]) => ({ path, content: content as string })))
+      : [];
+
     console.log('[agent-v2] Request received:', {
       promptLength: prompt?.length || 0,
-      fileCount: projectFiles?.length || 0,
+      fileCount: filesArray.length,
       hasMemory: !!memory,
       projectType: projectType || 'webapp'
     });
@@ -283,33 +290,33 @@ Coding Style: ${memory.userPreferences?.codingStyle || 'Not specified'}
         try {
           // Phase 1: ANALYZE REQUEST
           sendEvent({ type: 'phase', phase: 'analyze', message: 'Analysing request...' });
-          const analyzePhase = await analyzeRequest(enrichedPrompt, projectFiles);
+          const analyzePhase = await analyzeRequest(enrichedPrompt, filesArray);
           sendEvent({ type: 'phase_complete', phase: analyzePhase });
 
           // Phase 2: EXPLORE DEPENDENCIES
           sendEvent({ type: 'phase', phase: 'explore', message: 'Exploring codebase and dependencies...' });
-          const explorePhase = await exploreDependencies(enrichedPrompt, projectFiles);
+          const explorePhase = await exploreDependencies(enrichedPrompt, filesArray);
           sendEvent({ type: 'phase_complete', phase: explorePhase });
 
           // Phase 3: CREATE PLAN
           sendEvent({ type: 'phase', phase: 'plan', message: 'Creating execution plan...' });
-          const planPhase = await createExecutionPlan(enrichedPrompt, explorePhase, projectFiles);
+          const planPhase = await createExecutionPlan(enrichedPrompt, explorePhase, filesArray);
           sendEvent({ type: 'phase_complete', phase: planPhase });
 
           // Phase 4: EXECUTE CHANGES
           sendEvent({ type: 'phase', phase: 'execute', message: 'Executing changes...' });
-          const executePhase = await executeChanges(planPhase, projectFiles);
+          const executePhase = await executeChanges(planPhase, filesArray);
           sendEvent({ type: 'phase_complete', phase: executePhase });
 
           // Phase 5: VALIDATE
           sendEvent({ type: 'phase', phase: 'validate', message: 'Validating changes...' });
-          const validatePhase = await validateChanges(executePhase, projectFiles);
+          const validatePhase = await validateChanges(executePhase, filesArray);
           sendEvent({ type: 'phase_complete', phase: validatePhase });
 
           // Phase 6: AUTO-FIX if needed
           if (!validatePhase.decisions.includes('✅ All validations passed')) {
             sendEvent({ type: 'phase', phase: 'fix', message: 'Auto-fixing issues...' });
-            const fixPhase = await autoFixIssues(validatePhase, projectFiles);
+            const fixPhase = await autoFixIssues(validatePhase, filesArray);
             sendEvent({ type: 'phase_complete', phase: fixPhase });
           }
 
