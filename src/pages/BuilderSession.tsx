@@ -21,10 +21,7 @@ import PromptBar from "@/components/PromptBar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import CloudflareAnalytics from "@/components/CloudflareAnalytics";
 import { AiDiffService } from "@/services/aiDiffService";
-import { useAgentAPI } from "@/hooks/useAgentAPI";
-import { useAgentV2API } from "@/hooks/useAgentV2API";
 import { useProjectMemory } from "@/hooks/useProjectMemory";
-import { DependencyGraph } from "@/services/dependencyGraph";
 import type { AIEvent, GenerationEvent } from '@/types/agent';
 import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
@@ -33,14 +30,15 @@ import ChatOnlyMessage from '@/components/chat/ChatOnlyMessage';
 import html2canvas from 'html2canvas';
 import { TokenCounter } from '@/components/TokenCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
-import { analyzeIntent, identifyRelevantFiles, estimateGenerationTime } from '@/utils/intentAnalyzer';
-import { useModifySite } from '@/hooks/useModifySite';
+import { analyzeIntentDetailed } from '@/utils/intentAnalyzer';
+import { useUnifiedModify } from '@/hooks/useUnifiedModify';
 import { ASTModification } from '@/types/ast';
 import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { PublishSuccessDialog } from '@/components/PublishSuccessDialog';
+import { handleUnifiedGeneration } from '@/services/unifiedGeneration';
 
-interface Message {
+export interface Message {
   role: 'user' | 'assistant';
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
   token_count?: number;
@@ -115,17 +113,11 @@ export default function BuilderSession() {
   const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('website');
   const [cloudflareProjectName, setCloudflareProjectName] = useState<string | null>(null);
   
-  // Hook pour la nouvelle API Agent (v1 - legacy)
-  const agent = useAgentAPI();
-  
-  // Hook pour Agent v2 avec exploration
-  const agentV2 = useAgentV2API();
-  
+  // Hook unifié qui combine Agent V2 + Modify Site
+  const unifiedModify = useUnifiedModify();
+
   // Hook pour la mémoire de projet
   const { memory, buildContextWithMemory, updateMemory, initializeMemory } = useProjectMemory(sessionId);
-  
-  // Hook pour les modifications rapides
-  const modifySiteHook = useModifySite();
   
   // Événements IA pour la TaskList
   const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
@@ -1690,25 +1682,46 @@ export default function BuilderSession() {
       userMessageContent = prompt;
     }
 
-    // Ne PAS ajouter le message utilisateur ici - handleFullGeneration et handleQuickModification le font déjà
+    // ═══════════════════════════════════════════════════════════
+    // SYSTÈME UNIFIÉ - Un seul flux pour toutes les générations
+    // ═══════════════════════════════════════════════════════════
     setInputValue('');
+    const attachedFilesToSend = [...attachedFiles];
     setAttachedFiles([]);
 
-    // ⚡ ANALYSE DE L'INTENT : Décider entre modification rapide ou génération complète
-    const intent = analyzeIntent(prompt, projectFiles);
-    const timeEstimate = estimateGenerationTime(prompt, projectFiles);
-    
-    console.log(`⏱️ Temps estimé: ${timeEstimate.estimatedTime}s (${timeEstimate.range.min}-${timeEstimate.range.max}s)`);
-    
-    if (intent === 'quick-modification' && attachedFiles.length === 0) {
-      // MODE RAPIDE : Pas de loading preview, modification ciblée
-      console.log('🚀 Routing vers QUICK MODIFICATION');
-      await handleQuickModification(prompt);
-    } else {
-      // MODE COMPLET : Loading preview, régénération complète
-      console.log('🚀 Routing vers FULL GENERATION');
-      await handleFullGeneration(prompt);
-    }
+    console.log('🚀 Unified Generation System');
+
+    const isFirstGen = Object.keys(projectFiles).length === 0;
+
+    await handleUnifiedGeneration(
+      prompt,
+      attachedFilesToSend,
+      unifiedModify,
+      {
+        sessionId: sessionId!,
+        user,
+        projectFiles,
+        memory,
+        updateMemory,
+        updateFiles,
+        setMessages,
+        setGenerationEvents,
+        generationEventsRef,
+        setGeneratedHtml,
+        setSelectedFile,
+        setSelectedFileContent,
+        selectedFile,
+        setUser,
+        captureThumbnail,
+        setViewMode,
+        viewMode,
+        setIsInitialGeneration,
+        isInitialGenerationRef,
+        initialPromptProcessed,
+        setInitialPromptProcessed,
+        isFirstGeneration: isFirstGen
+      }
+    );
   };
 
   const handleSave = async () => {
