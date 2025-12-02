@@ -2509,10 +2509,6 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
 
                             setAiEvents([]);
                             setGenerationEvents([]);
-                            
-                            // 🔒 Activer le mode "génération en cours" pour bloquer la preview
-                            setIsInitialGeneration(true);
-                            isInitialGenerationRef.current = true;
 
                           const projectContext = projectType === 'website' 
                             ? 'Generate a static website with HTML, CSS, and vanilla JavaScript files only. No React, no JSX. Use simple HTML structure.'
@@ -2611,8 +2607,6 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                                     type: 'error', 
                                     message: `Fichiers manquants: ${missing.join(', ')}` 
                                   }]);
-                                  setIsInitialGeneration(false);
-                                  isInitialGenerationRef.current = false;
                                   return;
                                 }
                                 
@@ -2624,8 +2618,6 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                                     type: 'error', 
                                     message: 'HTML file is empty or too short' 
                                   }]);
-                                  setIsInitialGeneration(false);
-                                  isInitialGenerationRef.current = false;
                                   return;
                                 }
                                 
@@ -2637,8 +2629,6 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                                     type: 'error', 
                                     message: 'CSS file is empty or too short' 
                                   }]);
-                                  setIsInitialGeneration(false);
-                                  isInitialGenerationRef.current = false;
                                   return;
                                 }
                                 
@@ -2650,8 +2640,6 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                                     type: 'error', 
                                     message: 'JS file is empty or too short' 
                                   }]);
-                                  setIsInitialGeneration(false);
-                                  isInitialGenerationRef.current = false;
                                   return;
                                 }
                                 
@@ -2662,8 +2650,6 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                                     type: 'error', 
                                     message: 'Missing CSS/JS links in HTML' 
                                   }]);
-                                  setIsInitialGeneration(false);
-                                  isInitialGenerationRef.current = false;
                                   return;
                                 }
                                 
@@ -2675,12 +2661,6 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                                 console.log('📦 Fichiers à appliquer:', Object.keys(updatedFiles));
                                 await updateFiles(updatedFiles, true);
                                 console.log('✅ Fichiers sauvegardés et prêts pour la preview');
-                                
-                                // Attendre que React re-rendre avec les nouveaux fichiers avant d'afficher la preview
-                                setTimeout(() => {
-                                  setIsInitialGeneration(false);
-                                  isInitialGenerationRef.current = false;
-                                }, 300); // Délai réduit car les fichiers sont déjà sauvegardés
                                 
                                 await supabase
                                   .from('build_sessions')
