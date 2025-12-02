@@ -155,6 +155,21 @@ export default function BuilderSession() {
   // Mode d'affichage de la preview (desktop/mobile)
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
 
+  // Fonction pour scroller automatiquement vers le bas du chat
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Auto-scroll quand les messages changent
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Auto-scroll quand les événements de génération changent
+  useEffect(() => {
+    scrollToBottom();
+  }, [generationEvents]);
+
   // Fonction pour générer automatiquement un nom de projet
   const generateProjectName = async (prompt: string) => {
     try {
