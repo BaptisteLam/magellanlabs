@@ -14,6 +14,21 @@ interface RelevantFile {
   score: number;
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+interface ChatSummary {
+  keyDecisions: string[];
+  modificationHistory: Array<{
+    file: string;
+    change: string;
+  }>;
+  userPreferences: string[];
+  currentContext: string;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -52,11 +67,8 @@ serve(async (req) => {
       })
       .join('\n\n');
 
-    // Construire historique (garder les 5 derniers messages)
-    const recentHistory = chatHistory.slice(-5);
-    const historyContext = recentHistory
-      .map((m: any) => `${m.role}: ${m.content.substring(0, 500)}`)
-      .join('\n');
+    // Construire historique intelligent
+    const historyContext = await buildIntelligentContext(chatHistory, 4000);
 
     // Adapter le prompt en fonction du type de projet
     const isWebsite = projectType === 'website';
@@ -542,6 +554,9 @@ Exemple de flux COMPLET:
             console.log(`📸 ${attachedFiles.length} image(s) attachée(s) envoyées à Claude`);
           }
 
+          // Construire l'historique récent pour l'API Claude (5 derniers messages)
+          const recentHistory = chatHistory.slice(-5);
+
           const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
@@ -797,6 +812,136 @@ Exemple de flux COMPLET:
     );
   }
 });
+
+/**
+ * Résume une conversation en identifiant les décisions clés, modifications et préférences
+ */
+async function summarizeConversation(messages: ChatMessage[]): Promise<ChatSummary> {
+  if (messages.length === 0) {
+    return {
+      keyDecisions: [],
+      modificationHistory: [],
+      userPreferences: [],
+      currentContext: 'Conversation vide'
+    };
+  }
+
+  const summaryPrompt = `Résume cette conversation en identifiant :
+1. Les décisions clés prises
+2. L'historique des modifications (fichier + changement)
+3. Les préférences de l'utilisateur
+4. Le contexte actuel du projet
+
+Conversation :
+${messages.map(m => `${m.role}: ${m.content}`).join('\n\n')}
+
+Réponds en JSON avec ce format exact:
+{
+  "keyDecisions": ["décision 1", "décision 2", ...],
+  "modificationHistory": [{"file": "chemin/fichier", "change": "description du changement"}, ...],
+  "userPreferences": ["préférence 1", "préférence 2", ...],
+  "currentContext": "description du contexte actuel"
+}`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: summaryPrompt }],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('❌ Erreur summarization:', await response.text());
+      throw new Error('Summarization failed');
+    }
+
+    const data = await response.json();
+    const content = data.content[0]?.text || '{}';
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('❌ Erreur parsing summary:', error);
+    return {
+      keyDecisions: ['Résumé non disponible'],
+      modificationHistory: [],
+      userPreferences: [],
+      currentContext: 'Erreur de résumé'
+    };
+  }
+}
+
+/**
+ * Construit un contexte intelligent à partir de l'historique de chat
+ * Résume les messages du milieu et garde le contexte initial et récent
+ */
+async function buildIntelligentContext(
+  messages: any[],
+  maxTokens = 4000
+): Promise<string> {
+  if (messages.length === 0) {
+    return 'Aucun historique';
+  }
+
+  // Cas simple : 5 messages ou moins, envoyer tous les messages
+  if (messages.length <= 5) {
+    return messages
+      .map((m: any) => `${m.role}: ${m.content.substring(0, 500)}`)
+      .join('\n\n');
+  }
+
+  console.log(`📚 Construction contexte intelligent (${messages.length} messages)`);
+
+  // 1. Garder les 2 premiers messages (contexte initial)
+  const initial = messages.slice(0, 2);
+  
+  // 2. Garder les 3 derniers messages (contexte immédiat)
+  const recent = messages.slice(-3);
+  
+  // 3. Résumer les messages du milieu
+  const middle = messages.slice(2, -3);
+  
+  let summary: ChatSummary;
+  if (middle.length > 0) {
+    const chatMessages: ChatMessage[] = middle.map((m: any) => ({
+      role: m.role,
+      content: m.content
+    }));
+    summary = await summarizeConversation(chatMessages);
+  } else {
+    summary = {
+      keyDecisions: [],
+      modificationHistory: [],
+      userPreferences: [],
+      currentContext: 'Pas de messages intermédiaires'
+    };
+  }
+
+  // Construire le contexte structuré
+  const context = `# CONTEXTE INITIAL
+${initial.map((m: any) => `${m.role}: ${m.content.substring(0, 500)}`).join('\n\n')}
+
+# RÉSUMÉ DE LA CONVERSATION (${middle.length} messages)
+${summary.keyDecisions.length > 0 ? '## Décisions clés:\n' + summary.keyDecisions.map(d => `- ${d}`).join('\n') : ''}
+
+${summary.modificationHistory.length > 0 ? '\n## Modifications effectuées:\n' + summary.modificationHistory.map(m => `- ${m.file}: ${m.change}`).join('\n') : ''}
+
+${summary.userPreferences.length > 0 ? '\n## Préférences identifiées:\n' + summary.userPreferences.map(p => `- ${p}`).join('\n') : ''}
+
+${summary.currentContext ? `\n## Contexte actuel:\n${summary.currentContext}` : ''}
+
+# CONTEXTE RÉCENT
+${recent.map((m: any) => `${m.role}: ${m.content.substring(0, 500)}`).join('\n\n')}`;
+
+  console.log('✅ Contexte intelligent construit');
+  return context;
+}
 
 /**
  * Sélection intelligente des fichiers pertinents avec scoring pondéré
