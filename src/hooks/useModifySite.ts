@@ -23,7 +23,8 @@ export function useModifySite() {
     relevantFiles: Array<{ path: string; content: string }>,
     sessionId: string,
     options: UseModifySiteOptions = {},
-    complexity?: 'trivial' | 'simple' | 'moderate' | 'complex'
+    complexity?: 'trivial' | 'simple' | 'moderate' | 'complex',
+    memoryContext?: string | null
   ) => {
     setIsLoading(true);
     setIsStreaming(true);
@@ -69,6 +70,7 @@ export function useModifySite() {
             relevantFiles,
             sessionId,
             complexity: complexity || 'simple',
+            memoryContext: memoryContext || null,
           }),
           signal: abortController.signal,
         }

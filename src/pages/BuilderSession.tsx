@@ -22,6 +22,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import CloudflareAnalytics from "@/components/CloudflareAnalytics";
 import { AiDiffService } from "@/services/aiDiffService";
 import { useAgentAPI } from "@/hooks/useAgentAPI";
+import { useAgentV2API } from "@/hooks/useAgentV2API";
+import { useProjectMemory } from "@/hooks/useProjectMemory";
+import { DependencyGraph } from "@/services/dependencyGraph";
 import type { AIEvent, GenerationEvent } from '@/types/agent';
 import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
@@ -112,8 +115,14 @@ export default function BuilderSession() {
   const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('website');
   const [cloudflareProjectName, setCloudflareProjectName] = useState<string | null>(null);
   
-  // Hook pour la nouvelle API Agent
+  // Hook pour la nouvelle API Agent (v1 - legacy)
   const agent = useAgentAPI();
+  
+  // Hook pour Agent v2 avec exploration
+  const agentV2 = useAgentV2API();
+  
+  // Hook pour la mémoire de projet
+  const { memory, buildContextWithMemory, updateMemory, initializeMemory } = useProjectMemory(sessionId);
   
   // Hook pour les modifications rapides
   const modifySiteHook = useModifySite();
@@ -821,35 +830,37 @@ export default function BuilderSession() {
     
     setMessages(prev => [...prev, introMessage]);
 
-    // Préparer les fichiers pertinents
-    const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
-      const keywords = prompt.toLowerCase().split(/\s+/);
-      const scored = Object.entries(files).map(([path, content]) => {
-        let score = 0;
-        keywords.forEach(k => {
-          if (path.toLowerCase().includes(k)) score += 50;
-          if (content.toLowerCase().includes(k)) score += 10;
-        });
-        if (path.includes('index.html') || path.includes('App.tsx')) score += 100;
-        return { path, content, score };
-      });
-      
-      return scored
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 5);
-    };
-
     const userPrompt = typeof userMessageContent === 'string' 
       ? userMessageContent 
       : (Array.isArray(userMessageContent) 
           ? userMessageContent.find(c => c.type === 'text')?.text || ''
           : String(userMessageContent));
 
-    const relevantFilesArray = selectRelevantFiles(userPrompt, projectFiles);
+    // 🧠 PHASE 1: Charger la mémoire et enrichir le contexte
+    console.log('🧠 Phase 1: Loading memory and building context...');
+    const enrichedContext = await buildContextWithMemory(userPrompt);
     
-    const chatHistory = messages.slice(-3).map(m => ({
-      role: m.role,
-      content: typeof m.content === 'string' ? m.content : '[message multimédia]'
+    // 🔗 PHASE 2: Construire le graphe de dépendances
+    console.log('🔗 Phase 2: Building dependency graph...');
+    const graph = new DependencyGraph();
+    await graph.buildGraph(projectFiles);
+    
+    // Identifier les fichiers mentionnés dans le prompt
+    const mentionedFiles = Object.keys(projectFiles).filter(path => 
+      userPrompt.toLowerCase().includes(path.toLowerCase().split('/').pop()?.split('.')[0] || '')
+    );
+    
+    // Obtenir les fichiers pertinents via le graphe (max 15 fichiers)
+    const relevantFilesFromGraph = graph.getRelevantFiles(
+      mentionedFiles.length > 0 ? mentionedFiles : ['index.html', 'App.tsx', 'main.tsx'],
+      15
+    );
+    
+    console.log('📊 Fichiers pertinents via graphe:', relevantFilesFromGraph);
+    
+    const relevantFilesArray = relevantFilesFromGraph.map(path => ({
+      path,
+      content: projectFiles[path] || ''
     }));
 
     let assistantMessage = '';
@@ -878,39 +889,24 @@ export default function BuilderSession() {
       ? 'Generate a React web application with TypeScript/JSX. Use React components and modern web technologies.'
       : 'Generate a mobile-optimized React application with responsive design for mobile devices.';
 
-    // Appeler l'API Agent avec callbacks
-    await agent.callAgent(
-      `${projectContext}\n\n${userPrompt}`,
+    // 🚀 PHASE 3: Appeler Agent V2 avec mémoire et graphe de dépendances
+    console.log('🚀 Phase 3: Calling Agent V2 with memory and dependency graph...');
+    await agentV2.callAgentV2(
+      enrichedContext ? `${projectContext}\n\nCONTEXT FROM MEMORY:\n${enrichedContext}\n\nUSER REQUEST:\n${userPrompt}` : `${projectContext}\n\n${userPrompt}`,
       projectFiles,
-      relevantFilesArray,
-      chatHistory,
+      memory,
       sessionId!,
       projectType,
       attachedFiles,
       {
-        onStatus: (status) => {
-          console.log('📊 Status:', status);
-          setAiEvents(prev => [...prev, { type: 'status', content: status }]);
-        },
         onMessage: (message) => {
-          // On accumule simplement la réponse de l'agent sans modifier le chat en temps réel
-          // pour conserver la structure intro + AI tasks + récap uniquement.
           assistantMessage += message;
-        },
-        onLog: (log) => {
-          console.log('📝 Log:', log);
-          setAiEvents(prev => [...prev, { type: 'log', content: log }]);
-        },
-        onIntent: (intent) => {
-          console.log('🎯 Intent:', intent);
-          setAiEvents(prev => [...prev, intent]);
         },
         onGenerationEvent: (event) => {
           console.log('🔄 Generation:', event);
-          generationEventsRef.current = [...generationEventsRef.current, event]; // Mettre à jour la ref de façon synchrone
+          generationEventsRef.current = [...generationEventsRef.current, event];
           setGenerationEvents(prev => [...prev, event]);
           
-          // Mettre à jour le message intro avec les nouveaux événements
           setMessages(prev => {
             const lastMessage = prev[prev.length - 1];
             if (lastMessage && (lastMessage.metadata?.type === 'generation' || lastMessage.metadata?.type === 'intro')) {
@@ -938,9 +934,6 @@ export default function BuilderSession() {
           setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
           updatedFiles[path] = code;
           
-          // ⏸️ NE JAMAIS mettre à jour la preview pendant la génération
-          // Les fichiers seront appliqués tous ensemble dans onComplete
-          
           if (path === 'index.html') {
             setGeneratedHtml(code);
           }
@@ -953,6 +946,25 @@ export default function BuilderSession() {
         onComplete: async () => {
           console.log('✅ Génération terminée - Validation des fichiers avant affichage');
           setAiEvents(prev => [...prev, { type: 'complete' }]);
+          
+          // 🧠 PHASE 4: Mettre à jour la mémoire du projet
+          console.log('🧠 Phase 4: Updating project memory...');
+          const codeChanges = Object.keys(updatedFiles)
+            .filter(path => updatedFiles[path] !== projectFiles[path])
+            .map(path => ({
+              path,
+              type: (projectFiles[path] ? 'modify' : 'create') as 'create' | 'modify' | 'delete',
+              description: `Updated ${path}`
+            }));
+          
+          if (codeChanges.length > 0) {
+            try {
+              await updateMemory(codeChanges, []);
+              console.log('✅ Memory updated with', codeChanges.length, 'changes');
+            } catch (memError) {
+              console.warn('⚠️ Failed to update memory:', memError);
+            }
+          }
           
           // Ajouter l'événement complete au message intro
           setMessages(prev => {
@@ -1284,6 +1296,10 @@ export default function BuilderSession() {
     };
     setMessages(prev => [...prev, userMessage]);
     
+    // 🧠 PHASE 1: Enrichir le contexte avec la mémoire
+    console.log('🧠 Quick-mod Phase 1: Building context with memory...');
+    const enrichedContext = await buildContextWithMemory(userPrompt);
+    
     // Analyser la complexité de la modification
     const { analyzeIntentDetailed } = await import('@/utils/intentAnalyzer');
     const analysis = analyzeIntentDetailed(userPrompt, projectFiles);
@@ -1331,9 +1347,10 @@ export default function BuilderSession() {
     // Variable pour stocker les tokens
     let receivedTokens = { input: 0, output: 0, total: 0 };
     
-    // Appeler modify-site avec la complexité
+    // 🚀 PHASE 2: Appeler modify-site avec contexte enrichi
+    console.log('🚀 Quick-mod Phase 2: Calling modify-site with memory context...');
     await modifySiteHook.modifySite(
-      userPrompt,
+      enrichedContext ? `CONTEXT:\n${enrichedContext}\n\nREQUEST: ${userPrompt}` : userPrompt,
       relevantFiles,
       sessionId!,
       {
@@ -1403,7 +1420,23 @@ export default function BuilderSession() {
           );
           
           console.log('✅ Modifications AST appliquées:', modifiedFilesList);
-        
+          
+          // 🧠 PHASE 3: Mettre à jour la mémoire
+          console.log('🧠 Quick-mod Phase 3: Updating memory...');
+          const codeChanges = modifiedFilesList.map(path => ({
+            path,
+            type: 'modify' as const,
+            description: `Modified ${path} via quick-modification`
+          }));
+          
+          if (codeChanges.length > 0) {
+            try {
+              await updateMemory(codeChanges, []);
+              console.log('✅ Memory updated with quick modifications');
+            } catch (memError) {
+              console.warn('⚠️ Failed to update memory:', memError);
+            }
+          }
           
           // Mettre à jour l'état avec les nouveaux fichiers
           updateFiles(updatedFiles, true);

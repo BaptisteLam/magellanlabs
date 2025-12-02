@@ -234,11 +234,44 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, sessionId, projectFiles } = await req.json();
+    const { prompt, sessionId, projectFiles, memory, projectType, attachedFiles } = await req.json();
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    console.log('[agent-v2] Request received:', {
+      promptLength: prompt?.length || 0,
+      fileCount: projectFiles?.length || 0,
+      hasMemory: !!memory,
+      projectType: projectType || 'webapp'
+    });
+
+    // Construire le contexte mémoire si disponible
+    const memoryContext = memory ? `
+# PROJECT MEMORY
+
+## Architecture
+Framework: ${memory.architecture?.framework || 'Unknown'}
+Patterns: ${memory.architecture?.patterns?.join(', ') || 'None'}
+
+## Recent Changes (Last 3)
+${memory.recentChanges?.slice(0, 3).map((change: any) => 
+  `- ${change.description}\n  Files: ${change.filesAffected?.join(', ')}`
+).join('\n') || 'No recent changes'}
+
+## Known Issues
+${memory.knownIssues?.slice(0, 3).map((issue: any) => 
+  `- ${issue.issue}\n  Solution: ${issue.solution}`
+).join('\n') || 'No known issues'}
+
+## User Preferences
+Coding Style: ${memory.userPreferences?.codingStyle || 'Not specified'}
+` : '';
+
+    const enrichedPrompt = memoryContext 
+      ? `${memoryContext}\n\nUSER REQUEST:\n${prompt}`
+      : prompt;
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -250,17 +283,17 @@ serve(async (req) => {
         try {
           // Phase 1: ANALYZE REQUEST
           sendEvent({ type: 'phase', phase: 'analyze', message: 'Analysing request...' });
-          const analyzePhase = await analyzeRequest(prompt, projectFiles);
+          const analyzePhase = await analyzeRequest(enrichedPrompt, projectFiles);
           sendEvent({ type: 'phase_complete', phase: analyzePhase });
 
           // Phase 2: EXPLORE DEPENDENCIES
           sendEvent({ type: 'phase', phase: 'explore', message: 'Exploring codebase and dependencies...' });
-          const explorePhase = await exploreDependencies(prompt, projectFiles);
+          const explorePhase = await exploreDependencies(enrichedPrompt, projectFiles);
           sendEvent({ type: 'phase_complete', phase: explorePhase });
 
           // Phase 3: CREATE PLAN
           sendEvent({ type: 'phase', phase: 'plan', message: 'Creating execution plan...' });
-          const planPhase = await createExecutionPlan(prompt, explorePhase, projectFiles);
+          const planPhase = await createExecutionPlan(enrichedPrompt, explorePhase, projectFiles);
           sendEvent({ type: 'phase_complete', phase: planPhase });
 
           // Phase 4: EXECUTE CHANGES
