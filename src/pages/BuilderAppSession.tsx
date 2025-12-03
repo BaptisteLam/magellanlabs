@@ -32,7 +32,7 @@ import html2canvas from 'html2canvas';
 import { TokenCounter } from '@/components/TokenCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
 import { analyzeIntent, identifyRelevantFiles, estimateGenerationTime } from '@/utils/intentAnalyzer';
-import { useModifySite } from '@/hooks/useModifySite';
+import { useUnifiedModify } from '@/hooks/useUnifiedModify';
 import { ASTModification } from '@/types/ast';
 import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
@@ -114,8 +114,8 @@ export default function BuilderSession() {
   // Hook pour la nouvelle API Agent
   const agent = useAgentAPI();
   
-  // Hook pour les modifications rapides
-  const modifySiteHook = useModifySite();
+  // Hook pour les modifications rapides (unified system)
+  const unifiedModify = useUnifiedModify();
   
   // Événements IA pour la TaskList
   const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
@@ -1322,11 +1322,12 @@ export default function BuilderSession() {
     // Variable pour stocker les tokens
     let receivedTokens = { input: 0, output: 0, total: 0 };
     
-    // Appeler modify-site avec la complexité
-    await modifySiteHook.modifySite(
+    // Appeler unified-modify
+    await unifiedModify.unifiedModify(
       userPrompt,
-      relevantFiles,
+      projectFiles,
       sessionId!,
+      null, // memory (TODO: add memory support for BuilderAppSession)
       {
         onIntentMessage: (message) => {
           // Capturer le message d'intention du JSON de Claude
@@ -1367,10 +1368,11 @@ export default function BuilderSession() {
         onASTModifications: async (modifications) => {
           console.log('⚡ AST Modifications reçues:', modifications.length);
           
-          // 🔄 FALLBACK AUTOMATIQUE si aucune modification
+          // 🔄 Vérification
           if (modifications.length === 0) {
-            console.log('⚠️ Aucune modification AST reçue, fallback sur génération complète');
-            return handleFullGeneration(userPrompt);
+            console.log('⚠️ Aucune modification AST reçue');
+            sonnerToast.warning('Aucune modification générée');
+            return;
           }
           
           console.log('⚡ Application de', modifications.length, 'modifications AST');
@@ -1383,8 +1385,8 @@ export default function BuilderSession() {
           
           if (!result.success) {
             console.error('❌ Échec des modifications AST:', result.errors);
-            sonnerToast.error('Échec des modifications, génération complète en cours...');
-            return handleFullGeneration(userPrompt);
+            sonnerToast.error('Échec des modifications');
+            return;
           }
           
           const updatedFiles = result.updatedFiles;
