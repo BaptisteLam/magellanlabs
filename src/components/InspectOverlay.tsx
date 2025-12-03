@@ -93,9 +93,11 @@ export function InspectOverlay({ isActive, iframeRef, onElementSelect }: Inspect
         }
 
         const rect = element.getBoundingClientRect();
+        // Coordonnées relatives à l'iframe (pas au viewport)
+        // L'overlay est positionné dans le même conteneur que l'iframe
         const adjustedRect = new DOMRect(
-          rect.left + iframeRect.left,
-          rect.top + iframeRect.top,
+          rect.left,
+          rect.top,
           rect.width,
           rect.height
         );
@@ -138,12 +140,12 @@ export function InspectOverlay({ isActive, iframeRef, onElementSelect }: Inspect
           innerHTML: element.innerHTML,
           id: element.id || undefined,
           boundingRect: {
-            left: rect.left + iframeRect.left,
-            top: rect.top + iframeRect.top,
+            left: rect.left,
+            top: rect.top,
             width: rect.width,
             height: rect.height,
-            bottom: rect.bottom + iframeRect.top,
-            right: rect.right + iframeRect.left
+            bottom: rect.bottom,
+            right: rect.right
           }
         };
 
