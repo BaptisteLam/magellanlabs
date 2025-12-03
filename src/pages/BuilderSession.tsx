@@ -2443,6 +2443,8 @@ Instruction: ${prompt}
 
 Ne modifie que cet élément spécifique, pas le reste du code.`;
                             
+                            // IMPORTANT: Forcer le mode génération (pas chatMode)
+                            setChatMode(false);
                             setInputValue(contextualPrompt);
                             setTimeout(() => handleSubmit(), 100);
                           }}
