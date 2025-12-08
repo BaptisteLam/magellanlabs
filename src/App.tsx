@@ -14,8 +14,6 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import AIBuilder from "./pages/AIBuilder";
 import BuilderSession from "./pages/BuilderSession";
-import BuilderAppSession from "./pages/BuilderAppSession";
-import BuilderSessionMobile from "./pages/BuilderSessionMobile";
 import SessionPreview from "./pages/SessionPreview";
 import PublicProject from "./pages/PublicProject";
 import ScrollToTop from "./components/ScrollToTop";
@@ -45,8 +43,6 @@ function AppContent() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/builder" element={<AIBuilder />} />
         <Route path="/builder/:sessionId" element={<BuilderSession />} />
-        <Route path="/builder/app/:sessionId" element={<BuilderAppSession />} />
-        <Route path="/builder/mobile/:sessionId" element={<BuilderSessionMobile />} />
         <Route path="/preview/:sessionId" element={<SessionPreview />} />
         <Route path="/p/:subdomain" element={<PublicProject />} />
         <Route path="/about" element={<About />} />
