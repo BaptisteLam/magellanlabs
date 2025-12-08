@@ -50,3 +50,6 @@ verify_jwt = true
 
 [functions.memory]
 verify_jwt = true
+
+[functions.unified-modify]
+verify_jwt = true
