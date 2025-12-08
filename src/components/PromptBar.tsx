@@ -1,4 +1,4 @@
-import { ArrowUp, Paperclip, Settings, Globe, Monitor, Smartphone, X, MousePointer2, Square, MessageSquare, Image, FileText } from 'lucide-react';
+import { ArrowUp, Paperclip, Settings, Globe, X, MousePointer2, Square, MessageSquare, Image, FileText } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import TextType from '@/components/ui/TextType';
@@ -358,44 +358,6 @@ const PromptBar = ({
                   </TooltipTrigger>
                   <TooltipContent side="top">
                     <p className="text-xs">site web</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                {/* Bouton Application Web */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      type="button"
-                      onClick={() => handleTypeChange('webapp')}
-                      className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
-                      style={iconButtonStyle(projectType === 'webapp')}
-                    >
-                      <Monitor className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    <p className="text-xs">application web</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                {/* Bouton Mobile */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      type="button"
-                      onClick={() => handleTypeChange('mobile')}
-                      className="w-8 h-8 rounded-lg transition-all hover:bg-primary/10 hover:border-primary p-0 border"
-                      style={iconButtonStyle(projectType === 'mobile')}
-                    >
-                      <Smartphone className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    <p className="text-xs">application mobile</p>
                   </TooltipContent>
                 </Tooltip>
               </>
