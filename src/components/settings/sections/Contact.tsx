@@ -177,7 +177,7 @@ export function Contact() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search"
+              placeholder="Rechercher..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 w-[200px] h-9 rounded-lg border-border bg-background"
@@ -203,7 +203,7 @@ export function Contact() {
             className="h-9 rounded-lg"
           >
             <Download className="h-4 w-4 mr-2" />
-            Export
+            Exporter
           </Button>
           <Button 
             onClick={() => setShowNewContactDialog(true)}
@@ -211,7 +211,7 @@ export function Contact() {
             variant="outline"
           >
             <Plus className="h-4 w-4 mr-2" />
-            New contact
+            Nouveau contact
           </Button>
         </div>
       </div>
@@ -221,17 +221,17 @@ export function Contact() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-[200px] font-medium">Name</TableHead>
+              <TableHead className="w-[200px] font-medium">Nom</TableHead>
               <TableHead className="w-[220px] font-medium">Email</TableHead>
-              <TableHead className="font-medium">Latest message</TableHead>
-              <TableHead className="w-[140px] font-medium">Phone</TableHead>
+              <TableHead className="font-medium">Dernier message</TableHead>
+              <TableHead className="w-[140px] font-medium">Téléphone</TableHead>
               <TableHead className="w-[140px] font-medium">
                 <div className="flex items-center gap-1">
-                  Date added
+                  Date d'ajout
                   <ArrowDown className="h-3 w-3" />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] font-medium">Status</TableHead>
+              <TableHead className="w-[100px] font-medium">Statut</TableHead>
               <TableHead className="w-[80px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -252,7 +252,7 @@ export function Contact() {
           <p className="mb-4">
             {searchQuery || statusFilter !== 'all' 
               ? "Aucun résultat trouvé" 
-              : "You don't have any contacts, yet."}
+              : "Vous n'avez pas encore de contacts."}
           </p>
           <Button 
             onClick={() => setShowNewContactDialog(true)}
@@ -260,7 +260,7 @@ export function Contact() {
             className="rounded-lg"
           >
             <Plus className="h-4 w-4 mr-2" />
-            New contact
+            Nouveau contact
           </Button>
         </div>
       ) : (
