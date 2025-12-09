@@ -159,6 +159,255 @@ export type Database = {
         }
         Relationships: []
       }
+      project_blog_posts: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          featured_image: string | null
+          id: string
+          project_id: string
+          published_at: string | null
+          slug: string
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          featured_image?: string | null
+          id?: string
+          project_id: string
+          published_at?: string | null
+          slug: string
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          featured_image?: string | null
+          id?: string
+          project_id?: string
+          published_at?: string | null
+          slug?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_blog_posts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "build_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_contacts: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          message: string | null
+          name: string
+          phone: string | null
+          project_id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          message?: string | null
+          name: string
+          phone?: string | null
+          project_id: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          message?: string | null
+          name?: string
+          phone?: string | null
+          project_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_contacts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "build_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_domains: {
+        Row: {
+          created_at: string | null
+          dns_records: Json | null
+          domain_name: string
+          id: string
+          is_primary: boolean | null
+          project_id: string
+          status: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dns_records?: Json | null
+          domain_name: string
+          id?: string
+          is_primary?: boolean | null
+          project_id: string
+          status?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dns_records?: Json | null
+          domain_name?: string
+          id?: string
+          is_primary?: boolean | null
+          project_id?: string
+          status?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_domains_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "build_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_finance: {
+        Row: {
+          expense_tracking: Json | null
+          id: string
+          payment_methods: Json | null
+          project_id: string
+          revenue_stats: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          expense_tracking?: Json | null
+          id?: string
+          payment_methods?: Json | null
+          project_id: string
+          revenue_stats?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          expense_tracking?: Json | null
+          id?: string
+          payment_methods?: Json | null
+          project_id?: string
+          revenue_stats?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_finance_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "build_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_invoices: {
+        Row: {
+          amount: number
+          client_info: Json | null
+          created_at: string | null
+          currency: string | null
+          due_date: string | null
+          id: string
+          invoice_number: string
+          line_items: Json | null
+          paid_at: string | null
+          project_id: string
+          status: string | null
+        }
+        Insert: {
+          amount: number
+          client_info?: Json | null
+          created_at?: string | null
+          currency?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number: string
+          line_items?: Json | null
+          paid_at?: string | null
+          project_id: string
+          status?: string | null
+        }
+        Update: {
+          amount?: number
+          client_info?: Json | null
+          created_at?: string | null
+          currency?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          line_items?: Json | null
+          paid_at?: string | null
+          project_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_invoices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "build_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_marketing: {
+        Row: {
+          campaigns: Json | null
+          email_settings: Json | null
+          id: string
+          project_id: string
+          social_links: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          campaigns?: Json | null
+          email_settings?: Json | null
+          id?: string
+          project_id: string
+          social_links?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          campaigns?: Json | null
+          email_settings?: Json | null
+          id?: string
+          project_id?: string
+          social_links?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_marketing_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "build_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_memory: {
         Row: {
           architecture: Json | null
@@ -192,6 +441,44 @@ export type Database = {
             foreignKeyName: "project_memory_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: true
+            referencedRelation: "build_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_seo: {
+        Row: {
+          id: string
+          keywords: Json | null
+          meta_description: string | null
+          meta_title: string | null
+          page_path: string
+          project_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          keywords?: Json | null
+          meta_description?: string | null
+          meta_title?: string | null
+          page_path: string
+          project_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          keywords?: Json | null
+          meta_description?: string | null
+          meta_title?: string | null
+          page_path?: string
+          project_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_seo_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "build_sessions"
             referencedColumns: ["id"]
           },
