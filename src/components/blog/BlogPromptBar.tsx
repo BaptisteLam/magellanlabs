@@ -71,7 +71,7 @@ export function BlogPromptBar({ onSubmit, disabled }: BlogPromptBarProps) {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 pb-6">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-40">
       <input
         ref={fileInputRef}
         type="file"

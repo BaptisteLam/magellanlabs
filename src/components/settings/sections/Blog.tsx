@@ -230,10 +230,8 @@ export function Blog() {
         )}
       </div>
 
-      {/* Barre de prompt IA centrée en bas de la zone blog */}
-      <div className="mt-auto pt-4">
-        <BlogPromptBar onSubmit={handleAIPrompt} />
-      </div>
+      {/* Barre de prompt IA fixe en bas */}
+      <BlogPromptBar onSubmit={handleAIPrompt} />
 
       {/* Dialog de confirmation de suppression */}
       <AlertDialog open={!!deletePostId} onOpenChange={() => setDeletePostId(null)}>
