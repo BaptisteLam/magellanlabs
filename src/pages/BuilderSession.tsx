@@ -97,7 +97,8 @@ export default function BuilderSession() {
   } = useOptimizedBuilder({
     sessionId: sessionId!,
     autoSave: true,
-    debounceMs: 2000
+    debounceMs: 2000,
+    autoLoad: false // Désactiver le chargement auto, on utilise loadSession() à la place
   });
   
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -202,22 +203,39 @@ export default function BuilderSession() {
   // Charger la session depuis le cache puis Supabase
   useEffect(() => {
     const loadSessionWithCache = async () => {
-      if (!sessionId) return;
-      
-      setSessionLoading(true);
-      
-      // 1. Charger d'abord depuis le cache IndexedDB (instantané)
-      const cachedProject = await IndexedDBCache.getProject(sessionId);
-      if (cachedProject?.projectFiles && Object.keys(cachedProject.projectFiles).length > 0) {
-        console.log('📦 Loaded from IndexedDB cache:', Object.keys(cachedProject.projectFiles).length, 'files');
-        updateFiles(cachedProject.projectFiles, false); // Ne pas trigger de save
+      if (!sessionId) {
+        console.warn('⚠️ No sessionId, skipping load');
+        return;
       }
-      
-      // 2. Charger depuis Supabase en arrière-plan (pour sync)
-      await loadSession();
-      setSessionLoading(false);
+
+      console.log('🔄 Starting session load:', sessionId);
+      setSessionLoading(true);
+
+      try {
+        // 1. Charger d'abord depuis le cache IndexedDB (instantané)
+        console.log('📦 Attempting to load from IndexedDB cache...');
+        const cachedProject = await IndexedDBCache.getProject(sessionId);
+        if (cachedProject?.projectFiles && Object.keys(cachedProject.projectFiles).length > 0) {
+          console.log('✅ Loaded from IndexedDB cache:', {
+            fileCount: Object.keys(cachedProject.projectFiles).length,
+            files: Object.keys(cachedProject.projectFiles)
+          });
+          updateFiles(cachedProject.projectFiles, false); // Ne pas trigger de save
+        } else {
+          console.log('📦 No cache found or empty cache');
+        }
+
+        // 2. Charger depuis Supabase en arrière-plan (pour sync)
+        console.log('🌐 Loading from Supabase...');
+        await loadSession();
+        console.log('✅ Session load complete');
+      } catch (error) {
+        console.error('❌ Error in loadSessionWithCache:', error);
+      } finally {
+        setSessionLoading(false);
+      }
     };
-    
+
     loadSessionWithCache();
     checkAuth();
   }, [sessionId]);
@@ -302,7 +320,12 @@ export default function BuilderSession() {
   };
 
   const loadSession = async () => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      console.warn('⚠️ loadSession: No sessionId');
+      return;
+    }
+
+    console.log('🌐 loadSession: Fetching session from Supabase...', sessionId);
 
     try {
       const { data, error } = await supabase
@@ -310,6 +333,12 @@ export default function BuilderSession() {
         .select('*')
         .eq('id', sessionId)
         .single();
+
+      console.log('🌐 loadSession: Supabase response:', {
+        hasData: !!data,
+        hasError: !!error,
+        error: error?.message
+      });
       
       // Récupérer le websiteId lié à cette session
       const { data: websiteData } = await supabase
@@ -768,9 +797,15 @@ export default function BuilderSession() {
 
   // 🆕 UNIFIED MODIFY HANDLER - Remplace le routing manuel entre agent-v2 et modify-site
   const handleUnifiedModification = async (userPrompt: string) => {
-    console.log('🔄 UNIFIED MODIFY - Starting');
-    
+    console.log('🔄 UNIFIED MODIFY - Starting', {
+      userPrompt: userPrompt.substring(0, 100),
+      hasProjectFiles: Object.keys(projectFiles).length > 0,
+      sessionId,
+      hasMemory: !!memory
+    });
+
     if (!user) {
+      console.error('❌ No user, redirecting to auth');
       navigate('/auth');
       return;
     }
@@ -888,8 +923,12 @@ export default function BuilderSession() {
           },
           
           onASTModifications: async (modifications, updatedFiles) => {
-            console.log('🔧 AST Modifications:', modifications.length);
-            
+            console.log('🔧 AST Modifications:', {
+              count: modifications.length,
+              files: Object.keys(updatedFiles),
+              modificationTypes: modifications.map(m => m.type)
+            });
+
             if (modifications.length === 0) {
               console.warn('⚠️ No modifications generated');
               sonnerToast.warning('No modifications generated');
@@ -936,7 +975,12 @@ export default function BuilderSession() {
           },
           
           onTokens: (tokens) => {
-            console.log('💰 Tokens:', tokens);
+            console.log('💰 Tokens received:', {
+              input: tokens.input,
+              output: tokens.output,
+              total: tokens.total,
+              willDeduct: user?.id ? true : false
+            });
             receivedTokens = tokens;
           },
           
@@ -980,24 +1024,55 @@ export default function BuilderSession() {
       
       // Déduire les tokens du profil utilisateur
       if (user?.id && receivedTokens.total > 0) {
+        console.log('💰 Deducting tokens from user profile:', {
+          userId: user.id,
+          tokensToDeduct: receivedTokens.total
+        });
+
         try {
-          const { data: profile } = await supabase
+          const { data: profile, error: fetchError } = await supabase
             .from('profiles')
             .select('tokens_used')
             .eq('id', user.id)
             .single();
-          
+
+          if (fetchError) {
+            console.error('❌ Error fetching profile:', fetchError);
+            return;
+          }
+
           if (profile) {
-            const newTokensUsed = (profile.tokens_used || 0) + receivedTokens.total;
-            await supabase
+            const oldTokensUsed = profile.tokens_used || 0;
+            const newTokensUsed = oldTokensUsed + receivedTokens.total;
+
+            console.log('💰 Updating tokens:', {
+              old: oldTokensUsed,
+              new: newTokensUsed,
+              diff: receivedTokens.total
+            });
+
+            const { error: updateError } = await supabase
               .from('profiles')
               .update({ tokens_used: newTokensUsed })
               .eq('id', user.id);
-            console.log('✅ Tokens updated:', newTokensUsed);
+
+            if (updateError) {
+              console.error('❌ Error updating tokens:', updateError);
+            } else {
+              console.log('✅ Tokens successfully updated in database');
+            }
+          } else {
+            console.warn('⚠️ No profile found for user');
           }
         } catch (error) {
           console.error('❌ Token deduction error:', error);
         }
+      } else {
+        console.log('⏭️ Skipping token deduction:', {
+          hasUser: !!user?.id,
+          hasTokens: receivedTokens.total > 0,
+          tokens: receivedTokens
+        });
       }
       
       console.log('🔄 UNIFIED MODIFY - Complete');
