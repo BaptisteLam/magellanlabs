@@ -578,11 +578,35 @@ export default function BuilderSession() {
     try {
       console.log('📸 Capture du thumbnail après génération...');
       
+      // Récupérer l'ancien thumbnail pour le supprimer
+      const { data: existingSession } = await supabase
+        .from('build_sessions')
+        .select('thumbnail_url')
+        .eq('id', sessionId)
+        .single();
+      
+      // Supprimer l'ancien screenshot si existant
+      if (existingSession?.thumbnail_url) {
+        try {
+          // Extraire le nom du fichier de l'URL
+          const oldUrl = existingSession.thumbnail_url;
+          const oldFileName = oldUrl.split('/').pop();
+          if (oldFileName) {
+            console.log('🗑️ Suppression de l\'ancien thumbnail:', oldFileName);
+            await supabase.storage
+              .from('screenshots')
+              .remove([oldFileName]);
+          }
+        } catch (deleteErr) {
+          console.warn('⚠️ Impossible de supprimer l\'ancien thumbnail:', deleteErr);
+        }
+      }
+      
       // Utiliser notre helper pour capturer le thumbnail
       const blob = await capturePreviewThumbnail(contentToCapture);
       
       if (blob) {
-        // Uploader vers Supabase Storage
+        // Uploader vers Supabase Storage avec un nom unique
         const fileName = `${sessionId}-${Date.now()}.png`;
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('screenshots')
