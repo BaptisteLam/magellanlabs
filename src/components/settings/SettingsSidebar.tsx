@@ -103,10 +103,10 @@ export function SettingsSidebar({
     }
   };
   const handleNewProject = () => {
-    navigate('/builder');
+    navigate('/');
   };
   return <div className="h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl flex flex-col shadow-lg">
-      <div className="flex-shrink-0 border-b border-border/30 flex items-center justify-start px-[24px] py-px">
+      <div className="flex-shrink-0 border-b border-border/30 flex items-center justify-start px-[24px] py-px cursor-pointer" onClick={() => navigate('/')}>
         <img src="/lovable-uploads/magellan-logo-light.png" alt="Magellan" className="h-16 dark:hidden" />
         <img src="/lovable-uploads/magellan-logo-dark.png" alt="Magellan" className="h-16 hidden dark:block" />
       </div>
