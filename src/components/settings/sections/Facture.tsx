@@ -2,18 +2,17 @@ import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
   Receipt, 
   Plus, 
   Search, 
   Loader2, 
-  Euro,
   Filter
 } from 'lucide-react';
 import { useProjectData, ProjectInvoice } from '@/hooks/useProjectData';
 import { toast } from 'sonner';
 import { FactureCard } from '@/components/settings/FactureCard';
+import { InvoiceCreatorDialog } from '@/components/settings/InvoiceCreatorDialog';
 import {
   Select,
   SelectContent,
@@ -35,42 +34,28 @@ import {
 export function Facture() {
   const [searchParams] = useSearchParams();
   const projectId = searchParams.get('projectId');
-  const { data: invoices, isLoading, create, update, remove, refetch } = useProjectData(projectId, 'invoices');
+  const { data: invoices, isLoading, update, remove, refetch } = useProjectData(projectId, 'invoices');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [isCreating, setIsCreating] = useState(false);
   const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ 
-    invoice_number: '', 
-    amount: '', 
-    client_name: '',
-    client_email: '',
-    due_date: '',
-    type: 'invoice'
-  });
-  const [isSaving, setIsSaving] = useState(false);
 
   // Filtrage des factures
   const filteredInvoices = useMemo(() => {
     if (!invoices) return [];
     
     return invoices.filter((invoice: ProjectInvoice) => {
-      // Filtre par statut
       if (statusFilter !== 'all' && invoice.status !== statusFilter) {
         return false;
       }
-      
-      // Filtre par type (devis vs facture)
       if (typeFilter === 'quote' && invoice.status !== 'quote') {
         return false;
       }
       if (typeFilter === 'invoice' && invoice.status === 'quote') {
         return false;
       }
-      
-      // Recherche
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         return (
@@ -79,46 +64,9 @@ export function Facture() {
           (invoice.client_info?.email && invoice.client_info.email.toLowerCase().includes(query))
         );
       }
-      
       return true;
     });
   }, [invoices, searchQuery, statusFilter, typeFilter]);
-
-  const generateInvoiceNumber = (isQuote: boolean = false) => {
-    const year = new Date().getFullYear();
-    const count = (invoices?.length || 0) + 1;
-    const prefix = isQuote ? 'DEV' : 'FAC';
-    return `${prefix}-${year}-${String(count).padStart(4, '0')}`;
-  };
-
-  const handleCreate = async () => {
-    if (!formData.amount) {
-      toast.error('Montant requis');
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const isQuote = formData.type === 'quote';
-      await create({ 
-        invoice_number: formData.invoice_number || generateInvoiceNumber(isQuote),
-        amount: parseFloat(formData.amount),
-        client_info: { 
-          name: formData.client_name, 
-          email: formData.client_email 
-        },
-        due_date: formData.due_date || null,
-        status: isQuote ? 'quote' : 'pending'
-      });
-      toast.success(isQuote ? 'Devis créé' : 'Facture créée');
-      setFormData({ invoice_number: '', amount: '', client_name: '', client_email: '', due_date: '', type: 'invoice' });
-      setIsCreating(false);
-      refetch();
-    } catch {
-      toast.error('Erreur lors de la création');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const handleMarkPaid = async (invoice: ProjectInvoice) => {
     try {
@@ -144,9 +92,8 @@ export function Facture() {
     }
   };
 
-  // Stats
-  const totalPending = invoices?.filter(i => i.status === 'pending').reduce((sum, i) => sum + Number(i.amount), 0) || 0;
-  const totalPaid = invoices?.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.amount), 0) || 0;
+  const totalPending = invoices?.filter((i: ProjectInvoice) => i.status === 'pending').reduce((sum: number, i: ProjectInvoice) => sum + Number(i.amount), 0) || 0;
+  const totalPaid = invoices?.filter((i: ProjectInvoice) => i.status === 'paid').reduce((sum: number, i: ProjectInvoice) => sum + Number(i.amount), 0) || 0;
 
   if (!projectId) {
     return (
@@ -203,74 +150,21 @@ export function Facture() {
               <SelectItem value="quote">Devis</SelectItem>
             </SelectContent>
           </Select>
-          <Dialog open={isCreating} onOpenChange={setIsCreating}>
-            <DialogTrigger asChild>
-              <Button 
-                className="h-9 rounded-full border-[#03A5C0] bg-[#03A5C0]/10 text-[#03A5C0] hover:bg-[#03A5C0]/20 px-4"
-                variant="outline"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Nouveau
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nouveau document</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v })}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Type de document" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="invoice">Facture</SelectItem>
-                    <SelectItem value="quote">Devis</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input
-                  placeholder={`Numéro (ex: ${generateInvoiceNumber(formData.type === 'quote')})`}
-                  value={formData.invoice_number}
-                  onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                />
-                <div className="relative">
-                  <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    placeholder="Montant"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    className="pl-9"
-                  />
-                </div>
-                <Input
-                  placeholder="Nom du client"
-                  value={formData.client_name}
-                  onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
-                />
-                <Input
-                  type="email"
-                  placeholder="Email du client"
-                  value={formData.client_email}
-                  onChange={(e) => setFormData({ ...formData, client_email: e.target.value })}
-                />
-                <Input
-                  type="date"
-                  placeholder="Date d'échéance"
-                  value={formData.due_date}
-                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                />
-                <Button 
-                  onClick={handleCreate} 
-                  disabled={isSaving}
-                  className="w-full rounded-full border-[#03A5C0] bg-[#03A5C0]/10 text-[#03A5C0] hover:bg-[#03A5C0]/20"
-                  variant="outline"
-                >
-                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Créer
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button 
+            onClick={() => setIsCreating(true)}
+            className="h-9 rounded-full border-[#03A5C0] bg-[#03A5C0]/10 text-[#03A5C0] hover:bg-[#03A5C0]/20 px-4"
+            variant="outline"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nouveau
+          </Button>
+          <InvoiceCreatorDialog
+            open={isCreating}
+            onOpenChange={setIsCreating}
+            projectId={projectId}
+            onSuccess={refetch}
+            existingInvoicesCount={invoices?.length || 0}
+          />
         </div>
       </div>
 
