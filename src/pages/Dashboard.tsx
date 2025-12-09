@@ -9,7 +9,7 @@ import { Profile } from "@/components/settings/sections/Profile";
 import { Subscription } from "@/components/settings/sections/Subscription";
 import { Integrations } from "@/components/settings/sections/Integrations";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Header from "@/components/layout/Header";
+
 
 type SettingsSection = 'projects' | 'general' | 'profile' | 'subscription' | 'integrations';
 
@@ -68,10 +68,8 @@ export default function Dashboard() {
         }}
       />
 
-      {/* Header de Home */}
-      <Header />
 
-      <div className="flex h-[calc(100vh-5rem)] px-8 py-6 gap-8">
+      <div className="flex h-screen px-8 py-6 gap-8">
         {/* Sidebar flottante avec bords arrondis - décalée plus à gauche */}
         <div className="w-64 flex-shrink-0">
           <SettingsSidebar 
