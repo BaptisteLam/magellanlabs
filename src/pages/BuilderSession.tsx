@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Download, Paperclip, BarChart3, Lightbulb, FileText, Edit, Loader, Smartphone, Monitor } from "lucide-react";
+import { Save, Home, X, Moon, Sun, Pencil, Download, Paperclip, Lightbulb, FileText, Edit, Loader } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
 import JSZip from "jszip";
@@ -19,7 +19,6 @@ import { FileTabs } from "@/components/CodeEditor/FileTabs";
 import { MonacoEditor } from "@/components/CodeEditor/MonacoEditor";
 import PromptBar from "@/components/PromptBar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import CloudflareAnalytics from "@/components/CloudflareAnalytics";
 import { AiDiffService } from "@/services/aiDiffService";
 import { useAgentAPI } from "@/hooks/useAgentAPI";
 import { useAgentV2API } from "@/hooks/useAgentV2API";
@@ -79,7 +78,6 @@ export default function BuilderSession() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [websiteTitle, setWebsiteTitle] = useState('');
-  const [viewMode, setViewMode] = useState<'preview' | 'code' | 'analytics'>('preview');
   const [sessionLoading, setSessionLoading] = useState(true);
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -111,9 +109,6 @@ export default function BuilderSession() {
   const [isHoveringFavicon, setIsHoveringFavicon] = useState(false);
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const [currentFavicon, setCurrentFavicon] = useState<string | null>(null);
-  const [gaPropertyId, setGaPropertyId] = useState<string | null>(null);
-  const [websiteId, setWebsiteId] = useState<string | null>(null);
-  const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('website');
   const [cloudflareProjectName, setCloudflareProjectName] = useState<string | null>(null);
   
   // Hook pour la nouvelle API Agent (v1 - legacy)
@@ -152,12 +147,14 @@ export default function BuilderSession() {
   
   // Mode Inspect pour la preview interactive
   const [inspectMode, setInspectMode] = useState(false);
-  
+
   // Mode Chat pour discuter avec Claude sans générer de code
   const [chatMode, setChatMode] = useState(false);
-  
-  // Mode d'affichage de la preview (desktop/mobile)
-  const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+
+  // Modes forcés : toujours en mode preview desktop pour les sites web
+  const viewMode = 'preview' as const;
+  const previewMode = 'desktop' as const;
+  const projectType = 'website' as const;
 
   // Fonction pour scroller automatiquement vers le bas du chat
   const scrollToBottom = () => {
@@ -173,6 +170,14 @@ export default function BuilderSession() {
   useEffect(() => {
     scrollToBottom();
   }, [generationEvents]);
+
+  // BUG FIX #2: Synchroniser selectedFileContent quand projectFiles ou selectedFile changent
+  useEffect(() => {
+    if (selectedFile && projectFiles[selectedFile]) {
+      setSelectedFileContent(projectFiles[selectedFile]);
+      console.log('🔄 Synchronisation du contenu du fichier:', selectedFile, projectFiles[selectedFile].length, 'chars');
+    }
+  }, [projectFiles, selectedFile]);
 
   // Fonction pour générer automatiquement un nom de projet
   const generateProjectName = async (prompt: string) => {
@@ -354,118 +359,57 @@ export default function BuilderSession() {
           setCloudflareProjectName(data.cloudflare_project_name);
         }
         
-        // Charger le type de projet
-        if (data.project_type) {
-          setProjectType(data.project_type as 'website' | 'webapp' | 'mobile');
-        }
+        // Type de projet forcé à 'website' (pas de webapp/mobile)
+        // Plus besoin de charger depuis la base de données
         
-        // 📦 Parser et restaurer les fichiers de projet avec validation stricte
+        // BUG FIX #3: Parser simplifié - format object uniquement
         console.log('📦 Starting project files restoration...');
         try {
           const projectFilesData = data.project_files as any;
-          console.log('📦 Raw project_files data type:', typeof projectFilesData, Array.isArray(projectFilesData) ? `(array, ${projectFilesData.length} items)` : '');
-          
-            if (projectFilesData) {
-            let filesMap: Record<string, string> = {};
-            
-            // 🔧 Support de 3 formats: array, object direct, ou object-qui-était-un-array
-            if (Array.isArray(projectFilesData) && projectFilesData.length > 0) {
-              // Format array: [{path, content}, ...]
-              console.log('📦 Loading project files (array format):', projectFilesData.length, 'files');
-              projectFilesData.forEach((file: any, index: number) => {
-                if (file.path && file.content) {
-                  filesMap[file.path] = file.content;
-                  console.log(`  ✅ [${index + 1}/${projectFilesData.length}] ${file.path} : ${file.content.length} chars`);
-                } else {
-                  console.warn(`  ⚠️ [${index + 1}/${projectFilesData.length}] Invalid file structure:`, { hasPath: !!file.path, hasContent: !!file.content });
-                }
-              });
-            } else if (typeof projectFilesData === 'object' && Object.keys(projectFilesData).length > 0) {
-              // Détecter si c'est un objet-qui-était-un-array: clés numériques avec {path, content}
-              const firstKey = Object.keys(projectFilesData)[0];
-              const firstValue = projectFilesData[firstKey];
-              
-              if (/^\d+$/.test(firstKey) && typeof firstValue === 'object' && firstValue.path && firstValue.content) {
-                // Format object-array corrompu: {"0": {path, content}, "1": {...}}
-                console.log('📦 Loading project files (corrupted array-as-object format):', Object.keys(projectFilesData).length, 'files');
-                Object.values(projectFilesData).forEach((file: any, index: number) => {
-                  if (file.path && file.content) {
-                    filesMap[file.path] = file.content;
-                    console.log(`  ✅ [${index + 1}] ${file.path} : ${file.content.length} chars`);
-                  } else {
-                    console.warn(`  ⚠️ [${index + 1}] Invalid file structure:`, { hasPath: !!file.path, hasContent: !!file.content });
-                  }
-                });
+
+          if (projectFilesData && typeof projectFilesData === 'object' && !Array.isArray(projectFilesData)) {
+            // Format object standard: {path: content, ...}
+            const filesMap: Record<string, string> = {};
+
+            // Valider que toutes les clés sont des noms de fichiers valides
+            Object.entries(projectFilesData).forEach(([path, content]) => {
+              if (typeof path === 'string' && path.includes('.') && typeof content === 'string') {
+                filesMap[path] = content;
               } else {
-                // Format object standard: {path: content, ...}
-                console.log('📦 Loading project files (object format):', Object.keys(projectFilesData).length, 'files');
-                filesMap = projectFilesData;
-                Object.entries(filesMap).forEach(([path, content], index) => {
-                  console.log(`  ✅ [${index + 1}/${Object.keys(filesMap).length}] ${path} : ${typeof content === 'string' ? content.length : 0} chars`);
-                });
-              }
-            }
-            
-            // 🔍 Validation finale des noms de fichiers
-            const validatedFilesMap: Record<string, string> = {};
-            let hasInvalidKeys = false;
-            
-            Object.entries(filesMap).forEach(([key, value]) => {
-              // Vérifier que la clé est un nom de fichier valide ET que la valeur est une string
-              if (typeof key === 'string' && key.includes('.') && !(/^\d+$/.test(key)) && typeof value === 'string') {
-                validatedFilesMap[key] = value;
-              } else {
-                console.warn('⚠️ Invalid file entry detected and skipped:', { key, valueType: typeof value });
-                hasInvalidKeys = true;
+                console.warn('⚠️ Invalid file entry skipped:', path);
               }
             });
-            
-            if (hasInvalidKeys) {
-              console.warn('⚠️ Some invalid file keys were found and removed from the project');
-            }
-            
-            if (Object.keys(validatedFilesMap).length > 0) {
-              console.log('✅ =====================================');
-              console.log('✅ PROJECT FILES RESTORATION SUCCESS');
-              console.log('✅ Total files restored:', Object.keys(validatedFilesMap).length);
-              console.log('✅ Files:', Object.keys(validatedFilesMap).join(', '));
-              console.log('✅ =====================================');
-              
-              updateFiles(validatedFilesMap, false); // Pas de sync car c'est un chargement initial
-              setGeneratedHtml(validatedFilesMap['index.html'] || '');
-              
+
+            const fileCount = Object.keys(filesMap).length;
+            if (fileCount > 0) {
+              console.log('✅ PROJECT FILES RESTORED:', fileCount, 'files');
+              console.log('✅ Files:', Object.keys(filesMap).join(', '));
+
+              updateFiles(filesMap, false); // Pas de sync car c'est un chargement initial
+              setGeneratedHtml(filesMap['index.html'] || '');
+
               // Charger le favicon s'il existe
-              const faviconFile = Object.keys(validatedFilesMap).find(path => path.startsWith('public/favicon.'));
+              const faviconFile = Object.keys(filesMap).find(path => path.startsWith('public/favicon.'));
               if (faviconFile) {
-                setCurrentFavicon(validatedFilesMap[faviconFile]);
-                console.log('✅ Favicon restored:', faviconFile);
+                setCurrentFavicon(filesMap[faviconFile]);
               }
-              
-              const firstFile = Object.keys(validatedFilesMap)[0];
+
+              // Sélectionner le premier fichier
+              const firstFile = Object.keys(filesMap)[0];
               if (firstFile) {
                 setSelectedFile(firstFile);
-                setSelectedFileContent(validatedFilesMap[firstFile]);
-                console.log('✅ First file selected:', firstFile);
+                setSelectedFileContent(filesMap[firstFile]);
               }
             } else {
-              console.error('❌ =====================================');
-              console.error('❌ PROJECT FILES RESTORATION FAILED');
-              console.error('❌ No files found after parsing');
-              console.error('❌ =====================================');
-              // Pas besoin d'initialiser à vide, le hook le gère
+              console.warn('⚠️ No valid files found in project_files');
               setGeneratedHtml('');
             }
           } else {
-            console.error('❌ =====================================');
-            console.error('❌ PROJECT FILES DATA IS NULL/UNDEFINED');
-            console.error('❌ Cannot restore project files');
-            console.error('❌ =====================================');
-            // Pas besoin d'initialiser à vide, le hook le gère
+            console.warn('⚠️ project_files is not a valid object or is empty');
             setGeneratedHtml('');
           }
         } catch (err) {
           console.error('❌ Error parsing project_files:', err);
-          // Pas besoin d'initialiser à vide, le hook le gère
           setGeneratedHtml('');
         }
 
@@ -476,7 +420,12 @@ export default function BuilderSession() {
           .eq('session_id', sessionId)
           .order('created_at', { ascending: true });
 
-        if (!chatError && chatMessages && chatMessages.length > 0) {
+        // BUG FIX #1: Supprimer le fallback obsolète sur data.messages
+        if (chatError) {
+          console.error('❌ Erreur lors du chargement des messages:', chatError);
+          // Initialiser avec un tableau vide plutôt que fallback obsolète
+          setMessages([]);
+        } else if (chatMessages && chatMessages.length > 0) {
           const loadedMessages: Message[] = chatMessages.map(msg => {
             const metadata = msg.metadata as any;
             return {
@@ -487,14 +436,16 @@ export default function BuilderSession() {
               created_at: msg.created_at,
               metadata: metadata ? {
                 ...metadata,
+                // BUG FIX #4: S'assurer que tous les messages ont un type
+                type: metadata.type || 'generation',
                 total_tokens: metadata.total_tokens ?? msg.token_count ?? 0,
                 input_tokens: metadata.input_tokens ?? 0,
                 output_tokens: metadata.output_tokens ?? 0
-              } : undefined
+              } : { type: 'generation' as const }
             };
           });
           setMessages(loadedMessages);
-          
+
           // Extraire les images attachées du premier message utilisateur s'il y en a
           const firstUserMessage = loadedMessages.find(m => m.role === 'user');
           if (firstUserMessage?.metadata?.attachedFiles) {
@@ -502,9 +453,9 @@ export default function BuilderSession() {
             setAttachedFiles(firstUserMessage.metadata.attachedFiles);
           }
         } else {
-          // Fallback sur l'ancienne méthode si pas de messages dans chat_messages
-          const parsedMessages = Array.isArray(data.messages) ? data.messages as any[] : [];
-          setMessages(parsedMessages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
+          // Pas de messages dans la base, c'est une nouvelle session
+          console.log('📝 Nouvelle session, aucun message à charger');
+          setMessages([]);
         }
         
         // Charger le titre et s'assurer qu'il est synchronisé avec cloudflare_project_name
@@ -2305,72 +2256,9 @@ export default function BuilderSession() {
         />
 
         <div className="flex items-center gap-3">
-          <div 
-            className="flex items-center gap-1 rounded-md border p-0.5"
-            style={{
-              backgroundColor: isDark ? '#181818' : '#ffffff',
-              borderColor: isDark ? '#1F1F20' : 'rgba(203, 213, 225, 1)'
-            }}
-          >
-            <Button
-              variant="iconOnly"
-              size="sm"
-              className={`h-7 px-2 text-xs ${viewMode === 'preview' ? 'text-[#03A5C0]' : ''}`}
-              onClick={() => setViewMode('preview')}
-            >
-              <Eye className="w-3 h-3 mr-1" />
-              Preview
-            </Button>
-            <Button
-              variant="iconOnly"
-              size="sm"
-              className={`h-7 px-2 text-xs ${viewMode === 'code' ? 'text-[#03A5C0]' : ''}`}
-              onClick={() => setViewMode('code')}
-            >
-              <Code2 className="w-3 h-3 mr-1" />
-              Code
-            </Button>
-            <Button
-              variant="iconOnly"
-              size="sm"
-              className={`h-7 px-2 text-xs ${viewMode === 'analytics' ? 'text-[#03A5C0]' : ''}`}
-              onClick={() => setViewMode('analytics')}
-            >
-              <BarChart3 className="w-3 h-3 mr-1" />
-              Analytics
-            </Button>
-          </div>
-
-          <div className="h-6 w-px bg-slate-300" />
+          {/* Boutons Preview/Code/Analytics supprimés - on ne montre que la preview */}
 
           <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')}
-                    variant="iconOnly"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    style={{
-                      borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
-                      backgroundColor: 'transparent',
-                      color: isDark ? 'hsl(var(--foreground))' : '#64748b',
-                    }}
-                  >
-                    {previewMode === 'desktop' ? (
-                      <Smartphone className="w-3.5 h-3.5" />
-                    ) : (
-                      <Monitor className="w-3.5 h-3.5" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p>{previewMode === 'desktop' ? 'Mode mobile' : 'Mode desktop'}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -2649,7 +2537,6 @@ export default function BuilderSession() {
                 chatMode={chatMode}
                 onChatToggle={() => setChatMode(!chatMode)}
                 projectType={projectType}
-                onProjectTypeChange={setProjectType}
                 attachedFiles={attachedFiles}
                 onRemoveFile={removeFile}
                 onFileSelect={async (files) => {
