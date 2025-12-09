@@ -106,9 +106,9 @@ export function SettingsSidebar({
     navigate('/builder');
   };
   return <div className="h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl flex flex-col shadow-lg">
-      <div className="flex-shrink-0 border-b border-border/30 px-[25px] py-[5px]">
-        <img src="/lovable-uploads/magellan-logo-light.png" alt="Magellan" className="h-16 dark:hidden" />
-        <img src="/lovable-uploads/magellan-logo-dark.png" alt="Magellan" className="h-16 hidden dark:block" />
+      <div className="flex-shrink-0 border-b border-border/30 px-4 py-4 flex items-center justify-center">
+        <img src="/lovable-uploads/magellan-logo-dark.png" alt="Magellan" className="h-10 dark:hidden" />
+        <img src="/lovable-uploads/magellan-logo-light.png" alt="Magellan" className="h-10 hidden dark:block" />
       </div>
 
       <ScrollArea className="flex-1">
