@@ -13,14 +13,22 @@ export default function Dashboard() {
   const [currentSection, setCurrentSection] = useState<SettingsSection>(
     (searchParams.get('section') as SettingsSection) || 'siteweb'
   );
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    searchParams.get('projectId')
+  );
 
   useEffect(() => {
     checkAuth();
   }, []);
 
+  // Synchroniser l'URL avec l'état
   useEffect(() => {
-    setSearchParams({ section: currentSection });
-  }, [currentSection, setSearchParams]);
+    const params: Record<string, string> = { section: currentSection };
+    if (selectedProjectId) {
+      params.projectId = selectedProjectId;
+    }
+    setSearchParams(params);
+  }, [currentSection, selectedProjectId, setSearchParams]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -28,6 +36,16 @@ export default function Dashboard() {
       navigate("/auth");
       return;
     }
+  };
+
+  const handleSectionChange = (section: SettingsSection) => {
+    setCurrentSection(section);
+    // Le projectId est préservé automatiquement via l'useEffect
+  };
+
+  const handleProjectSelect = (projectId: string) => {
+    setSelectedProjectId(projectId);
+    setCurrentSection('siteweb');
   };
 
   return (
@@ -48,7 +66,9 @@ export default function Dashboard() {
         <div className="w-64 flex-shrink-0">
           <SettingsSidebar 
             currentSection={currentSection} 
-            setSection={setCurrentSection} 
+            setSection={handleSectionChange}
+            selectedProjectId={selectedProjectId}
+            onProjectSelect={handleProjectSelect}
           />
         </div>
 
