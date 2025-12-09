@@ -46,10 +46,14 @@ const menuItems: {
 interface SettingsSidebarProps {
   currentSection: SettingsSection;
   setSection: (section: SettingsSection) => void;
+  selectedProjectId?: string | null;
+  onProjectSelect?: (projectId: string) => void;
 }
 export function SettingsSidebar({
   currentSection,
-  setSection
+  setSection,
+  selectedProjectId,
+  onProjectSelect
 }: SettingsSidebarProps) {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -94,7 +98,9 @@ export function SettingsSidebar({
     }
   };
   const handleProjectClick = (projectId: string) => {
-    navigate(`/dashboard?section=siteweb&projectId=${projectId}`);
+    if (onProjectSelect) {
+      onProjectSelect(projectId);
+    }
   };
   const handleNewProject = () => {
     navigate('/builder');
@@ -120,7 +126,8 @@ export function SettingsSidebar({
             {isProjectsOpen && <div className="ml-4 mt-1 space-y-1 border-l border-border/30 pl-3">
                 {isLoading ? <div className="text-sm text-muted-foreground py-2 px-3">Chargement...</div> : projects.length === 0 ? <div className="text-sm text-muted-foreground py-2 px-3">Aucun projet</div> : projects.map(project => {
               const ProjectIcon = getProjectIcon(project.project_type);
-              return <button key={project.id} onClick={() => handleProjectClick(project.id)} className={cn("w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors", "text-foreground/70 hover:text-[#03A5C0]", "focus:outline-none truncate")}>
+              const isSelected = selectedProjectId === project.id;
+              return <button key={project.id} onClick={() => handleProjectClick(project.id)} className={cn("w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors", isSelected ? "text-[#03A5C0] font-medium" : "text-foreground/70 hover:text-[#03A5C0]", "focus:outline-none truncate")}>
                         <ProjectIcon className="h-4 w-4 flex-shrink-0" />
                         <span className="truncate">{project.title || 'Sans titre'}</span>
                       </button>;
