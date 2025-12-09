@@ -167,7 +167,7 @@ export function autoFixIssues(
   return fixed;
 }
 
-// Application des modifications (simulation)
+// Application RÉELLE des modifications via parsers AST
 export function applyModifications(
   modifications: ASTModification[],
   projectFiles: Record<string, string>
@@ -193,12 +193,24 @@ export function applyModifications(
         continue;
       }
       
+      const ext = filePath.split('.').pop()?.toLowerCase();
+      
       for (const mod of fileMods) {
         console.log(`[apply] Applying ${mod.type} to ${filePath}: target=${mod.target}`);
         
-        // Simulation: ajouter un commentaire indiquant la modification
-        const comment = getModificationComment(mod, filePath);
-        content = addModificationMarker(content, comment, filePath);
+        switch (mod.type) {
+          case 'css-change':
+            content = applyCSSModification(content, mod);
+            break;
+          case 'html-change':
+            content = applyHTMLModification(content, mod);
+            break;
+          case 'jsx-change':
+            content = applyJSXModification(content, mod, ext || 'tsx');
+            break;
+          default:
+            console.warn(`[apply] Unknown modification type: ${mod.type}`);
+        }
       }
       
       updatedFiles[filePath] = content;
@@ -215,37 +227,188 @@ export function applyModifications(
   };
 }
 
-// Génération du commentaire de modification
-function getModificationComment(mod: ASTModification, _filePath: string): string {
-  switch (mod.type) {
-    case 'css-change':
-      return `/* unified-modify: ${mod.type} - ${mod.target} { ${mod.property}: ${mod.value} } */`;
-    case 'html-change':
-      return `<!-- unified-modify: ${mod.type} - ${mod.target} ${mod.attribute}="${mod.value}" -->`;
-    case 'jsx-change':
-      return `{/* unified-modify: ${mod.type} - ${mod.target} */}`;
-    default:
-      return `/* unified-modify: unknown modification type */`;
+// Parser CSS simplifié pour Deno (sans postcss)
+function applyCSSModification(content: string, mod: ASTModification): string {
+  const { target, property, value } = mod;
+  
+  if (!target || !property) {
+    console.warn('[css] Missing target or property');
+    return content;
   }
+  
+  // Regex pour trouver le sélecteur et son bloc
+  const selectorRegex = new RegExp(
+    `(${escapeRegex(target)}\\s*\\{[^}]*)\\b${escapeRegex(property)}\\s*:\\s*[^;]+;`,
+    'g'
+  );
+  
+  if (selectorRegex.test(content)) {
+    // Propriété existe, la remplacer
+    content = content.replace(selectorRegex, `$1${property}: ${value};`);
+    console.log(`[css] Updated ${target} { ${property}: ${value} }`);
+  } else {
+    // Vérifier si le sélecteur existe
+    const selectorOnlyRegex = new RegExp(`${escapeRegex(target)}\\s*\\{([^}]*)\\}`, 'g');
+    const match = selectorOnlyRegex.exec(content);
+    
+    if (match) {
+      // Ajouter la propriété au bloc existant
+      const updatedBlock = `${target} {\n  ${property}: ${value};\n${match[1]}}`;
+      content = content.replace(selectorOnlyRegex, updatedBlock);
+      console.log(`[css] Added ${property}: ${value} to ${target}`);
+    } else {
+      // Créer un nouveau bloc
+      content += `\n\n${target} {\n  ${property}: ${value};\n}`;
+      console.log(`[css] Created new rule ${target} { ${property}: ${value} }`);
+    }
+  }
+  
+  return content;
 }
 
-// Ajouter le marqueur de modification au fichier
-function addModificationMarker(content: string, comment: string, filePath: string): string {
-  const ext = filePath.split('.').pop()?.toLowerCase();
+// Parser HTML simplifié pour Deno (sans parse5)
+function applyHTMLModification(content: string, mod: ASTModification): string {
+  const { target, attribute, value } = mod;
   
-  switch (ext) {
-    case 'css':
-      return content + '\n' + comment;
-    case 'html':
-      return content + '\n' + comment;
-    case 'tsx':
-    case 'jsx':
-    case 'ts':
-    case 'js':
-      return content + '\n' + comment;
-    default:
-      return content + '\n// ' + comment;
+  if (!target) {
+    console.warn('[html] Missing target');
+    return content;
   }
+  
+  // Construire regex pour trouver l'élément
+  let elementRegex: RegExp;
+  
+  if (target.startsWith('.')) {
+    // Sélecteur de classe
+    const className = target.slice(1);
+    elementRegex = new RegExp(`(<[^>]*class=["'][^"']*${escapeRegex(className)}[^"']*["'][^>]*)(>)`, 'gi');
+  } else if (target.startsWith('#')) {
+    // Sélecteur d'ID
+    const id = target.slice(1);
+    elementRegex = new RegExp(`(<[^>]*id=["']${escapeRegex(id)}["'][^>]*)(>)`, 'gi');
+  } else {
+    // Sélecteur de tag
+    elementRegex = new RegExp(`(<${escapeRegex(target)}[^>]*)(>)`, 'gi');
+  }
+  
+  if (attribute && value !== undefined) {
+    // Modifier ou ajouter un attribut
+    const attrRegex = new RegExp(`(${attribute}=["'])[^"']*(['"])`, 'gi');
+    
+    content = content.replace(elementRegex, (match, beforeClose, close) => {
+      if (attrRegex.test(beforeClose)) {
+        // Attribut existe, le remplacer
+        return beforeClose.replace(attrRegex, `$1${value}$2`) + close;
+      } else {
+        // Ajouter l'attribut
+        return `${beforeClose} ${attribute}="${value}"${close}`;
+      }
+    });
+    console.log(`[html] Updated ${target} ${attribute}="${value}"`);
+  } else if (value !== undefined) {
+    // Modifier le contenu textuel
+    const contentRegex = new RegExp(`(<${escapeRegex(target)}[^>]*>)[^<]*(</${escapeRegex(target)}>)`, 'gi');
+    content = content.replace(contentRegex, `$1${value}$2`);
+    console.log(`[html] Updated ${target} content to "${value.substring(0, 50)}..."`);
+  }
+  
+  return content;
+}
+
+// Parser JSX/TSX simplifié pour Deno (sans babel)
+function applyJSXModification(content: string, mod: ASTModification, _ext: string): string {
+  const { target, changes, value } = mod;
+  
+  if (!target) {
+    console.warn('[jsx] Missing target');
+    return content;
+  }
+  
+  // Si changes contient du code complet, essayer un remplacement intelligent
+  if (changes) {
+    // Chercher le composant ou la fonction ciblée
+    const componentRegex = new RegExp(
+      `(function\\s+${escapeRegex(target)}|const\\s+${escapeRegex(target)}\\s*=)`,
+      'g'
+    );
+    
+    if (componentRegex.test(content)) {
+      // Pour les changements de props/attributs dans JSX
+      if (typeof changes === 'object' && changes !== null && 'props' in (changes as Record<string, unknown>)) {
+        const changesObj = changes as Record<string, unknown>;
+        const propsChanges = changesObj.props as Record<string, string>;
+        for (const [propName, propValue] of Object.entries(propsChanges)) {
+          // Regex pour trouver et modifier les props
+          const propRegex = new RegExp(
+            `(<${escapeRegex(target)}[^>]*)(${escapeRegex(propName)}=\\{[^}]+\\}|${escapeRegex(propName)}=["'][^"']*["'])([^>]*>)`,
+            'g'
+          );
+          
+          if (propRegex.test(content)) {
+            content = content.replace(propRegex, `$1${propName}="${propValue}"$3`);
+          } else {
+            // Ajouter la prop si elle n'existe pas
+            const addPropRegex = new RegExp(`(<${escapeRegex(target)})([^>]*>)`, 'g');
+            content = content.replace(addPropRegex, `$1 ${propName}="${propValue}"$2`);
+          }
+          console.log(`[jsx] Updated prop ${propName}="${propValue}" on ${target}`);
+        }
+      }
+      
+      // Pour les changements de className
+      if (typeof changes === 'object' && changes !== null && 'className' in (changes as Record<string, unknown>)) {
+        const changesObj = changes as Record<string, unknown>;
+        const classNameRegex = new RegExp(
+          `(<${escapeRegex(target)}[^>]*)(className=\\{[^}]+\\}|className=["'][^"']*["'])([^>]*>)`,
+          'g'
+        );
+        
+        if (classNameRegex.test(content)) {
+          content = content.replace(classNameRegex, `$1className="${changesObj.className}"$3`);
+        } else {
+          const addClassRegex = new RegExp(`(<${escapeRegex(target)})([^>]*>)`, 'g');
+          content = content.replace(addClassRegex, `$1 className="${changesObj.className}"$2`);
+        }
+        console.log(`[jsx] Updated className on ${target}`);
+      }
+      
+      // Pour les changements de style inline
+      if (typeof changes === 'object' && changes !== null && 'style' in (changes as Record<string, unknown>)) {
+        const changesObj = changes as Record<string, unknown>;
+        const styleStr = JSON.stringify(changesObj.style);
+        const styleRegex = new RegExp(
+          `(<${escapeRegex(target)}[^>]*)(style=\\{[^}]+\\})([^>]*>)`,
+          'g'
+        );
+        
+        if (styleRegex.test(content)) {
+          content = content.replace(styleRegex, `$1style={${styleStr}}$3`);
+        } else {
+          const addStyleRegex = new RegExp(`(<${escapeRegex(target)})([^>]*>)`, 'g');
+          content = content.replace(addStyleRegex, `$1 style={${styleStr}}$2`);
+        }
+        console.log(`[jsx] Updated style on ${target}`);
+      }
+    }
+  }
+  
+  // Si value contient du code de remplacement direct
+  if (value && typeof value === 'string') {
+    // Remplacement simple basé sur la cible
+    const simpleRegex = new RegExp(
+      `(<${escapeRegex(target)}[^>]*>)[^<]*(</${escapeRegex(target)}>)`,
+      'g'
+    );
+    content = content.replace(simpleRegex, `$1${value}$2`);
+    console.log(`[jsx] Updated ${target} content`);
+  }
+  
+  return content;
+}
+
+// Utilitaire pour échapper les caractères regex
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // Message de complétion
