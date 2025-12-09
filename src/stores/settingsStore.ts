@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-type SettingsSection = 'projects' | 'general' | 'profile' | 'subscription' | 'integrations';
+type SettingsSection = 'general' | 'profile' | 'subscription' | 'integrations';
 
 interface SettingsStore {
   isOpen: boolean;
@@ -12,8 +12,8 @@ interface SettingsStore {
 
 export const useSettingsStore = create<SettingsStore>((set) => ({
   isOpen: false,
-  currentSection: 'projects',
-  openSettings: (section = 'projects') => set({ isOpen: true, currentSection: section }),
+  currentSection: 'general',
+  openSettings: (section = 'general') => set({ isOpen: true, currentSection: section }),
   closeSettings: () => set({ isOpen: false }),
   setSection: (section) => set({ currentSection: section }),
 }));

@@ -3,22 +3,20 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useThemeStore } from '@/stores/themeStore';
 import { SettingsSidebar } from "@/components/settings/SettingsSidebar";
-import { MyProjects } from "@/components/settings/sections/MyProjects";
 import { General } from "@/components/settings/sections/General";
 import { Profile } from "@/components/settings/sections/Profile";
 import { Subscription } from "@/components/settings/sections/Subscription";
 import { Integrations } from "@/components/settings/sections/Integrations";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-
-type SettingsSection = 'projects' | 'general' | 'profile' | 'subscription' | 'integrations';
+type SettingsSection = 'general' | 'profile' | 'subscription' | 'integrations';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { isDark } = useThemeStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentSection, setCurrentSection] = useState<SettingsSection>(
-    (searchParams.get('section') as SettingsSection) || 'projects'
+    (searchParams.get('section') as SettingsSection) || 'general'
   );
 
   useEffect(() => {
@@ -26,7 +24,6 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    // Mettre à jour l'URL quand la section change
     setSearchParams({ section: currentSection });
   }, [currentSection, setSearchParams]);
 
@@ -40,8 +37,6 @@ export default function Dashboard() {
 
   const renderSection = () => {
     switch (currentSection) {
-      case 'projects':
-        return <MyProjects />;
       case 'general':
         return <General />;
       case 'profile':
@@ -51,7 +46,7 @@ export default function Dashboard() {
       case 'integrations':
         return <Integrations />;
       default:
-        return <MyProjects />;
+        return <General />;
     }
   };
 

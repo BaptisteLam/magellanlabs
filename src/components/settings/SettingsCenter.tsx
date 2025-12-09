@@ -1,7 +1,6 @@
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { SettingsSidebar } from './SettingsSidebar';
-import { MyProjects } from './sections/MyProjects';
 import { General } from './sections/General';
 import { Profile } from './sections/Profile';
 import { Subscription } from './sections/Subscription';
@@ -14,8 +13,6 @@ export function SettingsCenter() {
 
   const renderSection = () => {
     switch (currentSection) {
-      case 'projects':
-        return <MyProjects />;
       case 'general':
         return <General />;
       case 'profile':
@@ -25,7 +22,7 @@ export function SettingsCenter() {
       case 'integrations':
         return <Integrations />;
       default:
-        return <MyProjects />;
+        return <General />;
     }
   };
 
@@ -38,7 +35,7 @@ export function SettingsCenter() {
         )}
       >
         <div className="flex h-full">
-          <SettingsSidebar currentSection={currentSection} setSection={setSection} />
+          <SettingsSidebar currentSection={currentSection as any} setSection={setSection as any} />
 
           <ScrollArea className="flex-1">
             <div className="p-8">{renderSection()}</div>
