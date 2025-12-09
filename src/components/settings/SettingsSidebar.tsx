@@ -138,7 +138,7 @@ export function SettingsSidebar({
           {menuItems.map(item => {
           const Icon = item.icon;
           const isActive = currentSection === item.id;
-          return <button key={item.id} onClick={() => setSection(item.id)} className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors", isActive ? "text-[#03A5C0] bg-[#03A5C0]/10" : "text-foreground/80 hover:text-[#03A5C0]", "focus:outline-none")}>
+          return <button key={item.id} onClick={() => setSection(item.id)} className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors", isActive ? "text-[#03A5C0]" : "text-foreground/80 hover:text-[#03A5C0]", "focus:outline-none")}>
                 <Icon className="h-5 w-5" />
                 <span>{item.label}</span>
               </button>;
@@ -148,7 +148,7 @@ export function SettingsSidebar({
 
       {/* Paramètres en bas */}
       <div className="p-4 border-t border-border/30 flex-shrink-0">
-        <button onClick={() => setSection('parametres')} className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors", currentSection === 'parametres' ? "text-[#03A5C0] bg-[#03A5C0]/10" : "text-foreground/80 hover:text-[#03A5C0]", "focus:outline-none")}>
+        <button onClick={() => setSection('parametres')} className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors", currentSection === 'parametres' ? "text-[#03A5C0]" : "text-foreground/80 hover:text-[#03A5C0]", "focus:outline-none")}>
           <Settings className="h-5 w-5" />
           <span>Paramètres</span>
         </button>
