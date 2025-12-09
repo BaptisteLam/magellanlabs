@@ -73,7 +73,7 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
   };
 
   const handleProjectClick = (projectId: string) => {
-    navigate(`/project/${projectId}`);
+    navigate(`/dashboard?section=siteweb&projectId=${projectId}`);
   };
 
   const handleNewProject = () => {
