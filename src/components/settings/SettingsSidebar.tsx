@@ -86,12 +86,12 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
         <img 
           src="/lovable-uploads/magellan-logo-light.png" 
           alt="Magellan" 
-          className="h-8 dark:hidden"
+          className="h-12 dark:hidden"
         />
         <img 
           src="/lovable-uploads/magellan-logo-dark.png" 
           alt="Magellan" 
-          className="h-8 hidden dark:block"
+          className="h-12 hidden dark:block"
         />
       </div>
 
