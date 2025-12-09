@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, User, CreditCard, Plug, LogOut, ChevronDown, ChevronRight, Globe, FileCode, Smartphone } from 'lucide-react';
+import { Settings, User, CreditCard, Plug, LogOut, ChevronDown, ChevronRight, Globe, FileCode, Smartphone, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
@@ -87,12 +87,13 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
     }
   };
 
-  const handleProjectClick = (projectId: string, projectType: string | null) => {
-    if (projectType === 'webapp') {
-      navigate(`/builder-app/${projectId}`);
-    } else {
-      navigate(`/builder/${projectId}`);
-    }
+  const handleProjectClick = (projectId: string) => {
+    // Naviguer vers le dashboard du projet
+    navigate(`/project/${projectId}`);
+  };
+
+  const handleNewProject = () => {
+    navigate('/builder');
   };
 
   return (
@@ -136,7 +137,7 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
                     return (
                       <button
                         key={project.id}
-                        onClick={() => handleProjectClick(project.id, project.project_type)}
+                        onClick={() => handleProjectClick(project.id)}
                         className={cn(
                           "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
                           "text-foreground/70 hover:text-[#03A5C0]",
@@ -149,6 +150,19 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
                     );
                   })
                 )}
+
+                {/* Bouton Nouveau projet */}
+                <button
+                  onClick={handleNewProject}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mt-2",
+                    "text-[#03A5C0] hover:text-[#03A5C0]/80",
+                    "focus:outline-none border border-dashed border-[#03A5C0]/50 hover:border-[#03A5C0]"
+                  )}
+                >
+                  <Plus className="h-4 w-4 flex-shrink-0" />
+                  <span>Nouveau projet</span>
+                </button>
               </div>
             )}
           </div>
