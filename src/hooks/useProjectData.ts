@@ -91,6 +91,9 @@ const tableNames: Record<SectionName, string> = {
   finance: 'project_finance',
 };
 
+// Helper to get supabase client with any type to avoid type checking on dynamic table names
+const getTable = (tableName: string) => (supabase as any).from(tableName);
+
 export function useProjectData(projectId: string | null, section: SectionName) {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,16 +114,14 @@ export function useProjectData(projectId: string | null, section: SectionName) {
 
     try {
       if (isSingleRecord) {
-        const { data: result, error: fetchError } = await supabase
-          .from(tableName)
+        const { data: result, error: fetchError } = await getTable(tableName)
           .select('*')
           .eq('project_id', projectId)
           .maybeSingle();
         if (fetchError) throw fetchError;
         setData(result);
       } else {
-        const { data: result, error: fetchError } = await supabase
-          .from(tableName)
+        const { data: result, error: fetchError } = await getTable(tableName)
           .select('*')
           .eq('project_id', projectId)
           .order('created_at', { ascending: false });
@@ -142,8 +143,7 @@ export function useProjectData(projectId: string | null, section: SectionName) {
   const create = async (record: any) => {
     if (!projectId) return null;
     try {
-      const { data: result, error } = await supabase
-        .from(tableName)
+      const { data: result, error } = await getTable(tableName)
         .insert({ ...record, project_id: projectId })
         .select()
         .single();
@@ -158,8 +158,7 @@ export function useProjectData(projectId: string | null, section: SectionName) {
 
   const update = async (id: string, updates: any) => {
     try {
-      const { data: result, error } = await supabase
-        .from(tableName)
+      const { data: result, error } = await getTable(tableName)
         .update(updates)
         .eq('id', id)
         .select()
@@ -175,8 +174,7 @@ export function useProjectData(projectId: string | null, section: SectionName) {
 
   const remove = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from(tableName)
+      const { error } = await getTable(tableName)
         .delete()
         .eq('id', id);
       if (error) throw error;
@@ -190,8 +188,7 @@ export function useProjectData(projectId: string | null, section: SectionName) {
   const upsert = async (record: any) => {
     if (!projectId) return null;
     try {
-      const { data: result, error } = await supabase
-        .from(tableName)
+      const { data: result, error } = await getTable(tableName)
         .upsert({ ...record, project_id: projectId })
         .select()
         .single();
