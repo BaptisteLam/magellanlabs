@@ -82,6 +82,7 @@ export default function BuilderSession() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [showPublishSuccess, setShowPublishSuccess] = useState(false);
+  const isSessionLoadingRef = useRef(false);
   
   // Hook optimisé pour la gestion des fichiers avec cache et sync
   const {
@@ -200,11 +201,19 @@ export default function BuilderSession() {
   };
 
 
-  // Charger la session depuis le cache puis Supabase
+  // Charger la session depuis le cache puis Supabase (source de vérité unique pour projectFiles)
   useEffect(() => {
     const loadSessionWithCache = async () => {
+      if (isSessionLoadingRef.current) {
+        console.log('⏳ Session load already in progress, skipping duplicate call');
+        return;
+      }
+
+      isSessionLoadingRef.current = true;
+
       if (!sessionId) {
         console.warn('⚠️ No sessionId, skipping load');
+        isSessionLoadingRef.current = false;
         return;
       }
 
@@ -233,6 +242,7 @@ export default function BuilderSession() {
         console.error('❌ Error in loadSessionWithCache:', error);
       } finally {
         setSessionLoading(false);
+        isSessionLoadingRef.current = false;
       }
     };
 

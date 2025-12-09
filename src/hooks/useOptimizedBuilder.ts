@@ -15,7 +15,13 @@ interface UseOptimizedBuilderOptions {
   initialFiles?: Record<string, string>;
   autoSave?: boolean;
   debounceMs?: number;
-  autoLoad?: boolean; // Désactiver le chargement automatique si false
+  /**
+   * Contrôle le chargement automatique de la session.
+   *
+   * Désactivé par défaut pour laisser l'appelant gérer le flux de chargement
+   * (ex: BuilderSession utilise loadSessionWithCache comme source de vérité).
+   */
+  autoLoad?: boolean;
 }
 
 export function useOptimizedBuilder({
@@ -23,7 +29,7 @@ export function useOptimizedBuilder({
   initialFiles = {},
   autoSave = true,
   debounceMs = 2000,
-  autoLoad = true // Par défaut, charger automatiquement
+  autoLoad = false // Par défaut, laisser l'appelant déclencher le chargement
 }: UseOptimizedBuilderOptions) {
   const [projectFiles, setProjectFiles] = useState<Record<string, string>>(initialFiles);
   const [visibleFiles, setVisibleFiles] = useState<string[]>([]);
