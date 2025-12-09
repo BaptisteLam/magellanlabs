@@ -1,35 +1,94 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Receipt, Plus, Download, Trash2, Loader2, Euro } from 'lucide-react';
+import { 
+  Receipt, 
+  Plus, 
+  Search, 
+  Loader2, 
+  Euro,
+  Filter
+} from 'lucide-react';
 import { useProjectData, ProjectInvoice } from '@/hooks/useProjectData';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { FactureCard } from '@/components/settings/FactureCard';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export function Facture() {
   const [searchParams] = useSearchParams();
   const projectId = searchParams.get('projectId');
-  const { data: invoices, isLoading, create, update, remove } = useProjectData(projectId, 'invoices');
+  const { data: invoices, isLoading, create, update, remove, refetch } = useProjectData(projectId, 'invoices');
   
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [isCreating, setIsCreating] = useState(false);
+  const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ 
     invoice_number: '', 
     amount: '', 
     client_name: '',
     client_email: '',
-    due_date: '' 
+    due_date: '',
+    type: 'invoice'
   });
   const [isSaving, setIsSaving] = useState(false);
 
-  const generateInvoiceNumber = () => {
+  // Filtrage des factures
+  const filteredInvoices = useMemo(() => {
+    if (!invoices) return [];
+    
+    return invoices.filter((invoice: ProjectInvoice) => {
+      // Filtre par statut
+      if (statusFilter !== 'all' && invoice.status !== statusFilter) {
+        return false;
+      }
+      
+      // Filtre par type (devis vs facture)
+      if (typeFilter === 'quote' && invoice.status !== 'quote') {
+        return false;
+      }
+      if (typeFilter === 'invoice' && invoice.status === 'quote') {
+        return false;
+      }
+      
+      // Recherche
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        return (
+          invoice.invoice_number.toLowerCase().includes(query) ||
+          (invoice.client_info?.name && invoice.client_info.name.toLowerCase().includes(query)) ||
+          (invoice.client_info?.email && invoice.client_info.email.toLowerCase().includes(query))
+        );
+      }
+      
+      return true;
+    });
+  }, [invoices, searchQuery, statusFilter, typeFilter]);
+
+  const generateInvoiceNumber = (isQuote: boolean = false) => {
     const year = new Date().getFullYear();
     const count = (invoices?.length || 0) + 1;
-    return `FAC-${year}-${String(count).padStart(4, '0')}`;
+    const prefix = isQuote ? 'DEV' : 'FAC';
+    return `${prefix}-${year}-${String(count).padStart(4, '0')}`;
   };
 
   const handleCreate = async () => {
@@ -39,19 +98,21 @@ export function Facture() {
     }
     setIsSaving(true);
     try {
+      const isQuote = formData.type === 'quote';
       await create({ 
-        invoice_number: formData.invoice_number || generateInvoiceNumber(),
+        invoice_number: formData.invoice_number || generateInvoiceNumber(isQuote),
         amount: parseFloat(formData.amount),
         client_info: { 
           name: formData.client_name, 
           email: formData.client_email 
         },
         due_date: formData.due_date || null,
-        status: 'pending'
+        status: isQuote ? 'quote' : 'pending'
       });
-      toast.success('Facture créée');
-      setFormData({ invoice_number: '', amount: '', client_name: '', client_email: '', due_date: '' });
+      toast.success(isQuote ? 'Devis créé' : 'Facture créée');
+      setFormData({ invoice_number: '', amount: '', client_name: '', client_email: '', due_date: '', type: 'invoice' });
       setIsCreating(false);
+      refetch();
     } catch {
       toast.error('Erreur lors de la création');
     } finally {
@@ -66,201 +127,253 @@ export function Facture() {
         paid_at: new Date().toISOString()
       });
       toast.success('Facture marquée comme payée');
+      refetch();
     } catch {
       toast.error('Erreur');
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer cette facture ?')) return;
+  const handleDelete = async () => {
+    if (!deleteInvoiceId) return;
     try {
-      await remove(id);
+      await remove(deleteInvoiceId);
       toast.success('Facture supprimée');
+      setDeleteInvoiceId(null);
     } catch {
       toast.error('Erreur lors de la suppression');
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 border-yellow-500">En attente</Badge>;
-      case 'paid':
-        return <Badge variant="default" className="bg-green-500/20 text-green-600 border-green-500">Payée</Badge>;
-      case 'overdue':
-        return <Badge variant="destructive">En retard</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
-  };
-
+  // Stats
   const totalPending = invoices?.filter(i => i.status === 'pending').reduce((sum, i) => sum + Number(i.amount), 0) || 0;
   const totalPaid = invoices?.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.amount), 0) || 0;
 
   if (!projectId) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Factures</h2>
-          <p className="text-muted-foreground">Sélectionnez un projet pour voir les factures</p>
-        </div>
-        <Card className="rounded-[8px]">
-          <CardContent className="py-8 text-center text-muted-foreground">
-            Aucun projet sélectionné
-          </CardContent>
-        </Card>
+      <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground">
+        <Receipt className="h-16 w-16 mb-4 opacity-30" />
+        <h3 className="text-xl font-semibold text-foreground mb-2">Factures</h3>
+        <p>Sélectionnez un projet pour gérer les factures</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Factures</h2>
-          <p className="text-muted-foreground">Gérez vos factures et paiements</p>
+    <div className="relative flex flex-col min-h-[calc(100vh-200px)]">
+      {/* Header */}
+      <div className="flex items-center justify-between py-4 border-b mb-6">
+        <div className="flex items-center gap-3">
+          <Receipt className="h-5 w-5 text-muted-foreground" />
+          <h2 className="text-lg font-semibold text-foreground">Factures</h2>
+          {invoices && invoices.length > 0 && (
+            <span className="text-sm text-muted-foreground">
+              ({filteredInvoices.length} document{filteredInvoices.length > 1 ? 's' : ''})
+            </span>
+          )}
         </div>
-        <Dialog open={isCreating} onOpenChange={setIsCreating}>
-          <DialogTrigger asChild>
-            <Button 
-              className="rounded-full border-[#03A5C0] bg-[#03A5C0]/10 text-[#03A5C0] hover:bg-[#03A5C0]/20"
-              variant="outline"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle facture
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nouvelle facture</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <Input
-                placeholder={`Numéro (ex: ${generateInvoiceNumber()})`}
-                value={formData.invoice_number}
-                onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-              />
-              <div className="relative">
-                <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="number"
-                  placeholder="Montant"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className="pl-9"
-                />
-              </div>
-              <Input
-                placeholder="Nom du client"
-                value={formData.client_name}
-                onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
-              />
-              <Input
-                type="email"
-                placeholder="Email du client"
-                value={formData.client_email}
-                onChange={(e) => setFormData({ ...formData, client_email: e.target.value })}
-              />
-              <Input
-                type="date"
-                placeholder="Date d'échéance"
-                value={formData.due_date}
-                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-              />
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 w-[200px] h-9 rounded-lg"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[140px] h-9 rounded-lg">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Statut" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous</SelectItem>
+              <SelectItem value="pending">En attente</SelectItem>
+              <SelectItem value="paid">Payées</SelectItem>
+              <SelectItem value="overdue">En retard</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[130px] h-9 rounded-lg">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous</SelectItem>
+              <SelectItem value="invoice">Factures</SelectItem>
+              <SelectItem value="quote">Devis</SelectItem>
+            </SelectContent>
+          </Select>
+          <Dialog open={isCreating} onOpenChange={setIsCreating}>
+            <DialogTrigger asChild>
               <Button 
-                onClick={handleCreate} 
-                disabled={isSaving}
-                className="w-full rounded-full border-[#03A5C0] bg-[#03A5C0]/10 text-[#03A5C0] hover:bg-[#03A5C0]/20"
+                className="h-9 rounded-full border-[#03A5C0] bg-[#03A5C0]/10 text-[#03A5C0] hover:bg-[#03A5C0]/20 px-4"
                 variant="outline"
               >
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Créer la facture
+                <Plus className="h-4 w-4 mr-2" />
+                Nouveau
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="rounded-[8px]">
-          <CardContent className="pt-6">
-            <div className="text-sm text-muted-foreground">En attente</div>
-            <div className="text-2xl font-bold text-yellow-600">{totalPending.toFixed(2)} €</div>
-          </CardContent>
-        </Card>
-        <Card className="rounded-[8px]">
-          <CardContent className="pt-6">
-            <div className="text-sm text-muted-foreground">Payées</div>
-            <div className="text-2xl font-bold text-green-600">{totalPaid.toFixed(2)} €</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="rounded-[8px]">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
-            Historique des factures
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : !invoices || invoices.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Aucune facture pour le moment</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {invoices.map((invoice) => (
-                <div 
-                  key={invoice.id} 
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono font-medium">{invoice.invoice_number}</span>
-                      {getStatusBadge(invoice.status)}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {invoice.client_info?.name || 'Client'} · {format(new Date(invoice.created_at), "d MMM yyyy", { locale: fr })}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="font-bold text-lg">{Number(invoice.amount).toFixed(2)} €</span>
-                    <div className="flex items-center gap-1">
-                      {invoice.status === 'pending' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleMarkPaid(invoice)}
-                          className="text-green-600 hover:text-green-700"
-                        >
-                          Marquer payée
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="icon" title="Télécharger">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(invoice.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nouveau document</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v })}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Type de document" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="invoice">Facture</SelectItem>
+                    <SelectItem value="quote">Devis</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder={`Numéro (ex: ${generateInvoiceNumber(formData.type === 'quote')})`}
+                  value={formData.invoice_number}
+                  onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                />
+                <div className="relative">
+                  <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    placeholder="Montant"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    className="pl-9"
+                  />
                 </div>
-              ))}
+                <Input
+                  placeholder="Nom du client"
+                  value={formData.client_name}
+                  onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
+                />
+                <Input
+                  type="email"
+                  placeholder="Email du client"
+                  value={formData.client_email}
+                  onChange={(e) => setFormData({ ...formData, client_email: e.target.value })}
+                />
+                <Input
+                  type="date"
+                  placeholder="Date d'échéance"
+                  value={formData.due_date}
+                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                />
+                <Button 
+                  onClick={handleCreate} 
+                  disabled={isSaving}
+                  className="w-full rounded-full border-[#03A5C0] bg-[#03A5C0]/10 text-[#03A5C0] hover:bg-[#03A5C0]/20"
+                  variant="outline"
+                >
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Créer
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Stats résumées */}
+      <div className="flex items-center gap-6 mb-6 text-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
+          <span className="text-muted-foreground">En attente:</span>
+          <span className="font-semibold text-yellow-600">{totalPending.toFixed(2)} €</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-green-500/50" />
+          <span className="text-muted-foreground">Payées:</span>
+          <span className="font-semibold text-green-600">{totalPaid.toFixed(2)} €</span>
+        </div>
+      </div>
+
+      {/* Contenu avec flex-1 pour prendre l'espace disponible */}
+      <div className="flex-1 overflow-auto pb-24">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : !filteredInvoices.length ? (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+            <div className="h-16 w-16 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center mb-4">
+              <Receipt className="h-8 w-8 opacity-50" />
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <h3 className="text-xl font-semibold text-foreground mb-2">Aucun document</h3>
+            <p className="mb-4">
+              {searchQuery || statusFilter !== 'all' || typeFilter !== 'all'
+                ? "Aucun résultat trouvé" 
+                : "Créez votre première facture ou devis"}
+            </p>
+            <Button 
+              onClick={() => setIsCreating(true)}
+              variant="outline"
+              className="rounded-lg"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nouveau document
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Grille de cards avec effet de fade en bas */}
+            <div className="relative">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredInvoices.map((invoice: ProjectInvoice, index: number) => {
+                  // Calculer l'opacité en fonction de la position (fade vers le bas)
+                  const totalItems = filteredInvoices.length;
+                  const rowIndex = Math.floor(index / 3);
+                  const totalRows = Math.ceil(totalItems / 3);
+                  const fadeStart = Math.max(0, totalRows - 2);
+                  
+                  let opacity = 1;
+                  if (rowIndex >= fadeStart && totalRows > 2) {
+                    const fadeProgress = (rowIndex - fadeStart + 1) / (totalRows - fadeStart);
+                    opacity = Math.max(0.3, 1 - fadeProgress * 0.7);
+                  }
+
+                  return (
+                    <FactureCard
+                      key={invoice.id}
+                      invoice={invoice}
+                      onMarkPaid={() => handleMarkPaid(invoice)}
+                      onDelete={() => setDeleteInvoiceId(invoice.id)}
+                      onDownload={() => toast.info('Téléchargement bientôt disponible')}
+                      style={{ opacity }}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Gradient overlay pour effet de fade */}
+              {filteredInvoices.length > 3 && (
+                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Dialog de confirmation de suppression */}
+      <AlertDialog open={!!deleteInvoiceId} onOpenChange={() => setDeleteInvoiceId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce document ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Le document sera définitivement supprimé.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-lg">Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
