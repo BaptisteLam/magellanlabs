@@ -39,6 +39,7 @@ import { ASTModification } from '@/types/ast';
 import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { PublishSuccessDialog } from '@/components/PublishSuccessDialog';
+import { useUnifiedModify } from '@/hooks/useUnifiedModify';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -126,6 +127,9 @@ export default function BuilderSession() {
   
   // Hook pour les modifications rapides
   const modifySiteHook = useModifySite();
+  
+  // Hook unifié pour unified-modify (remplace agent-v2 et modify-site)
+  const unifiedModify = useUnifiedModify();
   
   // Événements IA pour la TaskList
   const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
@@ -1586,6 +1590,250 @@ export default function BuilderSession() {
     );
   };
 
+  // 🆕 UNIFIED MODIFY HANDLER - Remplace le routing manuel entre agent-v2 et modify-site
+  const handleUnifiedModification = async (userPrompt: string) => {
+    console.log('🔄 UNIFIED MODIFY - Starting');
+    
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    
+    // Ajouter le message utilisateur
+    const userMessage: Message = {
+      role: 'user',
+      content: userPrompt,
+      created_at: new Date().toISOString()
+    };
+    
+    // Éviter d'ajouter le message s'il existe déjà
+    setMessages(prev => {
+      const lastUserMessage = [...prev].reverse().find(m => m.role === 'user');
+      if (lastUserMessage && typeof lastUserMessage.content === 'string' && lastUserMessage.content === userPrompt) {
+        return prev;
+      }
+      return [...prev, userMessage];
+    });
+    
+    // Créer le message de génération
+    const generationStartTime = Date.now();
+    generationStartTimeRef.current = generationStartTime;
+    setIsQuickModLoading(true);
+    
+    const generationMessage: Message = {
+      role: 'assistant',
+      content: '',
+      created_at: new Date().toISOString(),
+      metadata: {
+        type: 'generation',
+        thought_duration: 0,
+        intent_message: 'Analyzing your request...',
+        generation_events: [],
+        files_modified: 0,
+        modified_files: [],
+        total_tokens: 0,
+        project_files: {},
+        startTime: generationStartTime
+      }
+    };
+    
+    setMessages(prev => [...prev, generationMessage]);
+    setGenerationEvents([]);
+    generationEventsRef.current = [];
+    
+    // Variable pour stocker les tokens
+    let receivedTokens = { input: 0, output: 0, total: 0 };
+    
+    try {
+      const result = await unifiedModify.unifiedModify(
+        {
+          message: userPrompt,
+          projectFiles,
+          sessionId: sessionId!,
+          memory
+        },
+        {
+          onIntentMessage: (message) => {
+            console.log('💬 Intent:', message);
+            sonnerToast.info(message, { duration: 3000 });
+            
+            setMessages(prev => {
+              const lastMsg = prev[prev.length - 1];
+              if (lastMsg?.metadata?.type === 'generation') {
+                return prev.map((msg, idx) =>
+                  idx === prev.length - 1
+                    ? { ...msg, metadata: { ...msg.metadata, intent_message: message } }
+                    : msg
+                );
+              }
+              return prev;
+            });
+          },
+          
+          onGenerationEvent: (event) => {
+            console.log('⚙️ Event:', event);
+            
+            // Mapper les phases unified-modify vers les types GenerationEvent
+            const phaseToType: Record<string, GenerationEvent['type']> = {
+              'analyze': 'analyze',
+              'context': 'read',
+              'generation': 'write',
+              'validation': 'edit'
+            };
+            
+            // Mettre à jour les événements de génération
+            const newEvent: GenerationEvent = {
+              type: phaseToType[event.phase || ''] || 'thought',
+              status: event.status === 'complete' ? 'completed' : 'in-progress',
+              message: event.message || `Phase: ${event.phase}`
+            };
+            
+            generationEventsRef.current = [...generationEventsRef.current, newEvent];
+            setGenerationEvents(prev => [...prev, newEvent]);
+            
+            setMessages(prev => {
+              const lastMsg = prev[prev.length - 1];
+              if (lastMsg?.metadata?.type === 'generation') {
+                return prev.map((msg, idx) =>
+                  idx === prev.length - 1
+                    ? {
+                        ...msg,
+                        metadata: {
+                          ...msg.metadata,
+                          generation_events: generationEventsRef.current,
+                          thought_duration: Date.now() - generationStartTimeRef.current
+                        }
+                      }
+                    : msg
+                );
+              }
+              return prev;
+            });
+          },
+          
+          onASTModifications: async (modifications, updatedFiles) => {
+            console.log('🔧 AST Modifications:', modifications.length);
+            
+            if (modifications.length === 0) {
+              console.warn('⚠️ No modifications generated');
+              sonnerToast.warning('No modifications generated');
+              return;
+            }
+            
+            // Mettre à jour les fichiers
+            await updateFiles(updatedFiles, true);
+            setGeneratedHtml(updatedFiles['index.html'] || generatedHtml);
+            
+            // Mettre à jour le fichier sélectionné si modifié
+            if (selectedFile && updatedFiles[selectedFile] !== projectFiles[selectedFile]) {
+              setSelectedFileContent(updatedFiles[selectedFile]);
+            }
+            
+            // Sauvegarder en base
+            await supabase
+              .from('build_sessions')
+              .update({
+                project_files: updatedFiles,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', sessionId!);
+            
+            // Mettre à jour la mémoire
+            const modifiedFilesList = Object.keys(updatedFiles).filter(
+              path => updatedFiles[path] !== projectFiles[path]
+            );
+            
+            if (modifiedFilesList.length > 0) {
+              try {
+                const codeChanges = modifiedFilesList.map(path => ({
+                  path,
+                  type: 'modify' as const,
+                  description: `Modified ${path} via unified-modify`
+                }));
+                await updateMemory(codeChanges, []);
+              } catch (memError) {
+                console.warn('⚠️ Failed to update memory:', memError);
+              }
+            }
+            
+            sonnerToast.success(`Applied ${modifications.length} modifications`);
+          },
+          
+          onTokens: (tokens) => {
+            console.log('💰 Tokens:', tokens);
+            receivedTokens = tokens;
+          },
+          
+          onError: (error) => {
+            console.error('❌ Error:', error);
+            sonnerToast.error(error);
+          },
+          
+          onComplete: (completeResult) => {
+            console.log('✅ Complete:', completeResult);
+            
+            const duration = Date.now() - generationStartTime;
+            
+            // Mettre à jour le message final
+            setMessages(prev => {
+              const lastMsg = prev[prev.length - 1];
+              if (lastMsg?.metadata?.type === 'generation') {
+                return prev.map((msg, idx) =>
+                  idx === prev.length - 1
+                    ? {
+                        ...msg,
+                        content: completeResult.message || 'Modifications applied',
+                        metadata: {
+                          ...msg.metadata,
+                          thought_duration: duration,
+                          files_modified: completeResult.modifications?.length || 0,
+                          total_tokens: completeResult.tokens?.total || 0,
+                          input_tokens: completeResult.tokens?.input || 0,
+                          output_tokens: completeResult.tokens?.output || 0,
+                          project_files: completeResult.updatedFiles
+                        }
+                      }
+                    : msg
+                );
+              }
+              return prev;
+            });
+          }
+        }
+      );
+      
+      // Déduire les tokens du profil utilisateur
+      if (user?.id && receivedTokens.total > 0) {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('tokens_used')
+            .eq('id', user.id)
+            .single();
+          
+          if (profile) {
+            const newTokensUsed = (profile.tokens_used || 0) + receivedTokens.total;
+            await supabase
+              .from('profiles')
+              .update({ tokens_used: newTokensUsed })
+              .eq('id', user.id);
+            console.log('✅ Tokens updated:', newTokensUsed);
+          }
+        } catch (error) {
+          console.error('❌ Token deduction error:', error);
+        }
+      }
+      
+      console.log('🔄 UNIFIED MODIFY - Complete');
+      
+    } catch (error) {
+      console.error('❌ UNIFIED MODIFY - Error:', error);
+      sonnerToast.error('Failed to process request');
+    } finally {
+      setIsQuickModLoading(false);
+    }
+  };
+
   // Nouveau handleSubmit qui route entre modifications rapides et génération complète
   const handleSubmit = async () => {
     const prompt = inputValue.trim() || (messages.length === 1 && typeof messages[0].content === 'string' ? messages[0].content : '');
@@ -1693,24 +1941,20 @@ export default function BuilderSession() {
       userMessageContent = prompt;
     }
 
-    // Ne PAS ajouter le message utilisateur ici - handleFullGeneration et handleQuickModification le font déjà
+    // Ne PAS ajouter le message utilisateur ici - handleUnifiedModification le fait déjà
     setInputValue('');
     setAttachedFiles([]);
 
-    // ⚡ ANALYSE DE L'INTENT : Décider entre modification rapide ou génération complète
-    const intent = analyzeIntent(prompt, projectFiles);
-    const timeEstimate = estimateGenerationTime(prompt, projectFiles);
+    // 🔄 ROUTING VERS UNIFIED MODIFY (détection automatique de complexité)
+    console.log('🔄 Routing vers UNIFIED MODIFY (auto complexity detection)');
     
-    console.log(`⏱️ Temps estimé: ${timeEstimate.estimatedTime}s (${timeEstimate.range.min}-${timeEstimate.range.max}s)`);
-    
-    if (intent === 'quick-modification' && attachedFiles.length === 0) {
-      // MODE RAPIDE : Pas de loading preview, modification ciblée
-      console.log('🚀 Routing vers QUICK MODIFICATION');
-      await handleQuickModification(prompt);
-    } else {
-      // MODE COMPLET : Loading preview, régénération complète
-      console.log('🚀 Routing vers FULL GENERATION');
+    // Si des fichiers sont attachés, utiliser la génération complète (pas encore supporté par unified-modify)
+    if (attachedFiles.length > 0) {
+      console.log('📎 Fichiers attachés détectés, fallback vers FULL GENERATION');
       await handleFullGeneration(prompt);
+    } else {
+      // Unified-modify gère automatiquement tous les cas (trivial, simple, moderate, complex)
+      await handleUnifiedModification(prompt);
     }
   };
 
