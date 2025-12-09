@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, Code2, Home, X, Moon, Sun, Pencil, Download, Paperclip, BarChart3, Lightbulb, FileText, Edit, Loader, Smartphone, Monitor } from "lucide-react";
+import { Save, Eye, Home, X, Moon, Sun, Pencil, Download, Paperclip, Lightbulb, FileText, Edit, Loader, Smartphone, Monitor } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
 import JSZip from "jszip";
@@ -21,10 +21,7 @@ import PromptBar from "@/components/PromptBar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import CloudflareAnalytics from "@/components/CloudflareAnalytics";
 import { AiDiffService } from "@/services/aiDiffService";
-import { useAgentAPI } from "@/hooks/useAgentAPI";
-import { useAgentV2API } from "@/hooks/useAgentV2API";
 import { useProjectMemory } from "@/hooks/useProjectMemory";
-import { DependencyGraph } from "@/services/dependencyGraph";
 import type { AIEvent, GenerationEvent } from '@/types/agent';
 import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
@@ -34,7 +31,6 @@ import html2canvas from 'html2canvas';
 import { TokenCounter } from '@/components/TokenCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
 import { analyzeIntent, identifyRelevantFiles, estimateGenerationTime } from '@/utils/intentAnalyzer';
-import { useModifySite } from '@/hooks/useModifySite';
 import { ASTModification } from '@/types/ast';
 import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
@@ -79,7 +75,8 @@ export default function BuilderSession() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [websiteTitle, setWebsiteTitle] = useState('');
-  const [viewMode, setViewMode] = useState<'preview' | 'code' | 'analytics'>('preview');
+  // Toujours en mode preview
+  const viewMode = 'preview';
   const [sessionLoading, setSessionLoading] = useState(true);
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -115,19 +112,10 @@ export default function BuilderSession() {
   const [websiteId, setWebsiteId] = useState<string | null>(null);
   const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('website');
   const [cloudflareProjectName, setCloudflareProjectName] = useState<string | null>(null);
-  
-  // Hook pour la nouvelle API Agent (v1 - legacy)
-  const agent = useAgentAPI();
-  
-  // Hook pour Agent v2 avec exploration
-  const agentV2 = useAgentV2API();
-  
+
   // Hook pour la mémoire de projet
   const { memory, buildContextWithMemory, updateMemory, initializeMemory } = useProjectMemory(sessionId);
-  
-  // Hook pour les modifications rapides
-  const modifySiteHook = useModifySite();
-  
+
   // Hook unifié pour unified-modify (remplace agent-v2 et modify-site)
   const unifiedModify = useUnifiedModify();
   
@@ -777,842 +765,6 @@ export default function BuilderSession() {
     }
   };
 
-  // Fonction pour gérer la génération complète (mode original avec loading preview)
-  const handleFullGeneration = async (userPromptInput?: string) => {
-    const prompt = userPromptInput || inputValue.trim() || (messages.length === 1 && typeof messages[0].content === 'string' ? messages[0].content : '');
-    
-    if (!prompt && attachedFiles.length === 0) {
-      sonnerToast.error("Veuillez entrer votre message ou joindre un fichier");
-      return;
-    }
-
-    if (!user) {
-      navigate('/auth');
-      throw new Error('Authentication required');
-    }
-
-    // Construire le message
-    let userMessageContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
-    
-    if (attachedFiles.length > 0) {
-      const contentArray: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
-      if (prompt) {
-        contentArray.push({ type: 'text', text: prompt });
-      }
-      attachedFiles.forEach(file => {
-        contentArray.push({ 
-          type: 'image_url', 
-          image_url: { url: file.base64 }
-        });
-      });
-      userMessageContent = contentArray;
-    } else {
-      userMessageContent = prompt;
-    }
-
-    // Vérifier si le message utilisateur n'est pas déjà le dernier message
-    const lastMessage = messages[messages.length - 1];
-    const isUserMessageAlreadyAdded = lastMessage && 
-                                      lastMessage.role === 'user' && 
-                                      lastMessage.content === userMessageContent;
-    
-    if (!isUserMessageAlreadyAdded) {
-      const newMessages = [...messages, { 
-        role: 'user' as const, 
-        content: userMessageContent,
-        created_at: new Date().toISOString()
-      }];
-      
-      setMessages(newMessages);
-      
-      const userMessageText = typeof userMessageContent === 'string' 
-        ? userMessageContent 
-        : (Array.isArray(userMessageContent) 
-            ? userMessageContent.find(c => c.type === 'text')?.text || '[message multimédia]'
-            : String(userMessageContent));
-
-      const { error: insertError } = await supabase
-        .from('chat_messages')
-        .insert({
-          session_id: sessionId,
-          role: 'user',
-          content: userMessageText,
-          created_at: new Date().toISOString(),
-          token_count: 0,
-          metadata: { 
-            has_images: attachedFiles.length > 0,
-            attachedFiles: attachedFiles.length > 0 ? attachedFiles : undefined
-          }
-        });
-      
-      if (insertError) {
-        console.error('❌ Erreur insertion message utilisateur:', insertError);
-      }
-    }
-    
-    setInputValue('');
-    setAttachedFiles([]);
-
-    // Créer immédiatement le message d'intro avec toutes les métadonnées nécessaires
-    const introMessage: Message = {
-      role: 'assistant',
-      content: "Je vais analyser votre demande et effectuer les modifications nécessaires...",
-      created_at: new Date().toISOString(),
-      metadata: {
-        type: 'generation',
-        thought_duration: 0,
-        intent_message: 'Analyzing your request...',
-        generation_events: [],
-        files_created: 0,
-        files_modified: 0,
-        new_files: [],
-        modified_files: [],
-        total_tokens: 0
-      }
-    };
-    
-    setMessages(prev => [...prev, introMessage]);
-
-    const userPrompt = typeof userMessageContent === 'string' 
-      ? userMessageContent 
-      : (Array.isArray(userMessageContent) 
-          ? userMessageContent.find(c => c.type === 'text')?.text || ''
-          : String(userMessageContent));
-
-    // 🧠 PHASE 1: Charger la mémoire et enrichir le contexte
-    console.log('🧠 Phase 1: Loading memory and building context...');
-    const enrichedContext = await buildContextWithMemory(userPrompt);
-    
-    // 🔗 PHASE 2: Construire le graphe de dépendances
-    console.log('🔗 Phase 2: Building dependency graph...');
-    const graph = new DependencyGraph();
-    await graph.buildGraph(projectFiles);
-    
-    // Identifier les fichiers mentionnés dans le prompt
-    const mentionedFiles = Object.keys(projectFiles).filter(path => 
-      userPrompt.toLowerCase().includes(path.toLowerCase().split('/').pop()?.split('.')[0] || '')
-    );
-    
-    // Obtenir les fichiers pertinents via le graphe (max 15 fichiers)
-    const relevantFilesFromGraph = graph.getRelevantFiles(
-      mentionedFiles.length > 0 ? mentionedFiles : ['index.html', 'App.tsx', 'main.tsx'],
-      15
-    );
-    
-    console.log('📊 Fichiers pertinents via graphe:', relevantFilesFromGraph);
-    
-    const relevantFilesArray = relevantFilesFromGraph.map(path => ({
-      path,
-      content: projectFiles[path] || ''
-    }));
-
-    let assistantMessage = '';
-    const updatedFiles = { ...projectFiles };
-    let usedTokens = { input: 0, output: 0, total: 0 };
-
-    // Réinitialiser les événements pour une nouvelle requête
-    setAiEvents([]);
-    setGenerationEvents([]);
-    generationEventsRef.current = []; // Réinitialiser la ref
-    generationStartTimeRef.current = Date.now();
-    
-    // 🔒 Activer le mode "génération en cours" UNIQUEMENT pour la première génération (pas de fichiers existants)
-    const isFirstGeneration = Object.keys(projectFiles).length === 0;
-    if (isFirstGeneration) {
-      setIsInitialGeneration(true);
-      isInitialGenerationRef.current = true;
-    }
-    
-    // Générer automatiquement un nom de projet si les fichiers sont vides
-    if (Object.keys(projectFiles).length === 0) {
-      generateProjectName(userPrompt);
-    }
-
-    // Ajouter le type de projet au contexte
-    const projectContext = projectType === 'website' 
-      ? 'Generate a static website with HTML, CSS, and vanilla JavaScript files only. No React, no JSX. Use simple HTML structure.'
-      : projectType === 'webapp'
-      ? 'Generate a React web application with TypeScript/JSX. Use React components and modern web technologies.'
-      : 'Generate a mobile-optimized React application with responsive design for mobile devices.';
-
-    // 🚀 PHASE 3: Appeler Agent V2 avec mémoire et graphe de dépendances
-    console.log('🚀 Phase 3: Calling Agent V2 with memory and dependency graph...');
-    await agentV2.callAgentV2(
-      enrichedContext ? `${projectContext}\n\nCONTEXT FROM MEMORY:\n${enrichedContext}\n\nUSER REQUEST:\n${userPrompt}` : `${projectContext}\n\n${userPrompt}`,
-      projectFiles,
-      memory,
-      sessionId!,
-      projectType,
-      attachedFiles,
-      {
-        onMessage: (message) => {
-          assistantMessage += message;
-        },
-        onGenerationEvent: (event) => {
-          console.log('🔄 Generation:', event);
-          generationEventsRef.current = [...generationEventsRef.current, event];
-          setGenerationEvents(prev => [...prev, event]);
-          
-          setMessages(prev => {
-            const lastMessage = prev[prev.length - 1];
-            if (lastMessage && (lastMessage.metadata?.type === 'generation' || lastMessage.metadata?.type === 'intro')) {
-              return prev.map((msg, idx) => 
-                idx === prev.length - 1
-                  ? { 
-                      ...msg, 
-                      metadata: { 
-                        ...msg.metadata, 
-                        generation_events: [...(msg.metadata.generation_events || []), event],
-                        thought_duration: event.type === 'thought' ? Date.now() - generationStartTimeRef.current : msg.metadata.thought_duration
-                      }
-                    }
-                  : msg
-              );
-            }
-            return prev;
-          });
-        },
-        onTokens: (tokens) => {
-          usedTokens = tokens;
-        },
-        onCodeUpdate: (path, code) => {
-          console.log('📦 Accumulating file:', path);
-          setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
-          updatedFiles[path] = code;
-          
-          if (path === 'index.html') {
-            setGeneratedHtml(code);
-          }
-          
-          if (selectedFile === path || !selectedFile) {
-            setSelectedFile(path);
-            setSelectedFileContent(code);
-          }
-        },
-        onComplete: async () => {
-          console.log('✅ Génération terminée - Validation des fichiers avant affichage');
-          setAiEvents(prev => [...prev, { type: 'complete' }]);
-          
-          // 🧠 PHASE 4: Mettre à jour la mémoire du projet
-          console.log('🧠 Phase 4: Updating project memory...');
-          const codeChanges = Object.keys(updatedFiles)
-            .filter(path => updatedFiles[path] !== projectFiles[path])
-            .map(path => ({
-              path,
-              type: (projectFiles[path] ? 'modify' : 'create') as 'create' | 'modify' | 'delete',
-              description: `Updated ${path}`
-            }));
-          
-          if (codeChanges.length > 0) {
-            try {
-              await updateMemory(codeChanges, []);
-              console.log('✅ Memory updated with', codeChanges.length, 'changes');
-            } catch (memError) {
-              console.warn('⚠️ Failed to update memory:', memError);
-            }
-          }
-          
-          // Ajouter l'événement complete au message intro
-          setMessages(prev => {
-            const lastMessage = prev[prev.length - 1];
-            if (lastMessage && (lastMessage.metadata?.type === 'generation' || lastMessage.metadata?.type === 'intro')) {
-              return prev.map((msg, idx) => 
-                idx === prev.length - 1
-                  ? { 
-                      ...msg, 
-                      metadata: { 
-                        ...msg.metadata, 
-                        generation_events: [...(msg.metadata.generation_events || []), { type: 'complete' as const, message: 'Generation completed' }],
-                        thought_duration: Date.now() - generationStartTimeRef.current
-                      }
-                    }
-                  : msg
-              );
-            }
-            return prev;
-          });
-          
-          // 🔍 VALIDATION CRITIQUE : Vérifier que les fichiers essentiels sont créés et NON VIDES
-          const hasHtml = 'index.html' in updatedFiles;
-          const hasCss = 'styles.css' in updatedFiles;
-          const hasJs = 'script.js' in updatedFiles;
-          
-          const htmlContent = updatedFiles['index.html'] || '';
-          const cssContent = updatedFiles['styles.css'] || '';
-          const jsContent = updatedFiles['script.js'] || '';
-          
-          console.log('📊 Validation fichiers:', {
-            hasHtml, hasCss, hasJs,
-            htmlLength: htmlContent.length,
-            cssLength: cssContent.length,
-            jsLength: jsContent.length
-          });
-          
-          // Vérifier que index.html contient bien les liens vers CSS et JS
-          const hasStyleLink = htmlContent.includes('href="styles.css"') || htmlContent.includes("href='styles.css'");
-          const hasScriptLink = htmlContent.includes('src="script.js"') || htmlContent.includes("src='script.js'");
-          
-          // ⚠️ ERREURS CRITIQUES - Validation stricte de tous les fichiers
-          if (!hasHtml || !hasCss || !hasJs) {
-            const missing = [];
-            if (!hasHtml) missing.push('index.html');
-            if (!hasCss) missing.push('styles.css');
-            if (!hasJs) missing.push('script.js');
-            
-            console.error('❌ FICHIERS MANQUANTS:', missing);
-            sonnerToast.error(`Fichiers manquants: ${missing.join(', ')}. Impossible d'afficher la preview.`);
-            setGenerationEvents(prev => [...prev, { 
-              type: 'error', 
-              message: `Fichiers manquants: ${missing.join(', ')}` 
-            }]);
-            setIsInitialGeneration(false);
-            isInitialGenerationRef.current = false;
-            return;
-          }
-          
-          // Validation du contenu HTML (doit être substantiel)
-          if (htmlContent.length < 200) {
-            console.error('❌ HTML VIDE OU TROP COURT:', htmlContent.length, 'caractères');
-            sonnerToast.error('Le fichier HTML est vide ou incomplet. Impossible d\'afficher la preview.');
-            setGenerationEvents(prev => [...prev, { 
-              type: 'error', 
-              message: 'HTML file is empty or too short' 
-            }]);
-            setIsInitialGeneration(false);
-            isInitialGenerationRef.current = false;
-            return;
-          }
-          
-          // Validation du contenu CSS (doit être substantiel)
-          if (cssContent.length < 100) {
-            console.error('❌ CSS VIDE OU TROP COURT:', cssContent.length, 'caractères');
-            sonnerToast.error('Le fichier CSS est vide ou incomplet. Impossible d\'afficher la preview.');
-            setGenerationEvents(prev => [...prev, { 
-              type: 'error', 
-              message: 'CSS file is empty or too short' 
-            }]);
-            setIsInitialGeneration(false);
-            isInitialGenerationRef.current = false;
-            return;
-          }
-          
-          // Validation du contenu JS (doit exister, peut être court si pas de logique)
-          if (jsContent.length < 10) {
-            console.error('❌ JS VIDE OU TROP COURT:', jsContent.length, 'caractères');
-            sonnerToast.error('Le fichier JavaScript est vide ou incomplet. Impossible d\'afficher la preview.');
-            setGenerationEvents(prev => [...prev, { 
-              type: 'error', 
-              message: 'JS file is empty or too short' 
-            }]);
-            setIsInitialGeneration(false);
-            isInitialGenerationRef.current = false;
-            return;
-          }
-          
-          if (!hasStyleLink || !hasScriptLink) {
-            console.error('❌ LIENS CSS/JS MANQUANTS dans index.html');
-            sonnerToast.error('Les liens CSS/JS ne sont pas présents dans index.html');
-            setGenerationEvents(prev => [...prev, { 
-              type: 'error', 
-              message: 'Missing CSS/JS links in HTML' 
-            }]);
-            setIsInitialGeneration(false);
-            isInitialGenerationRef.current = false;
-            return;
-          }
-          
-          // ✅ VALIDATION RÉUSSIE
-          console.log('✅ Validation réussie - Préparation de la sauvegarde');
-          setGenerationEvents(prev => [...prev, { type: 'complete', message: 'All files generated successfully' }]);
-
-          // Créer les messages pour la conversation
-          const filesChangedList = Object.keys(updatedFiles);
-          const newFiles = filesChangedList.filter(path => !projectFiles[path]);
-          const modifiedFiles = filesChangedList.filter(path => projectFiles[path]);
-          
-          // Calculer la durée de génération en millisecondes
-          const generationDuration = Date.now() - generationStartTimeRef.current;
-          
-          // Générer le message d'intent
-          const intentMessage = isInitialGenerationRef.current
-            ? "Je vais créer votre site..."
-            : newFiles.length > 0 && modifiedFiles.length > 0
-            ? `Je vais créer ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} et modifier ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}...`
-            : newFiles.length > 0
-            ? `Je vais créer ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''}...`
-            : modifiedFiles.length > 0
-            ? `Je vais modifier ${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''}...`
-            : 'Je vais appliquer les modifications...';
-          
-          // Générer un message de conclusion détaillé et contextuel
-          const getDetailedConclusion = (): string => {
-            if (isInitialGenerationRef.current) {
-              return `Votre site a été créé avec ${newFiles.length} fichier${newFiles.length > 1 ? 's' : ''} incluant HTML, CSS, JavaScript${newFiles.some(f => f.includes('image')) ? ' et images' : ''}. Le site est maintenant prêt à être publié.`;
-            }
-            
-            const details: string[] = [];
-            if (newFiles.length > 0) {
-              details.push(`${newFiles.length} nouveau${newFiles.length > 1 ? 'x' : ''} fichier${newFiles.length > 1 ? 's' : ''} créé${newFiles.length > 1 ? 's' : ''}`);
-            }
-            if (modifiedFiles.length > 0) {
-              details.push(`${modifiedFiles.length} fichier${modifiedFiles.length > 1 ? 's' : ''} modifié${modifiedFiles.length > 1 ? 's' : ''}`);
-            }
-            
-            const detailsStr = details.join(' et ');
-            return `${detailsStr.charAt(0).toUpperCase() + detailsStr.slice(1)}. Les modifications ont été appliquées avec succès au projet.`;
-          };
-          
-          const conclusionMessage = getDetailedConclusion();
-
-          // 💾 Sauvegarder UN SEUL message unifié style Lovable
-          console.log('💾 =====================================');
-          console.log('💾 SAVING UNIFIED GENERATION MESSAGE');
-          console.log('💾 Files to save:', Object.keys(updatedFiles).length);
-          console.log('💾 File list:', Object.keys(updatedFiles).join(', '));
-          console.log('💾 Total tokens:', usedTokens.total);
-          console.log('💾 Generation duration:', generationDuration, 'ms');
-          console.log('💾 Generation events (ref):', generationEventsRef.current.length);
-          console.log('💾 =====================================');
-          
-          // Insérer le message unifié avec toutes les métadonnées
-          const { data: insertedMessage } = await supabase
-            .from('chat_messages')
-            .insert([{
-              session_id: sessionId,
-              role: 'assistant',
-              content: conclusionMessage,
-              token_count: usedTokens.total,
-              created_at: new Date().toISOString(),
-              metadata: { 
-                type: 'generation' as const,
-                thought_duration: generationDuration,
-                intent_message: intentMessage,
-                generation_events: generationEventsRef.current, // Utiliser la ref au lieu du state
-                files_created: newFiles.length,
-                files_modified: modifiedFiles.length,
-                new_files: newFiles,
-                modified_files: modifiedFiles,
-                project_files: updatedFiles,
-                input_tokens: usedTokens.input,
-                output_tokens: usedTokens.output,
-                total_tokens: usedTokens.total,
-                saved_at: new Date().toISOString()
-              }
-            }])
-            .select()
-            .single();
-
-          // Mettre à jour l'interface avec le message unifié
-          setMessages(prev => {
-            // Retirer tous les messages temporaires
-            const withoutTemp = prev.filter(m => !(m.role === 'assistant' && !m.id));
-            
-            return [
-              ...withoutTemp,
-              { 
-                role: 'assistant' as const, 
-                content: conclusionMessage,
-                token_count: usedTokens.total,
-                id: insertedMessage?.id,
-                created_at: new Date().toISOString(),
-                metadata: { 
-                  type: 'generation' as const,
-                  thought_duration: generationDuration,
-                  intent_message: intentMessage,
-                  generation_events: generationEventsRef.current, // Utiliser la ref au lieu du state
-                  files_created: newFiles.length,
-                  files_modified: modifiedFiles.length,
-                  new_files: newFiles,
-                  modified_files: modifiedFiles,
-                  project_files: updatedFiles,
-                  input_tokens: usedTokens.input,
-                  output_tokens: usedTokens.output,
-                  total_tokens: usedTokens.total
-                }
-              }
-            ];
-          });
-
-          // 💰 Décompter les tokens du profil utilisateur
-          if (user?.id && usedTokens.total > 0) {
-            console.log('💰 Mise à jour des tokens utilisés:', usedTokens.total);
-            
-            try {
-              // Récupérer les tokens actuels
-              const { data: profile, error: fetchError } = await supabase
-                .from('profiles')
-                .select('tokens_used')
-                .eq('id', user.id)
-                .single();
-              
-              if (fetchError) {
-                console.error('❌ Erreur récupération profil:', fetchError);
-                throw fetchError;
-              }
-              
-              if (profile) {
-                const newTokensUsed = (profile.tokens_used || 0) + usedTokens.total;
-                
-                console.log('💰 Tokens actuels:', profile.tokens_used || 0);
-                console.log('💰 Nouveaux tokens utilisés:', newTokensUsed);
-                
-                // Mettre à jour le profil avec les nouveaux tokens
-                const { error: updateError } = await supabase
-                  .from('profiles')
-                  .update({ 
-                    tokens_used: newTokensUsed
-                  })
-                  .eq('id', user.id);
-                
-                if (updateError) {
-                  console.error('❌ Erreur mise à jour tokens:', updateError);
-                  throw updateError;
-                }
-                
-                console.log('✅ Tokens mis à jour avec succès:', newTokensUsed);
-              } else {
-                console.warn('⚠️ Profil utilisateur introuvable');
-              }
-            } catch (error) {
-              console.error('❌ Erreur déduction tokens:', error);
-              sonnerToast.error('Erreur lors de la mise à jour des tokens');
-            }
-          }
-          
-          
-          // Sauvegarder automatiquement le projet avec le nom généré
-          if (websiteTitle && websiteTitle !== 'Sans titre') {
-            console.log('💾 Sauvegarde automatique du projet:', websiteTitle);
-            await saveSessionWithTitle(websiteTitle, updatedFiles, messages);
-          }
-
-          // Mettre à jour build_sessions avec format object
-          await supabase
-            .from('build_sessions')
-            .update({
-              project_files: updatedFiles,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', sessionId);
-
-          // 📸 Capturer le thumbnail UNIQUEMENT après une génération réussie
-          console.log('📸 Capture du thumbnail après génération...');
-          await captureThumbnail(updatedFiles['index.html'] || updatedFiles['app.html']);
-
-          // ✅ MAINTENANT on peut appliquer les fichiers à la preview
-          console.log('📦 Application des fichiers à la preview:', Object.keys(updatedFiles));
-          await updateFiles(updatedFiles, true);
-          console.log('✅ Fichiers sauvegardés et prêts pour la preview');
-          
-          // Attendre que React re-rendre avec les nouveaux fichiers avant d'afficher la preview
-          setTimeout(() => {
-            // Désactiver le mode "génération en cours"
-            setIsInitialGeneration(false);
-            isInitialGenerationRef.current = false;
-            
-            // Forcer le passage en mode preview
-            if (viewMode !== 'preview') {
-              setViewMode('preview');
-            }
-          }, 300); // Délai réduit car les fichiers sont déjà sauvegardés
-
-          sonnerToast.success('Modifications terminées !');
-        },
-        onError: (error) => {
-          sonnerToast.error(`Erreur: ${error}`);
-        }
-      }
-    );
-  };
-
-  // Fonction pour gérer les modifications rapides (sans rechargement preview)
-  const handleQuickModification = async (userPrompt: string) => {
-    console.log('⚡ MODE: QUICK MODIFICATION');
-    
-    if (!user) {
-      navigate('/auth');
-      throw new Error('Authentication required');
-    }
-    
-    // Ajouter le message utilisateur AVANT la génération
-    const userMessage: Message = {
-      role: 'user',
-      content: userPrompt,
-      created_at: new Date().toISOString()
-    };
-    setMessages(prev => [...prev, userMessage]);
-    
-    // 🧠 PHASE 1: Enrichir le contexte avec la mémoire
-    console.log('🧠 Quick-mod Phase 1: Building context with memory...');
-    const enrichedContext = await buildContextWithMemory(userPrompt);
-    
-    // Analyser la complexité de la modification
-    const { analyzeIntentDetailed } = await import('@/utils/intentAnalyzer');
-    const analysis = analyzeIntentDetailed(userPrompt, projectFiles);
-    console.log(`📊 Complexité: ${analysis.complexity}, Score: ${analysis.score}, Confidence: ${analysis.confidence}%`);
-    
-    // Identifier les fichiers pertinents (augmenté de 3 à 5)
-    const relevantFiles = identifyRelevantFiles(userPrompt, projectFiles, 5);
-    
-    if (relevantFiles.length === 0) {
-      console.warn('⚠️ Aucun fichier pertinent trouvé, fallback sur génération complète');
-      return handleFullGeneration(userPrompt);
-    }
-    
-    console.log('📄 Fichiers pertinents:', relevantFiles.map(f => f.path).join(', '));
-    
-    // Créer message de génération unifié
-    const generationStartTime = Date.now();
-    generationStartTimeRef.current = generationStartTime;
-    setIsQuickModLoading(true);
-    
-    // Variable pour capturer le message d'intention de Claude depuis le JSON
-    let capturedIntentMessage = '';
-    
-    const generationMessage: Message = {
-      role: 'assistant',
-      content: '',
-      created_at: new Date().toISOString(),
-      metadata: { 
-        type: 'generation',
-        thought_duration: 0,
-        intent_message: '',
-        generation_events: [],
-        files_modified: 0,
-        modified_files: [],
-        total_tokens: 0,
-        project_files: {},
-        startTime: generationStartTime
-      }
-    };
-    
-    setMessages(prev => [...prev, generationMessage]);
-    setGenerationEvents([]);
-    generationEventsRef.current = [];
-    
-    // Variable pour stocker les tokens
-    let receivedTokens = { input: 0, output: 0, total: 0 };
-    
-    // 🚀 PHASE 2: Appeler modify-site avec contexte enrichi
-    console.log('🚀 Quick-mod Phase 2: Calling modify-site with memory context...');
-    await modifySiteHook.modifySite(
-      enrichedContext ? `CONTEXT:\n${enrichedContext}\n\nREQUEST: ${userPrompt}` : userPrompt,
-      relevantFiles,
-      sessionId!,
-      {
-        onIntentMessage: (message) => {
-          // Capturer le message d'intention du JSON de Claude
-          capturedIntentMessage = message;
-          console.log('💬 Intent message capturé depuis JSON:', capturedIntentMessage);
-        },
-        onMessage: (message) => {
-          // Messages conversationnels streamés (optionnel)
-          console.log('📝 Message streamé:', message);
-        },
-        onTokens: (tokens) => {
-          console.log('💰 Tokens reçus dans BuilderSession:', tokens);
-          receivedTokens = tokens;
-        },
-        onGenerationEvent: (event) => {
-          generationEventsRef.current = [...generationEventsRef.current, event];
-          setGenerationEvents(prev => [...prev, event]);
-          
-          // Mettre à jour le message avec les événements
-          setMessages(prev => {
-            const lastMessage = prev[prev.length - 1];
-            if (lastMessage?.metadata?.type === 'generation') {
-              return prev.map((msg, idx) => 
-                idx === prev.length - 1
-                  ? { 
-                      ...msg, 
-                      metadata: { 
-                        ...msg.metadata, 
-                        generation_events: generationEventsRef.current,
-                        thought_duration: Date.now() - generationStartTimeRef.current
-                      } 
-                    }
-                  : msg
-              );
-            }
-            return prev;
-          });
-        },
-        onASTModifications: async (modifications) => {
-          console.log('⚡ AST Modifications reçues:', modifications.length);
-          
-          // 🔄 FALLBACK AUTOMATIQUE si aucune modification
-          if (modifications.length === 0) {
-            console.log('⚠️ Aucune modification AST reçue, fallback sur génération complète');
-            return handleFullGeneration(userPrompt);
-          }
-          
-          console.log('⚡ Application de', modifications.length, 'modifications AST');
-          
-          // Importer le service AST
-          const { applyModificationsToFiles } = await import('@/services/ast/astModifier');
-          
-          // Appliquer toutes les modifications AST
-          const result = await applyModificationsToFiles(projectFiles, modifications);
-          
-          if (!result.success) {
-            console.error('❌ Échec des modifications AST:', result.errors);
-            sonnerToast.error('Échec des modifications, génération complète en cours...');
-            return handleFullGeneration(userPrompt);
-          }
-          
-          const updatedFiles = result.updatedFiles;
-          const modifiedFilesList = Object.keys(updatedFiles).filter(
-            path => updatedFiles[path] !== projectFiles[path]
-          );
-          
-          console.log('✅ Modifications AST appliquées:', modifiedFilesList);
-          
-          // 🧠 PHASE 3: Mettre à jour la mémoire
-          console.log('🧠 Quick-mod Phase 3: Updating memory...');
-          const codeChanges = modifiedFilesList.map(path => ({
-            path,
-            type: 'modify' as const,
-            description: `Modified ${path} via quick-modification`
-          }));
-          
-          if (codeChanges.length > 0) {
-            try {
-              await updateMemory(codeChanges, []);
-              console.log('✅ Memory updated with quick modifications');
-            } catch (memError) {
-              console.warn('⚠️ Failed to update memory:', memError);
-            }
-          }
-          
-          // Mettre à jour l'état avec les nouveaux fichiers
-          updateFiles(updatedFiles, true);
-          setGeneratedHtml(updatedFiles['index.html'] || generatedHtml);
-          
-          // Mettre à jour le fichier sélectionné si modifié
-          if (selectedFile && modifiedFilesList.includes(selectedFile)) {
-            setSelectedFileContent(updatedFiles[selectedFile]);
-          }
-          
-          // Sauvegarder
-          await supabase
-            .from('build_sessions')
-            .update({
-              project_files: updatedFiles,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', sessionId!);
-          
-          const generationDuration = Date.now() - generationStartTime;
-          
-          // Utiliser le message conversationnel de Claude comme message principal
-          const mainMessage = capturedIntentMessage || 'J\'ai appliqué vos modifications';
-          
-          // Détails techniques en sous-texte (pour debug/metadata)
-          const technicalDetails = modifiedFilesList.length > 0
-            ? `Fichiers modifiés : ${modifiedFilesList.join(', ')}`
-            : 'Aucun fichier modifié';
-          
-          // Désactiver le loading après application des patches
-          setIsQuickModLoading(false);
-          
-          const { data: insertedMessage } = await supabase
-            .from('chat_messages')
-            .insert([{
-              session_id: sessionId,
-              role: 'assistant',
-              content: mainMessage,
-              token_count: receivedTokens.total,
-              created_at: new Date().toISOString(),
-              metadata: { 
-                type: 'generation' as const,
-                thought_duration: generationDuration,
-                intent_message: mainMessage,
-                generation_events: generationEventsRef.current,
-                files_modified: modifiedFilesList.length,
-                modified_files: modifiedFilesList,
-                technical_summary: technicalDetails,
-                project_files: updatedFiles,
-                input_tokens: receivedTokens.input,
-                output_tokens: receivedTokens.output,
-                total_tokens: receivedTokens.total,
-                saved_at: new Date().toISOString()
-              }
-            }])
-            .select()
-            .single();
-          
-          // Mettre à jour le message avec les données finales
-          setMessages(prev => {
-            const withoutTemp = prev.filter(m => !(m.role === 'assistant' && !m.id));
-            
-            return [
-              ...withoutTemp,
-              { 
-                role: 'assistant' as const, 
-                content: mainMessage,
-                token_count: receivedTokens.total,
-                id: insertedMessage?.id,
-                created_at: new Date().toISOString(),
-                metadata: { 
-                  type: 'generation' as const,
-                  thought_duration: generationDuration,
-                  intent_message: mainMessage,
-                  generation_events: generationEventsRef.current,
-                  files_modified: modifiedFilesList.length,
-                  modified_files: modifiedFilesList,
-                  technical_summary: technicalDetails,
-                  project_files: updatedFiles,
-                  input_tokens: receivedTokens.input,
-                  output_tokens: receivedTokens.output,
-                  total_tokens: receivedTokens.total
-                }
-              }
-            ];
-          });
-          
-          // 💰 Décompter les tokens du profil utilisateur
-          if (user?.id && receivedTokens.total > 0) {
-            console.log('💰 Mise à jour des tokens utilisés:', receivedTokens.total);
-            
-            try {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('tokens_used')
-                .eq('id', user.id)
-                .single();
-              
-              if (profile) {
-                const newTokensUsed = (profile.tokens_used || 0) + receivedTokens.total;
-                
-                await supabase
-                  .from('profiles')
-                  .update({ tokens_used: newTokensUsed })
-                  .eq('id', user.id);
-                
-                console.log('✅ Tokens mis à jour:', newTokensUsed);
-              }
-            } catch (error) {
-              console.error('❌ Erreur déduction tokens:', error);
-            }
-          }
-          
-          sonnerToast.success('Modifications appliquées !');
-        },
-        onComplete: () => {
-          console.log('✅ Modification rapide terminée');
-          setIsQuickModLoading(false);
-        },
-        onError: (error) => {
-          console.error('❌ Erreur modification rapide:', error);
-          setIsQuickModLoading(false);
-          sonnerToast.error(`Erreur: ${error}`);
-          // Fallback sur génération complète en cas d'erreur
-          handleFullGeneration(userPrompt);
-        }
-      },
-      analysis.complexity // Passer la complexité pour sélection du modèle
-    );
-  };
 
   // 🆕 UNIFIED MODIFY HANDLER - Remplace le routing manuel entre agent-v2 et modify-site
   const handleUnifiedModification = async (userPrompt: string) => {
@@ -1945,41 +1097,14 @@ export default function BuilderSession() {
       return;
     }
 
-    // MODE NORMAL - Génération de code (suite du code existant)
-    // Construire le message utilisateur
-    let userMessageContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
-    
-    if (attachedFiles.length > 0) {
-      const contentArray: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
-      if (prompt) {
-        contentArray.push({ type: 'text', text: prompt });
-      }
-      attachedFiles.forEach(file => {
-        contentArray.push({ 
-          type: 'image_url', 
-          image_url: { url: file.base64 }
-        });
-      });
-      userMessageContent = contentArray;
-    } else {
-      userMessageContent = prompt;
-    }
-
-    // Ne PAS ajouter le message utilisateur ici - handleUnifiedModification le fait déjà
+    // MODE NORMAL - Génération de code
+    // Nettoyer les inputs
     setInputValue('');
     setAttachedFiles([]);
 
-    // 🔄 ROUTING VERS UNIFIED MODIFY (détection automatique de complexité)
+    // 🔄 TOUJOURS utiliser UNIFIED MODIFY (gère automatiquement tous les cas)
     console.log('🔄 Routing vers UNIFIED MODIFY (auto complexity detection)');
-    
-    // Si des fichiers sont attachés, utiliser la génération complète (pas encore supporté par unified-modify)
-    if (attachedFiles.length > 0) {
-      console.log('📎 Fichiers attachés détectés, fallback vers FULL GENERATION');
-      await handleFullGeneration(prompt);
-    } else {
-      // Unified-modify gère automatiquement tous les cas (trivial, simple, moderate, complex)
-      await handleUnifiedModification(prompt);
-    }
+    await handleUnifiedModification(prompt);
   };
 
   const handleSave = async () => {
@@ -2305,7 +1430,7 @@ export default function BuilderSession() {
         />
 
         <div className="flex items-center gap-3">
-          <div 
+          <div
             className="flex items-center gap-1 rounded-md border p-0.5"
             style={{
               backgroundColor: isDark ? '#181818' : '#ffffff',
@@ -2315,29 +1440,11 @@ export default function BuilderSession() {
             <Button
               variant="iconOnly"
               size="sm"
-              className={`h-7 px-2 text-xs ${viewMode === 'preview' ? 'text-[#03A5C0]' : ''}`}
-              onClick={() => setViewMode('preview')}
+              disabled
+              className="h-7 px-2 text-xs text-[#03A5C0]"
             >
               <Eye className="w-3 h-3 mr-1" />
               Preview
-            </Button>
-            <Button
-              variant="iconOnly"
-              size="sm"
-              className={`h-7 px-2 text-xs ${viewMode === 'code' ? 'text-[#03A5C0]' : ''}`}
-              onClick={() => setViewMode('code')}
-            >
-              <Code2 className="w-3 h-3 mr-1" />
-              Code
-            </Button>
-            <Button
-              variant="iconOnly"
-              size="sm"
-              className={`h-7 px-2 text-xs ${viewMode === 'analytics' ? 'text-[#03A5C0]' : ''}`}
-              onClick={() => setViewMode('analytics')}
-            >
-              <BarChart3 className="w-3 h-3 mr-1" />
-              Analytics
             </Button>
           </div>
 
@@ -2681,25 +1788,24 @@ export default function BuilderSession() {
             <div className={`h-full w-full flex ${previewMode === 'mobile' ? 'justify-center items-start' : 'flex-col'} rounded-xl overflow-hidden`} style={previewMode === 'mobile' ? { backgroundColor: isDark ? '#181818' : '#ffffff' } : undefined}>
               {previewMode === 'mobile' ? (
                 <div className={`w-[375px] h-full flex flex-col shadow-2xl rounded-3xl border overflow-hidden`} style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff', borderColor: isDark ? 'rgb(51, 65, 85)' : '#ffffff' }}>
-                  {viewMode === 'preview' ? (
-                    isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
-                      <GeneratingPreview />
-                    ) : (
-                      <>
-                        <FakeUrlBar 
-                          projectTitle={websiteTitle || 'Mon Projet'} 
-                          isDark={isDark}
-                          sessionId={sessionId}
-                          onTitleChange={setWebsiteTitle}
-                          cloudflareProjectName={cloudflareProjectName || undefined}
-                        />
-                        <InteractivePreview 
-                          projectFiles={projectFiles} 
-                          isDark={isDark}
-                          inspectMode={inspectMode}
-                          onInspectModeChange={setInspectMode}
-                          onElementModify={async (prompt, elementInfo) => {
-                            const contextualPrompt = `Modifier l'élément suivant dans le code :
+                  {isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
+                    <GeneratingPreview />
+                  ) : (
+                    <>
+                      <FakeUrlBar
+                        projectTitle={websiteTitle || 'Mon Projet'}
+                        isDark={isDark}
+                        sessionId={sessionId}
+                        onTitleChange={setWebsiteTitle}
+                        cloudflareProjectName={cloudflareProjectName || undefined}
+                      />
+                      <InteractivePreview
+                        projectFiles={projectFiles}
+                        isDark={isDark}
+                        inspectMode={inspectMode}
+                        onInspectModeChange={setInspectMode}
+                        onElementModify={async (prompt, elementInfo) => {
+                          const contextualPrompt = `Modifier l'élément suivant dans le code :
 
 Type: <${elementInfo.tagName.toLowerCase()}>
 ${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
@@ -2710,49 +1816,38 @@ Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textC
 Instruction: ${prompt}
 
 Ne modifie que cet élément spécifique, pas le reste du code.`;
-                            
-                            // IMPORTANT: Forcer le mode génération (pas chatMode)
-                            setChatMode(false);
-                            setInputValue(contextualPrompt);
-                            setTimeout(() => handleSubmit(), 100);
-                          }}
-                        />
-                      </>
-                    )
-                  ) : viewMode === 'analytics' ? (
-                    <CloudflareAnalytics 
-                      sessionId={sessionId!}
-                      isDark={isDark}
-                    />
-                  ) : (
-                    <div className="p-4 text-center text-slate-500">
-                      Mode code non disponible en mode mobile
-                    </div>
+
+                          // IMPORTANT: Forcer le mode génération (pas chatMode)
+                          setChatMode(false);
+                          setInputValue(contextualPrompt);
+                          setTimeout(() => handleSubmit(), 100);
+                        }}
+                      />
+                    </>
                   )}
                 </div>
               ) : (
                 <>
-                  {viewMode === 'preview' ? (
-                    isInitialGeneration ? (
-                      <GeneratingPreview />
-                    ) : (
-                      <>
-                        <FakeUrlBar 
-                          projectTitle={websiteTitle || 'Mon Projet'} 
-                          isDark={isDark}
-                          sessionId={sessionId}
-                          onTitleChange={setWebsiteTitle}
-                          currentFavicon={currentFavicon}
-                          onFaviconChange={setCurrentFavicon}
-                          cloudflareProjectName={cloudflareProjectName || undefined}
-                        />
-                        <InteractivePreview 
-                          projectFiles={projectFiles} 
-                          isDark={isDark}
-                          inspectMode={inspectMode}
-                          onInspectModeChange={setInspectMode}
-                          onElementModify={async (prompt, elementInfo) => {
-                            const contextualPrompt = `Modifier l'élément suivant dans le code :
+                  {isInitialGeneration ? (
+                    <GeneratingPreview />
+                  ) : (
+                    <>
+                      <FakeUrlBar
+                        projectTitle={websiteTitle || 'Mon Projet'}
+                        isDark={isDark}
+                        sessionId={sessionId}
+                        onTitleChange={setWebsiteTitle}
+                        currentFavicon={currentFavicon}
+                        onFaviconChange={setCurrentFavicon}
+                        cloudflareProjectName={cloudflareProjectName || undefined}
+                      />
+                      <InteractivePreview
+                        projectFiles={projectFiles}
+                        isDark={isDark}
+                        inspectMode={inspectMode}
+                        onInspectModeChange={setInspectMode}
+                        onElementModify={async (prompt, elementInfo) => {
+                          const contextualPrompt = `Modifier l'élément suivant dans le code :
 
 Type: <${elementInfo.tagName.toLowerCase()}>
 ${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
@@ -2763,44 +1858,44 @@ Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textC
 Instruction: ${prompt}
 
 Ne modifie que cet élément spécifique, pas le reste du code.`;
-                            
-                            // Envoyer directement à Claude sans afficher dans le chat
-                            if (!user) {
-                              navigate('/auth');
-                              return;
-                            }
 
-                            const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
-                              const keywords = prompt.toLowerCase().split(/\s+/);
-                              const scored = Object.entries(files).map(([path, content]) => {
-                                let score = 0;
-                                keywords.forEach(k => {
-                                  if (path.toLowerCase().includes(k)) score += 50;
-                                  if (content.toLowerCase().includes(k)) score += 10;
-                                });
-                                if (path.includes('index.html') || path.includes('App.tsx')) score += 100;
-                                return { path, content, score };
+                          // Envoyer directement à Claude sans afficher dans le chat
+                          if (!user) {
+                            navigate('/auth');
+                            return;
+                          }
+
+                          const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
+                            const keywords = prompt.toLowerCase().split(/\s+/);
+                            const scored = Object.entries(files).map(([path, content]) => {
+                              let score = 0;
+                              keywords.forEach(k => {
+                                if (path.toLowerCase().includes(k)) score += 50;
+                                if (content.toLowerCase().includes(k)) score += 10;
                               });
-                              
-                              return scored
-                                .sort((a, b) => b.score - a.score)
-                                .slice(0, 5);
-                            };
+                              if (path.includes('index.html') || path.includes('App.tsx')) score += 100;
+                              return { path, content, score };
+                            });
 
-                            const relevantFilesArray = selectRelevantFiles(contextualPrompt, projectFiles);
-                            const chatHistory = messages.slice(-3).map(m => ({
-                              role: m.role,
-                              content: typeof m.content === 'string' ? m.content : '[message multimédia]'
-                            }));
+                            return scored
+                              .sort((a, b) => b.score - a.score)
+                              .slice(0, 5);
+                          };
 
-                            let assistantMessage = '';
-                            const updatedFiles = { ...projectFiles };
-                            let usedTokens = { input: 0, output: 0, total: 0 };
+                          const relevantFilesArray = selectRelevantFiles(contextualPrompt, projectFiles);
+                          const chatHistory = messages.slice(-3).map(m => ({
+                            role: m.role,
+                            content: typeof m.content === 'string' ? m.content : '[message multimédia]'
+                          }));
 
-                            setAiEvents([]);
-                            setGenerationEvents([]);
+                          let assistantMessage = '';
+                          const updatedFiles = { ...projectFiles };
+                          let usedTokens = { input: 0, output: 0, total: 0 };
 
-                          const projectContext = projectType === 'website' 
+                          setAiEvents([]);
+                          setGenerationEvents([]);
+
+                          const projectContext = projectType === 'website'
                             ? 'Generate a static website with HTML, CSS, and vanilla JavaScript files only. No React, no JSX. Use simple HTML structure.'
                             : projectType === 'webapp'
                             ? 'Generate a React web application with TypeScript/JSX. Use React components and modern web technologies.'
@@ -2822,7 +1917,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                               onMessage: (message) => {
                                 assistantMessage += message;
                                 setMessages(prev => {
-                                  const withoutLastAssistant = prev.filter((m, i) => 
+                                  const withoutLastAssistant = prev.filter((m, i) =>
                                     !(i === prev.length - 1 && m.role === 'assistant')
                                   );
                                   return [...withoutLastAssistant, { role: 'assistant' as const, content: assistantMessage }];
@@ -2847,14 +1942,14 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                                 console.log('📦 Accumulating file:', path);
                                 setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
                                 updatedFiles[path] = code;
-                                
+
                                 // ⏸️ NE JAMAIS mettre à jour la preview pendant la génération
                                 // Les fichiers seront appliqués tous ensemble dans onComplete
-                                
+
                                 if (path === 'index.html') {
                                   setGeneratedHtml(code);
                                 }
-                                
+
                                 if (selectedFile === path || !selectedFile) {
                                   setSelectedFile(path);
                                   setSelectedFileContent(code);
@@ -2863,95 +1958,95 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                               onComplete: async () => {
                                 console.log('✅ Génération terminée - Validation des fichiers avant affichage');
                                 setAiEvents(prev => [...prev, { type: 'complete' }]);
-                                
+
                                 // 🔍 VALIDATION CRITIQUE : Vérifier que les fichiers essentiels sont créés et NON VIDES
                                 const hasHtml = 'index.html' in updatedFiles;
                                 const hasCss = 'styles.css' in updatedFiles;
                                 const hasJs = 'script.js' in updatedFiles;
-                                
+
                                 const htmlContent = updatedFiles['index.html'] || '';
                                 const cssContent = updatedFiles['styles.css'] || '';
                                 const jsContent = updatedFiles['script.js'] || '';
-                                
+
                                 console.log('📊 Validation fichiers:', {
                                   hasHtml, hasCss, hasJs,
                                   htmlLength: htmlContent.length,
                                   cssLength: cssContent.length,
                                   jsLength: jsContent.length
                                 });
-                                
+
                                 // Vérifier que index.html contient bien les liens vers CSS et JS
                                 const hasStyleLink = htmlContent.includes('href="styles.css"') || htmlContent.includes("href='styles.css'");
                                 const hasScriptLink = htmlContent.includes('src="script.js"') || htmlContent.includes("src='script.js'");
-                                
+
                                 // ⚠️ ERREURS CRITIQUES - Validation stricte de tous les fichiers
                                 if (!hasHtml || !hasCss || !hasJs) {
                                   const missing = [];
                                   if (!hasHtml) missing.push('index.html');
                                   if (!hasCss) missing.push('styles.css');
                                   if (!hasJs) missing.push('script.js');
-                                  
+
                                   console.error('❌ FICHIERS MANQUANTS:', missing);
                                   sonnerToast.error(`Fichiers manquants: ${missing.join(', ')}. Impossible d'afficher la preview.`);
-                                  setGenerationEvents(prev => [...prev, { 
-                                    type: 'error', 
-                                    message: `Fichiers manquants: ${missing.join(', ')}` 
+                                  setGenerationEvents(prev => [...prev, {
+                                    type: 'error',
+                                    message: `Fichiers manquants: ${missing.join(', ')}`
                                   }]);
                                   return;
                                 }
-                                
+
                                 // Validation du contenu HTML (doit être substantiel)
                                 if (htmlContent.length < 200) {
                                   console.error('❌ HTML VIDE OU TROP COURT:', htmlContent.length, 'caractères');
                                   sonnerToast.error('Le fichier HTML est vide ou incomplet. Impossible d\'afficher la preview.');
-                                  setGenerationEvents(prev => [...prev, { 
-                                    type: 'error', 
-                                    message: 'HTML file is empty or too short' 
+                                  setGenerationEvents(prev => [...prev, {
+                                    type: 'error',
+                                    message: 'HTML file is empty or too short'
                                   }]);
                                   return;
                                 }
-                                
+
                                 // Validation du contenu CSS (doit être substantiel)
                                 if (cssContent.length < 100) {
                                   console.error('❌ CSS VIDE OU TROP COURT:', cssContent.length, 'caractères');
                                   sonnerToast.error('Le fichier CSS est vide ou incomplet. Impossible d\'afficher la preview.');
-                                  setGenerationEvents(prev => [...prev, { 
-                                    type: 'error', 
-                                    message: 'CSS file is empty or too short' 
+                                  setGenerationEvents(prev => [...prev, {
+                                    type: 'error',
+                                    message: 'CSS file is empty or too short'
                                   }]);
                                   return;
                                 }
-                                
+
                                 // Validation du contenu JS (doit exister, peut être court si pas de logique)
                                 if (jsContent.length < 10) {
                                   console.error('❌ JS VIDE OU TROP COURT:', jsContent.length, 'caractères');
                                   sonnerToast.error('Le fichier JavaScript est vide ou incomplet. Impossible d\'afficher la preview.');
-                                  setGenerationEvents(prev => [...prev, { 
-                                    type: 'error', 
-                                    message: 'JS file is empty or too short' 
+                                  setGenerationEvents(prev => [...prev, {
+                                    type: 'error',
+                                    message: 'JS file is empty or too short'
                                   }]);
                                   return;
                                 }
-                                
+
                                 if (!hasStyleLink || !hasScriptLink) {
                                   console.error('❌ LIENS CSS/JS MANQUANTS dans index.html');
                                   sonnerToast.error('Les liens CSS/JS ne sont pas présents dans index.html');
-                                  setGenerationEvents(prev => [...prev, { 
-                                    type: 'error', 
-                                    message: 'Missing CSS/JS links in HTML' 
+                                  setGenerationEvents(prev => [...prev, {
+                                    type: 'error',
+                                    message: 'Missing CSS/JS links in HTML'
                                   }]);
                                   return;
                                 }
-                                
+
                                 // ✅ VALIDATION RÉUSSIE
                                 console.log('✅ Validation réussie - Application de TOUS les fichiers à la preview');
                                 setGenerationEvents(prev => [...prev, { type: 'complete', message: 'All files generated successfully' }]);
-                                
+
                                 // ✅ Appliquer TOUS les fichiers générés à la preview en une seule fois
                                 console.log('📦 Fichiers à appliquer:', Object.keys(updatedFiles));
                                 await updateFiles(updatedFiles, true);
                                 console.log('✅ Fichiers sauvegardés et prêts pour la preview');
-                                
+
                                 await supabase
                                   .from('build_sessions')
                                   .update({
@@ -2982,71 +2077,9 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                               }
                             }
                           );
-                          }}
-                        />
-                      </>
-                    )
-                  ) : viewMode === 'analytics' ? (
-                    <CloudflareAnalytics 
-                      sessionId={sessionId!}
-                      isDark={isDark}
-                    />
-                  ) : (
-                    <div className="h-full flex bg-white">
-                      {/* TreeView - 20% */}
-                      <div className="w-[20%] min-w-[200px]">
-                        <CodeTreeView
-                          files={projectFiles}
-                          selectedFile={selectedFile}
-                          onFileSelect={(path, content) => {
-                            setSelectedFile(path);
-                            setSelectedFileContent(content);
-                            if (!openFiles.includes(path)) {
-                              setOpenFiles([...openFiles, path]);
-                            }
-                          }}
-                        />
-                      </div>
-
-                      {/* Monaco Editor - 80% */}
-                      <div className="flex-1 flex flex-col">
-                        <FileTabs
-                          openFiles={openFiles}
-                          activeFile={selectedFile}
-                          onTabClick={(path) => {
-                            setSelectedFile(path);
-                            setSelectedFileContent(projectFiles[path]);
-                          }}
-                          onTabClose={(path) => {
-                            const newOpenFiles = openFiles.filter((f) => f !== path);
-                            setOpenFiles(newOpenFiles);
-                            if (selectedFile === path) {
-                              const nextFile = newOpenFiles[newOpenFiles.length - 1] || null;
-                              setSelectedFile(nextFile);
-                              setSelectedFileContent(nextFile ? projectFiles[nextFile] : '');
-                            }
-                          }}
-                        />
-                        <div className="flex-1">
-                          {selectedFileContent ? (
-                            <MonacoEditor
-                              value={selectedFileContent}
-                              language={selectedFile?.split('.').pop() || 'plaintext'}
-                              onChange={(value) => {
-                                if (value !== undefined && selectedFile) {
-                                  setSelectedFileContent(value);
-                                  updateFile(selectedFile, value);
-                                }
-                              }}
-                            />
-                          ) : (
-                            <div className="h-full flex items-center justify-center text-gray-500">
-                              Sélectionnez un fichier pour le modifier
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                        }}
+                      />
+                    </>
                   )}
                 </>
               )}
