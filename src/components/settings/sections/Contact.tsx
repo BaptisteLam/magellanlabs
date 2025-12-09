@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -14,17 +13,17 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { 
-  Mail, 
   Phone, 
   User, 
-  MessageSquare, 
   Check, 
   Archive, 
   Loader2, 
   Search, 
   Download,
-  Filter,
-  Eye
+  Eye,
+  Plus,
+  Users,
+  ArrowDown
 } from 'lucide-react';
 import { useProjectData, ProjectContact } from '@/hooks/useProjectData';
 import { toast } from 'sonner';
@@ -40,11 +39,14 @@ import {
 export function Contact() {
   const [searchParams] = useSearchParams();
   const projectId = searchParams.get('projectId');
-  const { data: contacts, isLoading, update } = useProjectData(projectId, 'contacts');
+  const { data: contacts, isLoading, update, create } = useProjectData(projectId, 'contacts');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedContact, setSelectedContact] = useState<ProjectContact | null>(null);
+  const [showNewContactDialog, setShowNewContactDialog] = useState(false);
+  const [newContact, setNewContact] = useState({ name: '', email: '', phone: '', message: '' });
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleStatusChange = async (contact: ProjectContact, newStatus: string) => {
     setUpdatingId(contact.id);
@@ -55,6 +57,31 @@ export function Contact() {
       toast.error('Erreur lors de la mise à jour');
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleCreateContact = async () => {
+    if (!newContact.name || !newContact.email) {
+      toast.error('Nom et email requis');
+      return;
+    }
+    setIsCreating(true);
+    try {
+      await create({
+        project_id: projectId,
+        name: newContact.name,
+        email: newContact.email,
+        phone: newContact.phone || null,
+        message: newContact.message || null,
+        status: 'new'
+      });
+      toast.success('Contact créé');
+      setShowNewContactDialog(false);
+      setNewContact({ name: '', email: '', phone: '', message: '' });
+    } catch {
+      toast.error('Erreur lors de la création');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -130,197 +157,185 @@ export function Contact() {
 
   if (!projectId) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Contact</h2>
-          <p className="text-muted-foreground">Sélectionnez un projet pour voir les messages</p>
-        </div>
-        <Card className="rounded-[8px]">
-          <CardContent className="py-8 text-center text-muted-foreground">
-            Aucun projet sélectionné
-          </CardContent>
-        </Card>
+      <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground">
+        <Users className="h-16 w-16 mb-4 opacity-30" />
+        <h3 className="text-xl font-semibold text-foreground mb-2">Contacts</h3>
+        <p>Sélectionnez un projet pour voir les messages</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Messages de contact</h2>
-          <p className="text-muted-foreground">
-            {filteredContacts.length} message(s) {statusFilter !== 'all' ? `(${statusFilter})` : ''}
-          </p>
+    <div className="space-y-0">
+      {/* Header avec titre, recherche et bouton */}
+      <div className="flex items-center justify-between py-4 border-b">
+        <div className="flex items-center gap-3">
+          <Users className="h-5 w-5 text-muted-foreground" />
+          <h2 className="text-lg font-semibold text-foreground">Contacts</h2>
         </div>
-        <Button 
-          onClick={handleExportExcel}
-          disabled={!filteredContacts.length}
-          className="rounded-full border-[#03A5C0] bg-[#03A5C0]/10 text-[#03A5C0] hover:bg-[#03A5C0]/20 px-4 py-0"
-          variant="outline"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Exporter Excel
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 w-[200px] h-9 rounded-lg border-border bg-background"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[140px] h-9 rounded-lg">
+              <SelectValue placeholder="Statut" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous</SelectItem>
+              <SelectItem value="new">Nouveau</SelectItem>
+              <SelectItem value="read">Lu</SelectItem>
+              <SelectItem value="replied">Répondu</SelectItem>
+              <SelectItem value="archived">Archivé</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button 
+            onClick={handleExportExcel}
+            disabled={!filteredContacts.length}
+            variant="outline"
+            size="sm"
+            className="h-9 rounded-lg"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Button 
+            onClick={() => setShowNewContactDialog(true)}
+            className="h-9 rounded-full border-[#03A5C0] bg-[#03A5C0]/10 text-[#03A5C0] hover:bg-[#03A5C0]/20 px-4"
+            variant="outline"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New contact
+          </Button>
+        </div>
       </div>
 
-      {/* Filtres et recherche */}
-      <Card className="rounded-[8px]">
-        <CardContent className="py-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher par nom, email, téléphone ou message..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 rounded-full"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px] rounded-full">
-                  <SelectValue placeholder="Filtrer par statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="new">Nouveau</SelectItem>
-                  <SelectItem value="read">Lu</SelectItem>
-                  <SelectItem value="replied">Répondu</SelectItem>
-                  <SelectItem value="archived">Archivé</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* En-tête du tableau */}
+      <div className="border-b">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-[200px] font-medium">Name</TableHead>
+              <TableHead className="w-[220px] font-medium">Email</TableHead>
+              <TableHead className="font-medium">Latest message</TableHead>
+              <TableHead className="w-[140px] font-medium">Phone</TableHead>
+              <TableHead className="w-[140px] font-medium">
+                <div className="flex items-center gap-1">
+                  Date added
+                  <ArrowDown className="h-3 w-3" />
+                </div>
+              </TableHead>
+              <TableHead className="w-[100px] font-medium">Status</TableHead>
+              <TableHead className="w-[80px]"></TableHead>
+            </TableRow>
+          </TableHeader>
+        </Table>
+      </div>
 
-      {/* Tableau des contacts */}
-      <Card className="rounded-[8px]">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            Boîte de réception
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : !filteredContacts.length ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>{searchQuery || statusFilter !== 'all' ? 'Aucun résultat trouvé' : 'Aucun message reçu pour le moment'}</p>
-              <p className="text-sm mt-2">Les messages de votre formulaire de contact apparaîtront ici</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Téléphone</TableHead>
-                    <TableHead>Message</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredContacts.map((contact: ProjectContact) => (
-                    <TableRow key={contact.id} className="hover:bg-muted/50">
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-[#03A5C0]/20 flex items-center justify-center">
-                            <User className="h-4 w-4 text-[#03A5C0]" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">{contact.name}</p>
-                            <p className="text-xs text-muted-foreground">{contact.email}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {contact.phone ? (
-                          <div className="flex items-center gap-1 text-sm">
-                            <Phone className="h-3 w-3" />
-                            {contact.phone}
-                          </div>
+      {/* Corps du tableau ou état vide */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : !filteredContacts.length ? (
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+          <div className="h-16 w-16 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center mb-4">
+            <User className="h-8 w-8 opacity-50" />
+          </div>
+          <h3 className="text-xl font-semibold text-foreground mb-2">Contacts</h3>
+          <p className="mb-4">
+            {searchQuery || statusFilter !== 'all' 
+              ? "Aucun résultat trouvé" 
+              : "You don't have any contacts, yet."}
+          </p>
+          <Button 
+            onClick={() => setShowNewContactDialog(true)}
+            variant="outline"
+            className="rounded-lg"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New contact
+          </Button>
+        </div>
+      ) : (
+        <Table>
+          <TableBody>
+            {filteredContacts.map((contact: ProjectContact) => (
+              <TableRow key={contact.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => setSelectedContact(contact)}>
+                <TableCell className="w-[200px] font-medium">{contact.name}</TableCell>
+                <TableCell className="w-[220px] text-muted-foreground">{contact.email}</TableCell>
+                <TableCell className="max-w-[300px]">
+                  <p className="truncate text-muted-foreground" title={contact.message || ''}>
+                    {contact.message || '-'}
+                  </p>
+                </TableCell>
+                <TableCell className="w-[140px] text-muted-foreground">
+                  {contact.phone || '-'}
+                </TableCell>
+                <TableCell className="w-[140px] text-muted-foreground whitespace-nowrap">
+                  {format(new Date(contact.created_at), "d MMM yyyy", { locale: fr })}
+                </TableCell>
+                <TableCell className="w-[100px]">
+                  {getStatusBadge(contact.status)}
+                </TableCell>
+                <TableCell className="w-[80px]">
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setSelectedContact(contact)}
+                      title="Voir le détail"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    {contact.status !== 'replied' && (
+                      <Button 
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                        onClick={() => handleStatusChange(contact, 'replied')}
+                        disabled={updatingId === contact.id}
+                        title="Marquer comme répondu"
+                      >
+                        {updatingId === contact.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
+                          <Check className="h-4 w-4" />
                         )}
-                      </TableCell>
-                      <TableCell className="max-w-[200px]">
-                        <p className="text-sm truncate" title={contact.message || ''}>
-                          {contact.message || '-'}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(contact.status)}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {format(new Date(contact.created_at), "d MMM 'à' HH:mm", { locale: fr })}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => setSelectedContact(contact)}
-                            title="Voir le détail"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {contact.status !== 'replied' && (
-                            <Button 
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                              onClick={() => handleStatusChange(contact, 'replied')}
-                              disabled={updatingId === contact.id}
-                              title="Marquer comme répondu"
-                            >
-                              {updatingId === contact.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Check className="h-4 w-4" />
-                              )}
-                            </Button>
-                          )}
-                          {contact.status !== 'archived' && (
-                            <Button 
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleStatusChange(contact, 'archived')}
-                              disabled={updatingId === contact.id}
-                              title="Archiver"
-                            >
-                              <Archive className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      </Button>
+                    )}
+                    {contact.status !== 'archived' && (
+                      <Button 
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleStatusChange(contact, 'archived')}
+                        disabled={updatingId === contact.id}
+                        title="Archiver"
+                      >
+                        <Archive className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
       {/* Dialog détail contact */}
       <Dialog open={!!selectedContact} onOpenChange={() => setSelectedContact(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Détail du message
-            </DialogTitle>
+            <DialogTitle>Détail du message</DialogTitle>
           </DialogHeader>
           {selectedContact && (
             <div className="space-y-4">
@@ -389,6 +404,64 @@ export function Contact() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog nouveau contact */}
+      <Dialog open={showNewContactDialog} onOpenChange={setShowNewContactDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nouveau contact</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Nom *</label>
+              <Input
+                value={newContact.name}
+                onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                placeholder="Nom complet"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Email *</label>
+              <Input
+                type="email"
+                value={newContact.email}
+                onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                placeholder="email@exemple.com"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Téléphone</label>
+              <Input
+                value={newContact.phone}
+                onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                placeholder="+33 6 00 00 00 00"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Message</label>
+              <Input
+                value={newContact.message}
+                onChange={(e) => setNewContact({ ...newContact, message: e.target.value })}
+                placeholder="Note ou message..."
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowNewContactDialog(false)} className="rounded-full">
+                Annuler
+              </Button>
+              <Button 
+                onClick={handleCreateContact}
+                disabled={isCreating || !newContact.name || !newContact.email}
+                className="rounded-full border-[#03A5C0] bg-[#03A5C0]/10 text-[#03A5C0] hover:bg-[#03A5C0]/20"
+                variant="outline"
+              >
+                {isCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                Créer
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
