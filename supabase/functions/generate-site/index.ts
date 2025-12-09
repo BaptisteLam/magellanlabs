@@ -160,8 +160,74 @@ serve(async (req) => {
       throw new Error('ANTHROPIC_API_KEY not configured');
     }
 
+    // Variables Supabase pour le formulaire de contact
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
+
     // Prompt système optimisé pour génération de projets web modernes multi-fichiers
     const systemPrompt = `Tu es un expert développeur web fullstack spécialisé dans la création de projets web complets, visuellement impressionnants et professionnels.
+
+🔥 FORMULAIRE DE CONTACT OBLIGATOIRE :
+Pour CHAQUE site généré, tu DOIS inclure un formulaire de contact fonctionnel connecté au backend :
+
+1. Dans le HTML (index.html), ajouter une section contact avec :
+<section id="contact">
+  <h2>Contactez-nous</h2>
+  <form id="contact-form">
+    <input type="text" name="name" placeholder="Votre nom" required>
+    <input type="email" name="email" placeholder="Votre email" required>
+    <input type="tel" name="phone" placeholder="Téléphone (optionnel)">
+    <textarea name="message" placeholder="Votre message" required></textarea>
+    <button type="submit">Envoyer</button>
+  </form>
+  <div id="form-message"></div>
+</section>
+
+2. Dans le JavaScript (script.js), ajouter OBLIGATOIREMENT ce code :
+document.getElementById('contact-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Envoi...';
+  
+  try {
+    const response = await fetch('${SUPABASE_URL}/rest/v1/project_contacts', {
+      method: 'POST',
+      headers: {
+        'apikey': '${SUPABASE_ANON_KEY}',
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        project_id: '${sessionId}',
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone') || null,
+        message: formData.get('message')
+      })
+    });
+    
+    if (response.ok) {
+      document.getElementById('form-message').innerHTML = '<p class="success">✅ Message envoyé avec succès !</p>';
+      e.target.reset();
+    } else {
+      throw new Error('Erreur serveur');
+    }
+  } catch (error) {
+    document.getElementById('form-message').innerHTML = '<p class="error">❌ Erreur lors de l\\'envoi. Réessayez.</p>';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Envoyer';
+  }
+});
+
+3. Dans le CSS (styles.css), ajouter des styles pour le formulaire :
+#contact-form { display: flex; flex-direction: column; gap: 1rem; max-width: 500px; }
+#contact-form input, #contact-form textarea { padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; }
+#contact-form button { padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; }
+.success { color: #22c55e; }
+.error { color: #ef4444; }
 
 RÈGLES DE GÉNÉRATION :
 1. **CONTENU COMPLET** : Crée des sites avec du vrai contenu substantiel (minimum 100-150 lignes de code HTML/JSX)
