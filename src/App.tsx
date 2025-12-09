@@ -18,7 +18,7 @@ import SessionPreview from "./pages/SessionPreview";
 import PublicProject from "./pages/PublicProject";
 import ProjectDashboard from "./pages/ProjectDashboard";
 import ScrollToTop from "./components/ScrollToTop";
-import { SettingsCenter } from "./components/settings/SettingsCenter";
+
 import { useThemeStore } from "./stores/themeStore";
 import { useEffect } from "react";
 import { useSubdomain } from "./hooks/useSubdomain";
@@ -36,7 +36,7 @@ function AppContent() {
   // Sinon, afficher le SaaS normal
   return (
     <>
-      <SettingsCenter />
+      
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Home />} />

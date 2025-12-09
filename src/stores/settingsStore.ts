@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-type SettingsSection = 'general' | 'profile' | 'subscription' | 'integrations';
+export type SettingsSection = 'siteweb' | 'analytiques' | 'contact' | 'blog' | 'facture' | 'finance' | 'marketing' | 'parametres';
 
 interface SettingsStore {
   isOpen: boolean;
@@ -12,8 +12,8 @@ interface SettingsStore {
 
 export const useSettingsStore = create<SettingsStore>((set) => ({
   isOpen: false,
-  currentSection: 'general',
-  openSettings: (section = 'general') => set({ isOpen: true, currentSection: section }),
+  currentSection: 'siteweb',
+  openSettings: (section = 'siteweb') => set({ isOpen: true, currentSection: section }),
   closeSettings: () => set({ isOpen: false }),
   setSection: (section) => set({ currentSection: section }),
 }));
