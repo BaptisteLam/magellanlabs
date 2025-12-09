@@ -825,7 +825,15 @@ export default function BuilderSession() {
       }
       return [...prev, userMessage];
     });
-    
+
+    // 🔒 Activer le mode "génération en cours" UNIQUEMENT pour la première génération (pas de fichiers existants)
+    const isFirstGeneration = Object.keys(projectFiles).length === 0;
+    if (isFirstGeneration) {
+      console.log('🎬 First generation detected - showing GeneratingPreview');
+      setIsInitialGeneration(true);
+      isInitialGenerationRef.current = true;
+    }
+
     // Créer le message de génération
     const generationStartTime = Date.now();
     generationStartTimeRef.current = generationStartTime;
@@ -991,9 +999,16 @@ export default function BuilderSession() {
           
           onComplete: (completeResult) => {
             console.log('✅ Complete:', completeResult);
-            
+
             const duration = Date.now() - generationStartTime;
-            
+
+            // Désactiver le loading preview si c'était une première génération
+            if (isInitialGenerationRef.current) {
+              console.log('🎬 Disabling GeneratingPreview after first generation');
+              setIsInitialGeneration(false);
+              isInitialGenerationRef.current = false;
+            }
+
             // Mettre à jour le message final
             setMessages(prev => {
               const lastMsg = prev[prev.length - 1];
