@@ -26,24 +26,26 @@ export function GeneratingPreview() {
   }, []);
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-6 rounded-xl overflow-hidden">
-      <video 
-        src={isDark ? loadingSphereDark : loadingSphereLight}
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="w-24 h-24 object-contain"
-      />
-      
-      <div className="px-8 max-w-2xl text-center">
-        <h2 
+    <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-8 px-4">
+      <div className="flex items-center justify-center">
+        <video
+          src={isDark ? loadingSphereDark : loadingSphereLight}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-32 h-32 object-contain"
+        />
+      </div>
+
+      <div className="max-w-xl text-center">
+        <h2
           key={messageIndex}
-          className="text-xs animate-fade-in"
+          className="text-sm font-medium animate-fade-in"
         >
-          <ShinyText 
-            text={loadingMessages[messageIndex]} 
-            disabled={false} 
+          <ShinyText
+            text={loadingMessages[messageIndex]}
+            disabled={false}
             speed={3}
           />
         </h2>
