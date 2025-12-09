@@ -82,16 +82,16 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
 
   return (
     <div className="h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl flex flex-col shadow-lg">
-      <div className="p-6 flex-shrink-0 border-b border-border/30">
+      <div className="px-6 py-3 flex-shrink-0 border-b border-border/30">
         <img 
           src="/lovable-uploads/magellan-logo-light.png" 
           alt="Magellan" 
-          className="h-12 dark:hidden"
+          className="h-16 dark:hidden"
         />
         <img 
           src="/lovable-uploads/magellan-logo-dark.png" 
           alt="Magellan" 
-          className="h-12 hidden dark:block"
+          className="h-16 hidden dark:block"
         />
       </div>
 
