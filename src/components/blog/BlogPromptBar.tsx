@@ -71,7 +71,8 @@ export function BlogPromptBar({ onSubmit, disabled }: BlogPromptBarProps) {
   };
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-40">
+    <div className="absolute bottom-6 left-0 right-0 px-4 z-40">
+      <div className="max-w-2xl mx-auto">
       <input
         ref={fileInputRef}
         type="file"
@@ -189,6 +190,7 @@ export function BlogPromptBar({ onSubmit, disabled }: BlogPromptBarProps) {
       <p className="text-xs text-muted-foreground mt-2 text-center">
         Appuyez sur Entrée pour générer • Shift+Entrée pour nouvelle ligne
       </p>
+      </div>
     </div>
   );
 }
