@@ -1,47 +1,41 @@
-import { useSettingsStore } from '@/stores/settingsStore';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { SettingsSidebar } from './SettingsSidebar';
-import { General } from './sections/General';
-import { Profile } from './sections/Profile';
-import { Subscription } from './sections/Subscription';
-import { Integrations } from './sections/Integrations';
-import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { SiteWeb } from './sections/SiteWeb';
+import { Analytiques } from './sections/Analytiques';
+import { Contact } from './sections/Contact';
+import { Blog } from './sections/Blog';
+import { Facture } from './sections/Facture';
+import { Finance } from './sections/Finance';
+import { Marketing } from './sections/Marketing';
+import { Parametres } from './sections/Parametres';
 
-export function SettingsCenter() {
-  const { isOpen, closeSettings, currentSection, setSection } = useSettingsStore();
+export type SettingsSection = 'siteweb' | 'analytiques' | 'contact' | 'blog' | 'facture' | 'finance' | 'marketing' | 'parametres';
 
+interface SettingsCenterProps {
+  section: SettingsSection;
+}
+
+export function SettingsCenter({ section }: SettingsCenterProps) {
   const renderSection = () => {
-    switch (currentSection) {
-      case 'general':
-        return <General />;
-      case 'profile':
-        return <Profile />;
-      case 'subscription':
-        return <Subscription />;
-      case 'integrations':
-        return <Integrations />;
+    switch (section) {
+      case 'siteweb':
+        return <SiteWeb />;
+      case 'analytiques':
+        return <Analytiques />;
+      case 'contact':
+        return <Contact />;
+      case 'blog':
+        return <Blog />;
+      case 'facture':
+        return <Facture />;
+      case 'finance':
+        return <Finance />;
+      case 'marketing':
+        return <Marketing />;
+      case 'parametres':
+        return <Parametres />;
       default:
-        return <General />;
+        return <SiteWeb />;
     }
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={closeSettings}>
-      <DialogContent
-        className={cn(
-          'max-w-[85vw] h-[85vh] p-0 gap-0',
-          'bg-background border border-border/50 rounded-[8px] overflow-hidden'
-        )}
-      >
-        <div className="flex h-full">
-          <SettingsSidebar currentSection={currentSection as any} setSection={setSection as any} />
-
-          <ScrollArea className="flex-1">
-            <div className="p-8">{renderSection()}</div>
-          </ScrollArea>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+  return <div className="p-6">{renderSection()}</div>;
 }

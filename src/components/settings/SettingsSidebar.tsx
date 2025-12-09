@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Settings, User, CreditCard, Plug, LogOut, ChevronDown, ChevronRight, Globe, FileCode, Smartphone, Plus } from 'lucide-react';
+import { Globe, BarChart3, Mail, FileText, Receipt, Wallet, Megaphone, Settings, ChevronDown, ChevronRight, FileCode, Smartphone, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-type SettingsSection = 'general' | 'profile' | 'subscription' | 'integrations';
+type SettingsSection = 'siteweb' | 'analytiques' | 'contact' | 'blog' | 'facture' | 'finance' | 'marketing' | 'parametres';
 
 interface Project {
   id: string;
@@ -15,11 +13,14 @@ interface Project {
   project_type: string | null;
 }
 
-const menuItems: { id: SettingsSection; label: string; icon: typeof Settings }[] = [
-  { id: 'general', label: 'Général', icon: Settings },
-  { id: 'profile', label: 'Profil', icon: User },
-  { id: 'subscription', label: 'Abonnement', icon: CreditCard },
-  { id: 'integrations', label: 'Intégrations', icon: Plug },
+const menuItems: { id: SettingsSection; label: string; icon: typeof Globe }[] = [
+  { id: 'siteweb', label: 'Site Web', icon: Globe },
+  { id: 'analytiques', label: 'Analytiques', icon: BarChart3 },
+  { id: 'contact', label: 'Contact', icon: Mail },
+  { id: 'blog', label: 'Blog', icon: FileText },
+  { id: 'facture', label: 'Facture', icon: Receipt },
+  { id: 'finance', label: 'Finance', icon: Wallet },
+  { id: 'marketing', label: 'Marketing', icon: Megaphone },
 ];
 
 interface SettingsSidebarProps {
@@ -60,22 +61,6 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
     }
   };
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Impossible de se déconnecter',
-      });
-    } else {
-      navigate('/');
-      toast({
-        title: 'Déconnexion réussie',
-      });
-    }
-  };
-
   const getProjectIcon = (projectType: string | null) => {
     switch (projectType) {
       case 'webapp':
@@ -88,7 +73,6 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
   };
 
   const handleProjectClick = (projectId: string) => {
-    // Naviguer vers le dashboard du projet
     navigate(`/project/${projectId}`);
   };
 
@@ -99,7 +83,7 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
   return (
     <div className="h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl flex flex-col shadow-lg">
       <div className="p-6 flex-shrink-0 border-b border-border/30">
-        <h2 className="text-lg font-semibold text-foreground">Paramètres</h2>
+        <h2 className="text-lg font-semibold text-foreground">Dashboard</h2>
       </div>
 
       <ScrollArea className="flex-1">
@@ -173,29 +157,40 @@ export function SettingsSidebar({ currentSection, setSection }: SettingsSidebarP
             const isActive = currentSection === item.id;
 
             return (
-              <Button
+              <button
                 key={item.id}
                 onClick={() => setSection(item.id)}
-                variant={isActive ? "magellan-active" : "magellan"}
-                className="w-full justify-start gap-3"
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  isActive
+                    ? "text-[#03A5C0] bg-[#03A5C0]/10"
+                    : "text-foreground/80 hover:text-[#03A5C0]",
+                  "focus:outline-none"
+                )}
               >
                 <Icon className="h-5 w-5" />
                 <span>{item.label}</span>
-              </Button>
+              </button>
             );
           })}
         </nav>
       </ScrollArea>
 
+      {/* Paramètres en bas */}
       <div className="p-4 border-t border-border/30 flex-shrink-0">
-        <Button
-          onClick={handleLogout}
-          variant="magellan-danger"
-          className="w-full justify-start gap-3"
+        <button
+          onClick={() => setSection('parametres')}
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+            currentSection === 'parametres'
+              ? "text-[#03A5C0] bg-[#03A5C0]/10"
+              : "text-foreground/80 hover:text-[#03A5C0]",
+            "focus:outline-none"
+          )}
         >
-          <LogOut className="h-5 w-5" />
-          <span>Déconnexion</span>
-        </Button>
+          <Settings className="h-5 w-5" />
+          <span>Paramètres</span>
+        </button>
       </div>
     </div>
   );
