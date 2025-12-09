@@ -16,6 +16,7 @@ interface Project {
   public_url: string | null;
   project_files: unknown;
   cloudflare_deployment_url: string | null;
+  thumbnail_url: string | null;
 }
 
 interface PageSEO {
@@ -49,7 +50,7 @@ export function SiteWeb() {
 
       let query = supabase
         .from('build_sessions')
-        .select('id, title, public_url, project_files, cloudflare_deployment_url')
+        .select('id, title, public_url, project_files, cloudflare_deployment_url, thumbnail_url')
         .eq('user_id', session.user.id);
 
       if (projectId) {
@@ -152,13 +153,6 @@ export function SiteWeb() {
     }
   };
 
-  const getPreviewHtml = () => {
-    if (!project?.project_files) return null;
-    const files = project.project_files as Record<string, string>;
-    return files['index.html'] || Object.values(files).find(content => 
-      typeof content === 'string' && content.includes('<!DOCTYPE html>')
-    );
-  };
 
   if (isLoading) {
     return (
@@ -273,14 +267,13 @@ export function SiteWeb() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {/* Preview iframe */}
-          <div className="relative w-full h-[400px] bg-muted/30 border-t border-border/50">
-            {getPreviewHtml() ? (
-              <iframe
-                srcDoc={getPreviewHtml()!}
-                className="w-full h-full border-0"
-                title="Preview du site"
-                sandbox="allow-scripts"
+          {/* Screenshot thumbnail */}
+          <div className="relative w-full h-[400px] bg-muted/30 border-t border-border/50 overflow-hidden">
+            {project.thumbnail_url ? (
+              <img
+                src={project.thumbnail_url}
+                alt={`Aperçu de ${project.title || 'votre site'}`}
+                className="w-full h-full object-cover object-top"
               />
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
