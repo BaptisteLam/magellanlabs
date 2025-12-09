@@ -120,7 +120,7 @@ export function Blog() {
   }
 
   return (
-    <div className="relative min-h-[calc(100vh-200px)] pb-40">
+    <div className="relative flex flex-col min-h-[calc(100vh-200px)]">
       {/* Header */}
       <div className="flex items-center justify-between py-4 border-b mb-6">
         <div className="flex items-center gap-3">
@@ -164,72 +164,76 @@ export function Blog() {
         </div>
       </div>
 
-      {/* Contenu */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : !filteredPosts.length ? (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-          <div className="h-16 w-16 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center mb-4">
-            <FileText className="h-8 w-8 opacity-50" />
+      {/* Contenu avec flex-1 pour prendre l'espace disponible */}
+      <div className="flex-1 overflow-auto pb-48">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-          <h3 className="text-xl font-semibold text-foreground mb-2">Aucun article</h3>
-          <p className="mb-4">
-            {searchQuery || statusFilter !== 'all' 
-              ? "Aucun résultat trouvé" 
-              : "Commencez à rédiger votre premier article"}
-          </p>
-          <Button 
-            onClick={() => setIsCreating(true)}
-            variant="outline"
-            className="rounded-lg"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvel article
-          </Button>
-        </div>
-      ) : (
-        <>
-          {/* Grille de cards avec effet de fade en bas */}
-          <div className="relative">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredPosts.map((post: ProjectBlogPost, index: number) => {
-                // Calculer l'opacité en fonction de la position (fade vers le bas)
-                const totalPosts = filteredPosts.length;
-                const rowIndex = Math.floor(index / 3);
-                const totalRows = Math.ceil(totalPosts / 3);
-                const fadeStart = Math.max(0, totalRows - 2); // Commence à fader 2 lignes avant la fin
-                
-                let opacity = 1;
-                if (rowIndex >= fadeStart && totalRows > 2) {
-                  const fadeProgress = (rowIndex - fadeStart + 1) / (totalRows - fadeStart);
-                  opacity = Math.max(0.3, 1 - fadeProgress * 0.7);
-                }
-
-                return (
-                  <BlogCard
-                    key={post.id}
-                    post={post}
-                    onEdit={() => setEditingPost(post)}
-                    onDelete={() => setDeletePostId(post.id)}
-                    onView={() => setEditingPost(post)}
-                    style={{ opacity }}
-                  />
-                );
-              })}
+        ) : !filteredPosts.length ? (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+            <div className="h-16 w-16 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center mb-4">
+              <FileText className="h-8 w-8 opacity-50" />
             </div>
-
-            {/* Gradient overlay pour effet de fade */}
-            {filteredPosts.length > 3 && (
-              <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
-            )}
+            <h3 className="text-xl font-semibold text-foreground mb-2">Aucun article</h3>
+            <p className="mb-4">
+              {searchQuery || statusFilter !== 'all' 
+                ? "Aucun résultat trouvé" 
+                : "Commencez à rédiger votre premier article"}
+            </p>
+            <Button 
+              onClick={() => setIsCreating(true)}
+              variant="outline"
+              className="rounded-lg"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvel article
+            </Button>
           </div>
-        </>
-      )}
+        ) : (
+          <>
+            {/* Grille de cards avec effet de fade en bas */}
+            <div className="relative">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredPosts.map((post: ProjectBlogPost, index: number) => {
+                  // Calculer l'opacité en fonction de la position (fade vers le bas)
+                  const totalPosts = filteredPosts.length;
+                  const rowIndex = Math.floor(index / 3);
+                  const totalRows = Math.ceil(totalPosts / 3);
+                  const fadeStart = Math.max(0, totalRows - 2); // Commence à fader 2 lignes avant la fin
+                  
+                  let opacity = 1;
+                  if (rowIndex >= fadeStart && totalRows > 2) {
+                    const fadeProgress = (rowIndex - fadeStart + 1) / (totalRows - fadeStart);
+                    opacity = Math.max(0.3, 1 - fadeProgress * 0.7);
+                  }
 
-      {/* Barre de prompt IA en bas */}
-      <BlogPromptBar onSubmit={handleAIPrompt} />
+                  return (
+                    <BlogCard
+                      key={post.id}
+                      post={post}
+                      onEdit={() => setEditingPost(post)}
+                      onDelete={() => setDeletePostId(post.id)}
+                      onView={() => setEditingPost(post)}
+                      style={{ opacity }}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Gradient overlay pour effet de fade */}
+              {filteredPosts.length > 3 && (
+                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Barre de prompt IA centrée en bas de la zone blog */}
+      <div className="mt-auto pt-4">
+        <BlogPromptBar onSubmit={handleAIPrompt} />
+      </div>
 
       {/* Dialog de confirmation de suppression */}
       <AlertDialog open={!!deletePostId} onOpenChange={() => setDeletePostId(null)}>
