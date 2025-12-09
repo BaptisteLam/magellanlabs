@@ -34,6 +34,8 @@ export function SiteWeb() {
   const [pageSEO, setPageSEO] = useState<PageSEO[]>([]);
   const [openPages, setOpenPages] = useState<string[]>([]);
   const [isSavingSEO, setIsSavingSEO] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
 
   useEffect(() => {
     fetchLatestProject();
@@ -85,6 +87,29 @@ export function SiteWeb() {
   const handleEditProject = () => {
     if (project) {
       navigate(`/builder/${project.id}`);
+    }
+  };
+
+  const handleStartEditTitle = () => {
+    setEditedTitle(project?.title || '');
+    setIsEditingTitle(true);
+  };
+
+  const handleSaveTitle = async () => {
+    if (!project || !editedTitle.trim()) return;
+    try {
+      const { error } = await supabase
+        .from('build_sessions')
+        .update({ title: editedTitle.trim() })
+        .eq('id', project.id);
+      
+      if (error) throw error;
+      
+      setProject(prev => prev ? { ...prev, title: editedTitle.trim() } : null);
+      setIsEditingTitle(false);
+      toast.success('Nom du projet mis à jour');
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour');
     }
   };
 
@@ -185,7 +210,36 @@ export function SiteWeb() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Globe className="h-5 w-5" />
-              {project.title || 'Sans titre'}
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    className="h-8 w-48 text-base font-semibold"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveTitle();
+                      if (e.key === 'Escape') setIsEditingTitle(false);
+                    }}
+                  />
+                  <button
+                    onClick={handleSaveTitle}
+                    className="p-1 hover:bg-muted rounded transition-colors"
+                  >
+                    <Check className="h-4 w-4 text-green-500" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span>{project.title || 'Sans titre'}</span>
+                  <button
+                    onClick={handleStartEditTitle}
+                    className="p-1 hover:bg-muted rounded transition-colors"
+                  >
+                    <Pencil className="h-4 w-4 text-muted-foreground hover:text-[#03A5C0]" />
+                  </button>
+                </div>
+              )}
             </CardTitle>
             <div className="flex items-center gap-3">
               {/* Status indicator */}
