@@ -15,13 +15,15 @@ interface UseOptimizedBuilderOptions {
   initialFiles?: Record<string, string>;
   autoSave?: boolean;
   debounceMs?: number;
+  autoLoad?: boolean; // Désactiver le chargement automatique si false
 }
 
 export function useOptimizedBuilder({
   sessionId,
   initialFiles = {},
   autoSave = true,
-  debounceMs = 2000
+  debounceMs = 2000,
+  autoLoad = true // Par défaut, charger automatiquement
 }: UseOptimizedBuilderOptions) {
   const [projectFiles, setProjectFiles] = useState<Record<string, string>>(initialFiles);
   const [visibleFiles, setVisibleFiles] = useState<string[]>([]);
@@ -53,9 +55,14 @@ export function useOptimizedBuilder({
   const hotReload = useHotReload(projectFiles);
 
   /**
-   * Charge la session au montage
+   * Charge la session au montage (seulement si autoLoad = true)
    */
   useEffect(() => {
+    if (!autoLoad) {
+      setIsLoading(false);
+      return;
+    }
+
     const loadSession = async () => {
       setIsLoading(true);
 
@@ -92,7 +99,7 @@ export function useOptimizedBuilder({
     };
 
     loadSession();
-  }, [sessionId, getPreloadedSession, loadFromCache, preloadSession]);
+  }, [sessionId, autoLoad, getPreloadedSession, loadFromCache, preloadSession]);
 
   /**
    * Met à jour les fichiers avec lazy loading
