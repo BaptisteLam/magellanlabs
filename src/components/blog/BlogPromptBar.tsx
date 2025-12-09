@@ -71,8 +71,8 @@ export function BlogPromptBar({ onSubmit, disabled }: BlogPromptBarProps) {
   };
 
   return (
-    <div className="absolute bottom-6 left-0 right-0 px-4 z-40">
-      <div className="max-w-2xl mx-auto">
+    <div className="sticky bottom-0 left-0 right-0 pt-4 pb-6 bg-gradient-to-t from-background via-background to-transparent z-40">
+      <div className="max-w-2xl mx-auto px-4">
       <input
         ref={fileInputRef}
         type="file"
