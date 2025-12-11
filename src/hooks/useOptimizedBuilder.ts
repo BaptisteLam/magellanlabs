@@ -59,42 +59,50 @@ export function useOptimizedBuilder({
    */
   useEffect(() => {
     if (!autoLoad) {
+      console.log('🔒 useOptimizedBuilder: autoLoad disabled for session:', sessionId);
       setIsLoading(false);
       return;
     }
 
+    console.log('🔄 useOptimizedBuilder: Starting auto-load for session:', sessionId);
     const loadSession = async () => {
       setIsLoading(true);
 
       try {
         // 1. Essayer le cache préchargé d'abord
+        console.log('📦 Checking preloaded cache...');
         const preloaded = getPreloadedSession(sessionId);
         if (preloaded) {
-          console.log('⚡ Using preloaded session');
+          console.log('⚡ Using preloaded session - Files:', Object.keys(preloaded.projectFiles).length);
           setProjectFiles(preloaded.projectFiles);
           setIsLoading(false);
           return;
         }
 
         // 2. Essayer le cache IndexedDB
+        console.log('💾 Checking IndexedDB cache...');
         const cached = await loadFromCache();
         if (cached) {
-          console.log('📦 Loaded from IndexedDB cache');
+          console.log('📦 Loaded from IndexedDB cache - Files:', Object.keys(cached).length);
           setProjectFiles(cached);
           setIsLoading(false);
           return;
         }
 
         // 3. Précharger depuis Supabase
+        console.log('🌐 Loading from Supabase...');
         const files = await preloadSession(sessionId);
         if (files) {
-          console.log('🌐 Loaded from Supabase');
+          console.log('🌐 Loaded from Supabase - Files:', Object.keys(files).length);
           setProjectFiles(files);
+        } else {
+          console.log('⚠️ No files loaded from Supabase');
         }
       } catch (error) {
-        console.error('Error loading session:', error);
+        console.error('❌ Error loading session:', error);
       } finally {
         setIsLoading(false);
+        console.log('✅ useOptimizedBuilder: Load complete for session:', sessionId);
       }
     };
 
@@ -108,19 +116,29 @@ export function useOptimizedBuilder({
     newFiles: Record<string, string>,
     triggerSave: boolean = true
   ) => {
+    console.log('📝 useOptimizedBuilder: Updating files -', {
+      newFileCount: Object.keys(newFiles).length,
+      triggerSave,
+      autoSave,
+      sessionId
+    });
+
     // Lazy loading des fichiers selon priorité
     const loadedFiles = await LazyFileLoader.loadFiles(newFiles, visibleFiles);
-    
+
     setProjectFiles(loadedFiles);
 
     // Hot reload si changements CSS/HTML seulement
     // Le hook useHotReload détecte automatiquement les changements
-    
+
     // Trigger sync si autoSave activé
     if (triggerSave && autoSave) {
+      console.log('💾 useOptimizedBuilder: Triggering sync for session:', sessionId);
       triggerSync(newFiles); // On sync tous les fichiers, pas juste les loadedFiles
+    } else {
+      console.log('⏸️ useOptimizedBuilder: Sync skipped (triggerSave:', triggerSave, 'autoSave:', autoSave + ')');
     }
-  }, [projectFiles, visibleFiles, autoSave, triggerSync]);
+  }, [projectFiles, visibleFiles, autoSave, triggerSync, sessionId]);
 
   /**
    * Met à jour un seul fichier
@@ -148,8 +166,10 @@ export function useOptimizedBuilder({
    * Force une sauvegarde immédiate
    */
   const saveNow = useCallback(async () => {
+    console.log('💾 useOptimizedBuilder: Forcing immediate save for session:', sessionId);
     await forceSyncNow(projectFiles);
-  }, [projectFiles, forceSyncNow]);
+    console.log('✅ useOptimizedBuilder: Save completed for session:', sessionId);
+  }, [projectFiles, forceSyncNow, sessionId]);
 
   /**
    * Nettoie les ressources

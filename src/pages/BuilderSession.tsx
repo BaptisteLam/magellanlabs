@@ -84,6 +84,8 @@ export default function BuilderSession() {
   const [showPublishSuccess, setShowPublishSuccess] = useState(false);
   
   // Hook optimisé pour la gestion des fichiers avec cache et sync
+  // IMPORTANT: autoLoad=false pour éviter le double loading
+  // Le chargement est géré manuellement via loadSessionWithCache()
   const {
     projectFiles,
     isLoading: filesLoading,
@@ -98,8 +100,13 @@ export default function BuilderSession() {
     sessionId: sessionId!,
     autoSave: true,
     debounceMs: 2000,
-    autoLoad: false // Désactiver le chargement auto, on utilise loadSession() à la place
+    autoLoad: false // ✅ CRITIQUE: Évite le double loading avec loadSessionWithCache()
   });
+
+  // Log pour debugging du double loading
+  useEffect(() => {
+    console.log('🔍 BuilderSession: useOptimizedBuilder initialized with autoLoad=false');
+  }, []);
   
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedFileContent, setSelectedFileContent] = useState<string>('');
@@ -201,38 +208,40 @@ export default function BuilderSession() {
 
 
   // Charger la session depuis le cache puis Supabase
+  // NOTE: C'est le SEUL endroit où on charge les fichiers (useOptimizedBuilder a autoLoad=false)
   useEffect(() => {
     const loadSessionWithCache = async () => {
       if (!sessionId) {
-        console.warn('⚠️ No sessionId, skipping load');
+        console.warn('⚠️ BuilderSession: No sessionId, skipping load');
         return;
       }
 
-      console.log('🔄 Starting session load:', sessionId);
+      console.log('🔄 BuilderSession: Starting manual session load (NOT via useOptimizedBuilder):', sessionId);
       setSessionLoading(true);
 
       try {
         // 1. Charger d'abord depuis le cache IndexedDB (instantané)
-        console.log('📦 Attempting to load from IndexedDB cache...');
+        console.log('📦 BuilderSession: Attempting to load from IndexedDB cache...');
         const cachedProject = await IndexedDBCache.getProject(sessionId);
         if (cachedProject?.projectFiles && Object.keys(cachedProject.projectFiles).length > 0) {
-          console.log('✅ Loaded from IndexedDB cache:', {
+          console.log('✅ BuilderSession: Loaded from IndexedDB cache:', {
             fileCount: Object.keys(cachedProject.projectFiles).length,
             files: Object.keys(cachedProject.projectFiles)
           });
           updateFiles(cachedProject.projectFiles, false); // Ne pas trigger de save
         } else {
-          console.log('📦 No cache found or empty cache');
+          console.log('📦 BuilderSession: No cache found or empty cache');
         }
 
         // 2. Charger depuis Supabase en arrière-plan (pour sync)
-        console.log('🌐 Loading from Supabase...');
+        console.log('🌐 BuilderSession: Loading from Supabase...');
         await loadSession();
-        console.log('✅ Session load complete');
+        console.log('✅ BuilderSession: Session load complete from Supabase');
       } catch (error) {
-        console.error('❌ Error in loadSessionWithCache:', error);
+        console.error('❌ BuilderSession: Error in loadSessionWithCache:', error);
       } finally {
         setSessionLoading(false);
+        console.log('🏁 BuilderSession: Session loading finished');
       }
     };
 
@@ -829,9 +838,12 @@ export default function BuilderSession() {
     // 🔒 Activer le mode "génération en cours" UNIQUEMENT pour la première génération (pas de fichiers existants)
     const isFirstGeneration = Object.keys(projectFiles).length === 0;
     if (isFirstGeneration) {
-      console.log('🎬 First generation detected - showing GeneratingPreview');
+      console.log('🎬 BuilderSession: First generation detected - showing GeneratingPreview');
+      console.log('📊 BuilderSession: isInitialGeneration STATE will be set to TRUE');
       setIsInitialGeneration(true);
       isInitialGenerationRef.current = true;
+    } else {
+      console.log('📝 BuilderSession: Modification of existing project (', Object.keys(projectFiles).length, 'files) - GeneratingPreview will NOT show');
     }
 
     // Créer le message de génération
@@ -1004,9 +1016,12 @@ export default function BuilderSession() {
 
             // Désactiver le loading preview si c'était une première génération
             if (isInitialGenerationRef.current) {
-              console.log('🎬 Disabling GeneratingPreview after first generation');
+              console.log('🎬 BuilderSession: Disabling GeneratingPreview after first generation COMPLETE');
+              console.log('📊 BuilderSession: isInitialGeneration STATE will be set to FALSE');
               setIsInitialGeneration(false);
               isInitialGenerationRef.current = false;
+            } else {
+              console.log('📝 BuilderSession: No need to disable GeneratingPreview (was not initial generation)');
             }
 
             // Mettre à jour le message final
