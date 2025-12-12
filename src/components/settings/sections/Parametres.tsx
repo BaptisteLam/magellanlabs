@@ -26,7 +26,7 @@ export function Parametres() {
         <p className="text-muted-foreground">Configurez vos préférences générales</p>
       </div>
 
-      <Card className="rounded-[8px]">
+      <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
@@ -67,7 +67,7 @@ export function Parametres() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-[8px]">
+      <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
         <CardHeader>
           <CardTitle>Langue</CardTitle>
         </CardHeader>
@@ -89,7 +89,7 @@ export function Parametres() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-[8px]">
+      <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
         <CardHeader>
           <CardTitle>Sauvegarde automatique</CardTitle>
         </CardHeader>

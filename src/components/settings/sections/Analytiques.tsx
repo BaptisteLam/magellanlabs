@@ -45,7 +45,7 @@ export function Analytiques() {
           <h2 className="text-2xl font-bold text-foreground">Analytiques</h2>
           <p className="text-muted-foreground">Sélectionnez un projet pour voir les statistiques</p>
         </div>
-        <Card className="rounded-[8px]">
+        <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
           <CardContent className="py-8 text-center text-muted-foreground">
             Aucun projet sélectionné
           </CardContent>
@@ -75,7 +75,7 @@ export function Analytiques() {
           <h2 className="text-2xl font-bold text-foreground">Analytiques</h2>
           <p className="text-muted-foreground">{project?.title || 'Projet'}</p>
         </div>
-        <Card className="rounded-[8px]">
+        <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
           <CardContent className="py-8 text-center text-muted-foreground">
             <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>Analytiques non configurées</p>
