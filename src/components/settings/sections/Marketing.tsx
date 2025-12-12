@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Megaphone, Share2, Mail, Save, Loader2 } from 'lucide-react';
+import { Megaphone, Share2, Mail, Save, Loader2, Link2, Plus } from 'lucide-react';
 import { useProjectData } from '@/hooks/useProjectData';
 import { toast } from 'sonner';
+import { MarketingPromptBar } from '../MarketingPromptBar';
 
 export function Marketing() {
   const [searchParams] = useSearchParams();
@@ -59,6 +60,10 @@ export function Marketing() {
     }
   };
 
+  const handleConnectSocial = () => {
+    toast.info('Connexion aux réseaux sociaux bientôt disponible');
+  };
+
   if (!projectId) {
     return (
       <div className="space-y-6">
@@ -66,7 +71,7 @@ export function Marketing() {
           <h2 className="text-2xl font-bold text-foreground">Marketing</h2>
           <p className="text-muted-foreground">Sélectionnez un projet pour gérer le marketing</p>
         </div>
-        <Card className="rounded-[8px]">
+        <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
           <CardContent className="py-8 text-center text-muted-foreground">
             Aucun projet sélectionné
           </CardContent>
@@ -82,15 +87,25 @@ export function Marketing() {
           <h2 className="text-2xl font-bold text-foreground">Marketing</h2>
           <p className="text-muted-foreground">Gérez votre présence en ligne et vos campagnes</p>
         </div>
-        <Button 
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-full border-[#03A5C0] bg-[#03A5C0]/10 text-[#03A5C0] hover:bg-[#03A5C0]/20"
-          variant="outline"
-        >
-          {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-          Enregistrer
-        </Button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleConnectSocial}
+            className="inline-flex items-center justify-center whitespace-nowrap font-medium text-sm gap-2 transition-all border rounded-full px-4 py-1.5"
+            style={{ borderColor: 'rgb(3,165,192)', backgroundColor: 'rgba(3,165,192,0.1)', color: 'rgb(3,165,192)' }}
+          >
+            <Link2 className="h-4 w-4" />
+            Connecter les réseaux
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="inline-flex items-center justify-center whitespace-nowrap font-medium text-sm gap-2 transition-all border rounded-full px-4 py-1.5 disabled:opacity-50"
+            style={{ borderColor: 'rgb(3,165,192)', backgroundColor: 'rgba(3,165,192,0.1)', color: 'rgb(3,165,192)' }}
+          >
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Enregistrer
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -203,10 +218,18 @@ export function Marketing() {
               <div className="text-center py-8 text-muted-foreground">
                 <Megaphone className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Aucune campagne marketing pour le moment</p>
-                <p className="text-sm mt-2">Les campagnes marketing seront bientôt disponibles</p>
+                <p className="text-sm mt-2">Utilisez la barre de prompt ci-dessous pour créer vos visuels et campagnes</p>
               </div>
             </CardContent>
           </Card>
+
+          {/* Marketing Prompt Bar */}
+          <MarketingPromptBar 
+            onSubmit={(prompt, files) => {
+              console.log('Marketing prompt:', prompt, files);
+              toast.info('Génération IA bientôt disponible');
+            }}
+          />
         </>
       )}
     </div>
