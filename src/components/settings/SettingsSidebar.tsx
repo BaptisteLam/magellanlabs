@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
-import { Globe, BarChart3, Mail, FileText, Receipt, Wallet, Megaphone, Settings, ChevronDown, FileCode, Smartphone, Plus, FolderOpen } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Globe, BarChart3, Mail, FileText, Receipt, Wallet, Megaphone, Settings, ChevronDown, FileCode, Smartphone, Plus, FolderOpen, Upload, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +18,7 @@ interface Project {
   id: string;
   title: string | null;
   project_type: string | null;
+  project_icon: string | null;
 }
 
 const menuItems: {
@@ -70,6 +72,8 @@ export function SettingsSidebar({
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch current project name
   useEffect(() => {
@@ -84,7 +88,7 @@ export function SettingsSidebar({
     try {
       const { data, error } = await supabase
         .from('build_sessions')
-        .select('id, title, project_type')
+        .select('id, title, project_type, project_icon')
         .eq('id', selectedProjectId)
         .single();
       
@@ -103,7 +107,7 @@ export function SettingsSidebar({
 
       const { data, error } = await supabase
         .from('build_sessions')
-        .select('id, title, project_type')
+        .select('id, title, project_type, project_icon')
         .eq('user_id', session.user.id)
         .order('updated_at', { ascending: false });
 
@@ -116,14 +120,59 @@ export function SettingsSidebar({
     }
   };
 
-  const getProjectIcon = (projectType: string | null) => {
-    switch (projectType) {
-      case 'webapp':
-        return FileCode;
-      case 'mobile':
-        return Smartphone;
-      default:
-        return Globe;
+  const handleIconUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedProjectId) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez sélectionner une image');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('L\'image ne doit pas dépasser 2MB');
+      return;
+    }
+
+    setIsUploadingIcon(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${selectedProjectId}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('project-icons')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('project-icons')
+        .getPublicUrl(filePath);
+
+      // Update build_session with icon URL
+      const { error: updateError } = await supabase
+        .from('build_sessions')
+        .update({ project_icon: publicUrl })
+        .eq('id', selectedProjectId);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      setCurrentProject(prev => prev ? { ...prev, project_icon: publicUrl } : null);
+      toast.success('Icône mise à jour');
+    } catch (error) {
+      console.error('Error uploading icon:', error);
+      toast.error('Erreur lors de l\'upload');
+    } finally {
+      setIsUploadingIcon(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -137,23 +186,69 @@ export function SettingsSidebar({
     navigate('/');
   };
 
-  const ProjectIcon = currentProject ? getProjectIcon(currentProject.project_type) : Globe;
+  const getProjectIcon = (projectType: string | null) => {
+    switch (projectType) {
+      case 'webapp':
+        return FileCode;
+      case 'mobile':
+        return Smartphone;
+      default:
+        return Globe;
+    }
+  };
+
+  const DefaultIcon = currentProject ? getProjectIcon(currentProject.project_type) : Building2;
 
   return (
     <div className="h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl flex flex-col shadow-lg">
-      {/* Logo */}
-      <div className="flex-shrink-0 border-b border-border/30 flex items-center justify-start px-[24px] py-px cursor-pointer" onClick={() => navigate('/')}>
-        <img src="/lovable-uploads/magellan-logo-light.png" alt="Magellan" className="h-16 dark:hidden" />
-        <img src="/lovable-uploads/magellan-logo-dark.png" alt="Magellan" className="h-16 hidden dark:block" />
-      </div>
-
-      {/* Project Name Header */}
+      {/* Project Name Header with Icon */}
       <div className="flex-shrink-0 px-4 py-4 border-b border-border/30">
         <div className="flex items-center gap-3">
-          <ProjectIcon className="h-5 w-5 text-[#03A5C0]" />
-          <span className="font-medium text-foreground truncate">
-            {currentProject?.title || 'Sélectionner un projet'}
-          </span>
+          {/* Clickable Icon for upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleIconUpload}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploadingIcon || !selectedProjectId}
+            className={cn(
+              "relative flex-shrink-0 w-10 h-10 rounded-lg border-2 border-dashed border-border/50 hover:border-[#03A5C0] transition-colors flex items-center justify-center overflow-hidden group",
+              isUploadingIcon && "opacity-50 cursor-wait"
+            )}
+            title="Cliquez pour changer l'icône"
+          >
+            {currentProject?.project_icon ? (
+              <>
+                <img 
+                  src={currentProject.project_icon} 
+                  alt="Project icon" 
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Upload className="h-4 w-4 text-white" />
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center text-muted-foreground group-hover:text-[#03A5C0] transition-colors">
+                {isUploadingIcon ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <DefaultIcon className="h-5 w-5" />
+                )}
+              </div>
+            )}
+          </button>
+
+          {/* Project Name */}
+          <div className="flex-1 min-w-0">
+            <h2 className="font-semibold text-foreground truncate text-lg">
+              {currentProject?.title || 'Sélectionner un projet'}
+            </h2>
+          </div>
         </div>
       </div>
 
@@ -222,7 +317,15 @@ export function SettingsSidebar({
                       isSelected && "text-[#03A5C0] font-medium"
                     )}
                   >
-                    <ProjIcon className="h-4 w-4 flex-shrink-0" />
+                    {project.project_icon ? (
+                      <img 
+                        src={project.project_icon} 
+                        alt="" 
+                        className="h-4 w-4 rounded object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <ProjIcon className="h-4 w-4 flex-shrink-0" />
+                    )}
                     <span className="truncate">{project.title || 'Sans titre'}</span>
                   </DropdownMenuItem>
                 );
