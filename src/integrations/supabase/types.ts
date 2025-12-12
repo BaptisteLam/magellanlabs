@@ -26,6 +26,7 @@ export type Database = {
           netlify_deployment_url: string | null
           netlify_site_id: string | null
           project_files: Json | null
+          project_icon: string | null
           project_type: string | null
           public_url: string | null
           thumbnail_url: string | null
@@ -46,6 +47,7 @@ export type Database = {
           netlify_deployment_url?: string | null
           netlify_site_id?: string | null
           project_files?: Json | null
+          project_icon?: string | null
           project_type?: string | null
           public_url?: string | null
           thumbnail_url?: string | null
@@ -66,6 +68,7 @@ export type Database = {
           netlify_deployment_url?: string | null
           netlify_site_id?: string | null
           project_files?: Json | null
+          project_icon?: string | null
           project_type?: string | null
           public_url?: string | null
           thumbnail_url?: string | null
