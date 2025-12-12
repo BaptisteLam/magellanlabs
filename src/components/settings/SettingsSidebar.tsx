@@ -237,7 +237,7 @@ export function SettingsSidebar({
                 {isUploadingIcon ? (
                   <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <DefaultIcon className="h-5 w-5" />
+                  <Building2 className="h-5 w-5" />
                 )}
               </div>
             )}
