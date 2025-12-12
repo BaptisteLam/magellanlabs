@@ -1,67 +1,15 @@
-import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Megaphone, Share2, Mail, Save, Loader2, Link2, Plus } from 'lucide-react';
-import { useProjectData } from '@/hooks/useProjectData';
-import { toast } from 'sonner';
+import { Card, CardContent } from '@/components/ui/card';
+import { Palette, Image } from 'lucide-react';
 import { MarketingPromptBar } from '../MarketingPromptBar';
+import { toast } from 'sonner';
 
 export function Marketing() {
   const [searchParams] = useSearchParams();
   const projectId = searchParams.get('projectId');
-  const { data: marketing, isLoading, upsert } = useProjectData(projectId, 'marketing');
-  
-  const [socialLinks, setSocialLinks] = useState({
-    facebook: '',
-    twitter: '',
-    instagram: '',
-    linkedin: '',
-    youtube: ''
-  });
-  const [emailSettings, setEmailSettings] = useState({
-    newsletter_enabled: false,
-    sender_email: '',
-    sender_name: ''
-  });
-  const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    if (marketing) {
-      setSocialLinks({
-        facebook: marketing.social_links?.facebook || '',
-        twitter: marketing.social_links?.twitter || '',
-        instagram: marketing.social_links?.instagram || '',
-        linkedin: marketing.social_links?.linkedin || '',
-        youtube: marketing.social_links?.youtube || ''
-      });
-      setEmailSettings({
-        newsletter_enabled: marketing.email_settings?.newsletter_enabled || false,
-        sender_email: marketing.email_settings?.sender_email || '',
-        sender_name: marketing.email_settings?.sender_name || ''
-      });
-    }
-  }, [marketing]);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      await upsert({
-        social_links: socialLinks,
-        email_settings: emailSettings
-      });
-      toast.success('Configuration marketing sauvegardée');
-    } catch {
-      toast.error('Erreur lors de la sauvegarde');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleConnectSocial = () => {
-    toast.info('Connexion aux réseaux sociaux bientôt disponible');
+  const handleCardClick = (prompt: string) => {
+    toast.info(`Idée sélectionnée : ${prompt}`);
   };
 
   if (!projectId) {
@@ -81,157 +29,52 @@ export function Marketing() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Marketing</h2>
-          <p className="text-muted-foreground">Gérez votre présence en ligne et vos campagnes</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleConnectSocial}
-            className="inline-flex items-center justify-center whitespace-nowrap font-medium text-sm gap-2 transition-all border rounded-full px-4 py-1.5"
-            style={{ borderColor: 'rgb(3,165,192)', backgroundColor: 'rgba(3,165,192,0.1)', color: 'rgb(3,165,192)' }}
-          >
-            <Link2 className="h-4 w-4" />
-            Connecter les réseaux
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="inline-flex items-center justify-center whitespace-nowrap font-medium text-sm gap-2 transition-all border rounded-full px-4 py-1.5 disabled:opacity-50"
-            style={{ borderColor: 'rgb(3,165,192)', backgroundColor: 'rgba(3,165,192,0.1)', color: 'rgb(3,165,192)' }}
-          >
-            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Enregistrer
-          </button>
-        </div>
+    <div className="space-y-6 pb-24">
+      <div>
+        <h2 className="text-2xl font-bold text-foreground">Marketing</h2>
+        <p className="text-muted-foreground">Créez vos visuels et campagnes avec l'IA</p>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <>
-          {/* Social Links */}
-          <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Share2 className="h-5 w-5" />
-                Réseaux sociaux
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="facebook">Facebook</Label>
-                  <Input
-                    id="facebook"
-                    placeholder="https://facebook.com/votrepage"
-                    value={socialLinks.facebook}
-                    onChange={(e) => setSocialLinks({ ...socialLinks, facebook: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="twitter">Twitter / X</Label>
-                  <Input
-                    id="twitter"
-                    placeholder="https://twitter.com/votrepage"
-                    value={socialLinks.twitter}
-                    onChange={(e) => setSocialLinks({ ...socialLinks, twitter: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="instagram">Instagram</Label>
-                  <Input
-                    id="instagram"
-                    placeholder="https://instagram.com/votrepage"
-                    value={socialLinks.instagram}
-                    onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="linkedin">LinkedIn</Label>
-                  <Input
-                    id="linkedin"
-                    placeholder="https://linkedin.com/company/votrepage"
-                    value={socialLinks.linkedin}
-                    onChange={(e) => setSocialLinks({ ...socialLinks, linkedin: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="youtube">YouTube</Label>
-                  <Input
-                    id="youtube"
-                    placeholder="https://youtube.com/@votrechaine"
-                    value={socialLinks.youtube}
-                    onChange={(e) => setSocialLinks({ ...socialLinks, youtube: e.target.value })}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Cartes d'idées de campagne */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card 
+          onClick={() => handleCardClick('Création d\'un logo')}
+          className="aspect-square rounded-xl border border-border/50 bg-background/50 shadow-sm cursor-pointer transition-all hover:border-[#03A5C0]/50 hover:shadow-md group"
+        >
+          <CardContent className="h-full flex flex-col items-center justify-center text-center p-6">
+            <div className="w-16 h-16 rounded-full bg-[#03A5C0]/10 flex items-center justify-center mb-4 group-hover:bg-[#03A5C0]/20 transition-colors">
+              <Palette className="h-8 w-8 text-[#03A5C0]" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Création d'un logo</h3>
+            <p className="text-sm text-muted-foreground">
+              Générez un logo unique et professionnel pour votre marque
+            </p>
+          </CardContent>
+        </Card>
 
-          {/* Email Settings */}
-          <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Email Marketing
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="sender_name">Nom de l'expéditeur</Label>
-                  <Input
-                    id="sender_name"
-                    placeholder="Votre entreprise"
-                    value={emailSettings.sender_name}
-                    onChange={(e) => setEmailSettings({ ...emailSettings, sender_name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sender_email">Email de l'expéditeur</Label>
-                  <Input
-                    id="sender_email"
-                    type="email"
-                    placeholder="contact@votresite.com"
-                    value={emailSettings.sender_email}
-                    onChange={(e) => setEmailSettings({ ...emailSettings, sender_email: e.target.value })}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <Card 
+          onClick={() => handleCardClick('Lancement d\'une campagne sur un visuel')}
+          className="aspect-square rounded-xl border border-border/50 bg-background/50 shadow-sm cursor-pointer transition-all hover:border-[#03A5C0]/50 hover:shadow-md group"
+        >
+          <CardContent className="h-full flex flex-col items-center justify-center text-center p-6">
+            <div className="w-16 h-16 rounded-full bg-[#03A5C0]/10 flex items-center justify-center mb-4 group-hover:bg-[#03A5C0]/20 transition-colors">
+              <Image className="h-8 w-8 text-[#03A5C0]" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Campagne visuelle</h3>
+            <p className="text-sm text-muted-foreground">
+              Lancez une campagne marketing avec des visuels percutants
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-          {/* Campaigns */}
-          <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Megaphone className="h-5 w-5" />
-                Campagnes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Megaphone className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Aucune campagne marketing pour le moment</p>
-                <p className="text-sm mt-2">Utilisez la barre de prompt ci-dessous pour créer vos visuels et campagnes</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Marketing Prompt Bar */}
-          <MarketingPromptBar 
-            onSubmit={(prompt, files) => {
-              console.log('Marketing prompt:', prompt, files);
-              toast.info('Génération IA bientôt disponible');
-            }}
-          />
-        </>
-      )}
+      {/* Marketing Prompt Bar */}
+      <MarketingPromptBar 
+        onSubmit={(prompt, files) => {
+          console.log('Marketing prompt:', prompt, files);
+          toast.info('Génération IA bientôt disponible');
+        }}
+      />
     </div>
   );
 }
