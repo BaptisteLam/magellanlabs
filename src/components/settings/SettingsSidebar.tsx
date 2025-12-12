@@ -245,7 +245,7 @@ export function SettingsSidebar({
 
           {/* Project Name */}
           <div className="flex-1 min-w-0">
-            <h2 className="font-semibold text-foreground truncate text-lg">
+            <h2 className="font-medium text-foreground truncate text-sm">
               {currentProject?.title || 'Sélectionner un projet'}
             </h2>
           </div>
