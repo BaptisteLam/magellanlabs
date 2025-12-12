@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { FinancePromptBar } from '../FinancePromptBar';
 
 interface RevenueItem {
   id: string;
@@ -322,6 +323,14 @@ export function Finance() {
               )}
             </CardContent>
           </Card>
+
+          {/* Finance Prompt Bar */}
+          <FinancePromptBar 
+            onSubmit={(prompt, files) => {
+              console.log('Finance prompt:', prompt, files);
+              toast.info('Fonctionnalité IA bientôt disponible');
+            }}
+          />
         </>
       )}
 
