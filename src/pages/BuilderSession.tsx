@@ -1411,9 +1411,7 @@ export default function BuilderSession() {
     backgroundColor: isDark ? '#1F1F20' : '#ffffff'
   }}>
       {/* Barre d'action */}
-      <div className={`h-12 backdrop-blur-sm flex items-center justify-between px-4 ${isDark ? '' : 'bg-slate-50/80'}`} style={{
-      backgroundColor: isDark ? '#1F1F20' : undefined
-    }}>
+      <div className="h-12 backdrop-blur-sm flex items-center justify-between px-4 bg-background">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/dashboard')} className="h-8 w-8 flex items-center justify-center transition-colors group" title="Dashboard">
             <Home className="w-4 h-4 transition-colors" style={{
