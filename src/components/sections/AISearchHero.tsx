@@ -19,7 +19,6 @@ import supabaseLight from '@/assets/supabase-light.png';
 import { CodeTreeView } from '@/components/CodeEditor/CodeTreeView';
 import { MonacoEditor } from '@/components/CodeEditor/MonacoEditor';
 import { CustomIframePreview } from '@/components/CustomIframePreview';
-import { GeneratingPreview } from '@/components/GeneratingPreview';
 
 interface AISearchHeroProps {
   onGeneratedChange?: (hasGenerated: boolean) => void;
@@ -113,7 +112,6 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
     }
 
     console.log('✅ Validation OK, début du processus...');
-    setIsLoading(true);
 
     try {
       const prompt = inputValue.trim();
@@ -121,6 +119,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       // 🔥 MODE MODIFICATION : Si un fichier est sélectionné, on modifie juste ce fichier
       if (selectedFile && Object.keys(projectFiles).length > 0) {
         console.log(`🔧 Modification incrémentale du fichier: ${selectedFile}`);
+        setIsLoading(true);
         
         const { data: authData } = await supabase.auth.getSession();
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/modify-site`, {
@@ -185,23 +184,15 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         return;
       }
 
-      // 🆕 MODE CRÉATION : Génération complète d'un nouveau projet
-      console.log('🆕 Génération complète d\'un nouveau projet');
+      // 🆕 MODE CRÉATION : Navigation immédiate vers BuilderSession
+      console.log('🆕 Création d\'une nouvelle session et navigation immédiate');
       
-      // Générer d'abord le nom du projet avec Claude
-      const { data: nameData } = await supabase.functions.invoke('generate-project-name', {
-        body: { prompt }
-      });
-      
-      const generatedTitle = nameData?.projectName || null;
-      console.log('✅ Nom de projet généré:', generatedTitle);
-      
-      // Créer une session builder avec le nom généré
+      // Créer une session builder avec le prompt (le nom sera généré côté BuilderSession)
       const { data: session, error: sessionError } = await supabase
         .from('build_sessions')
         .insert({
           user_id: user.id,
-          title: generatedTitle,
+          title: null, // Sera généré côté BuilderSession
           project_files: [],
           project_type: projectType,
           messages: [{ role: 'user', content: prompt }]
@@ -213,21 +204,22 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         throw new Error('Erreur lors de la création de la session');
       }
 
-      // Rediriger vers la session builder appropriée selon le type de projet
-      if (projectType === 'mobile') {
-        navigate(`/builder/mobile/${session.id}`);
-      } else {
-        navigate(`/builder/${session.id}`);
-      }
+      // Navigation immédiate - pas de loading ici
       setInputValue('');
       setAttachedFiles([]);
-      setIsLoading(false);
+      
+      // Rediriger immédiatement vers la session builder
+      if (projectType === 'mobile') {
+        navigate(`/builder/mobile/${session.id}`, { 
+          state: { attachedFiles } 
+        });
+      } else {
+        navigate(`/builder/${session.id}`, { 
+          state: { attachedFiles } 
+        });
+      }
     } catch (error) {
       console.error('💥 Erreur complète:', error);
-      console.error('💥 Type d\'erreur:', error instanceof Error ? 'Error' : typeof error);
-      console.error('💥 Message:', error instanceof Error ? error.message : String(error));
-      console.error('💥 Stack:', error instanceof Error ? error.stack : 'N/A');
-      
       sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
       setIsLoading(false);
     }
@@ -275,14 +267,8 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   };
 
 
-  // État de chargement
-  if (isLoading && Object.keys(projectFiles).length === 0) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <GeneratingPreview />
-      </div>
-    );
-  }
+  // Supprimé : plus d'état de chargement intermédiaire ici
+  // La navigation vers BuilderSession est immédiate, le loading s'affiche là-bas
 
   if (Object.keys(projectFiles).length > 0) {
     return (
