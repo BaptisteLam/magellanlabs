@@ -100,7 +100,7 @@ export function Marketing() {
       ) : (
         <>
           {/* Social Links */}
-          <Card className="rounded-[8px]">
+          <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Share2 className="h-5 w-5" />
@@ -159,7 +159,7 @@ export function Marketing() {
           </Card>
 
           {/* Email Settings */}
-          <Card className="rounded-[8px]">
+          <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Mail className="h-5 w-5" />
@@ -192,7 +192,7 @@ export function Marketing() {
           </Card>
 
           {/* Campaigns */}
-          <Card className="rounded-[8px]">
+          <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Megaphone className="h-5 w-5" />
