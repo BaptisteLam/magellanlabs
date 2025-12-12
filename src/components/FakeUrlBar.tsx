@@ -183,7 +183,7 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
 
   return (
     <div 
-      className="h-10 border-b flex items-center px-4 gap-3 w-full"
+      className="h-10 border-b flex items-center px-4 gap-3 w-full rounded-t-xl"
       style={{ 
         backgroundColor: isDark ? '#2A2A2B' : '#F8F9FA',
         borderBottomColor: isDark ? '#3A3A3B' : '#E5E7EB'
