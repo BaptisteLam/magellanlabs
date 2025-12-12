@@ -36,10 +36,15 @@ import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { PublishSuccessDialog } from '@/components/PublishSuccessDialog';
 import { useUnifiedModify } from '@/hooks/useUnifiedModify';
-
 interface Message {
   role: 'user' | 'assistant';
-  content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+  content: string | Array<{
+    type: string;
+    text?: string;
+    image_url?: {
+      url: string;
+    };
+  }>;
   token_count?: number;
   id?: string;
   created_at?: string;
@@ -60,14 +65,19 @@ interface Message {
     [key: string]: any;
   };
 }
-
 import { IndexedDBCache } from '@/services/indexedDBCache';
-
 export default function BuilderSession() {
-  const { sessionId } = useParams<{ sessionId: string }>();
+  const {
+    sessionId
+  } = useParams<{
+    sessionId: string;
+  }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isDark, toggleTheme } = useThemeStore();
+  const {
+    isDark,
+    toggleTheme
+  } = useThemeStore();
   const [inputValue, setInputValue] = useState('');
   const [generatedHtml, setGeneratedHtml] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -78,11 +88,15 @@ export default function BuilderSession() {
   // Toujours en mode preview
   const viewMode = 'preview';
   const [sessionLoading, setSessionLoading] = useState(true);
-  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
+  const [attachedFiles, setAttachedFiles] = useState<Array<{
+    name: string;
+    base64: string;
+    type: string;
+  }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [showPublishSuccess, setShowPublishSuccess] = useState(false);
-  
+
   // Hook optimisé pour la gestion des fichiers avec cache et sync
   const {
     projectFiles,
@@ -100,7 +114,6 @@ export default function BuilderSession() {
     debounceMs: 2000,
     autoLoad: false // Désactiver le chargement auto, on utilise loadSession() à la place
   });
-  
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedFileContent, setSelectedFileContent] = useState<string>('');
   const [openFiles, setOpenFiles] = useState<string[]>([]);
@@ -115,42 +128,49 @@ export default function BuilderSession() {
   const [cloudflareProjectName, setCloudflareProjectName] = useState<string | null>(null);
 
   // Hook pour la mémoire de projet
-  const { memory, buildContextWithMemory, updateMemory, initializeMemory } = useProjectMemory(sessionId);
+  const {
+    memory,
+    buildContextWithMemory,
+    updateMemory,
+    initializeMemory
+  } = useProjectMemory(sessionId);
 
   // Hook unifié pour unified-modify (remplace agent-v2 et modify-site)
   const unifiedModify = useUnifiedModify();
-  
+
   // Événements IA pour la TaskList
   const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
-  
+
   // État pour gérer les événements de génération en temps réel
   const [generationEvents, setGenerationEvents] = useState<GenerationEvent[]>([]);
   const generationEventsRef = useRef<GenerationEvent[]>([]); // Ref synchrone pour éviter stale state
   const generationStartTimeRef = useRef<number>(0);
   const [currentVersionIndex, setCurrentVersionIndex] = useState<number | null>(null);
-  
+
   // État de chargement pour quick modification
   const [isQuickModLoading, setIsQuickModLoading] = useState(false);
-  
+
   // Flag pour savoir si on est en première génération
   const [isInitialGeneration, setIsInitialGeneration] = useState(false);
   const isInitialGenerationRef = useRef(false);
-  
+
   // Flag pour éviter de traiter le prompt initial plusieurs fois
   const [initialPromptProcessed, setInitialPromptProcessed] = useState(false);
-  
+
   // Mode Inspect pour la preview interactive
   const [inspectMode, setInspectMode] = useState(false);
-  
+
   // Mode Chat pour discuter avec Claude sans générer de code
   const [chatMode, setChatMode] = useState(false);
-  
+
   // Mode d'affichage de la preview (desktop/mobile)
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
 
   // Fonction pour scroller automatiquement vers le bas du chat
   const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    chatEndRef.current?.scrollIntoView({
+      behavior: 'smooth'
+    });
   };
 
   // Auto-scroll quand les messages changent
@@ -167,26 +187,29 @@ export default function BuilderSession() {
   const generateProjectName = async (prompt: string) => {
     try {
       console.log('🎯 Génération du nom de projet pour:', prompt.substring(0, 100));
-      const { data, error } = await supabase.functions.invoke('generate-project-name', {
-        body: { prompt }
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('generate-project-name', {
+        body: {
+          prompt
+        }
       });
-
       if (error) {
         console.error('❌ Erreur génération nom:', error);
         return;
       }
-
       if (data?.projectName) {
         console.log('✅ Nom de projet généré:', data.projectName);
         setWebsiteTitle(data.projectName);
-        
+
         // Sauvegarder immédiatement le titre dans la session
         if (sessionId) {
-          const { error: updateError } = await supabase
-            .from('build_sessions')
-            .update({ title: data.projectName })
-            .eq('id', sessionId);
-          
+          const {
+            error: updateError
+          } = await supabase.from('build_sessions').update({
+            title: data.projectName
+          }).eq('id', sessionId);
           if (updateError) {
             console.error('❌ Erreur sauvegarde titre:', updateError);
           } else {
@@ -199,7 +222,6 @@ export default function BuilderSession() {
     }
   };
 
-
   // Charger la session depuis le cache puis Supabase
   useEffect(() => {
     const loadSessionWithCache = async () => {
@@ -207,10 +229,8 @@ export default function BuilderSession() {
         console.warn('⚠️ No sessionId, skipping load');
         return;
       }
-
       console.log('🔄 Starting session load:', sessionId);
       setSessionLoading(true);
-
       try {
         // 1. Charger d'abord depuis le cache IndexedDB (instantané)
         console.log('📦 Attempting to load from IndexedDB cache...');
@@ -235,7 +255,6 @@ export default function BuilderSession() {
         setSessionLoading(false);
       }
     };
-
     loadSessionWithCache();
     checkAuth();
   }, [sessionId]);
@@ -260,7 +279,6 @@ export default function BuilderSession() {
         saveSession();
       }
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [sessionId, projectFiles, messages, websiteTitle]);
@@ -270,22 +288,20 @@ export default function BuilderSession() {
     const processInitialPrompt = async () => {
       // Ne rien faire si déjà traité ou si on a des fichiers
       if (initialPromptProcessed || Object.keys(projectFiles).length > 0) return;
-      
+
       // Vérifier s'il y a des images dans l'état de navigation
       const stateAttachedFiles = location.state?.attachedFiles;
       if (stateAttachedFiles && Array.isArray(stateAttachedFiles) && stateAttachedFiles.length > 0) {
         console.log('📎 Images attachées trouvées dans l\'état de navigation:', stateAttachedFiles.length);
         setAttachedFiles(stateAttachedFiles);
       }
-      
       const urlParams = new URLSearchParams(window.location.search);
       const promptFromUrl = urlParams.get('prompt');
-      
       if (promptFromUrl) {
         console.log('🚀 Traitement du prompt initial depuis URL:', promptFromUrl);
         setInputValue(promptFromUrl);
         setInitialPromptProcessed(true);
-        
+
         // Petit délai pour s'assurer que tout est initialisé
         setTimeout(() => {
           handleSubmit();
@@ -296,14 +312,13 @@ export default function BuilderSession() {
           console.log('🚀 Traitement du prompt initial depuis messages:', userPrompt);
           setInputValue(userPrompt);
           setInitialPromptProcessed(true);
-          
           setTimeout(() => {
             handleSubmit();
           }, 100);
         }
       }
     };
-    
+
     // NE traiter le prompt initial QUE si :
     // 1. La session a fini de charger (sessionLoading === false)
     // 2. L'utilisateur est authentifié
@@ -312,41 +327,35 @@ export default function BuilderSession() {
       processInitialPrompt();
     }
   }, [sessionId, sessionLoading, user, projectFiles, messages, initialPromptProcessed, location.state]);
-
-
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: {
+        session
+      }
+    } = await supabase.auth.getSession();
     setUser(session?.user ?? null);
   };
-
   const loadSession = async () => {
     if (!sessionId) {
       console.warn('⚠️ loadSession: No sessionId');
       return;
     }
-
     console.log('🌐 loadSession: Fetching session from Supabase...', sessionId);
-
     try {
-      const { data, error } = await supabase
-        .from('build_sessions')
-        .select('*')
-        .eq('id', sessionId)
-        .single();
-
+      const {
+        data,
+        error
+      } = await supabase.from('build_sessions').select('*').eq('id', sessionId).single();
       console.log('🌐 loadSession: Supabase response:', {
         hasData: !!data,
         hasError: !!error,
         error: error?.message
       });
-      
+
       // Récupérer le websiteId lié à cette session
-      const { data: websiteData } = await supabase
-        .from('build_sessions')
-        .select('website_id, websites!inner(id, netlify_url, ga_property_id)')
-        .eq('id', sessionId)
-        .maybeSingle();
-      
+      const {
+        data: websiteData
+      } = await supabase.from('build_sessions').select('website_id, websites!inner(id, netlify_url, ga_property_id)').eq('id', sessionId).maybeSingle();
       if (websiteData?.websites) {
         const website = Array.isArray(websiteData.websites) ? websiteData.websites[0] : websiteData.websites;
         if (website.netlify_url) {
@@ -357,34 +366,31 @@ export default function BuilderSession() {
         }
         setWebsiteId(website.id);
       }
-
       if (error) {
         console.error('Error loading session:', error);
         sonnerToast.error("Session introuvable");
         navigate('/builder');
         return;
       }
-
       if (data) {
         // Charger le nom du projet Cloudflare
         if (data.cloudflare_project_name) {
           setCloudflareProjectName(data.cloudflare_project_name);
         }
-        
+
         // Charger le type de projet
         if (data.project_type) {
           setProjectType(data.project_type as 'website' | 'webapp' | 'mobile');
         }
-        
+
         // 📦 Parser et restaurer les fichiers de projet avec validation stricte
         console.log('📦 Starting project files restoration...');
         try {
           const projectFilesData = data.project_files as any;
           console.log('📦 Raw project_files data type:', typeof projectFilesData, Array.isArray(projectFilesData) ? `(array, ${projectFilesData.length} items)` : '');
-          
-            if (projectFilesData) {
+          if (projectFilesData) {
             let filesMap: Record<string, string> = {};
-            
+
             // 🔧 Support de 3 formats: array, object direct, ou object-qui-était-un-array
             if (Array.isArray(projectFilesData) && projectFilesData.length > 0) {
               // Format array: [{path, content}, ...]
@@ -394,14 +400,16 @@ export default function BuilderSession() {
                   filesMap[file.path] = file.content;
                   console.log(`  ✅ [${index + 1}/${projectFilesData.length}] ${file.path} : ${file.content.length} chars`);
                 } else {
-                  console.warn(`  ⚠️ [${index + 1}/${projectFilesData.length}] Invalid file structure:`, { hasPath: !!file.path, hasContent: !!file.content });
+                  console.warn(`  ⚠️ [${index + 1}/${projectFilesData.length}] Invalid file structure:`, {
+                    hasPath: !!file.path,
+                    hasContent: !!file.content
+                  });
                 }
               });
             } else if (typeof projectFilesData === 'object' && Object.keys(projectFilesData).length > 0) {
               // Détecter si c'est un objet-qui-était-un-array: clés numériques avec {path, content}
               const firstKey = Object.keys(projectFilesData)[0];
               const firstValue = projectFilesData[firstKey];
-              
               if (/^\d+$/.test(firstKey) && typeof firstValue === 'object' && firstValue.path && firstValue.content) {
                 // Format object-array corrompu: {"0": {path, content}, "1": {...}}
                 console.log('📦 Loading project files (corrupted array-as-object format):', Object.keys(projectFilesData).length, 'files');
@@ -410,7 +418,10 @@ export default function BuilderSession() {
                     filesMap[file.path] = file.content;
                     console.log(`  ✅ [${index + 1}] ${file.path} : ${file.content.length} chars`);
                   } else {
-                    console.warn(`  ⚠️ [${index + 1}] Invalid file structure:`, { hasPath: !!file.path, hasContent: !!file.content });
+                    console.warn(`  ⚠️ [${index + 1}] Invalid file structure:`, {
+                      hasPath: !!file.path,
+                      hasContent: !!file.content
+                    });
                   }
                 });
               } else {
@@ -422,42 +433,40 @@ export default function BuilderSession() {
                 });
               }
             }
-            
+
             // 🔍 Validation finale des noms de fichiers
             const validatedFilesMap: Record<string, string> = {};
             let hasInvalidKeys = false;
-            
             Object.entries(filesMap).forEach(([key, value]) => {
               // Vérifier que la clé est un nom de fichier valide ET que la valeur est une string
-              if (typeof key === 'string' && key.includes('.') && !(/^\d+$/.test(key)) && typeof value === 'string') {
+              if (typeof key === 'string' && key.includes('.') && !/^\d+$/.test(key) && typeof value === 'string') {
                 validatedFilesMap[key] = value;
               } else {
-                console.warn('⚠️ Invalid file entry detected and skipped:', { key, valueType: typeof value });
+                console.warn('⚠️ Invalid file entry detected and skipped:', {
+                  key,
+                  valueType: typeof value
+                });
                 hasInvalidKeys = true;
               }
             });
-            
             if (hasInvalidKeys) {
               console.warn('⚠️ Some invalid file keys were found and removed from the project');
             }
-            
             if (Object.keys(validatedFilesMap).length > 0) {
               console.log('✅ =====================================');
               console.log('✅ PROJECT FILES RESTORATION SUCCESS');
               console.log('✅ Total files restored:', Object.keys(validatedFilesMap).length);
               console.log('✅ Files:', Object.keys(validatedFilesMap).join(', '));
               console.log('✅ =====================================');
-              
               updateFiles(validatedFilesMap, false); // Pas de sync car c'est un chargement initial
               setGeneratedHtml(validatedFilesMap['index.html'] || '');
-              
+
               // Charger le favicon s'il existe
               const faviconFile = Object.keys(validatedFilesMap).find(path => path.startsWith('public/favicon.'));
               if (faviconFile) {
                 setCurrentFavicon(validatedFilesMap[faviconFile]);
                 console.log('✅ Favicon restored:', faviconFile);
               }
-              
               const firstFile = Object.keys(validatedFilesMap)[0];
               if (firstFile) {
                 setSelectedFile(firstFile);
@@ -487,12 +496,12 @@ export default function BuilderSession() {
         }
 
         // Charger l'historique complet des messages depuis chat_messages
-        const { data: chatMessages, error: chatError } = await supabase
-          .from('chat_messages')
-          .select('*')
-          .eq('session_id', sessionId)
-          .order('created_at', { ascending: true });
-
+        const {
+          data: chatMessages,
+          error: chatError
+        } = await supabase.from('chat_messages').select('*').eq('session_id', sessionId).order('created_at', {
+          ascending: true
+        });
         if (!chatError && chatMessages && chatMessages.length > 0) {
           const loadedMessages: Message[] = chatMessages.map(msg => {
             const metadata = msg.metadata as any;
@@ -511,7 +520,7 @@ export default function BuilderSession() {
             };
           });
           setMessages(loadedMessages);
-          
+
           // Extraire les images attachées du premier message utilisateur s'il y en a
           const firstUserMessage = loadedMessages.find(m => m.role === 'user');
           if (firstUserMessage?.metadata?.attachedFiles) {
@@ -521,9 +530,12 @@ export default function BuilderSession() {
         } else {
           // Fallback sur l'ancienne méthode si pas de messages dans chat_messages
           const parsedMessages = Array.isArray(data.messages) ? data.messages as any[] : [];
-          setMessages(parsedMessages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
+          setMessages(parsedMessages.map(m => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content
+          })));
         }
-        
+
         // Charger le titre et s'assurer qu'il est synchronisé avec cloudflare_project_name
         const loadedTitle = data.title || '';
         setWebsiteTitle(loadedTitle);
@@ -535,44 +547,44 @@ export default function BuilderSession() {
       setSessionLoading(false);
     }
   };
-
   const saveSession = async () => {
     if (!sessionId) return;
-
     try {
       // 🔧 CORRECTION: Sauvegarder directement en format object {path: content}
       // au lieu d'array pour éviter la corruption par PostgreSQL
-      const filesObject = { ...projectFiles };
+      const filesObject = {
+        ...projectFiles
+      };
 
       // Récupérer le thumbnail existant
-      const { data: existingSession } = await supabase
-        .from('build_sessions')
-        .select('thumbnail_url')
-        .eq('id', sessionId)
-        .single();
-
-      const { error } = await supabase
-        .from('build_sessions')
-        .update({
-          project_files: filesObject,
-          messages: messages as any,
-          title: websiteTitle,
-          project_type: projectType,
-          thumbnail_url: existingSession?.thumbnail_url || null, // Garder le thumbnail existant
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', sessionId);
-
+      const {
+        data: existingSession
+      } = await supabase.from('build_sessions').select('thumbnail_url').eq('id', sessionId).single();
+      const {
+        error
+      } = await supabase.from('build_sessions').update({
+        project_files: filesObject,
+        messages: messages as any,
+        title: websiteTitle,
+        project_type: projectType,
+        thumbnail_url: existingSession?.thumbnail_url || null,
+        // Garder le thumbnail existant
+        updated_at: new Date().toISOString()
+      }).eq('id', sessionId);
       if (error) throw error;
 
       // Publier automatiquement le projet sur builtbymagellan.com
       if (websiteTitle && Object.keys(projectFiles).length > 0) {
         try {
           console.log('🚀 Publishing project to builtbymagellan.com...');
-          const { data: publishData, error: publishError } = await supabase.functions.invoke('publish-project', {
-            body: { sessionId }
+          const {
+            data: publishData,
+            error: publishError
+          } = await supabase.functions.invoke('publish-project', {
+            body: {
+              sessionId
+            }
           });
-
           if (publishError) {
             console.error('❌ Error publishing project:', publishError);
           } else if (publishData?.publicUrl) {
@@ -591,17 +603,14 @@ export default function BuilderSession() {
   const captureThumbnail = async (htmlContent?: string) => {
     const contentToCapture = htmlContent || generatedHtml;
     if (!sessionId || !contentToCapture) return;
-
     try {
       console.log('📸 Capture du thumbnail après génération...');
-      
+
       // Récupérer l'ancien thumbnail pour le supprimer
-      const { data: existingSession } = await supabase
-        .from('build_sessions')
-        .select('thumbnail_url')
-        .eq('id', sessionId)
-        .single();
-      
+      const {
+        data: existingSession
+      } = await supabase.from('build_sessions').select('thumbnail_url').eq('id', sessionId).single();
+
       // Supprimer l'ancien screenshot si existant
       if (existingSession?.thumbnail_url) {
         try {
@@ -610,42 +619,39 @@ export default function BuilderSession() {
           const oldFileName = oldUrl.split('/').pop();
           if (oldFileName) {
             console.log('🗑️ Suppression de l\'ancien thumbnail:', oldFileName);
-            await supabase.storage
-              .from('screenshots')
-              .remove([oldFileName]);
+            await supabase.storage.from('screenshots').remove([oldFileName]);
           }
         } catch (deleteErr) {
           console.warn('⚠️ Impossible de supprimer l\'ancien thumbnail:', deleteErr);
         }
       }
-      
+
       // Utiliser notre helper pour capturer le thumbnail
       const blob = await capturePreviewThumbnail(contentToCapture);
-      
       if (blob) {
         // Uploader vers Supabase Storage avec un nom unique
         const fileName = `${sessionId}-${Date.now()}.png`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('screenshots')
-          .upload(fileName, blob, {
-            contentType: 'image/png',
-            upsert: true
-          });
-        
+        const {
+          data: uploadData,
+          error: uploadError
+        } = await supabase.storage.from('screenshots').upload(fileName, blob, {
+          contentType: 'image/png',
+          upsert: true
+        });
         if (uploadError) {
           console.error('❌ Error uploading screenshot:', uploadError);
         } else {
           // Obtenir l'URL publique
-          const { data: { publicUrl } } = supabase.storage
-            .from('screenshots')
-            .getPublicUrl(fileName);
-          
+          const {
+            data: {
+              publicUrl
+            }
+          } = supabase.storage.from('screenshots').getPublicUrl(fileName);
+
           // Mettre à jour uniquement le thumbnail
-          await supabase
-            .from('build_sessions')
-            .update({ thumbnail_url: publicUrl })
-            .eq('id', sessionId);
-          
+          await supabase.from('build_sessions').update({
+            thumbnail_url: publicUrl
+          }).eq('id', sessionId);
           console.log('✅ Thumbnail capturé et enregistré:', publicUrl);
         }
       } else {
@@ -659,21 +665,17 @@ export default function BuilderSession() {
   // Fonction auxiliaire pour sauvegarder avec un titre spécifique
   const saveSessionWithTitle = async (title: string, filesObject: Record<string, string>, messagesArray: any[]) => {
     if (!sessionId) return;
-
     try {
-      const { error } = await supabase
-        .from('build_sessions')
-        .update({
-          project_files: filesObject,
-          messages: messagesArray as any,
-          title: title,
-          project_type: projectType,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', sessionId);
-
+      const {
+        error
+      } = await supabase.from('build_sessions').update({
+        project_files: filesObject,
+        messages: messagesArray as any,
+        title: title,
+        project_type: projectType,
+        updated_at: new Date().toISOString()
+      }).eq('id', sessionId);
       if (error) throw error;
-
       console.log('✅ Projet sauvegardé automatiquement:', title);
     } catch (error) {
       console.error('Erreur sauvegarde automatique:', error);
@@ -685,21 +687,20 @@ export default function BuilderSession() {
     return Object.entries(filesObject).map(([path, content]) => ({
       path,
       content,
-      type: path.endsWith('.html') ? 'html' : 
-            path.endsWith('.css') ? 'stylesheet' : 
-            path.endsWith('.js') ? 'javascript' : 'text'
+      type: path.endsWith('.html') ? 'html' : path.endsWith('.css') ? 'stylesheet' : path.endsWith('.js') ? 'javascript' : 'text'
     }));
   };
-
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
-    const newFiles: Array<{ name: string; base64: string; type: string }> = [];
-
+    const newFiles: Array<{
+      name: string;
+      base64: string;
+      type: string;
+    }> = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      
+
       // Vérifier que c'est une image
       if (!file.type.startsWith('image/')) {
         sonnerToast.error(`${file.name} n'est pas une image`);
@@ -708,27 +709,27 @@ export default function BuilderSession() {
 
       // Convertir en base64
       const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
+      const base64Promise = new Promise<string>(resolve => {
         reader.onloadend = () => {
           resolve(reader.result as string);
         };
         reader.readAsDataURL(file);
       });
-
       const base64 = await base64Promise;
-      newFiles.push({ name: file.name, base64, type: file.type });
+      newFiles.push({
+        name: file.name,
+        base64,
+        type: file.type
+      });
     }
-
     setAttachedFiles([...attachedFiles, ...newFiles]);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
-
   const removeFile = (index: number) => {
     setAttachedFiles(attachedFiles.filter((_, i) => i !== index));
   };
-
   const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -738,26 +739,24 @@ export default function BuilderSession() {
       sonnerToast.error("Veuillez sélectionner une image");
       return;
     }
-
     try {
       // Convertir en base64
       const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
+      const base64Promise = new Promise<string>(resolve => {
         reader.onloadend = () => {
           resolve(reader.result as string);
         };
         reader.readAsDataURL(file);
       });
-
       const base64 = await base64Promise;
-      
+
       // Stocker le favicon pour l'affichage
       setCurrentFavicon(base64);
-      
+
       // Déterminer l'extension
       const extension = file.type.split('/')[1];
       const faviconPath = `public/favicon.${extension}`;
-      
+
       // Ajouter le favicon aux fichiers du projet
       updateFiles({
         ...projectFiles,
@@ -765,26 +764,20 @@ export default function BuilderSession() {
       }, true);
 
       // Mettre à jour index.html pour référencer le nouveau favicon
-      const updatedIndexHtml = generatedHtml.replace(
-        /<link rel="icon"[^>]*>/,
-        `<link rel="icon" type="${file.type}" href="/favicon.${extension}">`
-      );
-      
+      const updatedIndexHtml = generatedHtml.replace(/<link rel="icon"[^>]*>/, `<link rel="icon" type="${file.type}" href="/favicon.${extension}">`);
       setGeneratedHtml(updatedIndexHtml);
 
       // Sauvegarder dans la base de données
       if (sessionId) {
-        await supabase
-          .from('build_sessions')
-          .update({ 
-            generated_html: updatedIndexHtml,
-            project_files: { ...projectFiles, [faviconPath]: base64 }
-          })
-          .eq('id', sessionId);
+        await supabase.from('build_sessions').update({
+          generated_html: updatedIndexHtml,
+          project_files: {
+            ...projectFiles,
+            [faviconPath]: base64
+          }
+        }).eq('id', sessionId);
       }
-
       sonnerToast.success("Favicon mis à jour avec succès");
-      
       if (faviconInputRef.current) {
         faviconInputRef.current.value = '';
       }
@@ -794,7 +787,6 @@ export default function BuilderSession() {
     }
   };
 
-
   // 🆕 UNIFIED MODIFY HANDLER - Remplace le routing manuel entre agent-v2 et modify-site
   const handleUnifiedModification = async (userPrompt: string) => {
     console.log('🔄 UNIFIED MODIFY - Starting', {
@@ -803,20 +795,19 @@ export default function BuilderSession() {
       sessionId,
       hasMemory: !!memory
     });
-
     if (!user) {
       console.error('❌ No user, redirecting to auth');
       navigate('/auth');
       return;
     }
-    
+
     // Ajouter le message utilisateur
     const userMessage: Message = {
       role: 'user',
       content: userPrompt,
       created_at: new Date().toISOString()
     };
-    
+
     // Éviter d'ajouter le message s'il existe déjà
     setMessages(prev => {
       const lastUserMessage = [...prev].reverse().find(m => m.role === 'user');
@@ -838,7 +829,6 @@ export default function BuilderSession() {
     const generationStartTime = Date.now();
     generationStartTimeRef.current = generationStartTime;
     setIsQuickModLoading(true);
-    
     const generationMessage: Message = {
       role: 'assistant',
       content: '',
@@ -855,222 +845,194 @@ export default function BuilderSession() {
         startTime: generationStartTime
       }
     };
-    
     setMessages(prev => [...prev, generationMessage]);
     setGenerationEvents([]);
     generationEventsRef.current = [];
-    
+
     // Variable pour stocker les tokens
-    let receivedTokens = { input: 0, output: 0, total: 0 };
-    
+    let receivedTokens = {
+      input: 0,
+      output: 0,
+      total: 0
+    };
     try {
-      const result = await unifiedModify.unifiedModify(
-        {
-          message: userPrompt,
-          projectFiles,
-          sessionId: sessionId!,
-          memory
+      const result = await unifiedModify.unifiedModify({
+        message: userPrompt,
+        projectFiles,
+        sessionId: sessionId!,
+        memory
+      }, {
+        onIntentMessage: message => {
+          console.log('💬 Intent:', message);
+          sonnerToast.info(message, {
+            duration: 3000
+          });
+          setMessages(prev => {
+            const lastMsg = prev[prev.length - 1];
+            if (lastMsg?.metadata?.type === 'generation') {
+              return prev.map((msg, idx) => idx === prev.length - 1 ? {
+                ...msg,
+                metadata: {
+                  ...msg.metadata,
+                  intent_message: message
+                }
+              } : msg);
+            }
+            return prev;
+          });
         },
-        {
-          onIntentMessage: (message) => {
-            console.log('💬 Intent:', message);
-            sonnerToast.info(message, { duration: 3000 });
-            
-            setMessages(prev => {
-              const lastMsg = prev[prev.length - 1];
-              if (lastMsg?.metadata?.type === 'generation') {
-                return prev.map((msg, idx) =>
-                  idx === prev.length - 1
-                    ? { ...msg, metadata: { ...msg.metadata, intent_message: message } }
-                    : msg
-                );
-              }
-              return prev;
-            });
-          },
-          
-          onGenerationEvent: (event) => {
-            console.log('⚙️ Event:', event);
-            
-            // Mapper les phases unified-modify vers les types GenerationEvent
-            const phaseToType: Record<string, GenerationEvent['type']> = {
-              'analyze': 'analyze',
-              'context': 'read',
-              'generation': 'write',
-              'validation': 'edit'
-            };
-            
-            // Mettre à jour les événements de génération
-            const newEvent: GenerationEvent = {
-              type: phaseToType[event.phase || ''] || 'thought',
-              status: event.status === 'complete' ? 'completed' : 'in-progress',
-              message: event.message || `Phase: ${event.phase}`
-            };
-            
-            generationEventsRef.current = [...generationEventsRef.current, newEvent];
-            setGenerationEvents(prev => [...prev, newEvent]);
-            
-            setMessages(prev => {
-              const lastMsg = prev[prev.length - 1];
-              if (lastMsg?.metadata?.type === 'generation') {
-                return prev.map((msg, idx) =>
-                  idx === prev.length - 1
-                    ? {
-                        ...msg,
-                        metadata: {
-                          ...msg.metadata,
-                          generation_events: generationEventsRef.current,
-                          thought_duration: Date.now() - generationStartTimeRef.current
-                        }
-                      }
-                    : msg
-                );
-              }
-              return prev;
-            });
-          },
-          
-          onASTModifications: async (modifications, updatedFiles) => {
-            console.log('🔧 AST Modifications:', {
-              count: modifications.length,
-              files: Object.keys(updatedFiles),
-              modificationTypes: modifications.map(m => m.type)
-            });
+        onGenerationEvent: event => {
+          console.log('⚙️ Event:', event);
 
-            if (modifications.length === 0) {
-              console.warn('⚠️ No modifications generated');
-              sonnerToast.warning('No modifications generated');
-              return;
-            }
-            
-            // Mettre à jour les fichiers
-            await updateFiles(updatedFiles, true);
-            setGeneratedHtml(updatedFiles['index.html'] || generatedHtml);
-            
-            // Mettre à jour le fichier sélectionné si modifié
-            if (selectedFile && updatedFiles[selectedFile] !== projectFiles[selectedFile]) {
-              setSelectedFileContent(updatedFiles[selectedFile]);
-            }
-            
-            // Sauvegarder en base
-            await supabase
-              .from('build_sessions')
-              .update({
-                project_files: updatedFiles,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', sessionId!);
-            
-            // Mettre à jour la mémoire
-            const modifiedFilesList = Object.keys(updatedFiles).filter(
-              path => updatedFiles[path] !== projectFiles[path]
-            );
-            
-            if (modifiedFilesList.length > 0) {
-              try {
-                const codeChanges = modifiedFilesList.map(path => ({
-                  path,
-                  type: 'modify' as const,
-                  description: `Modified ${path} via unified-modify`
-                }));
-                await updateMemory(codeChanges, []);
-              } catch (memError) {
-                console.warn('⚠️ Failed to update memory:', memError);
-              }
-            }
-            
-            sonnerToast.success(`Applied ${modifications.length} modifications`);
-          },
-          
-          onTokens: (tokens) => {
-            console.log('💰 Tokens received:', {
-              input: tokens.input,
-              output: tokens.output,
-              total: tokens.total,
-              willDeduct: user?.id ? true : false
-            });
-            receivedTokens = tokens;
-          },
-          
-          onError: (error) => {
-            console.error('❌ Error:', error);
-            sonnerToast.error(error);
-          },
-          
-          onComplete: (completeResult) => {
-            console.log('✅ Complete:', completeResult);
+          // Mapper les phases unified-modify vers les types GenerationEvent
+          const phaseToType: Record<string, GenerationEvent['type']> = {
+            'analyze': 'analyze',
+            'context': 'read',
+            'generation': 'write',
+            'validation': 'edit'
+          };
 
-            const duration = Date.now() - generationStartTime;
-
-            // Désactiver le loading preview si c'était une première génération
-            if (isInitialGenerationRef.current) {
-              console.log('🎬 Disabling GeneratingPreview after first generation');
-              setIsInitialGeneration(false);
-              isInitialGenerationRef.current = false;
+          // Mettre à jour les événements de génération
+          const newEvent: GenerationEvent = {
+            type: phaseToType[event.phase || ''] || 'thought',
+            status: event.status === 'complete' ? 'completed' : 'in-progress',
+            message: event.message || `Phase: ${event.phase}`
+          };
+          generationEventsRef.current = [...generationEventsRef.current, newEvent];
+          setGenerationEvents(prev => [...prev, newEvent]);
+          setMessages(prev => {
+            const lastMsg = prev[prev.length - 1];
+            if (lastMsg?.metadata?.type === 'generation') {
+              return prev.map((msg, idx) => idx === prev.length - 1 ? {
+                ...msg,
+                metadata: {
+                  ...msg.metadata,
+                  generation_events: generationEventsRef.current,
+                  thought_duration: Date.now() - generationStartTimeRef.current
+                }
+              } : msg);
             }
-
-            // Mettre à jour le message final
-            setMessages(prev => {
-              const lastMsg = prev[prev.length - 1];
-              if (lastMsg?.metadata?.type === 'generation') {
-                return prev.map((msg, idx) =>
-                  idx === prev.length - 1
-                    ? {
-                        ...msg,
-                        content: completeResult.message || 'Modifications applied',
-                        metadata: {
-                          ...msg.metadata,
-                          thought_duration: duration,
-                          files_modified: completeResult.modifications?.length || 0,
-                          total_tokens: completeResult.tokens?.total || 0,
-                          input_tokens: completeResult.tokens?.input || 0,
-                          output_tokens: completeResult.tokens?.output || 0,
-                          project_files: completeResult.updatedFiles
-                        }
-                      }
-                    : msg
-                );
-              }
-              return prev;
-            });
+            return prev;
+          });
+        },
+        onASTModifications: async (modifications, updatedFiles) => {
+          console.log('🔧 AST Modifications:', {
+            count: modifications.length,
+            files: Object.keys(updatedFiles),
+            modificationTypes: modifications.map(m => m.type)
+          });
+          if (modifications.length === 0) {
+            console.warn('⚠️ No modifications generated');
+            sonnerToast.warning('No modifications generated');
+            return;
           }
+
+          // Mettre à jour les fichiers
+          await updateFiles(updatedFiles, true);
+          setGeneratedHtml(updatedFiles['index.html'] || generatedHtml);
+
+          // Mettre à jour le fichier sélectionné si modifié
+          if (selectedFile && updatedFiles[selectedFile] !== projectFiles[selectedFile]) {
+            setSelectedFileContent(updatedFiles[selectedFile]);
+          }
+
+          // Sauvegarder en base
+          await supabase.from('build_sessions').update({
+            project_files: updatedFiles,
+            updated_at: new Date().toISOString()
+          }).eq('id', sessionId!);
+
+          // Mettre à jour la mémoire
+          const modifiedFilesList = Object.keys(updatedFiles).filter(path => updatedFiles[path] !== projectFiles[path]);
+          if (modifiedFilesList.length > 0) {
+            try {
+              const codeChanges = modifiedFilesList.map(path => ({
+                path,
+                type: 'modify' as const,
+                description: `Modified ${path} via unified-modify`
+              }));
+              await updateMemory(codeChanges, []);
+            } catch (memError) {
+              console.warn('⚠️ Failed to update memory:', memError);
+            }
+          }
+          sonnerToast.success(`Applied ${modifications.length} modifications`);
+        },
+        onTokens: tokens => {
+          console.log('💰 Tokens received:', {
+            input: tokens.input,
+            output: tokens.output,
+            total: tokens.total,
+            willDeduct: user?.id ? true : false
+          });
+          receivedTokens = tokens;
+        },
+        onError: error => {
+          console.error('❌ Error:', error);
+          sonnerToast.error(error);
+        },
+        onComplete: completeResult => {
+          console.log('✅ Complete:', completeResult);
+          const duration = Date.now() - generationStartTime;
+
+          // Désactiver le loading preview si c'était une première génération
+          if (isInitialGenerationRef.current) {
+            console.log('🎬 Disabling GeneratingPreview after first generation');
+            setIsInitialGeneration(false);
+            isInitialGenerationRef.current = false;
+          }
+
+          // Mettre à jour le message final
+          setMessages(prev => {
+            const lastMsg = prev[prev.length - 1];
+            if (lastMsg?.metadata?.type === 'generation') {
+              return prev.map((msg, idx) => idx === prev.length - 1 ? {
+                ...msg,
+                content: completeResult.message || 'Modifications applied',
+                metadata: {
+                  ...msg.metadata,
+                  thought_duration: duration,
+                  files_modified: completeResult.modifications?.length || 0,
+                  total_tokens: completeResult.tokens?.total || 0,
+                  input_tokens: completeResult.tokens?.input || 0,
+                  output_tokens: completeResult.tokens?.output || 0,
+                  project_files: completeResult.updatedFiles
+                }
+              } : msg);
+            }
+            return prev;
+          });
         }
-      );
-      
+      });
+
       // Déduire les tokens du profil utilisateur
       if (user?.id && receivedTokens.total > 0) {
         console.log('💰 Deducting tokens from user profile:', {
           userId: user.id,
           tokensToDeduct: receivedTokens.total
         });
-
         try {
-          const { data: profile, error: fetchError } = await supabase
-            .from('profiles')
-            .select('tokens_used')
-            .eq('id', user.id)
-            .single();
-
+          const {
+            data: profile,
+            error: fetchError
+          } = await supabase.from('profiles').select('tokens_used').eq('id', user.id).single();
           if (fetchError) {
             console.error('❌ Error fetching profile:', fetchError);
             return;
           }
-
           if (profile) {
             const oldTokensUsed = profile.tokens_used || 0;
             const newTokensUsed = oldTokensUsed + receivedTokens.total;
-
             console.log('💰 Updating tokens:', {
               old: oldTokensUsed,
               new: newTokensUsed,
               diff: receivedTokens.total
             });
-
-            const { error: updateError } = await supabase
-              .from('profiles')
-              .update({ tokens_used: newTokensUsed })
-              .eq('id', user.id);
-
+            const {
+              error: updateError
+            } = await supabase.from('profiles').update({
+              tokens_used: newTokensUsed
+            }).eq('id', user.id);
             if (updateError) {
               console.error('❌ Error updating tokens:', updateError);
             } else {
@@ -1089,9 +1051,7 @@ export default function BuilderSession() {
           tokens: receivedTokens
         });
       }
-      
       console.log('🔄 UNIFIED MODIFY - Complete');
-      
     } catch (error) {
       console.error('❌ UNIFIED MODIFY - Error:', error);
       sonnerToast.error('Failed to process request');
@@ -1103,12 +1063,10 @@ export default function BuilderSession() {
   // Nouveau handleSubmit qui route entre modifications rapides et génération complète
   const handleSubmit = async () => {
     const prompt = inputValue.trim() || (messages.length === 1 && typeof messages[0].content === 'string' ? messages[0].content : '');
-    
     if (!prompt && attachedFiles.length === 0) {
       sonnerToast.error("Veuillez entrer votre message ou joindre un fichier");
       return;
     }
-
     if (!user) {
       navigate('/auth');
       throw new Error('Authentication required');
@@ -1120,32 +1078,31 @@ export default function BuilderSession() {
         role: 'user',
         content: prompt
       };
-      
       setMessages(prev => [...prev, userMessage]);
       setInputValue('');
-      
+
       // Afficher un message de chargement
       const loadingMessage: Message = {
         role: 'assistant',
         content: '...'
       };
       setMessages(prev => [...prev, loadingMessage]);
-      
       try {
         const chatHistory = messages.slice(-6).map(m => ({
           role: m.role,
           content: typeof m.content === 'string' ? m.content : '[message multimédia]'
         }));
-        
-        const { data, error } = await supabase.functions.invoke('chat-only', {
+        const {
+          data,
+          error
+        } = await supabase.functions.invoke('chat-only', {
           body: {
             message: prompt,
             chatHistory
           }
         });
-        
         if (error) throw error;
-        
+
         // Remplacer le message de chargement par la réponse
         setMessages(prev => {
           const newMessages = [...prev];
@@ -1161,29 +1118,23 @@ export default function BuilderSession() {
           };
           return newMessages;
         });
-        
+
         // Déduire les tokens
         if (user?.id && data.tokens.total) {
-          await supabase
-            .from('profiles')
-            .update({ 
-              tokens_used: (user.tokens_used || 0) + data.tokens.total 
-            })
-            .eq('id', user.id);
-          
+          await supabase.from('profiles').update({
+            tokens_used: (user.tokens_used || 0) + data.tokens.total
+          }).eq('id', user.id);
           setUser((prev: any) => ({
             ...prev,
             tokens_used: (prev.tokens_used || 0) + data.tokens.total
           }));
         }
-        
       } catch (error) {
         console.error('Chat error:', error);
         sonnerToast.error('Erreur lors de la conversation');
         // Supprimer le message de chargement
         setMessages(prev => prev.slice(0, -1));
       }
-      
       return;
     }
 
@@ -1196,7 +1147,6 @@ export default function BuilderSession() {
     console.log('🔄 Routing vers UNIFIED MODIFY (auto complexity detection)');
     await handleUnifiedModification(prompt);
   };
-
   const handleSave = async () => {
     if (!user) {
       // Sauvegarder la session actuelle dans localStorage pour y revenir après connexion
@@ -1223,13 +1173,11 @@ export default function BuilderSession() {
     // Sinon, afficher le dialogue pour un nouveau projet
     setShowSaveDialog(true);
   };
-
   const confirmSave = async () => {
     if (!websiteTitle.trim()) {
       sonnerToast.error("Veuillez entrer un titre pour votre site");
       return;
     }
-
     setIsSaving(true);
     try {
       await saveSession();
@@ -1242,53 +1190,42 @@ export default function BuilderSession() {
       setIsSaving(false);
     }
   };
-
   const handleDownloadZip = async () => {
     if (!generatedHtml) {
       sonnerToast.error("Aucun contenu à télécharger");
       return;
     }
-
     try {
       // Extraire CSS et JS du HTML
       let extractedCss = '';
       let extractedJs = '';
-      
+
       // Extraire tous les <style> tags
       const styleMatches = generatedHtml.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi);
       for (const match of styleMatches) {
         extractedCss += match[1] + '\n';
       }
-      
+
       // Extraire tous les <script> tags (non-module)
       const scriptMatches = generatedHtml.matchAll(/<script(?![^>]*type=["']module["'])[^>]*>([\s\S]*?)<\/script>/gi);
       for (const match of scriptMatches) {
         extractedJs += match[1] + '\n';
       }
-      
+
       // Créer le HTML nettoyé avec liens externes
-      let cleanHtml = generatedHtml
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-        .replace(/<script(?![^>]*type=["']module["'])[^>]*>[\s\S]*?<\/script>/gi, '');
-      
-      cleanHtml = cleanHtml.replace(
-        '</head>',
-        '  <link rel="stylesheet" href="style.css">\n</head>'
-      );
-      cleanHtml = cleanHtml.replace(
-        '</body>',
-        '  <script src="script.js"></script>\n</body>'
-      );
-      
+      let cleanHtml = generatedHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<script(?![^>]*type=["']module["'])[^>]*>[\s\S]*?<\/script>/gi, '');
+      cleanHtml = cleanHtml.replace('</head>', '  <link rel="stylesheet" href="style.css">\n</head>');
+      cleanHtml = cleanHtml.replace('</body>', '  <script src="script.js"></script>\n</body>');
+
       // Créer le ZIP
       const zip = new JSZip();
-      
       zip.file('index.html', cleanHtml);
       zip.file('style.css', extractedCss || '/* Styles générés par Trinity AI */\n');
       zip.file('script.js', extractedJs || '// Scripts générés par Trinity AI\n');
-      
-      const blob = await zip.generateAsync({ type: 'blob' });
-      
+      const blob = await zip.generateAsync({
+        type: 'blob'
+      });
+
       // Télécharger le ZIP
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1298,21 +1235,18 @@ export default function BuilderSession() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
       sonnerToast.success("✅ ZIP téléchargé avec succès !");
     } catch (error: any) {
       console.error('Error downloading ZIP:', error);
       sonnerToast.error(error.message || "❌ Erreur lors du téléchargement");
     }
   };
-
   const handlePublish = async () => {
     if (!user) {
       localStorage.setItem('redirectAfterAuth', `/builder/${sessionId}`);
       navigate('/auth');
       return;
     }
-
     if (!projectFiles || Object.keys(projectFiles).length === 0) {
       sonnerToast.error("Aucun contenu à publier");
       return;
@@ -1324,42 +1258,44 @@ export default function BuilderSession() {
       setShowSaveDialog(true);
       return;
     }
-
     setIsPublishing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: {
+          session
+        }
+      } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error('Session non valide, veuillez vous reconnecter');
       }
-      
+
       // Préparer tous les fichiers du projet pour le déploiement
-      let filesToDeploy: Record<string, string> = { ...projectFiles };
+      let filesToDeploy: Record<string, string> = {
+        ...projectFiles
+      };
 
       // 🔧 EXTRACTION AUTOMATIQUE : Si index.html contient du CSS/JS inline, extraire dans des fichiers séparés
       const indexHtml = filesToDeploy['index.html'];
       if (indexHtml && (indexHtml.includes('<style') || indexHtml.includes('<script'))) {
         console.warn('⚠️ Détection de CSS/JS inline dans index.html - Extraction automatique en cours...');
-        
+
         // Extraire CSS depuis les balises <style>
         let extractedCss = '';
         const styleMatches = indexHtml.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi);
         for (const match of styleMatches) {
           extractedCss += match[1] + '\n';
         }
-        
+
         // Extraire JS depuis les balises <script> (sauf les modules externes)
         let extractedJs = '';
         const scriptMatches = indexHtml.matchAll(/<script(?![^>]*src=["'])(?![^>]*type=["']module["'])[^>]*>([\s\S]*?)<\/script>/gi);
         for (const match of scriptMatches) {
           extractedJs += match[1] + '\n';
         }
-        
+
         // Nettoyer le HTML en supprimant les balises <style> et <script> inline
-        let cleanHtml = indexHtml
-          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-          .replace(/<script(?![^>]*src=["'])(?![^>]*type=["']module["'])[^>]*>[\s\S]*?<\/script>/gi, '');
-        
+        let cleanHtml = indexHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<script(?![^>]*src=["'])(?![^>]*type=["']module["'])[^>]*>[\s\S]*?<\/script>/gi, '');
+
         // Ajouter les liens vers les fichiers séparés si pas déjà présents
         if (!cleanHtml.includes('href="styles.css"')) {
           cleanHtml = cleanHtml.replace('</head>', '  <link rel="stylesheet" href="styles.css">\n</head>');
@@ -1367,16 +1303,16 @@ export default function BuilderSession() {
         if (!cleanHtml.includes('src="script.js"')) {
           cleanHtml = cleanHtml.replace('</body>', '  <script src="script.js"></script>\n</body>');
         }
-        
+
         // Remplacer dans les fichiers à déployer
         filesToDeploy['index.html'] = cleanHtml;
-        
+
         // Créer ou fusionner styles.css
         if (extractedCss.trim()) {
           filesToDeploy['styles.css'] = (filesToDeploy['styles.css'] || '') + '\n' + extractedCss;
           console.log('✅ CSS extrait dans styles.css');
         }
-        
+
         // Créer ou fusionner script.js
         if (extractedJs.trim()) {
           filesToDeploy['script.js'] = (filesToDeploy['script.js'] || '') + '\n' + extractedJs;
@@ -1390,7 +1326,6 @@ export default function BuilderSession() {
         const extension = name.split('.').pop()?.toLowerCase() || '';
         const binaryExtensions = ['png', 'jpg', 'jpeg', 'gif', 'ico', 'svg', 'woff', 'woff2', 'ttf', 'eot', 'otf'];
         const isBinary = binaryExtensions.includes(extension);
-        
         return {
           name: name.startsWith('/') ? name : `/${name}`,
           content,
@@ -1402,79 +1337,61 @@ export default function BuilderSession() {
       const hasHtml = files.some(f => f.name.endsWith('.html'));
       const hasCss = files.some(f => f.name.endsWith('.css'));
       const hasJs = files.some(f => f.name.endsWith('.js'));
-
       if (hasHtml && (!hasCss || !hasJs)) {
         sonnerToast.error("⚠️ Fichiers CSS et JS manquants. Le déploiement nécessite styles.css et script.js séparés pour Cloudflare Pages.");
-        console.error('❌ Validation échouée:', { hasHtml, hasCss, hasJs, files: files.map(f => f.name) });
+        console.error('❌ Validation échouée:', {
+          hasHtml,
+          hasCss,
+          hasJs,
+          files: files.map(f => f.name)
+        });
         return;
       }
 
       // Générer le nom du projet à partir du titre (utiliser toujours le titre actuel)
-      const projectName = (websiteTitle || cloudflareProjectName || 'mon-projet')
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9\s-]/g, '')
-        .trim()
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .substring(0, 50);
-      
+      const projectName = (websiteTitle || cloudflareProjectName || 'mon-projet').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-').substring(0, 50);
       console.log('🔍 Publishing with projectName:', projectName, 'from websiteTitle:', websiteTitle);
-
       sonnerToast.info("🚀 Déploiement en cours...");
-      
       const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-worker`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           sessionId,
           projectFiles: files,
-          projectName,
-        }),
+          projectName
+        })
       });
-
       const result = await deployRes.json();
-      
       if (!deployRes.ok) {
         throw new Error(result?.error || 'Erreur de publication');
       }
-      
       if (!result?.success) {
         throw new Error(result?.error || 'Erreur de publication');
       }
-
       if (result.publicUrl) {
         setDeployedUrl(result.publicUrl);
         setCloudflareProjectName(projectName);
-        
+
         // Sauvegarder le projectName comme titre si le titre est vide ou générique
         if (!websiteTitle || websiteTitle === 'Nouveau projet' || websiteTitle.trim() === '') {
-          const formattedTitle = projectName
-            .split('-')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
+          const formattedTitle = projectName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
           setWebsiteTitle(formattedTitle);
-          
+
           // Sauvegarder dans la base de données
-          await supabase
-            .from('build_sessions')
-            .update({ 
-              title: formattedTitle,
-              cloudflare_project_name: projectName 
-            })
-            .eq('id', sessionId);
+          await supabase.from('build_sessions').update({
+            title: formattedTitle,
+            cloudflare_project_name: projectName
+          }).eq('id', sessionId);
         } else {
           // Sauvegarder juste le cloudflare_project_name
-          await supabase
-            .from('build_sessions')
-            .update({ cloudflare_project_name: projectName })
-            .eq('id', sessionId);
+          await supabase.from('build_sessions').update({
+            cloudflare_project_name: projectName
+          }).eq('id', sessionId);
         }
-        
+
         // Ouvrir la modale de succès au lieu du toast
         setShowPublishSuccess(true);
       }
@@ -1485,54 +1402,37 @@ export default function BuilderSession() {
       setIsPublishing(false);
     }
   };
-
   if (sessionLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
+    return <div className="min-h-screen flex items-center justify-center">
         <p className="text-slate-600">Chargement...</p>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className={`h-screen flex flex-col`} style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff' }}>
+  return <div className={`h-screen flex flex-col`} style={{
+    backgroundColor: isDark ? '#1F1F20' : '#ffffff'
+  }}>
       {/* Barre d'action */}
-      <div className={`h-12 backdrop-blur-sm flex items-center justify-between px-4 ${isDark ? '' : 'bg-slate-50/80'}`} style={{ backgroundColor: isDark ? '#1F1F20' : undefined }}>
+      <div className={`h-12 backdrop-blur-sm flex items-center justify-between px-4 ${isDark ? '' : 'bg-slate-50/80'}`} style={{
+      backgroundColor: isDark ? '#1F1F20' : undefined
+    }}>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="h-8 w-8 flex items-center justify-center transition-colors group"
-            title="Dashboard"
-          >
-            <Home className="w-4 h-4 transition-colors" style={{ color: isDark ? '#fff' : '#9CA3AF' }} onMouseEnter={(e) => e.currentTarget.style.color = '#03A5C0'} onMouseLeave={(e) => e.currentTarget.style.color = isDark ? '#fff' : '#9CA3AF'} />
+          <button onClick={() => navigate('/dashboard')} className="h-8 w-8 flex items-center justify-center transition-colors group" title="Dashboard">
+            <Home className="w-4 h-4 transition-colors" style={{
+            color: isDark ? '#fff' : '#9CA3AF'
+          }} onMouseEnter={e => e.currentTarget.style.color = '#03A5C0'} onMouseLeave={e => e.currentTarget.style.color = isDark ? '#fff' : '#9CA3AF'} />
           </button>
 
           <TokenCounter isDark={isDark} userId={user?.id} />
         </div>
 
         {/* Input caché pour le favicon */}
-        <input
-          type="file"
-          ref={faviconInputRef}
-          onChange={handleFaviconUpload}
-          accept="image/*"
-          className="hidden"
-        />
+        <input type="file" ref={faviconInputRef} onChange={handleFaviconUpload} accept="image/*" className="hidden" />
 
         <div className="flex items-center gap-3">
-          <div
-            className="flex items-center gap-1 rounded-md border p-0.5"
-            style={{
-              backgroundColor: isDark ? '#181818' : '#ffffff',
-              borderColor: isDark ? '#1F1F20' : 'rgba(203, 213, 225, 1)'
-            }}
-          >
-            <Button
-              variant="iconOnly"
-              size="sm"
-              disabled
-              className="h-7 px-2 text-xs text-[#03A5C0]"
-            >
+          <div className="flex items-center gap-1 rounded-md border p-0.5" style={{
+          backgroundColor: isDark ? '#181818' : '#ffffff',
+          borderColor: isDark ? '#1F1F20' : 'rgba(203, 213, 225, 1)'
+        }}>
+            <Button variant="iconOnly" size="sm" disabled className="h-7 px-2 text-xs text-[#03A5C0]">
               <Eye className="w-3 h-3 mr-1" />
               Preview
             </Button>
@@ -1544,22 +1444,12 @@ export default function BuilderSession() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')}
-                    variant="iconOnly"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    style={{
-                      borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
-                      backgroundColor: 'transparent',
-                      color: isDark ? 'hsl(var(--foreground))' : '#64748b',
-                    }}
-                  >
-                    {previewMode === 'desktop' ? (
-                      <Smartphone className="w-3.5 h-3.5" />
-                    ) : (
-                      <Monitor className="w-3.5 h-3.5" />
-                    )}
+                  <Button onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')} variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
+                  borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
+                  backgroundColor: 'transparent',
+                  color: isDark ? 'hsl(var(--foreground))' : '#64748b'
+                }}>
+                    {previewMode === 'desktop' ? <Smartphone className="w-3.5 h-3.5" /> : <Monitor className="w-3.5 h-3.5" />}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
@@ -1571,18 +1461,11 @@ export default function BuilderSession() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    onClick={() => setInspectMode(!inspectMode)}
-                    type="button"
-                    variant="iconOnly"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    style={{
-                      borderColor: inspectMode ? '#03A5C0' : (isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)'),
-                      backgroundColor: inspectMode ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
-                      color: inspectMode ? '#03A5C0' : (isDark ? 'hsl(var(--foreground))' : '#64748b'),
-                    }}
-                  >
+                  <Button onClick={() => setInspectMode(!inspectMode)} type="button" variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
+                  borderColor: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
+                  backgroundColor: inspectMode ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
+                  color: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--foreground))' : '#64748b'
+                }}>
                     <Edit className="w-3.5 h-3.5" />
                   </Button>
                 </TooltipTrigger>
@@ -1592,13 +1475,7 @@ export default function BuilderSession() {
               </Tooltip>
             </TooltipProvider>
 
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-              variant="iconOnly"
-              size="sm"
-              className="h-8 text-xs"
-            >
+            <Button onClick={handleSave} disabled={isSaving} variant="iconOnly" size="sm" className="h-8 text-xs">
               <Save className="w-3.5 h-3.5 mr-1.5" />
               Enregistrer
             </Button>
@@ -1607,33 +1484,20 @@ export default function BuilderSession() {
           <div className="h-6 w-px bg-slate-300" />
 
           <div className="flex items-center gap-2">
-            <Button
-              onClick={handlePublish}
-              disabled={isPublishing}
-              size="minimal"
-              className="text-sm gap-2 transition-all border rounded-full px-6"
-              style={{
-                borderColor: '#03A5C0',
-                backgroundColor: 'rgba(3, 165, 192, 0.1)',
-                color: '#03A5C0'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
-              }}
-            >
+            <Button onClick={handlePublish} disabled={isPublishing} size="minimal" className="text-sm gap-2 transition-all border rounded-full px-6" style={{
+            borderColor: '#03A5C0',
+            backgroundColor: 'rgba(3, 165, 192, 0.1)',
+            color: '#03A5C0'
+          }} onMouseEnter={e => {
+            e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.2)';
+          }} onMouseLeave={e => {
+            e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
+          }}>
               {isPublishing ? 'Publication...' : 'Publier'}
             </Button>
           </div>
 
-          <Button
-            onClick={toggleTheme}
-            variant="iconOnly"
-            size="icon"
-            className="h-8 w-8"
-          >
+          <Button onClick={toggleTheme} variant="iconOnly" size="icon" className="h-8 w-8">
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
         </div>
@@ -1642,186 +1506,119 @@ export default function BuilderSession() {
       {/* Panneau principal */}
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         <ResizablePanel defaultSize={30} minSize={25}>
-          <div className={`h-full flex flex-col ${isDark ? '' : 'bg-slate-50'}`} style={{ backgroundColor: isDark ? '#1F1F20' : undefined }}>
+          <div className={`h-full flex flex-col ${isDark ? '' : 'bg-slate-50'}`} style={{
+          backgroundColor: isDark ? '#1F1F20' : undefined
+        }}>
             {/* Chat history */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.map((msg, idx) => {
-                // Calculer si ce message est "inactif" (après la version courante)
-                const isInactive = currentVersionIndex !== null && idx > currentVersionIndex;
-                
-                return (
-                <div key={idx} className={isInactive ? 'opacity-40' : ''}>
-                  {msg.role === 'user' ? (
-                    <div className="flex justify-end">
+              // Calculer si ce message est "inactif" (après la version courante)
+              const isInactive = currentVersionIndex !== null && idx > currentVersionIndex;
+              return <div key={idx} className={isInactive ? 'opacity-40' : ''}>
+                  {msg.role === 'user' ? <div className="flex justify-end">
                       <div className="max-w-[80%] rounded-2xl px-4 py-2.5 border border-[#03A5C0] bg-[#03A5C0]/10">
-                        {typeof msg.content === 'string' ? (
-                          <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{msg.content}</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {msg.content.map((item, i) => (
-                              item.type === 'text' ? (
-                                <p key={i} className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{item.text}</p>
-                              ) : (
-                                <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />
-                              )
-                            ))}
-                          </div>
-                        )}
+                        {typeof msg.content === 'string' ? <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{msg.content}</p> : <div className="space-y-2">
+                            {msg.content.map((item, i) => item.type === 'text' ? <p key={i} className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{item.text}</p> : <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />)}
+                          </div>}
                       </div>
-                    </div>
-                  ) : msg.metadata?.type === 'generation' ? (
-                    // Nouveau message unifié style Lovable
-                    <AiGenerationMessage
-                      message={msg}
-                      messageIndex={idx}
-                      isLatestMessage={idx === messages.length - 1}
-                      isDark={isDark}
-                      isLoading={idx === messages.length - 1 && (unifiedModify.isLoading || isQuickModLoading)}
-                      generationStartTime={idx === messages.length - 1 && (unifiedModify.isLoading || isQuickModLoading) ? generationStartTimeRef.current : undefined}
-                      onRestore={async (messageIdx) => {
-                        const targetMessage = messages[messageIdx];
-                        if (!targetMessage.id || !sessionId) return;
-                        
-                        console.log('🔄 RESTORING VERSION FROM MESSAGE', messageIdx);
-                        
-                        const { data: chatMessage } = await supabase
-                          .from('chat_messages')
-                          .select('metadata')
-                          .eq('id', targetMessage.id)
-                          .single();
-                        
-                        if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
-                          const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
-                          
-                          console.log('✅ Files to restore:', Object.keys(restoredFiles).length);
-                          
-                          updateFiles(restoredFiles, false);
-                          setGeneratedHtml(restoredFiles['index.html'] || '');
-                          
-                          if (selectedFile && restoredFiles[selectedFile]) {
-                            setSelectedFileContent(restoredFiles[selectedFile]);
-                          } else {
-                            const firstFile = Object.keys(restoredFiles)[0];
-                            if (firstFile) {
-                              setSelectedFile(firstFile);
-                              setSelectedFileContent(restoredFiles[firstFile]);
-                            }
-                          }
-                          
-                          setCurrentVersionIndex(messageIdx);
-                          
-                          await supabase
-                            .from('build_sessions')
-                            .update({
-                              project_files: convertFilesToArray(restoredFiles),
-                              updated_at: new Date().toISOString()
-                            })
-                            .eq('id', sessionId);
-                          
-                          console.log('✅ Version restored successfully');
-                          sonnerToast.success('Version restaurée');
-                        } else {
-                          console.error('❌ No project_files found in message metadata');
-                          sonnerToast.error('Impossible de restaurer cette version');
-                        }
-                      }}
-                      onGoToPrevious={async () => {
-                        const generationMessages = messages
-                          .map((m, i) => ({ message: m, index: i }))
-                          .filter(({ message }) => message.role === 'assistant' && message.metadata?.type === 'generation')
-                          .slice(-15);
-                        
-                        const currentGenIndex = currentVersionIndex !== null
-                          ? generationMessages.findIndex(r => r.index === currentVersionIndex)
-                          : generationMessages.length - 1;
-                        
-                        if (currentGenIndex <= 0) {
-                          sonnerToast.error('Aucune version précédente disponible');
-                          return;
-                        }
-                        
-                        const previousGen = generationMessages[currentGenIndex - 1];
-                        const targetMessage = previousGen.message;
-                        
-                        if (!targetMessage.id || !sessionId) return;
-                        
-                        const { data: chatMessage } = await supabase
-                          .from('chat_messages')
-                          .select('metadata')
-                          .eq('id', targetMessage.id)
-                          .single();
-                        
-                        if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
-                          const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
-                          
-                          updateFiles(restoredFiles, false);
-                          setGeneratedHtml(restoredFiles['index.html'] || '');
-                          
-                          if (selectedFile && restoredFiles[selectedFile]) {
-                            setSelectedFileContent(restoredFiles[selectedFile]);
-                          } else {
-                            const firstFile = Object.keys(restoredFiles)[0];
-                            if (firstFile) {
-                              setSelectedFile(firstFile);
-                              setSelectedFileContent(restoredFiles[firstFile]);
-                            }
-                          }
-                          
-                          setCurrentVersionIndex(previousGen.index);
-                          
-                          await supabase
-                            .from('build_sessions')
-                            .update({
-                              project_files: convertFilesToArray(restoredFiles),
-                              updated_at: new Date().toISOString()
-                            })
-                            .eq('id', sessionId);
-                          
-                          sonnerToast.success('Version précédente restaurée');
-                        } else {
-                          sonnerToast.error('Impossible de restaurer cette version');
-                        }
-                      }}
-                    />
-                  ) : msg.metadata?.type === 'message' ? (
-                    // Message chat uniquement (plan d'action)
-                    <ChatOnlyMessage
-                      message={msg}
-                      messageIndex={idx}
-                      isLatestMessage={idx === messages.length - 1}
-                      isDark={isDark}
-                      onRestore={async (messageIdx) => {
-                        // Pas de restauration pour les messages chat
-                        sonnerToast.info('Les messages de conversation ne modifient pas les fichiers');
-                      }}
-                      onGoToPrevious={() => {
-                        // Pas de version précédente pour les messages chat
-                        sonnerToast.info('Les messages de conversation ne sont pas versionnés');
-                      }}
-                      onImplementPlan={(plan) => {
-                        // Passer en mode génération avec le plan
-                        setChatMode(false);
-                        setInputValue(plan);
-                        // Petit délai pour s'assurer que le mode chat est désactivé
-                        setTimeout(() => {
-                          handleSubmit();
-                        }, 100);
-                      }}
-                    />
-                  ) : (
-                    <div className="space-y-3">
+                    </div> : msg.metadata?.type === 'generation' ?
+                // Nouveau message unifié style Lovable
+                <AiGenerationMessage message={msg} messageIndex={idx} isLatestMessage={idx === messages.length - 1} isDark={isDark} isLoading={idx === messages.length - 1 && (unifiedModify.isLoading || isQuickModLoading)} generationStartTime={idx === messages.length - 1 && (unifiedModify.isLoading || isQuickModLoading) ? generationStartTimeRef.current : undefined} onRestore={async messageIdx => {
+                  const targetMessage = messages[messageIdx];
+                  if (!targetMessage.id || !sessionId) return;
+                  console.log('🔄 RESTORING VERSION FROM MESSAGE', messageIdx);
+                  const {
+                    data: chatMessage
+                  } = await supabase.from('chat_messages').select('metadata').eq('id', targetMessage.id).single();
+                  if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
+                    const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                    console.log('✅ Files to restore:', Object.keys(restoredFiles).length);
+                    updateFiles(restoredFiles, false);
+                    setGeneratedHtml(restoredFiles['index.html'] || '');
+                    if (selectedFile && restoredFiles[selectedFile]) {
+                      setSelectedFileContent(restoredFiles[selectedFile]);
+                    } else {
+                      const firstFile = Object.keys(restoredFiles)[0];
+                      if (firstFile) {
+                        setSelectedFile(firstFile);
+                        setSelectedFileContent(restoredFiles[firstFile]);
+                      }
+                    }
+                    setCurrentVersionIndex(messageIdx);
+                    await supabase.from('build_sessions').update({
+                      project_files: convertFilesToArray(restoredFiles),
+                      updated_at: new Date().toISOString()
+                    }).eq('id', sessionId);
+                    console.log('✅ Version restored successfully');
+                    sonnerToast.success('Version restaurée');
+                  } else {
+                    console.error('❌ No project_files found in message metadata');
+                    sonnerToast.error('Impossible de restaurer cette version');
+                  }
+                }} onGoToPrevious={async () => {
+                  const generationMessages = messages.map((m, i) => ({
+                    message: m,
+                    index: i
+                  })).filter(({
+                    message
+                  }) => message.role === 'assistant' && message.metadata?.type === 'generation').slice(-15);
+                  const currentGenIndex = currentVersionIndex !== null ? generationMessages.findIndex(r => r.index === currentVersionIndex) : generationMessages.length - 1;
+                  if (currentGenIndex <= 0) {
+                    sonnerToast.error('Aucune version précédente disponible');
+                    return;
+                  }
+                  const previousGen = generationMessages[currentGenIndex - 1];
+                  const targetMessage = previousGen.message;
+                  if (!targetMessage.id || !sessionId) return;
+                  const {
+                    data: chatMessage
+                  } = await supabase.from('chat_messages').select('metadata').eq('id', targetMessage.id).single();
+                  if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
+                    const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                    updateFiles(restoredFiles, false);
+                    setGeneratedHtml(restoredFiles['index.html'] || '');
+                    if (selectedFile && restoredFiles[selectedFile]) {
+                      setSelectedFileContent(restoredFiles[selectedFile]);
+                    } else {
+                      const firstFile = Object.keys(restoredFiles)[0];
+                      if (firstFile) {
+                        setSelectedFile(firstFile);
+                        setSelectedFileContent(restoredFiles[firstFile]);
+                      }
+                    }
+                    setCurrentVersionIndex(previousGen.index);
+                    await supabase.from('build_sessions').update({
+                      project_files: convertFilesToArray(restoredFiles),
+                      updated_at: new Date().toISOString()
+                    }).eq('id', sessionId);
+                    sonnerToast.success('Version précédente restaurée');
+                  } else {
+                    sonnerToast.error('Impossible de restaurer cette version');
+                  }
+                }} /> : msg.metadata?.type === 'message' ?
+                // Message chat uniquement (plan d'action)
+                <ChatOnlyMessage message={msg} messageIndex={idx} isLatestMessage={idx === messages.length - 1} isDark={isDark} onRestore={async messageIdx => {
+                  // Pas de restauration pour les messages chat
+                  sonnerToast.info('Les messages de conversation ne modifient pas les fichiers');
+                }} onGoToPrevious={() => {
+                  // Pas de version précédente pour les messages chat
+                  sonnerToast.info('Les messages de conversation ne sont pas versionnés');
+                }} onImplementPlan={plan => {
+                  // Passer en mode génération avec le plan
+                  setChatMode(false);
+                  setInputValue(plan);
+                  // Petit délai pour s'assurer que le mode chat est désactivé
+                  setTimeout(() => {
+                    handleSubmit();
+                  }, 100);
+                }} /> : <div className="space-y-3">
                       {/* Message simple (ancien format) - pour compatibilité */}
                       <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
-                        {typeof msg.content === 'string' 
-                          ? (msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content)
-                          : 'Contenu généré'
-                        }
+                        {typeof msg.content === 'string' ? msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content : 'Contenu généré'}
                       </p>
-                    </div>
-                  )}
-                </div>
-              );
-              })}
+                    </div>}
+                </div>;
+            })}
 
 
               {/* Le streaming est maintenant géré par le message intro avec CollapsedAiTasks */}
@@ -1831,43 +1628,35 @@ export default function BuilderSession() {
             </div>
             
             {/* Chat input */}
-            <div className="border-t p-4 bg-card/80 backdrop-blur-sm" style={{ borderTopColor: isDark ? '#1F1F20' : 'rgb(226, 232, 240)' }}>
-              <PromptBar
-                inputValue={inputValue}
-                setInputValue={setInputValue}
-                onSubmit={handleSubmit}
-                isLoading={unifiedModify.isLoading}
-                onStop={() => unifiedModify.abort()}
-                showPlaceholderAnimation={false}
-                showConfigButtons={false}
-                modificationMode={true}
-                inspectMode={inspectMode}
-                onInspectToggle={() => setInspectMode(!inspectMode)}
-                chatMode={chatMode}
-                onChatToggle={() => setChatMode(!chatMode)}
-                projectType={projectType}
-                onProjectTypeChange={setProjectType}
-                attachedFiles={attachedFiles}
-                onRemoveFile={removeFile}
-                onFileSelect={async (files) => {
-                  const newFiles: Array<{ name: string; base64: string; type: string }> = [];
-                  for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    if (!file.type.startsWith('image/')) {
-                      sonnerToast.error(`${file.name} n'est pas une image`);
-                      continue;
-                    }
-                    const reader = new FileReader();
-                    const base64Promise = new Promise<string>((resolve) => {
-                      reader.onloadend = () => resolve(reader.result as string);
-                      reader.readAsDataURL(file);
-                    });
-                    const base64 = await base64Promise;
-                    newFiles.push({ name: file.name, base64, type: file.type });
-                  }
-                  setAttachedFiles([...attachedFiles, ...newFiles]);
-                }}
-              />
+            <div style={{
+            borderTopColor: isDark ? '#1F1F20' : 'rgb(226, 232, 240)'
+          }} className="border-t p-4 backdrop-blur-sm bg-[sidebar-accent-foreground] bg-background">
+              <PromptBar inputValue={inputValue} setInputValue={setInputValue} onSubmit={handleSubmit} isLoading={unifiedModify.isLoading} onStop={() => unifiedModify.abort()} showPlaceholderAnimation={false} showConfigButtons={false} modificationMode={true} inspectMode={inspectMode} onInspectToggle={() => setInspectMode(!inspectMode)} chatMode={chatMode} onChatToggle={() => setChatMode(!chatMode)} projectType={projectType} onProjectTypeChange={setProjectType} attachedFiles={attachedFiles} onRemoveFile={removeFile} onFileSelect={async files => {
+              const newFiles: Array<{
+                name: string;
+                base64: string;
+                type: string;
+              }> = [];
+              for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (!file.type.startsWith('image/')) {
+                  sonnerToast.error(`${file.name} n'est pas une image`);
+                  continue;
+                }
+                const reader = new FileReader();
+                const base64Promise = new Promise<string>(resolve => {
+                  reader.onloadend = () => resolve(reader.result as string);
+                  reader.readAsDataURL(file);
+                });
+                const base64 = await base64Promise;
+                newFiles.push({
+                  name: file.name,
+                  base64,
+                  type: file.type
+                });
+              }
+              setAttachedFiles([...attachedFiles, ...newFiles]);
+            }} />
             </div>
           </div>
         </ResizablePanel>
@@ -1875,27 +1664,17 @@ export default function BuilderSession() {
         {previewMode === 'desktop' && <ResizableHandle withHandle />}
         
           <ResizablePanel defaultSize={70} minSize={previewMode === 'mobile' ? 70 : 30}>
-            <div className={`h-full w-full flex ${previewMode === 'mobile' ? 'justify-center items-start' : 'flex-col'} rounded-xl overflow-hidden`} style={previewMode === 'mobile' ? { backgroundColor: isDark ? '#181818' : '#ffffff' } : undefined}>
-              {previewMode === 'mobile' ? (
-                <div className={`w-[375px] h-full flex flex-col shadow-2xl rounded-3xl border overflow-hidden`} style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff', borderColor: isDark ? 'rgb(51, 65, 85)' : '#ffffff' }}>
-                  {isInitialGeneration && Object.keys(projectFiles).length === 0 ? (
-                    <GeneratingPreview />
-                  ) : (
-                    <>
-                      <FakeUrlBar
-                        projectTitle={websiteTitle || 'Mon Projet'}
-                        isDark={isDark}
-                        sessionId={sessionId}
-                        onTitleChange={setWebsiteTitle}
-                        cloudflareProjectName={cloudflareProjectName || undefined}
-                      />
-                      <InteractivePreview
-                        projectFiles={projectFiles}
-                        isDark={isDark}
-                        inspectMode={inspectMode}
-                        onInspectModeChange={setInspectMode}
-                        onElementModify={async (prompt, elementInfo) => {
-                          const contextualPrompt = `Modifier l'élément suivant dans le code :
+            <div className={`h-full w-full flex ${previewMode === 'mobile' ? 'justify-center items-start' : 'flex-col'} rounded-xl overflow-hidden`} style={previewMode === 'mobile' ? {
+          backgroundColor: isDark ? '#181818' : '#ffffff'
+        } : undefined}>
+              {previewMode === 'mobile' ? <div className={`w-[375px] h-full flex flex-col shadow-2xl rounded-3xl border overflow-hidden`} style={{
+            backgroundColor: isDark ? '#1F1F20' : '#ffffff',
+            borderColor: isDark ? 'rgb(51, 65, 85)' : '#ffffff'
+          }}>
+                  {isInitialGeneration && Object.keys(projectFiles).length === 0 ? <GeneratingPreview /> : <>
+                      <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
+                      <InteractivePreview projectFiles={projectFiles} isDark={isDark} inspectMode={inspectMode} onInspectModeChange={setInspectMode} onElementModify={async (prompt, elementInfo) => {
+                const contextualPrompt = `Modifier l'élément suivant dans le code :
 
 Type: <${elementInfo.tagName.toLowerCase()}>
 ${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
@@ -1907,37 +1686,17 @@ Instruction: ${prompt}
 
 Ne modifie que cet élément spécifique, pas le reste du code.`;
 
-                          // IMPORTANT: Forcer le mode génération (pas chatMode)
-                          setChatMode(false);
-                          setInputValue(contextualPrompt);
-                          setTimeout(() => handleSubmit(), 100);
-                        }}
-                      />
-                    </>
-                  )}
-                </div>
-              ) : (
-                <>
-                  {isInitialGeneration ? (
-                    <GeneratingPreview />
-                  ) : (
-                    <>
-                      <FakeUrlBar
-                        projectTitle={websiteTitle || 'Mon Projet'}
-                        isDark={isDark}
-                        sessionId={sessionId}
-                        onTitleChange={setWebsiteTitle}
-                        currentFavicon={currentFavicon}
-                        onFaviconChange={setCurrentFavicon}
-                        cloudflareProjectName={cloudflareProjectName || undefined}
-                      />
-                      <InteractivePreview
-                        projectFiles={projectFiles}
-                        isDark={isDark}
-                        inspectMode={inspectMode}
-                        onInspectModeChange={setInspectMode}
-                        onElementModify={async (prompt, elementInfo) => {
-                          const contextualPrompt = `Modifier l'élément suivant dans le code :
+                // IMPORTANT: Forcer le mode génération (pas chatMode)
+                setChatMode(false);
+                setInputValue(contextualPrompt);
+                setTimeout(() => handleSubmit(), 100);
+              }} />
+                    </>}
+                </div> : <>
+                  {isInitialGeneration ? <GeneratingPreview /> : <>
+                      <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} />
+                      <InteractivePreview projectFiles={projectFiles} isDark={isDark} inspectMode={inspectMode} onInspectModeChange={setInspectMode} onElementModify={async (prompt, elementInfo) => {
+                const contextualPrompt = `Modifier l'élément suivant dans le code :
 
 Type: <${elementInfo.tagName.toLowerCase()}>
 ${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
@@ -1949,100 +1708,88 @@ Instruction: ${prompt}
 
 Ne modifie que cet élément spécifique, pas le reste du code.`;
 
-                          // Envoyer directement à Claude sans afficher dans le chat
-                          if (!user) {
-                            navigate('/auth');
-                            return;
+                // Envoyer directement à Claude sans afficher dans le chat
+                if (!user) {
+                  navigate('/auth');
+                  return;
+                }
+                const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
+                  const keywords = prompt.toLowerCase().split(/\s+/);
+                  const scored = Object.entries(files).map(([path, content]) => {
+                    let score = 0;
+                    keywords.forEach(k => {
+                      if (path.toLowerCase().includes(k)) score += 50;
+                      if (content.toLowerCase().includes(k)) score += 10;
+                    });
+                    if (path.includes('index.html') || path.includes('App.tsx')) score += 100;
+                    return {
+                      path,
+                      content,
+                      score
+                    };
+                  });
+                  return scored.sort((a, b) => b.score - a.score).slice(0, 5);
+                };
+                const relevantFilesArray = selectRelevantFiles(contextualPrompt, projectFiles);
+                const chatHistory = messages.slice(-3).map(m => ({
+                  role: m.role,
+                  content: typeof m.content === 'string' ? m.content : '[message multimédia]'
+                }));
+                setAiEvents([]);
+                setGenerationEvents([]);
+                try {
+                  const result = await unifiedModify.unifiedModify({
+                    message: contextualPrompt,
+                    projectFiles,
+                    sessionId: sessionId!
+                  }, {
+                    onIntentMessage: message => {
+                      console.log('🎯 Intent:', message);
+                    },
+                    onGenerationEvent: event => {
+                      console.log('🔄 Generation:', event);
+                    },
+                    onASTModifications: async (modifications, updatedFiles) => {
+                      console.log('📦 Modifications:', modifications.length);
+                      await updateFiles(updatedFiles, true);
+                      if (updatedFiles['index.html']) {
+                        setGeneratedHtml(updatedFiles['index.html']);
+                      }
+                    },
+                    onTokens: tokens => {
+                      console.log('📊 Tokens:', tokens);
+                    },
+                    onError: error => {
+                      console.error('❌ Error:', error);
+                      sonnerToast.error(error);
+                    },
+                    onComplete: async result => {
+                      console.log('✅ Complete:', result);
+                      if (result?.success) {
+                        sonnerToast.success('Modification appliquée');
+                        await supabase.from('chat_messages').insert({
+                          session_id: sessionId,
+                          role: 'assistant',
+                          content: result.message,
+                          token_count: result.tokens.total,
+                          metadata: {
+                            input_tokens: result.tokens.input,
+                            output_tokens: result.tokens.output,
+                            total_tokens: result.tokens.total,
+                            project_files: result.updatedFiles,
+                            type: 'generation'
                           }
-
-                          const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
-                            const keywords = prompt.toLowerCase().split(/\s+/);
-                            const scored = Object.entries(files).map(([path, content]) => {
-                              let score = 0;
-                              keywords.forEach(k => {
-                                if (path.toLowerCase().includes(k)) score += 50;
-                                if (content.toLowerCase().includes(k)) score += 10;
-                              });
-                              if (path.includes('index.html') || path.includes('App.tsx')) score += 100;
-                              return { path, content, score };
-                            });
-
-                            return scored
-                              .sort((a, b) => b.score - a.score)
-                              .slice(0, 5);
-                          };
-
-                          const relevantFilesArray = selectRelevantFiles(contextualPrompt, projectFiles);
-                          const chatHistory = messages.slice(-3).map(m => ({
-                            role: m.role,
-                            content: typeof m.content === 'string' ? m.content : '[message multimédia]'
-                          }));
-
-                          setAiEvents([]);
-                          setGenerationEvents([]);
-
-                          try {
-                            const result = await unifiedModify.unifiedModify(
-                              {
-                                message: contextualPrompt,
-                                projectFiles,
-                                sessionId: sessionId!,
-                              },
-                              {
-                                onIntentMessage: (message) => {
-                                  console.log('🎯 Intent:', message);
-                                },
-                                onGenerationEvent: (event) => {
-                                  console.log('🔄 Generation:', event);
-                                },
-                                onASTModifications: async (modifications, updatedFiles) => {
-                                  console.log('📦 Modifications:', modifications.length);
-                                  await updateFiles(updatedFiles, true);
-                                  if (updatedFiles['index.html']) {
-                                    setGeneratedHtml(updatedFiles['index.html']);
-                                  }
-                                },
-                                onTokens: (tokens) => {
-                                  console.log('📊 Tokens:', tokens);
-                                },
-                                onError: (error) => {
-                                  console.error('❌ Error:', error);
-                                  sonnerToast.error(error);
-                                },
-                                onComplete: async (result) => {
-                                  console.log('✅ Complete:', result);
-                                  if (result?.success) {
-                                    sonnerToast.success('Modification appliquée');
-                                    
-                                    await supabase
-                                      .from('chat_messages')
-                                      .insert({
-                                        session_id: sessionId,
-                                        role: 'assistant',
-                                        content: result.message,
-                                        token_count: result.tokens.total,
-                                        metadata: {
-                                          input_tokens: result.tokens.input,
-                                          output_tokens: result.tokens.output,
-                                          total_tokens: result.tokens.total,
-                                          project_files: result.updatedFiles,
-                                          type: 'generation'
-                                        }
-                                      });
-                                  }
-                                }
-                              }
-                            );
-                          } catch (error) {
-                            console.error('❌ Inspect mode error:', error);
-                            sonnerToast.error('Erreur lors de la modification');
-                          }
-                        }}
-                      />
-                    </>
-                  )}
-                </>
-              )}
+                        });
+                      }
+                    }
+                  });
+                } catch (error) {
+                  console.error('❌ Inspect mode error:', error);
+                  sonnerToast.error('Erreur lors de la modification');
+                }
+              }} />
+                    </>}
+                </>}
             </div>
           </ResizablePanel>
       </ResizablePanelGroup>
@@ -2059,23 +1806,14 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="title">Titre du site</Label>
-              <Input
-                id="title"
-                value={websiteTitle}
-                onChange={(e) => setWebsiteTitle(e.target.value)}
-                placeholder="Mon site web"
-              />
+              <Input id="title" value={websiteTitle} onChange={e => setWebsiteTitle(e.target.value)} placeholder="Mon site web" />
             </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowSaveDialog(false)}>
               Annuler
             </Button>
-            <Button 
-              onClick={confirmSave} 
-              disabled={isSaving}
-              className="bg-[hsl(var(--magellan-cyan))] hover:bg-[hsl(var(--magellan-cyan-light))] text-white"
-            >
+            <Button onClick={confirmSave} disabled={isSaving} className="bg-[hsl(var(--magellan-cyan))] hover:bg-[hsl(var(--magellan-cyan-light))] text-white">
               Enregistrer
             </Button>
           </DialogFooter>
@@ -2083,14 +1821,6 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
       </Dialog>
 
       {/* Dialog de succès de publication */}
-      <PublishSuccessDialog
-        open={showPublishSuccess}
-        onOpenChange={setShowPublishSuccess}
-        publicUrl={deployedUrl || ''}
-        projectName={cloudflareProjectName || websiteTitle}
-        sessionId={sessionId}
-        cloudflareProjectName={cloudflareProjectName || undefined}
-      />
-    </div>
-  );
+      <PublishSuccessDialog open={showPublishSuccess} onOpenChange={setShowPublishSuccess} publicUrl={deployedUrl || ''} projectName={cloudflareProjectName || websiteTitle} sessionId={sessionId} cloudflareProjectName={cloudflareProjectName || undefined} />
+    </div>;
 }
