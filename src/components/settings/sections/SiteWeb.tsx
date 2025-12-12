@@ -170,7 +170,7 @@ export function SiteWeb() {
           <h2 className="text-2xl font-bold text-foreground">Site Web</h2>
           <p className="text-muted-foreground">Aucun projet sélectionné</p>
         </div>
-        <Card className="rounded-[8px]">
+        <Card className="rounded-[8px] border-0 bg-transparent shadow-none">
           <CardContent className="py-12 text-center">
             <Globe className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
             <p className="text-muted-foreground mb-4">Créez votre premier projet pour commencer</p>
@@ -199,7 +199,7 @@ export function SiteWeb() {
       </div>
 
       {/* Widget Preview du site */}
-      <Card className="rounded-[8px] overflow-hidden">
+      <Card className="rounded-[8px] overflow-hidden border-0 bg-transparent shadow-none">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -285,7 +285,7 @@ export function SiteWeb() {
       </Card>
 
       {/* Widget Nom de domaine */}
-      <Card className="rounded-[8px]">
+      <Card className="rounded-[8px] border-0 bg-transparent shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Link2 className="h-5 w-5" />
@@ -350,7 +350,7 @@ export function SiteWeb() {
       </Card>
 
       {/* Widget SEO */}
-      <Card className="rounded-[8px]">
+      <Card className="rounded-[8px] border-0 bg-transparent shadow-none">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg">

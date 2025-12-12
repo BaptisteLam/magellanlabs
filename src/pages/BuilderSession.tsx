@@ -1676,8 +1676,8 @@ export default function BuilderSession() {
                       messageIndex={idx}
                       isLatestMessage={idx === messages.length - 1}
                       isDark={isDark}
-                      isLoading={idx === messages.length - 1 && (agent.isLoading || isQuickModLoading)}
-                      generationStartTime={idx === messages.length - 1 && (agent.isLoading || isQuickModLoading) ? generationStartTimeRef.current : undefined}
+                      isLoading={idx === messages.length - 1 && (unifiedModify.isLoading || isQuickModLoading)}
+                      generationStartTime={idx === messages.length - 1 && (unifiedModify.isLoading || isQuickModLoading) ? generationStartTimeRef.current : undefined}
                       onRestore={async (messageIdx) => {
                         const targetMessage = messages[messageIdx];
                         if (!targetMessage.id || !sessionId) return;
@@ -1836,8 +1836,8 @@ export default function BuilderSession() {
                 inputValue={inputValue}
                 setInputValue={setInputValue}
                 onSubmit={handleSubmit}
-                isLoading={agent.isLoading}
-                onStop={() => agent.abort()}
+                isLoading={unifiedModify.isLoading}
+                onStop={() => unifiedModify.abort()}
                 showPlaceholderAnimation={false}
                 showConfigButtons={false}
                 modificationMode={true}
@@ -1978,195 +1978,65 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                             content: typeof m.content === 'string' ? m.content : '[message multimédia]'
                           }));
 
-                          let assistantMessage = '';
-                          const updatedFiles = { ...projectFiles };
-                          let usedTokens = { input: 0, output: 0, total: 0 };
-
                           setAiEvents([]);
                           setGenerationEvents([]);
 
-                          const projectContext = projectType === 'website'
-                            ? 'Generate a static website with HTML, CSS, and vanilla JavaScript files only. No React, no JSX. Use simple HTML structure.'
-                            : projectType === 'webapp'
-                            ? 'Generate a React web application with TypeScript/JSX. Use React components and modern web technologies.'
-                            : 'Generate a mobile-optimized React application with responsive design for mobile devices.';
-
-                          await agent.callAgent(
-                            `${projectContext}\n\n${contextualPrompt}`,
-                            projectFiles,
-                            relevantFilesArray,
-                            chatHistory,
-                            sessionId!,
-                            projectType,
-                            [], // pas d'images attachées pour l'inspect mode
-                            {
-                              onStatus: (status) => {
-                                console.log('📊 Status:', status);
-                                setAiEvents(prev => [...prev, { type: 'status', content: status }]);
+                          try {
+                            const result = await unifiedModify.unifiedModify(
+                              {
+                                message: contextualPrompt,
+                                projectFiles,
+                                sessionId: sessionId!,
                               },
-                              onMessage: (message) => {
-                                assistantMessage += message;
-                                setMessages(prev => {
-                                  const withoutLastAssistant = prev.filter((m, i) =>
-                                    !(i === prev.length - 1 && m.role === 'assistant')
-                                  );
-                                  return [...withoutLastAssistant, { role: 'assistant' as const, content: assistantMessage }];
-                                });
-                              },
-                              onLog: (log) => {
-                                console.log('📝 Log:', log);
-                                setAiEvents(prev => [...prev, { type: 'log', content: log }]);
-                              },
-                              onIntent: (intent) => {
-                                console.log('🎯 Intent:', intent);
-                                setAiEvents(prev => [...prev, intent]);
-                              },
-                              onGenerationEvent: (event) => {
-                                console.log('🔄 Generation:', event);
-                                setGenerationEvents(prev => [...prev, event]);
-                              },
-                              onTokens: (tokens) => {
-                                usedTokens = tokens;
-                              },
-                              onCodeUpdate: (path, code) => {
-                                console.log('📦 Accumulating file:', path);
-                                setAiEvents(prev => [...prev, { type: 'code_update', path, code }]);
-                                updatedFiles[path] = code;
-
-                                // ⏸️ NE JAMAIS mettre à jour la preview pendant la génération
-                                // Les fichiers seront appliqués tous ensemble dans onComplete
-
-                                if (path === 'index.html') {
-                                  setGeneratedHtml(code);
+                              {
+                                onIntentMessage: (message) => {
+                                  console.log('🎯 Intent:', message);
+                                },
+                                onGenerationEvent: (event) => {
+                                  console.log('🔄 Generation:', event);
+                                },
+                                onASTModifications: async (modifications, updatedFiles) => {
+                                  console.log('📦 Modifications:', modifications.length);
+                                  await updateFiles(updatedFiles, true);
+                                  if (updatedFiles['index.html']) {
+                                    setGeneratedHtml(updatedFiles['index.html']);
+                                  }
+                                },
+                                onTokens: (tokens) => {
+                                  console.log('📊 Tokens:', tokens);
+                                },
+                                onError: (error) => {
+                                  console.error('❌ Error:', error);
+                                  sonnerToast.error(error);
+                                },
+                                onComplete: async (result) => {
+                                  console.log('✅ Complete:', result);
+                                  if (result?.success) {
+                                    sonnerToast.success('Modification appliquée');
+                                    
+                                    await supabase
+                                      .from('chat_messages')
+                                      .insert({
+                                        session_id: sessionId,
+                                        role: 'assistant',
+                                        content: result.message,
+                                        token_count: result.tokens.total,
+                                        metadata: {
+                                          input_tokens: result.tokens.input,
+                                          output_tokens: result.tokens.output,
+                                          total_tokens: result.tokens.total,
+                                          project_files: result.updatedFiles,
+                                          type: 'generation'
+                                        }
+                                      });
+                                  }
                                 }
-
-                                if (selectedFile === path || !selectedFile) {
-                                  setSelectedFile(path);
-                                  setSelectedFileContent(code);
-                                }
-                              },
-                              onComplete: async () => {
-                                console.log('✅ Génération terminée - Validation des fichiers avant affichage');
-                                setAiEvents(prev => [...prev, { type: 'complete' }]);
-
-                                // 🔍 VALIDATION CRITIQUE : Vérifier que les fichiers essentiels sont créés et NON VIDES
-                                const hasHtml = 'index.html' in updatedFiles;
-                                const hasCss = 'styles.css' in updatedFiles;
-                                const hasJs = 'script.js' in updatedFiles;
-
-                                const htmlContent = updatedFiles['index.html'] || '';
-                                const cssContent = updatedFiles['styles.css'] || '';
-                                const jsContent = updatedFiles['script.js'] || '';
-
-                                console.log('📊 Validation fichiers:', {
-                                  hasHtml, hasCss, hasJs,
-                                  htmlLength: htmlContent.length,
-                                  cssLength: cssContent.length,
-                                  jsLength: jsContent.length
-                                });
-
-                                // Vérifier que index.html contient bien les liens vers CSS et JS
-                                const hasStyleLink = htmlContent.includes('href="styles.css"') || htmlContent.includes("href='styles.css'");
-                                const hasScriptLink = htmlContent.includes('src="script.js"') || htmlContent.includes("src='script.js'");
-
-                                // ⚠️ ERREURS CRITIQUES - Validation stricte de tous les fichiers
-                                if (!hasHtml || !hasCss || !hasJs) {
-                                  const missing = [];
-                                  if (!hasHtml) missing.push('index.html');
-                                  if (!hasCss) missing.push('styles.css');
-                                  if (!hasJs) missing.push('script.js');
-
-                                  console.error('❌ FICHIERS MANQUANTS:', missing);
-                                  sonnerToast.error(`Fichiers manquants: ${missing.join(', ')}. Impossible d'afficher la preview.`);
-                                  setGenerationEvents(prev => [...prev, {
-                                    type: 'error',
-                                    message: `Fichiers manquants: ${missing.join(', ')}`
-                                  }]);
-                                  return;
-                                }
-
-                                // Validation du contenu HTML (doit être substantiel)
-                                if (htmlContent.length < 200) {
-                                  console.error('❌ HTML VIDE OU TROP COURT:', htmlContent.length, 'caractères');
-                                  sonnerToast.error('Le fichier HTML est vide ou incomplet. Impossible d\'afficher la preview.');
-                                  setGenerationEvents(prev => [...prev, {
-                                    type: 'error',
-                                    message: 'HTML file is empty or too short'
-                                  }]);
-                                  return;
-                                }
-
-                                // Validation du contenu CSS (doit être substantiel)
-                                if (cssContent.length < 100) {
-                                  console.error('❌ CSS VIDE OU TROP COURT:', cssContent.length, 'caractères');
-                                  sonnerToast.error('Le fichier CSS est vide ou incomplet. Impossible d\'afficher la preview.');
-                                  setGenerationEvents(prev => [...prev, {
-                                    type: 'error',
-                                    message: 'CSS file is empty or too short'
-                                  }]);
-                                  return;
-                                }
-
-                                // Validation du contenu JS (doit exister, peut être court si pas de logique)
-                                if (jsContent.length < 10) {
-                                  console.error('❌ JS VIDE OU TROP COURT:', jsContent.length, 'caractères');
-                                  sonnerToast.error('Le fichier JavaScript est vide ou incomplet. Impossible d\'afficher la preview.');
-                                  setGenerationEvents(prev => [...prev, {
-                                    type: 'error',
-                                    message: 'JS file is empty or too short'
-                                  }]);
-                                  return;
-                                }
-
-                                if (!hasStyleLink || !hasScriptLink) {
-                                  console.error('❌ LIENS CSS/JS MANQUANTS dans index.html');
-                                  sonnerToast.error('Les liens CSS/JS ne sont pas présents dans index.html');
-                                  setGenerationEvents(prev => [...prev, {
-                                    type: 'error',
-                                    message: 'Missing CSS/JS links in HTML'
-                                  }]);
-                                  return;
-                                }
-
-                                // ✅ VALIDATION RÉUSSIE
-                                console.log('✅ Validation réussie - Application de TOUS les fichiers à la preview');
-                                setGenerationEvents(prev => [...prev, { type: 'complete', message: 'All files generated successfully' }]);
-
-                                // ✅ Appliquer TOUS les fichiers générés à la preview en une seule fois
-                                console.log('📦 Fichiers à appliquer:', Object.keys(updatedFiles));
-                                await updateFiles(updatedFiles, true);
-                                console.log('✅ Fichiers sauvegardés et prêts pour la preview');
-
-                                await supabase
-                                  .from('build_sessions')
-                                  .update({
-                                    project_files: updatedFiles,
-                                    updated_at: new Date().toISOString()
-                                  })
-                                  .eq('id', sessionId);
-
-                                await supabase
-                                  .from('chat_messages')
-                                  .insert({
-                                    session_id: sessionId,
-                                    role: 'assistant',
-                                    content: assistantMessage,
-                                    token_count: usedTokens.total,
-                                    metadata: {
-                                      input_tokens: usedTokens.input,
-                                      output_tokens: usedTokens.output,
-                                      total_tokens: usedTokens.total,
-                                      project_files: updatedFiles,
-                                      generation_events: generationEvents
-                                    }
-                                  });
-                              },
-                              onError: (error) => {
-                                console.error('❌ Error:', error);
-                                sonnerToast.error(error);
                               }
-                            }
-                          );
+                            );
+                          } catch (error) {
+                            console.error('❌ Inspect mode error:', error);
+                            sonnerToast.error('Erreur lors de la modification');
+                          }
                         }}
                       />
                     </>
