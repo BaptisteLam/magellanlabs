@@ -1655,15 +1655,15 @@ export default function BuilderSession() {
           </div>
         </ResizablePanel>
         
-        {previewMode === 'desktop' && <ResizableHandle withHandle />}
+        {previewMode === 'desktop' && <ResizableHandle className="w-px bg-transparent hover:bg-transparent data-[resize-handle-active]:bg-transparent" />}
         
           <ResizablePanel defaultSize={70} minSize={previewMode === 'mobile' ? 70 : 30}>
-            <div className={`h-full w-full flex ${previewMode === 'mobile' ? 'justify-center items-start' : 'flex-col'} rounded-xl overflow-hidden`} style={previewMode === 'mobile' ? {
-          backgroundColor: isDark ? '#181818' : '#ffffff'
-        } : undefined}>
+            <div className={`h-full w-full flex ${previewMode === 'mobile' ? 'justify-center items-start' : 'flex-col'} overflow-hidden`} style={{
+          backgroundColor: isDark ? 'hsl(var(--background))' : 'hsl(var(--background))'
+        }}>
               {previewMode === 'mobile' ? <div className={`w-[375px] h-full flex flex-col shadow-2xl rounded-3xl border overflow-hidden`} style={{
-            backgroundColor: isDark ? '#1F1F20' : '#ffffff',
-            borderColor: isDark ? 'rgb(51, 65, 85)' : '#ffffff'
+            backgroundColor: isDark ? 'hsl(var(--background))' : 'hsl(var(--background))',
+            borderColor: isDark ? 'hsl(var(--border))' : 'hsl(var(--border))'
           }}>
                   {isInitialGeneration && Object.keys(projectFiles).length === 0 ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
