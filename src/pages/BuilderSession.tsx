@@ -1624,9 +1624,7 @@ export default function BuilderSession() {
             </div>
             
             {/* Chat input */}
-            <div style={{
-            borderTopColor: isDark ? '#1F1F20' : 'rgb(226, 232, 240)'
-          }} className="border-t p-4 backdrop-blur-sm bg-[sidebar-accent-foreground] bg-background">
+            <div className="p-4 backdrop-blur-sm bg-background">
               <PromptBar inputValue={inputValue} setInputValue={setInputValue} onSubmit={handleSubmit} isLoading={unifiedModify.isLoading} onStop={() => unifiedModify.abort()} showPlaceholderAnimation={false} showConfigButtons={false} modificationMode={true} inspectMode={inspectMode} onInspectToggle={() => setInspectMode(!inspectMode)} chatMode={chatMode} onChatToggle={() => setChatMode(!chatMode)} projectType={projectType} onProjectTypeChange={setProjectType} attachedFiles={attachedFiles} onRemoveFile={removeFile} onFileSelect={async files => {
               const newFiles: Array<{
                 name: string;
