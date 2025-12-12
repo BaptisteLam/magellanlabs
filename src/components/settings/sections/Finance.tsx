@@ -136,7 +136,7 @@ export function Finance() {
           <h2 className="text-2xl font-bold text-foreground">Finance</h2>
           <p className="text-muted-foreground">Sélectionnez un projet pour voir les finances</p>
         </div>
-        <Card className="rounded-[8px] border border-[#03A5C0]/20 bg-background/50 shadow-sm">
+        <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
           <CardContent className="py-8 text-center text-muted-foreground">
             Aucun projet sélectionné
           </CardContent>
@@ -155,7 +155,7 @@ export function Finance() {
         </div>
         <div className="flex items-center gap-3">
           <Select value={periodFilter} onValueChange={(v: 'month' | 'year') => setPeriodFilter(v)}>
-            <SelectTrigger className="w-[140px] rounded-full border-[#03A5C0]/30">
+            <SelectTrigger className="w-[140px] rounded-full border-border/50">
               <Calendar className="h-4 w-4 mr-2 text-[#03A5C0]" />
               <SelectValue />
             </SelectTrigger>
@@ -191,7 +191,7 @@ export function Finance() {
         <>
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="rounded-[8px] border border-[#03A5C0]/20 bg-background/50 shadow-sm">
+            <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -205,7 +205,7 @@ export function Finance() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-[8px] border border-[#03A5C0]/20 bg-background/50 shadow-sm">
+            <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -219,7 +219,7 @@ export function Finance() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-[8px] border border-[#03A5C0]/20 bg-background/50 shadow-sm">
+            <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -235,7 +235,7 @@ export function Finance() {
           </div>
 
           {/* Revenues Widget */}
-          <Card className="rounded-[8px] border border-[#03A5C0]/20 bg-background/50 shadow-sm">
+          <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-green-600" />
@@ -280,7 +280,7 @@ export function Finance() {
           </Card>
 
           {/* Expenses Widget */}
-          <Card className="rounded-[8px] border border-[#03A5C0]/20 bg-background/50 shadow-sm">
+          <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingDown className="h-5 w-5 text-red-600" />
