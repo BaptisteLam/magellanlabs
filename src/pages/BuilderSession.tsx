@@ -1504,9 +1504,7 @@ export default function BuilderSession() {
       {/* Panneau principal */}
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         <ResizablePanel defaultSize={30} minSize={25}>
-          <div className={`h-full flex flex-col ${isDark ? '' : 'bg-slate-50'}`} style={{
-          backgroundColor: isDark ? '#1F1F20' : undefined
-        }}>
+          <div className="h-full flex flex-col bg-background">
             {/* Chat history */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.map((msg, idx) => {
