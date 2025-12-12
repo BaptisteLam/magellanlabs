@@ -19,27 +19,27 @@ All colors MUST be HSL for design consistency.
     --magellan-black: 0 0% 0%;          /* Black for text/icons */
     --magellan-gray: 0 0% 45%;          /* Gray for muted text */
     
-    /* Core Design Tokens */
-    --primary: 210 88% 25%;              /* Trinity navy blue */
-    --primary-foreground: 0 0% 100%;     /* White text on blue */
-    --primary-light: 210 75% 45%;        /* Lighter navy for hover */
+    /* Core Design Tokens - Using Magellan Cyan (#03A5C0) as only accent */
+    --primary: 187 97% 38%;              /* Magellan cyan #03A5C0 */
+    --primary-foreground: 0 0% 100%;     /* White text on cyan */
+    --primary-light: 187 97% 48%;        /* Lighter cyan for hover */
     
     --secondary: 0 0% 97%;               /* Light gray backgrounds */
     --secondary-foreground: 0 0% 15%;    /* Dark text */
     
-    --accent: 210 75% 45%;               /* Navy accent */
+    --accent: 187 97% 38%;               /* Magellan cyan accent */
     --accent-foreground: 0 0% 100%;      /* White text */
     
-    --muted: 210 15% 96%;                /* Subtle backgrounds */
-    --muted-foreground: 210 10% 40%;     /* Muted text */
+    --muted: 0 0% 96%;                   /* Neutral subtle backgrounds */
+    --muted-foreground: 0 0% 40%;        /* Neutral muted text */
     
     --card: 0 0% 100%;                   /* Pure white cards */
     --card-foreground: 0 0% 0%;          /* Black text */
-    --card-border: 210 25% 90%;          /* Subtle card borders */
+    --card-border: 0 0% 90%;             /* Neutral card borders */
     
-    --border: 210 20% 90%;               /* General borders */
-    --input: 210 20% 95%;                /* Input backgrounds */
-    --ring: 210 75% 15%;                 /* Focus rings - Trinity blue */
+    --border: 0 0% 90%;                  /* Neutral borders */
+    --input: 0 0% 95%;                   /* Neutral input backgrounds */
+    --ring: 187 97% 38%;                 /* Focus rings - Magellan cyan */
     
     /* Popover and Dialog */
     --popover: 0 0% 100%;
@@ -52,14 +52,14 @@ All colors MUST be HSL for design consistency.
     --radius: 1rem;                      /* Rounded corners */
     --radius-xl: 1.5rem;                 /* Extra rounded for cards */
     
-    /* Trinity Gradients */
-    --gradient-hero: linear-gradient(135deg, hsl(var(--trinity-blue)) 0%, hsl(186 100% 60%) 100%);
-    --gradient-soft: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--trinity-blue-soft)) 100%);
+    /* Magellan Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(187 97% 38%) 0%, hsl(187 97% 55%) 100%);
+    --gradient-soft: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(187 97% 95%) 100%);
     
-    /* Trinity Shadows */
-    --shadow-trinity: 0 10px 40px -10px hsl(var(--trinity-blue) / 0.25);
-    --shadow-card: 0 4px 20px -4px hsl(var(--trinity-blue) / 0.15);
-    --shadow-button: 0 4px 12px -2px hsl(var(--trinity-turquoise) / 0.3);
+    /* Magellan Shadows */
+    --shadow-trinity: 0 10px 40px -10px hsl(187 97% 38% / 0.25);
+    --shadow-card: 0 4px 20px -4px hsl(187 97% 38% / 0.15);
+    --shadow-button: 0 4px 12px -2px hsl(187 97% 38% / 0.3);
     
     /* Transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -67,19 +67,19 @@ All colors MUST be HSL for design consistency.
 
     --sidebar-background: 0 0% 98%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-foreground: 0 0% 26%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 187 97% 38%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-primary-foreground: 0 0% 100%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent: 0 0% 96%;
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-accent-foreground: 0 0% 10%;
 
-    --sidebar-border: 220 13% 91%;
+    --sidebar-border: 0 0% 91%;
 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 187 97% 38%;
   }
 
   .dark {
