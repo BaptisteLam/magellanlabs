@@ -1831,7 +1831,7 @@ export default function BuilderSession() {
             </div>
             
             {/* Chat input */}
-            <div className="border-t p-4" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff', borderTopColor: isDark ? '#1F1F20' : 'rgb(226, 232, 240)' }}>
+            <div className="border-t p-4 bg-card/80 backdrop-blur-sm" style={{ borderTopColor: isDark ? '#1F1F20' : 'rgb(226, 232, 240)' }}>
               <PromptBar
                 inputValue={inputValue}
                 setInputValue={setInputValue}
