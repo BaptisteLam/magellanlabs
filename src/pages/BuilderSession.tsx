@@ -859,6 +859,48 @@ export default function BuilderSession() {
         onProgress: (content) => {
           console.log('📝 Progress:', content.length, 'characters');
         },
+        onEvent: (event) => {
+          console.log('🎯 Generation event:', event);
+          // Ajouter l'événement aux generation_events
+          const eventTypeMap: Record<string, GenerationEvent['type']> = {
+            'thought': 'thought',
+            'create': 'create',
+            'edit': 'edit',
+            'complete': 'complete',
+            'error': 'error',
+            'analyze': 'analyze',
+            'plan': 'plan',
+            'read': 'read',
+            'write': 'write'
+          };
+          const newEvent: GenerationEvent = {
+            type: eventTypeMap[event.eventType] || 'thought',
+            message: event.message,
+            file: event.file,
+            status: event.status === 'completed' ? 'completed' : event.status === 'error' ? 'error' : 'in-progress',
+            timestamp: Date.now()
+          };
+          generationEventsRef.current = [...generationEventsRef.current, newEvent];
+          
+          // Mettre à jour le message avec les événements
+          setMessages(prev => {
+            const lastMsg = prev[prev.length - 1];
+            if (lastMsg?.metadata?.type === 'generation') {
+              return prev.map((msg, idx) =>
+                idx === prev.length - 1
+                  ? {
+                      ...msg,
+                      metadata: {
+                        ...msg.metadata,
+                        generation_events: [...generationEventsRef.current]
+                      }
+                    }
+                  : msg
+              );
+            }
+            return prev;
+          });
+        },
         onFiles: async (files) => {
           console.log('📦 Files received:', Object.keys(files));
 
@@ -868,30 +910,6 @@ export default function BuilderSession() {
           // Définir le HTML généré
           if (files['index.html']) {
             setGeneratedHtml(files['index.html']);
-          }
-
-          // Sauvegarder en base de données
-          if (sessionId && user) {
-            try {
-              const { error: updateError } = await supabase
-                .from('builder_sessions')
-                .update({
-                  project_files: files,
-                  html_content: files['index.html'] || '',
-                  css_content: files['styles.css'] || '',
-                  js_content: files['script.js'] || '',
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', sessionId);
-
-              if (updateError) {
-                console.error('Erreur lors de la sauvegarde:', updateError);
-              } else {
-                console.log('✅ Projet sauvegardé avec succès');
-              }
-            } catch (error) {
-              console.error('Erreur lors de la sauvegarde:', error);
-            }
           }
         },
         onTokens: (tokens) => {

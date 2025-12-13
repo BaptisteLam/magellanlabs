@@ -23,12 +23,21 @@ export interface GenerateSiteResult {
   duration: number;
 }
 
+export interface GenerationEvent {
+  eventType: string;
+  message: string;
+  file?: string;
+  status: 'in-progress' | 'completed' | 'error';
+  filesCount?: number;
+}
+
 export interface UseGenerateSiteOptions {
   onProgress?: (content: string) => void;
   onFiles?: (files: GeneratedFiles) => void;
   onTokens?: (tokens: { input: number; output: number; total: number }) => void;
   onError?: (error: string) => void;
   onComplete?: (result: GenerateSiteResult) => void;
+  onEvent?: (event: GenerationEvent) => void;
 }
 
 // ============= Hook =============
@@ -56,7 +65,7 @@ export function useGenerateSite() {
     options: UseGenerateSiteOptions = {}
   ): Promise<GenerateSiteResult | null> => {
     const { prompt, sessionId } = params;
-    const { onProgress, onFiles, onTokens, onError, onComplete } = options;
+    const { onProgress, onFiles, onTokens, onError, onComplete, onEvent } = options;
 
     setIsGenerating(true);
     setProgress('Starting generation...');
@@ -184,6 +193,26 @@ export function useGenerateSite() {
                   if (data.data.files) {
                     onFiles?.(data.data.files);
                     setProgress('✅ Files created successfully');
+                  }
+                  break;
+
+                case 'generation_event':
+                  console.log('[useGenerateSite] Generation event:', data.data);
+                  if (data.data) {
+                    onEvent?.(data.data as GenerationEvent);
+                  }
+                  break;
+
+                case 'file_detected':
+                  console.log('[useGenerateSite] File detected:', data.data?.path);
+                  // Optionally trigger onEvent for file detection
+                  if (data.data?.path) {
+                    onEvent?.({
+                      eventType: 'create',
+                      message: `Création de ${data.data.path}`,
+                      file: data.data.path,
+                      status: 'completed'
+                    });
                   }
                   break;
 

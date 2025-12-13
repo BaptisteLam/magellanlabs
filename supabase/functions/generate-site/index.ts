@@ -347,7 +347,7 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 8000,
+        max_tokens: 20000,
         stream: true,
         system: systemPrompt,
         messages: [
@@ -417,6 +417,16 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
         safeEnqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'start',
           data: { sessionId }
+        })}\n\n`));
+
+        // Event: generation_event - thought start
+        safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+          type: 'generation_event',
+          data: { 
+            eventType: 'thought',
+            message: 'Analyse de la demande...',
+            status: 'in-progress'
+          }
         })}\n\n`));
 
         const decoder = new TextDecoder();
@@ -561,6 +571,12 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                 const totalTokens = inputTokens + outputTokens;
                 console.log(`[generate-site] 📊 FINAL TOKEN COUNT: Input=${inputTokens}, Output=${outputTokens}, Total=${totalTokens}`);
                 
+                // Convertir les fichiers en format objet pour le frontend
+                const filesObject: Record<string, string> = {};
+                for (const file of finalFiles) {
+                  filesObject[file.path] = file.content;
+                }
+
                 // Sauvegarder dans Supabase
                 if (sessionId) {
                   await supabaseClient
@@ -573,12 +589,40 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                     .eq('id', sessionId);
                 }
 
+                // Event: generation_event - complete
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'generation_event',
+                  data: { 
+                    eventType: 'complete',
+                    message: `${finalFiles.length} fichiers créés`,
+                    status: 'completed',
+                    filesCount: finalFiles.length
+                  }
+                })}\n\n`));
+
+                // Event: files - envoyer les fichiers parsés
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'files',
+                  data: { files: filesObject }
+                })}\n\n`));
+
+                // Event: tokens - envoyer séparément pour garantir réception
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'tokens',
+                  data: {
+                    input: inputTokens,
+                    output: outputTokens,
+                    total: totalTokens
+                  }
+                })}\n\n`));
+
                 // Event: complete avec tokens réels
                 safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'complete',
                   data: { 
                     totalFiles: finalFiles.length, 
                     projectType,
+                    files: filesObject,
                     tokens: {
                       input: inputTokens,
                       output: outputTokens,
@@ -616,6 +660,17 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                     const newFiles = currentFiles.slice(lastParsedFiles.length);
                     
                     for (const file of newFiles) {
+                      // Event: generation_event - file creation
+                      safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                        type: 'generation_event',
+                        data: { 
+                          eventType: 'create',
+                          file: file.path,
+                          message: `Création de ${file.path}`,
+                          status: 'completed'
+                        }
+                      })}\n\n`));
+                      
                       // Event: file_detected
                       safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                         type: 'file_detected',
