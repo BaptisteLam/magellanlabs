@@ -258,7 +258,7 @@ async function detectProviderFromNameservers(domain: string): Promise<string | n
   }
 }
 
-function createManualInstructions(domain: string, cnameTarget: string, providerName?: string) {
+function createManualInstructions(domain: string, cnameTarget: string, providerName?: string | null) {
   return {
     provider: providerName || 'Votre hébergeur DNS',
     steps: [

@@ -90,6 +90,36 @@ serve(async (req) => {
             );
 
             if (addDomainResponse.ok) {
+              // Ajouter le mapping dans Cloudflare KV pour le proxy
+              const KV_NAMESPACE_ID = Deno.env.get('CLOUDFLARE_KV_NAMESPACE_ID');
+              
+              if (KV_NAMESPACE_ID && session.cloudflare_project_name) {
+                try {
+                  const kvKey = `domain:${domain}`;
+                  const kvValue = session.cloudflare_project_name;
+                  
+                  const kvResponse = await fetch(
+                    `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${KV_NAMESPACE_ID}/values/${encodeURIComponent(kvKey)}`,
+                    {
+                      method: 'PUT',
+                      headers: {
+                        'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+                        'Content-Type': 'text/plain',
+                      },
+                      body: kvValue,
+                    }
+                  );
+                  
+                  if (kvResponse.ok) {
+                    console.log('✅ Domain mapping added to KV:', kvKey, '->', kvValue);
+                  } else {
+                    console.error('❌ Failed to add domain to KV:', await kvResponse.text());
+                  }
+                } catch (kvError) {
+                  console.error('KV write error:', kvError);
+                }
+              }
+              
               // Mettre à jour la session avec le domaine personnalisé
               await supabase
                 .from('build_sessions')

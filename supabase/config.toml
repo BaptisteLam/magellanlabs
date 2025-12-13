@@ -62,3 +62,9 @@ verify_jwt = true
 
 [functions.domain-connect-verify]
 verify_jwt = true
+
+[functions.setup-domain-proxy]
+verify_jwt = false
+
+[functions.publish-project]
+verify_jwt = true
