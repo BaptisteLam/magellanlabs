@@ -26,7 +26,7 @@ export function GeneratingPreview() {
   }, []);
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-card/80 backdrop-blur-sm gap-8 px-4">
+    <div className="w-full h-full flex flex-col items-center justify-center gap-8 px-4 rounded-xl" style={{ backgroundColor: '#262623' }}>
       <div className="flex items-center justify-center">
         <video
           src={isDark ? loadingSphereDark : loadingSphereLight}
