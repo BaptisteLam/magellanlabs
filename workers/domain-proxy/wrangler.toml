@@ -2,16 +2,8 @@ name = "domain-proxy"
 main = "worker.js"
 compatibility_date = "2024-01-01"
 
-# KV Namespace pour le mapping domaine -> projectName
-kv_namespaces = [
-  { binding = "DOMAINS_KV", id = "YOUR_KV_NAMESPACE_ID" }
-]
+# Note: CLOUDFLARE_KV_NAMESPACE_ID est configuré dans les secrets Supabase
+# Le KV namespace ID sera utilisé lors du déploiement via l'API Cloudflare
 
 # Routes - Ce worker sera accessible sur proxy.builtbymagellan.com
 # et sur tous les domaines personnalisés qui pointent vers lui
-routes = [
-  { pattern = "proxy.builtbymagellan.com/*", zone_name = "builtbymagellan.com" }
-]
-
-# Workers custom domains - À configurer via le dashboard Cloudflare
-# ou via wrangler CLI après création du worker

@@ -874,12 +874,9 @@ export default function BuilderSession() {
           if (sessionId && user) {
             try {
               const { error: updateError } = await supabase
-                .from('builder_sessions')
+                .from('build_sessions')
                 .update({
                   project_files: files,
-                  html_content: files['index.html'] || '',
-                  css_content: files['styles.css'] || '',
-                  js_content: files['script.js'] || '',
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', sessionId);
