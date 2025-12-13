@@ -438,15 +438,15 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
         let inputTokens = 0;
         let outputTokens = 0;
 
-        // Timeout de 120 secondes (2 minutes)
+        // Timeout de 300 secondes (5 minutes) pour génération complète
         timeout = setTimeout(() => {
-          console.error('[generate-site] Timeout après 120s');
+          console.error('[generate-site] Timeout après 300s');
           safeEnqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'error',
-            data: { message: 'Timeout: La génération a pris trop de temps. Veuillez réessayer avec une demande plus simple.' }
+            data: { message: 'Timeout: La génération a pris trop de temps (5 min). Veuillez réessayer.' }
           })}\n\n`));
           closeStream();
-        }, 120000);
+        }, 300000);
 
         try {
           while (!streamClosed) {
@@ -577,6 +577,22 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                   filesObject[file.path] = file.content;
                 }
 
+                // Envoyer un event "create" pour CHAQUE fichier avec nom complet validé
+                for (const file of finalFiles) {
+                  // Validation: le nom de fichier doit contenir un point (extension)
+                  if (file.path && file.path.includes('.')) {
+                    safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                      type: 'generation_event',
+                      data: { 
+                        eventType: 'create',
+                        file: file.path,
+                        message: `Création de ${file.path}`,
+                        status: 'completed'
+                      }
+                    })}\n\n`));
+                  }
+                }
+
                 // Sauvegarder dans Supabase
                 if (sessionId) {
                   await supabaseClient
@@ -651,35 +667,52 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                   data: { content: delta }
                 })}\n\n`));
 
-                // Parser optimisé: seulement tous les 500 caractères
-                if (accumulated.length % 500 < delta.length) {
-                  const currentFiles = parseGeneratedCode(accumulated);
-                  
-                  // Détecte les nouveaux fichiers
-                  if (currentFiles.length > lastParsedFiles.length) {
-                    const newFiles = currentFiles.slice(lastParsedFiles.length);
-                    
-                    for (const file of newFiles) {
-                      // Event: generation_event - file creation
-                      safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                        type: 'generation_event',
-                        data: { 
-                          eventType: 'create',
-                          file: file.path,
-                          message: `Création de ${file.path}`,
-                          status: 'completed'
-                        }
-                      })}\n\n`));
-                      
-                      // Event: file_detected
-                      safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                        type: 'file_detected',
-                        data: { path: file.path, content: file.content, type: file.type }
-                      })}\n\n`));
+                // Indicateurs de progression intelligents (sans parsing pendant streaming)
+                const contentLength = accumulated.length;
+                
+                // Envoyer des events de progression basés sur le contenu détecté
+                if (contentLength > 500 && contentLength < 600) {
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'generation_event',
+                    data: { 
+                      eventType: 'thought',
+                      message: 'Génération du code en cours...',
+                      status: 'in-progress'
                     }
-                    
-                    lastParsedFiles = currentFiles;
-                  }
+                  })}\n\n`));
+                }
+                
+                if (contentLength > 2000 && contentLength < 2100) {
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'generation_event',
+                    data: { 
+                      eventType: 'thought',
+                      message: 'Structure HTML en cours...',
+                      status: 'in-progress'
+                    }
+                  })}\n\n`));
+                }
+                
+                if (contentLength > 5000 && contentLength < 5100) {
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'generation_event',
+                    data: { 
+                      eventType: 'thought',
+                      message: 'Styles CSS en cours...',
+                      status: 'in-progress'
+                    }
+                  })}\n\n`));
+                }
+                
+                if (contentLength > 10000 && contentLength < 10100) {
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'generation_event',
+                    data: { 
+                      eventType: 'thought',
+                      message: 'JavaScript en cours...',
+                      status: 'in-progress'
+                    }
+                  })}\n\n`));
                 }
               } catch (e) {
                 console.error('[generate-site] Parse error:', e);
