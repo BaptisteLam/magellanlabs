@@ -15,6 +15,12 @@ interface ProjectFile {
 // Parser pour extraire les fichiers au format // FILE: path
 function parseGeneratedCode(code: string): ProjectFile[] {
   const files: ProjectFile[] = [];
+
+  // 🔧 Nettoyage global: si tout le contenu est encapsulé dans un seul bloc de code Markdown
+  const topLevelCodeBlock = code.match(/^```[\w-]*\n([\s\S]*?)```$/);
+  if (topLevelCodeBlock) {
+    code = topLevelCodeBlock[1].trim();
+  }
   
   // Format 1: // FILE: path suivi du contenu (avec ou sans code blocks)
   const fileRegex = /\/\/\s*FILE:\s*(.+?)(?:\n|$)/g;
@@ -676,7 +682,7 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                     type: 'generation_event',
                     data: { 
                       eventType: 'thought',
-                      message: 'Génération du code en cours...',
+                      message: 'Magellan prépare la structure de votre site...',
                       status: 'in-progress'
                     }
                   })}\n\n`));
@@ -687,7 +693,7 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                     type: 'generation_event',
                     data: { 
                       eventType: 'thought',
-                      message: 'Structure HTML en cours...',
+                      message: 'Magellan crée la page principale...',
                       status: 'in-progress'
                     }
                   })}\n\n`));
@@ -698,7 +704,7 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                     type: 'generation_event',
                     data: { 
                       eventType: 'thought',
-                      message: 'Styles CSS en cours...',
+                      message: 'Magellan travaille le design et les sections...',
                       status: 'in-progress'
                     }
                   })}\n\n`));
@@ -709,7 +715,7 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                     type: 'generation_event',
                     data: { 
                       eventType: 'thought',
-                      message: 'JavaScript en cours...',
+                      message: 'Magellan ajoute les interactions (menus, animations, formulaires...)',
                       status: 'in-progress'
                     }
                   })}\n\n`));
