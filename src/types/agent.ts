@@ -11,6 +11,10 @@ export type GenerationEvent = {
   duration?: number;
   file?: string;
   status?: "pending" | "in-progress" | "completed" | "error";
+  // Unified-modify specific fields
+  phase?: 'analyze' | 'context' | 'generation' | 'validation';
+  chunk?: string;
+  data?: any;
 };
 
 export type AIEvent =
