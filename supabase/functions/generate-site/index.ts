@@ -425,12 +425,12 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
           data: { sessionId }
         })}\n\n`));
 
-        // Event: generation_event - thought start
+        // Event: generation_event - thought start (sera le seul message "analyse")
         safeEnqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'generation_event',
           data: { 
             eventType: 'thought',
-            message: 'Analyse de la demande...',
+            message: 'Analyse de votre demande...',
             status: 'in-progress'
           }
         })}\n\n`));
@@ -443,6 +443,22 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
         // Variables pour capturer les tokens réels de Claude
         let inputTokens = 0;
         let outputTokens = 0;
+        
+        // 🔧 Flags pour éviter les messages en double
+        const sentProgressMessages = new Set<string>();
+        
+        const sendProgressOnce = (messageKey: string, message: string) => {
+          if (sentProgressMessages.has(messageKey)) return;
+          sentProgressMessages.add(messageKey);
+          safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'generation_event',
+            data: { 
+              eventType: 'thought',
+              message,
+              status: 'in-progress'
+            }
+          })}\n\n`));
+        };
 
         // Timeout de 300 secondes (5 minutes) pour génération complète
         timeout = setTimeout(() => {
@@ -673,52 +689,24 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                   data: { content: delta }
                 })}\n\n`));
 
-                // Indicateurs de progression intelligents (sans parsing pendant streaming)
+                // Indicateurs de progression intelligents avec envoi unique
                 const contentLength = accumulated.length;
                 
-                // Envoyer des events de progression basés sur le contenu détecté
-                if (contentLength > 500 && contentLength < 600) {
-                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'generation_event',
-                    data: { 
-                      eventType: 'thought',
-                      message: 'Magellan prépare la structure de votre site...',
-                      status: 'in-progress'
-                    }
-                  })}\n\n`));
+                // Messages de progression user-friendly envoyés UNE SEULE FOIS
+                if (contentLength > 500) {
+                  sendProgressOnce('structure', 'Préparation de la structure...');
                 }
-                
-                if (contentLength > 2000 && contentLength < 2100) {
-                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'generation_event',
-                    data: { 
-                      eventType: 'thought',
-                      message: 'Magellan crée la page principale...',
-                      status: 'in-progress'
-                    }
-                  })}\n\n`));
+                if (contentLength > 2000) {
+                  sendProgressOnce('page', 'Création de la page principale...');
                 }
-                
-                if (contentLength > 5000 && contentLength < 5100) {
-                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'generation_event',
-                    data: { 
-                      eventType: 'thought',
-                      message: 'Magellan travaille le design et les sections...',
-                      status: 'in-progress'
-                    }
-                  })}\n\n`));
+                if (contentLength > 5000) {
+                  sendProgressOnce('design', 'Mise en place du design...');
                 }
-                
-                if (contentLength > 10000 && contentLength < 10100) {
-                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'generation_event',
-                    data: { 
-                      eventType: 'thought',
-                      message: 'Magellan ajoute les interactions (menus, animations, formulaires...)',
-                      status: 'in-progress'
-                    }
-                  })}\n\n`));
+                if (contentLength > 10000) {
+                  sendProgressOnce('interactions', 'Ajout des interactions...');
+                }
+                if (contentLength > 15000) {
+                  sendProgressOnce('finalization', 'Finalisation du site...');
                 }
               } catch (e) {
                 console.error('[generate-site] Parse error:', e);
