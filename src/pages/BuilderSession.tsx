@@ -142,8 +142,8 @@ export default function BuilderSession() {
   const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
 
   // État pour gérer les événements de génération en temps réel
-  const [generationEvents, setGenerationEvents] = useState<GenerationEvent[]>([]);
-  const generationEventsRef = useRef<GenerationEvent[]>([]); // Ref synchrone pour éviter stale state
+  // Ref pour stocker les événements de génération de manière synchrone
+  const generationEventsRef = useRef<GenerationEvent[]>([]);
   const generationStartTimeRef = useRef<number>(0);
   const [currentVersionIndex, setCurrentVersionIndex] = useState<number | null>(null);
 
@@ -177,11 +177,6 @@ export default function BuilderSession() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Auto-scroll quand les événements de génération changent
-  useEffect(() => {
-    scrollToBottom();
-  }, [generationEvents]);
 
   // Fonction pour générer automatiquement un nom de projet
   const generateProjectName = async (prompt: string) => {
@@ -846,7 +841,6 @@ export default function BuilderSession() {
       }
     };
     setMessages(prev => [...prev, generationMessage]);
-    setGenerationEvents([]);
     generationEventsRef.current = [];
 
     // Variable pour stocker les tokens
@@ -884,6 +878,18 @@ export default function BuilderSession() {
         onGenerationEvent: event => {
           console.log('⚙️ Event:', event);
 
+          // ✅ VALIDATION STRICTE : Ignorer les événements de streaming (chunks)
+          if (event.type === 'stream') {
+            // Les chunks de streaming ne sont pas affichés comme des événements
+            return;
+          }
+
+          // ✅ VALIDATION STRICTE : Vérifier que la phase est valide
+          if (event.type === 'phase' && (!event.phase || typeof event.phase !== 'string')) {
+            console.warn('⚠️ Invalid phase event - missing or invalid phase:', event);
+            return;
+          }
+
           // Mapper les phases unified-modify vers les types GenerationEvent
           const phaseToType: Record<string, GenerationEvent['type']> = {
             'analyze': 'analyze',
@@ -892,27 +898,58 @@ export default function BuilderSession() {
             'validation': 'edit'
           };
 
-          // Mettre à jour les événements de génération
-          const newEvent: GenerationEvent = {
-            type: phaseToType[event.phase || ''] || 'thought',
-            status: event.status === 'complete' ? 'completed' : 'in-progress',
-            message: event.message || `Phase: ${event.phase}`
+          // Messages clairs par phase et statut
+          const getPhaseMessage = (phase: string, status: string): string => {
+            if (status === 'starting') {
+              const startMessages: Record<string, string> = {
+                'analyze': '🔍 Analyzing your request...',
+                'context': '📂 Loading relevant files...',
+                'generation': '✨ Generating changes...',
+                'validation': '🔍 Validating changes...'
+              };
+              return startMessages[phase] || `Processing ${phase}...`;
+            } else {
+              const completeMessages: Record<string, string> = {
+                'analyze': '✅ Request analyzed',
+                'context': '✅ Files loaded',
+                'generation': '✅ Changes generated',
+                'validation': '✅ Changes validated'
+              };
+              return completeMessages[phase] || `${phase} completed`;
+            }
           };
-          generationEventsRef.current = [...generationEventsRef.current, newEvent];
-          setGenerationEvents(prev => [...prev, newEvent]);
+
+          // ✅ FIX : Créer l'événement avec message valide
+          const newEvent: GenerationEvent = {
+            type: event.phase ? (phaseToType[event.phase] || 'thought') : 'thought',
+            status: event.status === 'complete' ? 'completed' : 'in-progress',
+            message: event.message || (event.phase ? getPhaseMessage(event.phase, event.status || 'starting') : 'Processing...'),
+            phase: event.phase,
+            data: event.data
+          };
+
+          // ✅ OPTIMISATION : Une seule mise à jour de state
           setMessages(prev => {
             const lastMsg = prev[prev.length - 1];
-            if (lastMsg?.metadata?.type === 'generation') {
-              return prev.map((msg, idx) => idx === prev.length - 1 ? {
-                ...msg,
-                metadata: {
-                  ...msg.metadata,
-                  generation_events: generationEventsRef.current,
-                  thought_duration: Date.now() - generationStartTimeRef.current
-                }
-              } : msg);
+            if (lastMsg?.metadata?.type !== 'generation') {
+              return prev;
             }
-            return prev;
+
+            const updatedEvents = [...(lastMsg.metadata.generation_events || []), newEvent];
+            generationEventsRef.current = updatedEvents; // Sync ref
+
+            return prev.map((msg, idx) =>
+              idx === prev.length - 1
+                ? {
+                    ...msg,
+                    metadata: {
+                      ...msg.metadata,
+                      generation_events: updatedEvents,
+                      thought_duration: Date.now() - generationStartTimeRef.current
+                    }
+                  }
+                : msg
+            );
           });
         },
         onASTModifications: async (modifications, updatedFiles) => {
@@ -1730,7 +1767,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                   content: typeof m.content === 'string' ? m.content : '[message multimédia]'
                 }));
                 setAiEvents([]);
-                setGenerationEvents([]);
+                generationEventsRef.current = [];
                 try {
                   const result = await unifiedModify.unifiedModify({
                     message: contextualPrompt,

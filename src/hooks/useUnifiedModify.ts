@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { GenerationEvent } from '@/types/agent';
 
 // ============= Types =============
 
@@ -13,7 +14,8 @@ export interface ASTModification {
   changes?: Record<string, string>;
 }
 
-export interface GenerationEvent {
+// Backend SSE event format (before mapping to GenerationEvent)
+interface SSEGenerationEvent {
   type: 'phase' | 'stream';
   phase?: 'analyze' | 'context' | 'generation' | 'validation';
   status?: 'starting' | 'complete';
@@ -47,7 +49,7 @@ export interface CompleteResult {
 
 export interface UseUnifiedModifyOptions {
   onIntentMessage?: (message: string) => void;
-  onGenerationEvent?: (event: GenerationEvent) => void;
+  onGenerationEvent?: (event: SSEGenerationEvent) => void;
   onASTModifications?: (modifications: ASTModification[], updatedFiles: Record<string, string>) => Promise<void>;
   onTokens?: (tokens: TokensData) => void;
   onError?: (error: string) => void;
@@ -203,7 +205,7 @@ export function useUnifiedModify() {
             switch (eventName) {
               case 'generation_event':
                 console.log('[useUnifiedModify] Generation event:', data);
-                onGenerationEvent?.(data as GenerationEvent);
+                onGenerationEvent?.(data as SSEGenerationEvent);
                 break;
 
               case 'message':
