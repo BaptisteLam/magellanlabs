@@ -23,12 +23,17 @@ export interface GenerateSiteResult {
   duration: number;
 }
 
+// Réutiliser le type de agent.ts pour la compatibilité
+import { GenerationEvent } from '@/types/agent';
+export type { GenerationEvent };
+
 export interface UseGenerateSiteOptions {
   onProgress?: (content: string) => void;
   onFiles?: (files: GeneratedFiles) => void;
   onTokens?: (tokens: { input: number; output: number; total: number }) => void;
   onError?: (error: string) => void;
   onComplete?: (result: GenerateSiteResult) => void;
+  onGenerationEvent?: (event: GenerationEvent) => void;
 }
 
 // ============= Hook =============
@@ -56,10 +61,17 @@ export function useGenerateSite() {
     options: UseGenerateSiteOptions = {}
   ): Promise<GenerateSiteResult | null> => {
     const { prompt, sessionId } = params;
-    const { onProgress, onFiles, onTokens, onError, onComplete } = options;
+    const { onProgress, onFiles, onTokens, onError, onComplete, onGenerationEvent } = options;
 
     setIsGenerating(true);
     setProgress('Starting generation...');
+
+    // Émettre l'événement d'analyse initial
+    onGenerationEvent?.({
+      type: 'analyze',
+      message: 'Analyse de votre demande...',
+      status: 'in-progress'
+    });
 
     // Create abort controller
     abortControllerRef.current = new AbortController();
@@ -159,6 +171,16 @@ export function useGenerateSite() {
                 case 'start':
                   console.log('[useGenerateSite] Generation started:', data.data);
                   setProgress('🎨 Creating your site...');
+                  onGenerationEvent?.({
+                    type: 'analyze',
+                    message: 'Analyse de votre demande...',
+                    status: 'completed'
+                  });
+                  onGenerationEvent?.({
+                    type: 'thought',
+                    message: 'Génération du code en cours...',
+                    status: 'in-progress'
+                  });
                   break;
 
                 case 'stream':
@@ -166,13 +188,31 @@ export function useGenerateSite() {
                     accumulatedContent += data.data.content;
                     onProgress?.(accumulatedContent);
 
-                    // Update progress message based on content
-                    if (accumulatedContent.includes('FILE: index.html')) {
+                    // Update progress message based on content and emit events
+                    if (accumulatedContent.includes('FILE: index.html') && !accumulatedContent.includes('FILE: styles.css')) {
                       setProgress('📄 Generating HTML structure...');
-                    } else if (accumulatedContent.includes('FILE: styles.css')) {
+                      onGenerationEvent?.({
+                        type: 'create',
+                        file: 'index.html',
+                        message: 'Création de la structure HTML...',
+                        status: 'in-progress'
+                      });
+                    } else if (accumulatedContent.includes('FILE: styles.css') && !accumulatedContent.includes('FILE: script.js')) {
                       setProgress('🎨 Adding beautiful styles...');
+                      onGenerationEvent?.({
+                        type: 'create',
+                        file: 'styles.css',
+                        message: 'Application des styles CSS...',
+                        status: 'in-progress'
+                      });
                     } else if (accumulatedContent.includes('FILE: script.js')) {
                       setProgress('⚡ Creating interactions...');
+                      onGenerationEvent?.({
+                        type: 'create',
+                        file: 'script.js',
+                        message: 'Ajout des interactions JavaScript...',
+                        status: 'in-progress'
+                      });
                     }
                   }
                   break;
@@ -182,6 +222,15 @@ export function useGenerateSite() {
                     count: Object.keys(data.data.files || {}).length,
                   });
                   if (data.data.files) {
+                    // Émettre des événements de complétion pour chaque fichier
+                    Object.keys(data.data.files).forEach(filePath => {
+                      onGenerationEvent?.({
+                        type: 'create',
+                        file: filePath,
+                        message: `Fichier créé: ${filePath}`,
+                        status: 'completed'
+                      });
+                    });
                     onFiles?.(data.data.files);
                     setProgress('✅ Files created successfully');
                   }
@@ -207,6 +256,13 @@ export function useGenerateSite() {
                     tokens: data.data.tokens || { input: 0, output: 0, total: 0 },
                     duration,
                   };
+
+                  // Émettre l'événement de complétion
+                  onGenerationEvent?.({
+                    type: 'complete',
+                    message: 'Site généré avec succès!',
+                    status: 'completed'
+                  });
 
                   onComplete?.(finalResult);
                   setProgress('✨ Site ready!');

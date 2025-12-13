@@ -856,6 +856,30 @@ export default function BuilderSession() {
         prompt: userPrompt,
         sessionId: sessionId!
       }, {
+        onGenerationEvent: (event) => {
+          console.log('📌 Generation event:', event);
+          // Ajouter l'événement à la liste
+          generationEventsRef.current = [...generationEventsRef.current, event];
+          
+          // Mettre à jour les métadonnées du message en temps réel
+          setMessages(prev => {
+            const lastMsg = prev[prev.length - 1];
+            if (lastMsg?.metadata?.type === 'generation') {
+              return prev.map((msg, idx) =>
+                idx === prev.length - 1
+                  ? {
+                      ...msg,
+                      metadata: {
+                        ...msg.metadata,
+                        generation_events: [...generationEventsRef.current]
+                      }
+                    }
+                  : msg
+              );
+            }
+            return prev;
+          });
+        },
         onProgress: (content) => {
           console.log('📝 Progress:', content.length, 'characters');
         },
