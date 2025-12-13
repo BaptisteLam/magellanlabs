@@ -227,30 +227,43 @@ async function detectProviderFromNameservers(domain: string): Promise<string | n
 
     if (!data.Answer || data.Answer.length === 0) return null;
 
-    const nameservers = data.Answer.map((answer: any) => answer.data.toLowerCase());
+    const nameservers = data.Answer.map((answer: any) => answer.data.toLowerCase().replace(/\.$/, ''));
 
-    const providerMap: Record<string, string> = {
-      'godaddy': 'GoDaddy',
-      'cloudflare': 'Cloudflare',
-      'ovh': 'OVH',
-      'gandi': 'Gandi',
-      'namecheap': 'Namecheap',
-      'ionos': '1&1 IONOS',
-      'google': 'Google Domains',
-      'name.com': 'Name.com',
-      'dnsimple': 'DNSimple',
-      'hover': 'Hover',
-      'dreamhost': 'DreamHost'
+    console.log('[Discovery] Nameservers found:', nameservers);
+
+    // Utiliser des regex pour une meilleure détection
+    const providerPatterns: Record<string, RegExp[]> = {
+      'GoDaddy': [/godaddy/i, /domaincontrol/i],
+      'Cloudflare': [/cloudflare/i],
+      'OVH': [/ovh/i, /ovhcloud/i],
+      'Gandi': [/gandi/i],
+      'Namecheap': [/namecheap/i, /registrar-servers\.com/i],
+      '1&1 IONOS': [/ionos/i, /1and1/i, /ui-dns/i],
+      'Google Domains': [/google/i, /ns-cloud/i],
+      'Name.com': [/name\.com/i],
+      'DNSimple': [/dnsimple/i],
+      'Hover': [/hover/i],
+      'DreamHost': [/dreamhost/i],
+      'HostGator': [/hostgator/i],
+      'Bluehost': [/bluehost/i],
+      'AWS Route 53': [/awsdns/i],
+      'DigitalOcean': [/digitalocean/i],
+      'Linode': [/linode/i],
+      'Vultr': [/vultr/i]
     };
 
     for (const ns of nameservers) {
-      for (const [key, provider] of Object.entries(providerMap)) {
-        if (ns.includes(key)) {
-          return provider;
+      for (const [provider, patterns] of Object.entries(providerPatterns)) {
+        for (const pattern of patterns) {
+          if (pattern.test(ns)) {
+            console.log(`[Discovery] Provider detected: ${provider} (matched ${pattern} in ${ns})`);
+            return provider;
+          }
         }
       }
     }
 
+    console.log('[Discovery] No provider matched');
     return null;
   } catch (error) {
     console.error('[Discovery] Nameserver detection error:', error);
