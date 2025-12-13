@@ -56,3 +56,9 @@ verify_jwt = true
 
 [functions.generate-invoice]
 verify_jwt = true
+
+[functions.domain-connect-discover]
+verify_jwt = true
+
+[functions.domain-connect-verify]
+verify_jwt = true
