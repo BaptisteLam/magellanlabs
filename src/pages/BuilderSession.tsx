@@ -29,7 +29,7 @@ import AiGenerationMessage from '@/components/chat/AiGenerationMessage';
 import ChatOnlyMessage from '@/components/chat/ChatOnlyMessage';
 import { useGenerateSite } from '@/hooks/useGenerateSite';
 import html2canvas from 'html2canvas';
-import { TokenCounter } from '@/components/TokenCounter';
+// TokenCounter UI removed (temporarily disabled)
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
 import { analyzeIntent, identifyRelevantFiles, estimateGenerationTime } from '@/utils/intentAnalyzer';
 import { ASTModification } from '@/types/ast';
@@ -863,19 +863,33 @@ export default function BuilderSession() {
           console.log('🎯 Generation event:', event);
           // Ajouter l'événement aux generation_events
           const eventTypeMap: Record<string, GenerationEvent['type']> = {
-            'thought': 'thought',
-            'create': 'create',
-            'edit': 'edit',
-            'complete': 'complete',
-            'error': 'error',
-            'analyze': 'analyze',
-            'plan': 'plan',
-            'read': 'read',
-            'write': 'write'
+            thought: 'thought',
+            create: 'create',
+            edit: 'edit',
+            complete: 'complete',
+            error: 'error',
+            analyze: 'analyze',
+            plan: 'plan',
+            read: 'read',
+            write: 'write'
           };
+          const mappedType = eventTypeMap[event.eventType] || 'thought';
+          const message = event.message;
+
+          // Éviter les doublons consécutifs pour les messages de progression similaires
+          const lastEvent = generationEventsRef.current[generationEventsRef.current.length - 1];
+          if (
+            lastEvent &&
+            lastEvent.type === mappedType &&
+            lastEvent.message === message &&
+            mappedType === 'thought'
+          ) {
+            return;
+          }
+
           const newEvent: GenerationEvent = {
-            type: eventTypeMap[event.eventType] || 'thought',
-            message: event.message,
+            type: mappedType,
+            message,
             file: event.file,
             status: event.status === 'completed' ? 'completed' : event.status === 'error' ? 'error' : 'in-progress',
             timestamp: Date.now()
@@ -1787,7 +1801,7 @@ export default function BuilderSession() {
           }} onMouseEnter={e => e.currentTarget.style.color = '#03A5C0'} onMouseLeave={e => e.currentTarget.style.color = isDark ? '#fff' : '#9CA3AF'} />
           </button>
 
-          <TokenCounter isDark={isDark} userId={user?.id} />
+          
         </div>
 
         {/* Input caché pour le favicon */}
