@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { HotReloadableIframe } from './HotReloadableIframe';
+import { SandpackHotReload } from './SandpackHotReload';
 import { FloatingEditBar } from './FloatingEditBar';
 import { type ElementInfo } from './InspectOverlay';
 
@@ -16,6 +17,17 @@ export type { ElementInfo };
 export function InteractivePreview({ projectFiles, isDark = false, onElementModify, inspectMode, onInspectModeChange }: InteractivePreviewProps) {
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
+
+  // Détecter si c'est un projet React/TypeScript
+  const isReactProject = useMemo(() => {
+    return Object.keys(projectFiles).some(path => 
+      path.endsWith('.tsx') || 
+      path.endsWith('.jsx') || 
+      path.includes('main.tsx') || 
+      path.includes('App.tsx') ||
+      (path === 'package.json' && projectFiles[path]?.includes('react'))
+    );
+  }, [projectFiles]);
 
   // Normaliser les fichiers avec stabilisation pour éviter les re-renders inutiles
   const normalizedFiles = useMemo(() => {
@@ -44,7 +56,7 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
   return (
     <div className="relative w-full h-full">
       {/* Overlay d'aide en mode inspection */}
-      {inspectMode && (
+      {inspectMode && !isReactProject && (
         <div className="absolute top-16 right-4 z-10 bg-background border border-border rounded-lg p-3 shadow-lg max-w-xs">
           <p className="text-sm text-muted-foreground">
             Cliquez sur un élément de la page pour le modifier
@@ -52,24 +64,34 @@ export function InteractivePreview({ projectFiles, isDark = false, onElementModi
         </div>
       )}
 
-      {/* Preview HTML statique avec Hot Reload */}
-      <HotReloadableIframe 
-        projectFiles={normalizedFiles} 
-        isDark={isDark}
-        inspectMode={inspectMode}
-        onElementSelect={handleElementSelect}
-      />
+      {/* React/TypeScript: utiliser Sandpack pour compilation */}
+      {isReactProject ? (
+        <SandpackHotReload 
+          files={normalizedFiles} 
+          isDark={isDark}
+        />
+      ) : (
+        /* HTML statique: utiliser HotReloadableIframe */
+        <HotReloadableIframe 
+          projectFiles={normalizedFiles} 
+          isDark={isDark}
+          inspectMode={inspectMode}
+          onElementSelect={handleElementSelect}
+        />
+      )}
 
-      {/* Barre de prompt volante basique */}
-      <FloatingEditBar
-        isOpen={showEditDialog}
-        onClose={() => {
-          setShowEditDialog(false);
-          setSelectedElement(null);
-        }}
-        elementInfo={selectedElement}
-        onModify={handleModify}
-      />
+      {/* Barre de prompt volante basique (seulement pour HTML statique) */}
+      {!isReactProject && (
+        <FloatingEditBar
+          isOpen={showEditDialog}
+          onClose={() => {
+            setShowEditDialog(false);
+            setSelectedElement(null);
+          }}
+          elementInfo={selectedElement}
+          onModify={handleModify}
+        />
+      )}
     </div>
   );
 }

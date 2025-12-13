@@ -17,33 +17,59 @@ function parseGeneratedCode(code: string): ProjectFile[] {
   const files: ProjectFile[] = [];
 
   // 🔧 Nettoyage global: si tout le contenu est encapsulé dans un seul bloc de code Markdown
-  const topLevelCodeBlock = code.match(/^```[\w-]*\n([\s\S]*?)```$/);
+  let cleanCode = code;
+  const topLevelCodeBlock = cleanCode.match(/^```[\w-]*\n([\s\S]*?)```$/);
   if (topLevelCodeBlock) {
-    code = topLevelCodeBlock[1].trim();
+    cleanCode = topLevelCodeBlock[1].trim();
   }
   
   // Format 1: // FILE: path suivi du contenu (avec ou sans code blocks)
-  const fileRegex = /\/\/\s*FILE:\s*(.+?)(?:\n|$)/g;
-  const matches = [...code.matchAll(fileRegex)];
+  // IMPORTANT: Le chemin du fichier doit être sur sa propre ligne et contenir une extension
+  const fileRegex = /\/\/\s*FILE:\s*([\w/.-]+\.\w+)\s*(?:\n|$)/g;
+  const matches = [...cleanCode.matchAll(fileRegex)];
+  
+  console.log(`[parseGeneratedCode] Found ${matches.length} FILE: markers`);
   
   for (let i = 0; i < matches.length; i++) {
     const match = matches[i];
     const filePath = match[1].trim();
+    
+    // Valider que le nom du fichier a une extension valide
+    if (!filePath.includes('.') || filePath.length > 100) {
+      console.warn(`[parseGeneratedCode] ⚠️ Skipping invalid path: ${filePath}`);
+      continue;
+    }
+    
     const startIndex = match.index! + match[0].length;
     
     // Trouve le contenu jusqu'au prochain fichier
     const nextMatch = matches[i + 1];
-    const endIndex = nextMatch ? nextMatch.index! : code.length;
-    let rawContent = code.slice(startIndex, endIndex).trim();
+    const endIndex = nextMatch ? nextMatch.index! : cleanCode.length;
+    let rawContent = cleanCode.slice(startIndex, endIndex).trim();
     
     // Nettoyer les code blocks markdown si présents
     // Exemples: ```json ... ```, ```typescript ... ```, etc.
-    const codeBlockMatch = rawContent.match(/^```[\w]*\n([\s\S]*?)```$/);
+    const codeBlockMatch = rawContent.match(/^```[\w]*\n?([\s\S]*?)```$/);
     if (codeBlockMatch) {
       rawContent = codeBlockMatch[1].trim();
     }
     
+    // Nettoyer aussi les code blocks inline au début
+    if (rawContent.startsWith('```')) {
+      const lines = rawContent.split('\n');
+      // Retirer la première ligne (```language) et la dernière (```)
+      if (lines.length > 2) {
+        lines.shift(); // Remove first ```
+        if (lines[lines.length - 1].trim() === '```') {
+          lines.pop();
+        }
+        rawContent = lines.join('\n').trim();
+      }
+    }
+    
     const extension = filePath.split('.').pop() || '';
+    
+    console.log(`[parseGeneratedCode] ✅ Parsed: ${filePath} (${rawContent.length} chars)`);
     
     files.push({
       path: filePath,
@@ -52,14 +78,19 @@ function parseGeneratedCode(code: string): ProjectFile[] {
     });
   }
   
-  // Format 2: code blocks avec nom de fichier (```json:package.json)
+  // Format 2: code blocks avec nom de fichier (```json:package.json ou ```tsx src/App.tsx)
   if (files.length === 0) {
-    const codeBlockRegex = /```(?:[\w]+)?:?([\w/.]+)\n([\s\S]*?)```/g;
+    // Pattern plus strict: ```language:filepath ou ```language filepath
+    const codeBlockRegex = /```(?:[\w]+)?[:\s]([\w/.-]+\.\w+)\n([\s\S]*?)```/g;
     let match;
     
-    while ((match = codeBlockRegex.exec(code)) !== null) {
+    while ((match = codeBlockRegex.exec(cleanCode)) !== null) {
       const [, path, content] = match;
+      if (!path.includes('.') || path.length > 100) continue;
+      
       const extension = path.split('.').pop() || '';
+      
+      console.log(`[parseGeneratedCode] ✅ Parsed (format 2): ${path} (${content.length} chars)`);
       
       files.push({
         path: path.trim(),
@@ -70,7 +101,7 @@ function parseGeneratedCode(code: string): ProjectFile[] {
   }
   
   // Format 3: HTML standalone - REJETER si pas de CSS et JS
-  if (files.length === 0 && (code.includes('<!DOCTYPE html>') || code.includes('<html'))) {
+  if (files.length === 0 && (cleanCode.includes('<!DOCTYPE html>') || cleanCode.includes('<html'))) {
     console.error('❌ ERREUR: Génération HTML uniquement détectée - CSS et JS requis!');
     throw new Error('La génération doit OBLIGATOIREMENT inclure HTML, CSS ET JavaScript. Impossible de créer uniquement du HTML.');
   }
