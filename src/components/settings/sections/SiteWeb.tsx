@@ -9,6 +9,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { DomainConnectDialog } from '@/components/DomainConnectDialog';
 
 interface Project {
   id: string;
@@ -17,6 +18,7 @@ interface Project {
   project_files: unknown;
   cloudflare_deployment_url: string | null;
   thumbnail_url: string | null;
+  cloudflare_project_name?: string | null;
 }
 
 interface PageSEO {
@@ -37,6 +39,8 @@ export function SiteWeb() {
   const [isSavingSEO, setIsSavingSEO] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
+  const [showDomainConnectDialog, setShowDomainConnectDialog] = useState(false);
+  const [cloudflareProjectName, setCloudflareProjectName] = useState<string>('');
 
   useEffect(() => {
     fetchLatestProject();
@@ -50,7 +54,7 @@ export function SiteWeb() {
 
       let query = supabase
         .from('build_sessions')
-        .select('id, title, public_url, project_files, cloudflare_deployment_url, thumbnail_url')
+        .select('id, title, public_url, project_files, cloudflare_deployment_url, thumbnail_url, cloudflare_project_name')
         .eq('user_id', session.user.id);
 
       if (projectId) {
@@ -65,7 +69,12 @@ export function SiteWeb() {
       
       if (data) {
         setProject(data);
-        
+
+        // Set cloudflare project name for domain connection
+        if (data.cloudflare_project_name) {
+          setCloudflareProjectName(data.cloudflare_project_name);
+        }
+
         // Extract HTML pages for SEO
         const files = data.project_files as Record<string, string> | null;
         if (files) {
@@ -331,12 +340,12 @@ export function SiteWeb() {
                 className="flex-1 rounded-lg"
               />
               <Button
-                onClick={() => toast.info('Configuration de domaine personnalisé à venir')}
+                onClick={() => setShowDomainConnectDialog(true)}
                 className="rounded-full px-4 py-0 border transition-all"
-                style={{ 
-                  borderColor: 'rgb(3,165,192)', 
-                  backgroundColor: 'rgba(3,165,192,0.1)', 
-                  color: 'rgb(3,165,192)' 
+                style={{
+                  borderColor: 'rgb(3,165,192)',
+                  backgroundColor: 'rgba(3,165,192,0.1)',
+                  color: 'rgb(3,165,192)'
                 }}
               >
                 Connecter
@@ -424,6 +433,13 @@ export function SiteWeb() {
           )}
         </CardContent>
       </Card>
+
+      <DomainConnectDialog
+        open={showDomainConnectDialog}
+        onOpenChange={setShowDomainConnectDialog}
+        sessionId={project?.id}
+        cloudflareProjectName={cloudflareProjectName}
+      />
     </div>
   );
 }
