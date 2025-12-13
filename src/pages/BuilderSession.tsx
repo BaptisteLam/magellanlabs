@@ -27,6 +27,7 @@ import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
 import AiGenerationMessage from '@/components/chat/AiGenerationMessage';
 import ChatOnlyMessage from '@/components/chat/ChatOnlyMessage';
+import { useGenerateSite } from '@/hooks/useGenerateSite';
 import html2canvas from 'html2canvas';
 import { TokenCounter } from '@/components/TokenCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
@@ -137,6 +138,9 @@ export default function BuilderSession() {
 
   // Hook unifié pour unified-modify (remplace agent-v2 et modify-site)
   const unifiedModify = useUnifiedModify();
+
+  // Hook pour génération de nouveaux sites complets
+  const generateSiteHook = useGenerateSite();
 
   // Événements IA pour la TaskList
   const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
@@ -782,13 +786,261 @@ export default function BuilderSession() {
     }
   };
 
+  // 🆕 GENERATE SITE HANDLER - Pour la création de nouveaux sites complets
+  const handleGenerateSite = async (userPrompt: string) => {
+    console.log('🎨 GENERATE SITE - Starting', {
+      userPrompt: userPrompt.substring(0, 100),
+      sessionId
+    });
+
+    if (!user) {
+      console.error('❌ No user, redirecting to auth');
+      navigate('/auth');
+      return;
+    }
+
+    // Ajouter le message utilisateur
+    const userMessage: Message = {
+      role: 'user',
+      content: userPrompt,
+      created_at: new Date().toISOString()
+    };
+
+    // Éviter d'ajouter le message s'il existe déjà
+    setMessages(prev => {
+      const lastUserMessage = [...prev].reverse().find(m => m.role === 'user');
+      if (lastUserMessage && typeof lastUserMessage.content === 'string' && lastUserMessage.content === userPrompt) {
+        return prev;
+      }
+      return [...prev, userMessage];
+    });
+
+    // Activer le mode génération initiale
+    console.log('🎬 Activating initial generation mode');
+    setIsInitialGeneration(true);
+    isInitialGenerationRef.current = true;
+    setIsQuickModLoading(true);
+
+    // Créer le message de génération
+    const generationStartTime = Date.now();
+    generationStartTimeRef.current = generationStartTime;
+
+    const generationMessage: Message = {
+      role: 'assistant',
+      content: '',
+      created_at: new Date().toISOString(),
+      metadata: {
+        type: 'generation',
+        thought_duration: 0,
+        intent_message: 'Creating your site...',
+        generation_events: [],
+        files_modified: 0,
+        modified_files: [],
+        total_tokens: 0,
+        project_files: {},
+        startTime: generationStartTime
+      }
+    };
+    setMessages(prev => [...prev, generationMessage]);
+    generationEventsRef.current = [];
+
+    // Variable pour stocker les tokens
+    let receivedTokens = {
+      input: 0,
+      output: 0,
+      total: 0
+    };
+
+    try {
+      const result = await generateSiteHook.generateSite({
+        prompt: userPrompt,
+        sessionId: sessionId!
+      }, {
+        onProgress: (content) => {
+          console.log('📝 Progress:', content.length, 'characters');
+        },
+        onFiles: async (files) => {
+          console.log('📦 Files received:', Object.keys(files));
+
+          // Mettre à jour les fichiers
+          await updateFiles(files, true);
+
+          // Définir le HTML généré
+          if (files['index.html']) {
+            setGeneratedHtml(files['index.html']);
+          }
+
+          // Sauvegarder en base de données
+          if (sessionId && user) {
+            try {
+              const { error: updateError } = await supabase
+                .from('builder_sessions')
+                .update({
+                  project_files: files,
+                  html_content: files['index.html'] || '',
+                  css_content: files['styles.css'] || '',
+                  js_content: files['script.js'] || '',
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', sessionId);
+
+              if (updateError) {
+                console.error('Erreur lors de la sauvegarde:', updateError);
+              } else {
+                console.log('✅ Projet sauvegardé avec succès');
+              }
+            } catch (error) {
+              console.error('Erreur lors de la sauvegarde:', error);
+            }
+          }
+        },
+        onTokens: (tokens) => {
+          console.log('💰 Tokens:', tokens);
+          receivedTokens = tokens;
+
+          // Mettre à jour les métadonnées du message
+          setMessages(prev => {
+            const lastMsg = prev[prev.length - 1];
+            if (lastMsg?.metadata?.type === 'generation') {
+              return prev.map((msg, idx) =>
+                idx === prev.length - 1
+                  ? {
+                      ...msg,
+                      metadata: {
+                        ...msg.metadata,
+                        total_tokens: tokens.total,
+                        input_tokens: tokens.input,
+                        output_tokens: tokens.output
+                      }
+                    }
+                  : msg
+              );
+            }
+            return prev;
+          });
+        },
+        onError: (error) => {
+          console.error('❌ Generate site error:', error);
+
+          // Messages d'erreur clairs
+          let userMessage = 'Une erreur est survenue lors de la génération du site.';
+          if (error.includes('timeout')) {
+            userMessage = 'La génération a pris trop de temps. Essayez avec une demande plus simple.';
+          } else if (error.includes('No modifications generated')) {
+            userMessage = 'Impossible de générer le site. Essayez de reformuler votre demande de manière plus précise.';
+          }
+
+          sonnerToast.error(userMessage);
+
+          // ✅ FIX BUG #2: Reset isInitialGeneration en cas d'erreur
+          setIsInitialGeneration(false);
+          isInitialGenerationRef.current = false;
+        },
+        onComplete: (result) => {
+          console.log('✅ Generation complete:', {
+            filesCount: Object.keys(result.files).length,
+            tokens: result.tokens,
+            duration: result.duration
+          });
+
+          const thoughtSeconds = Math.round(result.duration / 1000);
+          const fileCount = Object.keys(result.files).length;
+
+          // Mettre à jour le message avec les résultats
+          setMessages(prev => {
+            const lastMsg = prev[prev.length - 1];
+            if (lastMsg?.metadata?.type === 'generation') {
+              return prev.map((msg, idx) =>
+                idx === prev.length - 1
+                  ? {
+                      ...msg,
+                      content: `Created ${fileCount} files in ${thoughtSeconds}s`,
+                      metadata: {
+                        ...msg.metadata,
+                        files_created: fileCount,
+                        new_files: Object.keys(result.files),
+                        thought_duration: result.duration,
+                        total_tokens: result.tokens.total,
+                        input_tokens: result.tokens.input,
+                        output_tokens: result.tokens.output,
+                        project_files: result.files
+                      }
+                    }
+                  : msg
+              );
+            }
+            return prev;
+          });
+
+          sonnerToast.success(`Site créé avec succès ! (${fileCount} fichiers)`);
+
+          // ✅ Désactiver le mode génération initiale
+          setIsInitialGeneration(false);
+          isInitialGenerationRef.current = false;
+        }
+      });
+
+      // Déduire les tokens
+      if (user?.id && receivedTokens.total > 0) {
+        console.log('💰 Deducting tokens from user profile:', receivedTokens);
+        try {
+          const { data: profile, error: fetchError } = await supabase
+            .from('profiles')
+            .select('tokens_used')
+            .eq('id', user.id)
+            .single();
+
+          if (fetchError) {
+            console.error('❌ Error fetching profile:', fetchError);
+            return;
+          }
+
+          if (profile) {
+            const oldTokensUsed = profile.tokens_used || 0;
+            const newTokensUsed = oldTokensUsed + receivedTokens.total;
+            console.log('💰 Updating tokens:', {
+              old: oldTokensUsed,
+              new: newTokensUsed,
+              diff: receivedTokens.total
+            });
+
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({ tokens_used: newTokensUsed })
+              .eq('id', user.id);
+
+            if (updateError) {
+              console.error('❌ Error updating tokens:', updateError);
+            } else {
+              console.log('✅ Tokens successfully updated in database');
+            }
+          }
+        } catch (error) {
+          console.error('❌ Token deduction error:', error);
+        }
+      }
+
+      console.log('🎨 GENERATE SITE - Complete');
+    } catch (error) {
+      console.error('❌ GENERATE SITE - Error:', error);
+      sonnerToast.error('Échec de la génération du site');
+
+      // ✅ FIX BUG #2: Reset isInitialGeneration en cas d'erreur
+      setIsInitialGeneration(false);
+      isInitialGenerationRef.current = false;
+    } finally {
+      setIsQuickModLoading(false);
+    }
+  };
+
   // 🆕 UNIFIED MODIFY HANDLER - Remplace le routing manuel entre agent-v2 et modify-site
-  const handleUnifiedModification = async (userPrompt: string) => {
+  const handleUnifiedModification = async (userPrompt: string, skipFallback: boolean = false) => {
     console.log('🔄 UNIFIED MODIFY - Starting', {
       userPrompt: userPrompt.substring(0, 100),
       hasProjectFiles: Object.keys(projectFiles).length > 0,
       sessionId,
-      hasMemory: !!memory
+      hasMemory: !!memory,
+      skipFallback
     });
     if (!user) {
       console.error('❌ No user, redirecting to auth');
@@ -1004,9 +1256,50 @@ export default function BuilderSession() {
           });
           receivedTokens = tokens;
         },
-        onError: error => {
+        onError: async error => {
           console.error('❌ Error:', error);
-          sonnerToast.error(error);
+
+          // 🔄 FALLBACK AUTOMATIQUE : Si unified-modify échoue sur première génération, utiliser generate-site
+          if (!skipFallback && isFirstGeneration && error.includes('No modifications generated')) {
+            console.log('🔄 FALLBACK: unified-modify failed on first generation, trying generate-site...');
+            sonnerToast.info('Tentative avec le générateur complet...');
+
+            // Reset l'état avant le fallback
+            setIsInitialGeneration(false);
+            isInitialGenerationRef.current = false;
+            setIsQuickModLoading(false);
+
+            // Supprimer le dernier message d'erreur
+            setMessages(prev => prev.slice(0, -1));
+
+            // Essayer avec generate-site
+            try {
+              await handleGenerateSite(userPrompt);
+              return; // Succès, on sort
+            } catch (fallbackError) {
+              console.error('❌ Fallback also failed:', fallbackError);
+              sonnerToast.error('Échec de la génération même avec le générateur complet');
+              return;
+            }
+          }
+
+          // ✅ Messages d'erreur clairs et spécifiques
+          let userMessage = 'Une erreur est survenue lors du traitement.';
+          if (error.includes('No modifications generated')) {
+            userMessage = 'Aucune modification générée. Essayez de reformuler votre demande de manière plus précise.';
+          } else if (error.includes('timeout')) {
+            userMessage = 'Le traitement a pris trop de temps. Essayez avec une demande plus simple.';
+          } else if (error.includes('validation')) {
+            userMessage = 'Erreur de validation des modifications. Veuillez réessayer.';
+          } else {
+            userMessage = error || 'Échec du traitement de la demande.';
+          }
+
+          sonnerToast.error(userMessage);
+
+          // ✅ FIX BUG #2: Reset isInitialGeneration en cas d'erreur
+          setIsInitialGeneration(false);
+          isInitialGenerationRef.current = false;
         },
         onComplete: completeResult => {
           console.log('✅ Complete:', completeResult);
@@ -1091,9 +1384,20 @@ export default function BuilderSession() {
       console.log('🔄 UNIFIED MODIFY - Complete');
     } catch (error) {
       console.error('❌ UNIFIED MODIFY - Error:', error);
-      sonnerToast.error('Failed to process request');
+      sonnerToast.error('Échec du traitement de la demande');
+
+      // ✅ FIX BUG #2: Reset isInitialGeneration en cas d'erreur catch
+      setIsInitialGeneration(false);
+      isInitialGenerationRef.current = false;
     } finally {
       setIsQuickModLoading(false);
+
+      // ✅ FIX BUG #2: Assurer le reset même en cas de succès incomplet
+      if (isInitialGenerationRef.current) {
+        console.log('⚠️ Resetting isInitialGeneration in finally block');
+        setIsInitialGeneration(false);
+        isInitialGenerationRef.current = false;
+      }
     }
   };
 
@@ -1180,9 +1484,18 @@ export default function BuilderSession() {
     setInputValue('');
     setAttachedFiles([]);
 
-    // 🔄 TOUJOURS utiliser UNIFIED MODIFY (gère automatiquement tous les cas)
-    console.log('🔄 Routing vers UNIFIED MODIFY (auto complexity detection)');
-    await handleUnifiedModification(prompt);
+    // 🎯 ROUTING INTELLIGENT : Nouveau site vs Modification
+    const isFirstGeneration = Object.keys(projectFiles).length === 0;
+
+    if (isFirstGeneration) {
+      // 🎨 Nouveau site : utiliser GENERATE-SITE (création complète)
+      console.log('🎨 Routing vers GENERATE-SITE (nouveau site complet)');
+      await handleGenerateSite(prompt);
+    } else {
+      // 🔄 Modification : utiliser UNIFIED-MODIFY (modifications AST)
+      console.log('🔄 Routing vers UNIFIED-MODIFY (modification de site existant)');
+      await handleUnifiedModification(prompt);
+    }
   };
   const handleSave = async () => {
     if (!user) {
