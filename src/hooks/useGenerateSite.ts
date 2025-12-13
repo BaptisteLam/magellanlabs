@@ -73,14 +73,14 @@ export function useGenerateSite() {
     // Create abort controller
     abortControllerRef.current = new AbortController();
 
-    // Security timeout: 120 seconds (same as backend)
+    // Security timeout: 300 seconds (5 minutes - same as backend)
     timeoutRef.current = window.setTimeout(() => {
-      console.warn('[useGenerateSite] Request timeout after 120 seconds');
+      console.warn('[useGenerateSite] Request timeout after 300 seconds');
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-      onError?.('Generation timeout after 120 seconds');
-    }, 120000);
+      onError?.('Generation timeout after 5 minutes');
+    }, 300000);
 
     const startTime = Date.now();
 
