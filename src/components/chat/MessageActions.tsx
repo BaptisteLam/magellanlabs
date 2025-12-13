@@ -89,7 +89,24 @@ export function MessageActions({
           </TooltipContent>
         </Tooltip>
 
-        {/* Bouton Tokens supprimé pour simplifier l'UI et éviter les compteurs inexacts */}
+        {/* Bouton Tokens */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-3 px-1 gap-0.5 hover:bg-[#03A5C0]/10 cursor-default"
+            >
+              <Coins className="h-2 w-2" style={{ color: '#03A5C0' }} />
+              <span className="text-xs" style={{ color: '#03A5C0', fontSize: '10px' }}>
+                {tokenCount ? tokenCount >= 1000 ? `${Math.round(tokenCount / 1000)}k` : tokenCount : '0'}
+              </span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-xs">Tokens utilisés</p>
+          </TooltipContent>
+        </Tooltip>
       </TooltipProvider>
     </div>
   );

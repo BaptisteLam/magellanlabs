@@ -23,21 +23,12 @@ export interface GenerateSiteResult {
   duration: number;
 }
 
-export interface GenerationEvent {
-  eventType: string;
-  message: string;
-  file?: string;
-  status: 'in-progress' | 'completed' | 'error';
-  filesCount?: number;
-}
-
 export interface UseGenerateSiteOptions {
   onProgress?: (content: string) => void;
   onFiles?: (files: GeneratedFiles) => void;
   onTokens?: (tokens: { input: number; output: number; total: number }) => void;
   onError?: (error: string) => void;
   onComplete?: (result: GenerateSiteResult) => void;
-  onEvent?: (event: GenerationEvent) => void;
 }
 
 // ============= Hook =============
@@ -65,7 +56,7 @@ export function useGenerateSite() {
     options: UseGenerateSiteOptions = {}
   ): Promise<GenerateSiteResult | null> => {
     const { prompt, sessionId } = params;
-    const { onProgress, onFiles, onTokens, onError, onComplete, onEvent } = options;
+    const { onProgress, onFiles, onTokens, onError, onComplete } = options;
 
     setIsGenerating(true);
     setProgress('Starting generation...');
@@ -73,14 +64,14 @@ export function useGenerateSite() {
     // Create abort controller
     abortControllerRef.current = new AbortController();
 
-    // Security timeout: 300 seconds (5 minutes - same as backend)
+    // Security timeout: 120 seconds (same as backend)
     timeoutRef.current = window.setTimeout(() => {
-      console.warn('[useGenerateSite] Request timeout after 300 seconds');
+      console.warn('[useGenerateSite] Request timeout after 120 seconds');
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-      onError?.('Generation timeout after 5 minutes');
-    }, 300000);
+      onError?.('Generation timeout after 120 seconds');
+    }, 120000);
 
     const startTime = Date.now();
 
@@ -193,26 +184,6 @@ export function useGenerateSite() {
                   if (data.data.files) {
                     onFiles?.(data.data.files);
                     setProgress('✅ Files created successfully');
-                  }
-                  break;
-
-                case 'generation_event':
-                  console.log('[useGenerateSite] Generation event:', data.data);
-                  if (data.data) {
-                    onEvent?.(data.data as GenerationEvent);
-                  }
-                  break;
-
-                case 'file_detected':
-                  console.log('[useGenerateSite] File detected:', data.data?.path);
-                  // Optionally trigger onEvent for file detection
-                  if (data.data?.path) {
-                    onEvent?.({
-                      eventType: 'create',
-                      message: `Création de ${data.data.path}`,
-                      file: data.data.path,
-                      status: 'completed'
-                    });
                   }
                   break;
 

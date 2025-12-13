@@ -71,23 +71,13 @@ export default function AiGenerationMessage({
     return lastInProgress?.file || null;
   }, [generation_events]);
 
-  // Calculer la progression basée sur les événements de progression
+  // Calculer la progression
   const progress = useMemo(() => {
     if (!isLoading) return 100;
-    
-    // Compter les événements de type 'thought' (messages de progression)
-    const progressEvents = generation_events.filter(e => e.type === 'thought');
-    const completedEvents = generation_events.filter(e => e.status === 'completed');
-    
-    // Base de 5 événements attendus: analyse + 4 étapes de progression + complete
-    const expectedEvents = 6;
-    const currentProgress = progressEvents.length + completedEvents.length;
-    
-    if (currentProgress === 0) return 5;
-    
-    // Progression linéaire basée sur les événements reçus
-    const calculatedProgress = 5 + (currentProgress / expectedEvents) * 90;
-    return Math.min(calculatedProgress, 95);
+    const totalEvents = Math.max(generation_events.length, 5);
+    const completedEvents = generation_events.filter(e => e.status === 'completed').length;
+    if (completedEvents === 0) return 5;
+    return Math.min(5 + (completedEvents / totalEvents) * 90, 95);
   }, [generation_events, isLoading]);
 
   // Générer un message de résumé court

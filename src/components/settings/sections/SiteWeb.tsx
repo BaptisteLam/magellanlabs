@@ -9,7 +9,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { CustomDomainDialog } from '@/components/CustomDomainDialog';
+
 interface Project {
   id: string;
   title: string | null;
@@ -37,7 +37,6 @@ export function SiteWeb() {
   const [isSavingSEO, setIsSavingSEO] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
-  const [showDomainDialog, setShowDomainDialog] = useState(false);
 
   useEffect(() => {
     fetchLatestProject();
@@ -332,7 +331,7 @@ export function SiteWeb() {
                 className="flex-1 rounded-lg"
               />
               <Button
-                onClick={() => setShowDomainDialog(true)}
+                onClick={() => toast.info('Configuration de domaine personnalisé à venir')}
                 className="rounded-full px-4 py-0 border transition-all"
                 style={{ 
                   borderColor: 'rgb(3,165,192)', 
@@ -425,14 +424,6 @@ export function SiteWeb() {
           )}
         </CardContent>
       </Card>
-
-      {/* Custom Domain Dialog */}
-      <CustomDomainDialog
-        open={showDomainDialog}
-        onOpenChange={setShowDomainDialog}
-        sessionId={project?.id}
-        cloudflareProjectName={project?.title?.toLowerCase().replace(/\s+/g, '-')}
-      />
     </div>
   );
 }

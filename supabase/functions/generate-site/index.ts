@@ -15,61 +15,29 @@ interface ProjectFile {
 // Parser pour extraire les fichiers au format // FILE: path
 function parseGeneratedCode(code: string): ProjectFile[] {
   const files: ProjectFile[] = [];
-
-  // 🔧 Nettoyage global: si tout le contenu est encapsulé dans un seul bloc de code Markdown
-  let cleanCode = code;
-  const topLevelCodeBlock = cleanCode.match(/^```[\w-]*\n([\s\S]*?)```$/);
-  if (topLevelCodeBlock) {
-    cleanCode = topLevelCodeBlock[1].trim();
-  }
   
   // Format 1: // FILE: path suivi du contenu (avec ou sans code blocks)
-  // IMPORTANT: Le chemin du fichier doit être sur sa propre ligne et contenir une extension
-  const fileRegex = /\/\/\s*FILE:\s*([\w/.-]+\.\w+)\s*(?:\n|$)/g;
-  const matches = [...cleanCode.matchAll(fileRegex)];
-  
-  console.log(`[parseGeneratedCode] Found ${matches.length} FILE: markers`);
+  const fileRegex = /\/\/\s*FILE:\s*(.+?)(?:\n|$)/g;
+  const matches = [...code.matchAll(fileRegex)];
   
   for (let i = 0; i < matches.length; i++) {
     const match = matches[i];
     const filePath = match[1].trim();
-    
-    // Valider que le nom du fichier a une extension valide
-    if (!filePath.includes('.') || filePath.length > 100) {
-      console.warn(`[parseGeneratedCode] ⚠️ Skipping invalid path: ${filePath}`);
-      continue;
-    }
-    
     const startIndex = match.index! + match[0].length;
     
     // Trouve le contenu jusqu'au prochain fichier
     const nextMatch = matches[i + 1];
-    const endIndex = nextMatch ? nextMatch.index! : cleanCode.length;
-    let rawContent = cleanCode.slice(startIndex, endIndex).trim();
+    const endIndex = nextMatch ? nextMatch.index! : code.length;
+    let rawContent = code.slice(startIndex, endIndex).trim();
     
     // Nettoyer les code blocks markdown si présents
     // Exemples: ```json ... ```, ```typescript ... ```, etc.
-    const codeBlockMatch = rawContent.match(/^```[\w]*\n?([\s\S]*?)```$/);
+    const codeBlockMatch = rawContent.match(/^```[\w]*\n([\s\S]*?)```$/);
     if (codeBlockMatch) {
       rawContent = codeBlockMatch[1].trim();
     }
     
-    // Nettoyer aussi les code blocks inline au début
-    if (rawContent.startsWith('```')) {
-      const lines = rawContent.split('\n');
-      // Retirer la première ligne (```language) et la dernière (```)
-      if (lines.length > 2) {
-        lines.shift(); // Remove first ```
-        if (lines[lines.length - 1].trim() === '```') {
-          lines.pop();
-        }
-        rawContent = lines.join('\n').trim();
-      }
-    }
-    
     const extension = filePath.split('.').pop() || '';
-    
-    console.log(`[parseGeneratedCode] ✅ Parsed: ${filePath} (${rawContent.length} chars)`);
     
     files.push({
       path: filePath,
@@ -78,19 +46,14 @@ function parseGeneratedCode(code: string): ProjectFile[] {
     });
   }
   
-  // Format 2: code blocks avec nom de fichier (```json:package.json ou ```tsx src/App.tsx)
+  // Format 2: code blocks avec nom de fichier (```json:package.json)
   if (files.length === 0) {
-    // Pattern plus strict: ```language:filepath ou ```language filepath
-    const codeBlockRegex = /```(?:[\w]+)?[:\s]([\w/.-]+\.\w+)\n([\s\S]*?)```/g;
+    const codeBlockRegex = /```(?:[\w]+)?:?([\w/.]+)\n([\s\S]*?)```/g;
     let match;
     
-    while ((match = codeBlockRegex.exec(cleanCode)) !== null) {
+    while ((match = codeBlockRegex.exec(code)) !== null) {
       const [, path, content] = match;
-      if (!path.includes('.') || path.length > 100) continue;
-      
       const extension = path.split('.').pop() || '';
-      
-      console.log(`[parseGeneratedCode] ✅ Parsed (format 2): ${path} (${content.length} chars)`);
       
       files.push({
         path: path.trim(),
@@ -101,7 +64,7 @@ function parseGeneratedCode(code: string): ProjectFile[] {
   }
   
   // Format 3: HTML standalone - REJETER si pas de CSS et JS
-  if (files.length === 0 && (cleanCode.includes('<!DOCTYPE html>') || cleanCode.includes('<html'))) {
+  if (files.length === 0 && (code.includes('<!DOCTYPE html>') || code.includes('<html'))) {
     console.error('❌ ERREUR: Génération HTML uniquement détectée - CSS et JS requis!');
     throw new Error('La génération doit OBLIGATOIREMENT inclure HTML, CSS ET JavaScript. Impossible de créer uniquement du HTML.');
   }
@@ -384,7 +347,7 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 20000,
+        max_tokens: 8000,
         stream: true,
         system: systemPrompt,
         messages: [
@@ -456,16 +419,6 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
           data: { sessionId }
         })}\n\n`));
 
-        // Event: generation_event - thought start (sera le seul message "analyse")
-        safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-          type: 'generation_event',
-          data: { 
-            eventType: 'thought',
-            message: 'Analyse de votre demande...',
-            status: 'in-progress'
-          }
-        })}\n\n`));
-
         const decoder = new TextDecoder();
         let accumulated = '';
         let lastParsedFiles: ProjectFile[] = [];
@@ -474,32 +427,16 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
         // Variables pour capturer les tokens réels de Claude
         let inputTokens = 0;
         let outputTokens = 0;
-        
-        // 🔧 Flags pour éviter les messages en double
-        const sentProgressMessages = new Set<string>();
-        
-        const sendProgressOnce = (messageKey: string, message: string) => {
-          if (sentProgressMessages.has(messageKey)) return;
-          sentProgressMessages.add(messageKey);
-          safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'generation_event',
-            data: { 
-              eventType: 'thought',
-              message,
-              status: 'in-progress'
-            }
-          })}\n\n`));
-        };
 
-        // Timeout de 300 secondes (5 minutes) pour génération complète
+        // Timeout de 120 secondes (2 minutes)
         timeout = setTimeout(() => {
-          console.error('[generate-site] Timeout après 300s');
+          console.error('[generate-site] Timeout après 120s');
           safeEnqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'error',
-            data: { message: 'Timeout: La génération a pris trop de temps (5 min). Veuillez réessayer.' }
+            data: { message: 'Timeout: La génération a pris trop de temps. Veuillez réessayer avec une demande plus simple.' }
           })}\n\n`));
           closeStream();
-        }, 300000);
+        }, 120000);
 
         try {
           while (!streamClosed) {
@@ -624,28 +561,6 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                 const totalTokens = inputTokens + outputTokens;
                 console.log(`[generate-site] 📊 FINAL TOKEN COUNT: Input=${inputTokens}, Output=${outputTokens}, Total=${totalTokens}`);
                 
-                // Convertir les fichiers en format objet pour le frontend
-                const filesObject: Record<string, string> = {};
-                for (const file of finalFiles) {
-                  filesObject[file.path] = file.content;
-                }
-
-                // Envoyer un event "create" pour CHAQUE fichier avec nom complet validé
-                for (const file of finalFiles) {
-                  // Validation: le nom de fichier doit contenir un point (extension)
-                  if (file.path && file.path.includes('.')) {
-                    safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                      type: 'generation_event',
-                      data: { 
-                        eventType: 'create',
-                        file: file.path,
-                        message: `Création de ${file.path}`,
-                        status: 'completed'
-                      }
-                    })}\n\n`));
-                  }
-                }
-
                 // Sauvegarder dans Supabase
                 if (sessionId) {
                   await supabaseClient
@@ -658,40 +573,12 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                     .eq('id', sessionId);
                 }
 
-                // Event: generation_event - complete
-                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'generation_event',
-                  data: { 
-                    eventType: 'complete',
-                    message: `${finalFiles.length} fichiers créés`,
-                    status: 'completed',
-                    filesCount: finalFiles.length
-                  }
-                })}\n\n`));
-
-                // Event: files - envoyer les fichiers parsés
-                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'files',
-                  data: { files: filesObject }
-                })}\n\n`));
-
-                // Event: tokens - envoyer séparément pour garantir réception
-                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'tokens',
-                  data: {
-                    input: inputTokens,
-                    output: outputTokens,
-                    total: totalTokens
-                  }
-                })}\n\n`));
-
                 // Event: complete avec tokens réels
                 safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'complete',
                   data: { 
                     totalFiles: finalFiles.length, 
                     projectType,
-                    files: filesObject,
                     tokens: {
                       input: inputTokens,
                       output: outputTokens,
@@ -720,24 +607,24 @@ Génère maintenant un projet web complet, professionnel et visuellement impress
                   data: { content: delta }
                 })}\n\n`));
 
-                // Indicateurs de progression intelligents avec envoi unique
-                const contentLength = accumulated.length;
-                
-                // Messages de progression user-friendly envoyés UNE SEULE FOIS
-                if (contentLength > 500) {
-                  sendProgressOnce('structure', 'Préparation de la structure...');
-                }
-                if (contentLength > 2000) {
-                  sendProgressOnce('page', 'Création de la page principale...');
-                }
-                if (contentLength > 5000) {
-                  sendProgressOnce('design', 'Mise en place du design...');
-                }
-                if (contentLength > 10000) {
-                  sendProgressOnce('interactions', 'Ajout des interactions...');
-                }
-                if (contentLength > 15000) {
-                  sendProgressOnce('finalization', 'Finalisation du site...');
+                // Parser optimisé: seulement tous les 500 caractères
+                if (accumulated.length % 500 < delta.length) {
+                  const currentFiles = parseGeneratedCode(accumulated);
+                  
+                  // Détecte les nouveaux fichiers
+                  if (currentFiles.length > lastParsedFiles.length) {
+                    const newFiles = currentFiles.slice(lastParsedFiles.length);
+                    
+                    for (const file of newFiles) {
+                      // Event: file_detected
+                      safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                        type: 'file_detected',
+                        data: { path: file.path, content: file.content, type: file.type }
+                      })}\n\n`));
+                    }
+                    
+                    lastParsedFiles = currentFiles;
+                  }
                 }
               } catch (e) {
                 console.error('[generate-site] Parse error:', e);
