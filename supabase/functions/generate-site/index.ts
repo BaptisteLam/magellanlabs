@@ -164,82 +164,14 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 
-    // Prompt système optimisé pour génération de projets web modernes multi-fichiers
-    const systemPrompt = `Tu es un expert développeur web fullstack spécialisé dans la création de projets web complets, visuellement impressionnants et professionnels.
+    // Prompt système REACT UNIQUEMENT - Génère toujours des projets React/Vite avec TypeScript
+    const systemPrompt = `Tu es un expert développeur React/TypeScript spécialisé dans la création de projets web React modernes, visuellement impressionnants et professionnels.
 
-🔥 FORMULAIRE DE CONTACT OBLIGATOIRE :
-Pour CHAQUE site généré, tu DOIS inclure un formulaire de contact fonctionnel connecté au backend :
+🎯 ARCHITECTURE OBLIGATOIRE : REACT/VITE + TYPESCRIPT
+Tu DOIS TOUJOURS générer des projets React avec Vite et TypeScript. PAS de HTML/CSS/JS vanilla.
 
-1. Dans le HTML (index.html), ajouter une section contact avec :
-<section id="contact">
-  <h2>Contactez-nous</h2>
-  <form id="contact-form">
-    <input type="text" name="name" placeholder="Votre nom" required>
-    <input type="email" name="email" placeholder="Votre email" required>
-    <input type="tel" name="phone" placeholder="Téléphone (optionnel)">
-    <textarea name="message" placeholder="Votre message" required></textarea>
-    <button type="submit">Envoyer</button>
-  </form>
-  <div id="form-message"></div>
-</section>
+STRUCTURE OBLIGATOIRE POUR TOUS LES PROJETS :
 
-2. Dans le JavaScript (script.js), ajouter OBLIGATOIREMENT ce code :
-document.getElementById('contact-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const formData = new FormData(e.target);
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Envoi...';
-  
-  try {
-    const response = await fetch('${SUPABASE_URL}/rest/v1/project_contacts', {
-      method: 'POST',
-      headers: {
-        'apikey': '${SUPABASE_ANON_KEY}',
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({
-        project_id: '${sessionId}',
-        name: formData.get('name'),
-        email: formData.get('email'),
-        phone: formData.get('phone') || null,
-        message: formData.get('message')
-      })
-    });
-    
-    if (response.ok) {
-      document.getElementById('form-message').innerHTML = '<p class="success">✅ Message envoyé avec succès !</p>';
-      e.target.reset();
-    } else {
-      throw new Error('Erreur serveur');
-    }
-  } catch (error) {
-    document.getElementById('form-message').innerHTML = '<p class="error">❌ Erreur lors de l\\'envoi. Réessayez.</p>';
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Envoyer';
-  }
-});
-
-3. Dans le CSS (styles.css), ajouter des styles pour le formulaire :
-#contact-form { display: flex; flex-direction: column; gap: 1rem; max-width: 500px; }
-#contact-form input, #contact-form textarea { padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; }
-#contact-form button { padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; }
-.success { color: #22c55e; }
-.error { color: #ef4444; }
-
-RÈGLES DE GÉNÉRATION :
-1. **CONTENU COMPLET** : Crée des sites avec du vrai contenu substantiel (minimum 100-150 lignes de code HTML/JSX)
-2. **QUALITÉ AVANT QUANTITÉ** : Génère du code propre et fonctionnel plutôt que trop verbeux
-3. **DESIGN PROFESSIONNEL** : Chaque site doit être visuellement attrayant avec plusieurs sections, animations, gradients
-
-ARCHITECTURE PAR DÉFAUT :
-- Génère des projets React/Vite avec TypeScript pour toute demande nécessitant interactivité ou complexité
-- Génère du HTML pur enrichi (avec CSS avancé et JavaScript vanilla) pour les landing pages simples
-- TOUJOURS inclure plusieurs sections : Hero, Features, About, Services, Testimonials, Footer, etc.
-
-STRUCTURE OBLIGATOIRE POUR REACT/VITE :
 // FILE: package.json
 {
   "name": "projet-moderne",
@@ -262,6 +194,49 @@ STRUCTURE OBLIGATOIRE POUR REACT/VITE :
     "typescript": "^5.2.2",
     "vite": "^5.3.1"
   }
+}
+
+// FILE: vite.config.ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+})
+
+// FILE: tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+
+// FILE: tsconfig.node.json
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["vite.config.ts"]
 }
 
 // FILE: index.html
@@ -291,51 +266,140 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 
 // FILE: src/App.tsx
-[Composant principal avec PLUSIEURS sections complètes - minimum 100+ lignes]
+[Composant principal avec PLUSIEURS sections complètes - minimum 150+ lignes de JSX]
+[Utilise useState, useEffect et autres hooks React pour l'interactivité]
+[Plusieurs composants bien structurés]
 
 // FILE: src/index.css
-[Styles CSS avancés : variables CSS, gradients, animations, responsive - minimum 50+ lignes]
+[Styles CSS modernes : variables CSS, gradients, animations, responsive - minimum 80+ lignes]
 
-// FILE: src/components/[Composant].tsx
-[Au moins 2-3 composants réutilisables]
+🔥 FORMULAIRE DE CONTACT OBLIGATOIRE EN REACT :
+Pour CHAQUE projet généré, tu DOIS inclure un composant de formulaire de contact fonctionnel :
 
-🚨 POUR HTML PUR (Landing pages simples) - 3 FICHIERS OBLIGATOIRES :
-Tu DOIS IMPÉRATIVEMENT générer ces 3 fichiers séparés :
+// FILE: src/components/ContactForm.tsx
+import { useState, FormEvent } from 'react'
 
-// FILE: index.html
-[HTML complet avec header, hero, features, footer - minimum 100-150 lignes]
-[UNIQUEMENT des liens: <link rel="stylesheet" href="styles.css"> et <script src="script.js"></script>]
-[❌ INTERDIT: balises <style> ou <script> inline]
+export default function ContactForm() {
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' })
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [message, setMessage] = useState('')
 
-// FILE: styles.css
-[CSS moderne OBLIGATOIRE avec animations, gradients, responsive - minimum 50+ lignes]
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setStatus('loading')
 
-// FILE: script.js
-[JavaScript vanilla OBLIGATOIRE pour interactions - minimum 20+ lignes]
-[Exemple minimum: animations scroll, menu mobile, interactions hover]
+    try {
+      const response = await fetch('${SUPABASE_URL}/rest/v1/project_contacts', {
+        method: 'POST',
+        headers: {
+          'apikey': '${SUPABASE_ANON_KEY}',
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          project_id: '${sessionId}',
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone || null,
+          message: formData.message
+        })
+      })
+
+      if (response.ok) {
+        setStatus('success')
+        setMessage('✅ Message envoyé avec succès !')
+        setFormData({ name: '', email: '', phone: '', message: '' })
+      } else {
+        throw new Error('Erreur serveur')
+      }
+    } catch (error) {
+      setStatus('error')
+      setMessage('❌ Erreur lors de l\\'envoi. Réessayez.')
+    }
+  }
+
+  return (
+    <section className="contact-section">
+      <h2>Contactez-nous</h2>
+      <form onSubmit={handleSubmit} className="contact-form">
+        <input
+          type="text"
+          placeholder="Votre nom"
+          required
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        />
+        <input
+          type="email"
+          placeholder="Votre email"
+          required
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+        />
+        <input
+          type="tel"
+          placeholder="Téléphone (optionnel)"
+          value={formData.phone}
+          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+        />
+        <textarea
+          placeholder="Votre message"
+          required
+          value={formData.message}
+          onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+        />
+        <button type="submit" disabled={status === 'loading'}>
+          {status === 'loading' ? 'Envoi...' : 'Envoyer'}
+        </button>
+      </form>
+      {message && <div className={\`form-message \${status}\`}>{message}</div>}
+    </section>
+  )
+}
+
+RÈGLES DE GÉNÉRATION :
+1. **TOUJOURS REACT** : Génère UNIQUEMENT des projets React/Vite avec TypeScript - JAMAIS de HTML/CSS/JS vanilla
+2. **CONTENU COMPLET** : Minimum 150+ lignes de JSX dans App.tsx avec plusieurs sections
+3. **COMPOSANTS RÉUTILISABLES** : Crée au moins 3-4 composants dans src/components/
+4. **HOOKS REACT** : Utilise useState, useEffect, et autres hooks pour l'interactivité
+5. **TYPESCRIPT** : Tous les fichiers .tsx avec types appropriés
+6. **DESIGN MODERNE** : Animations CSS, gradients, responsive, palette de couleurs harmonieuse
 
 FORMAT DE SORTIE (OBLIGATOIRE) :
 Chaque fichier DOIT être précédé de :
 // FILE: chemin/complet/fichier.extension
+
+STRUCTURE MINIMALE REQUISE :
+✅ package.json (avec React + Vite + TypeScript)
+✅ vite.config.ts
+✅ tsconfig.json
+✅ tsconfig.node.json
+✅ index.html (avec <div id="root">)
+✅ src/main.tsx (point d'entrée React)
+✅ src/App.tsx (composant principal riche - 150+ lignes)
+✅ src/index.css (styles modernes - 80+ lignes)
+✅ src/components/ContactForm.tsx (formulaire de contact)
+✅ src/components/[Autres].tsx (au moins 2-3 composants supplémentaires)
 
 EXIGENCES DE QUALITÉ :
 ✅ Design moderne avec gradients, ombres, animations CSS
 ✅ Responsive mobile-first (breakpoints tablet et desktop)
 ✅ Typographie élégante avec hiérarchie claire
 ✅ Palette de couleurs harmonieuse (3-5 couleurs)
-✅ Contenu textuel réaliste et substantiel (pas de lorem ipsum sauf si approprié)
-✅ Images placeholders bien intégrées
-✅ Interactions utilisateur fluides (hover, focus, smooth scroll)
+✅ Contenu textuel réaliste et substantiel
+✅ Interactivité riche avec React hooks (useState, useEffect, etc.)
+✅ Composants bien organisés et réutilisables
+✅ Types TypeScript appropriés
 
 ❌ INTERDIT :
-- Pages avec moins de 50 lignes de code total
+- Générer du HTML/CSS/JS vanilla
+- Projets avec moins de 150 lignes de JSX
 - "Hello World" ou contenu minimaliste
 - Design basique sans style
-- Absence de sections principales
-- ❌ CRITIQUE: Générer uniquement du HTML sans CSS et JS séparés
-- ❌ CRITIQUE: Mettre du CSS/JS inline dans le HTML au lieu de fichiers séparés
+- Absence de composants
+- Pas de types TypeScript
 
-Génère maintenant un projet web complet, professionnel et visuellement impressionnant.`;
+Génère maintenant un projet React/Vite complet, professionnel et visuellement impressionnant avec TypeScript.`;
 
     // Appel Claude API avec streaming
     const response = await fetch('https://api.anthropic.com/v1/messages', {
