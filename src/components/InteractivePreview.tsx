@@ -14,29 +14,10 @@ interface InteractivePreviewProps {
 
 export type { ElementInfo };
 
-// Détecte si le projet est un projet React/Vite (vs static HTML)
+// FORCE TOUJOURS LE MODE REACT - Utilise Sandpack dans tous les cas
 function isReactProject(files: Record<string, string>): boolean {
-  // Vérifier les extensions de fichiers React
-  const hasReactFiles = Object.keys(files).some(path => 
-    path.endsWith('.tsx') || path.endsWith('.jsx')
-  );
-  
-  if (hasReactFiles) return true;
-  
-  // Vérifier package.json pour 'react'
-  const packageJson = files['package.json'];
-  if (packageJson) {
-    try {
-      const pkg = JSON.parse(packageJson);
-      if (pkg.dependencies?.react || pkg.devDependencies?.react) {
-        return true;
-      }
-    } catch {
-      // Ignorer les erreurs de parsing
-    }
-  }
-  
-  return false;
+  // Toujours retourner true pour forcer l'utilisation de Sandpack
+  return true;
 }
 
 export function InteractivePreview({ projectFiles, isDark = false, onElementModify, inspectMode, onInspectModeChange }: InteractivePreviewProps) {

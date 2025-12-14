@@ -70,8 +70,8 @@ serve(async (req) => {
     // Construire historique intelligent
     const historyContext = await buildIntelligentContext(chatHistory, 4000);
 
-    // Adapter le prompt en fonction du type de projet
-    const isWebsite = projectType === 'website';
+    // FORCE TOUJOURS LE MODE REACT - Génère toujours du React/TypeScript
+    const isWebsite = false; // Toujours utiliser le prompt React/TypeScript
     
     const systemPrompt = isWebsite ? `Tu es un expert développeur web qui génère des sites web statiques en HTML, CSS et JavaScript pur.
 
