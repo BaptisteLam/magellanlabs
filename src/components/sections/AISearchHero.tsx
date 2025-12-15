@@ -450,43 +450,6 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
             projectType={projectType}
             onProjectTypeChange={setProjectType}
           />
-          
-          {/* Connexion buttons */}
-          <div className="mt-6 flex flex-col items-center gap-3">
-            <p style={{ fontSize: '13px' }} className="text-muted-foreground">Connecter</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setInputValue('✓ Projet connecté à Figma');
-                  sonnerToast.success('Connexion Figma simulée');
-                }}
-                className="transition-all hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                style={{
-                  filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))',
-                  opacity: 0.85,
-                  mixBlendMode: 'multiply'
-                }}
-                title="Connecter Figma"
-              >
-                <img src={isDark ? figmaDark : figmaLight} alt="Figma" className="h-10" />
-              </button>
-              <button
-                onClick={() => {
-                  setInputValue('✓ Projet connecté à Supabase');
-                  sonnerToast.success('Connexion Supabase simulée');
-                }}
-                className="transition-all hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                style={{
-                  filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))',
-                  opacity: 0.85,
-                  mixBlendMode: 'multiply'
-                }}
-                title="Connecter Supabase"
-              >
-                <img src={isDark ? supabaseDark : supabaseLight} alt="Supabase" className="h-10" />
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
