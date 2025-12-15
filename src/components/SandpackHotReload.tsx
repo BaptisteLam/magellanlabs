@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { SandpackProvider, SandpackLayout, SandpackPreview, useSandpack } from '@codesandbox/sandpack-react';
+import { SandpackProvider, SandpackPreview, useSandpack } from '@codesandbox/sandpack-react';
 import { HotReloadIndicator } from './HotReloadIndicator';
 
 interface SandpackHotReloadProps {
@@ -88,7 +88,7 @@ export function SandpackHotReload({ files, isDark }: SandpackHotReloadProps) {
         recompileMode: 'delayed',
         recompileDelay: 300,
         externalResources: [
-          'https://cdn.tailwindcss.com' // Support Tailwind CSS
+          'https://cdn.tailwindcss.com'
         ]
       }}
       customSetup={{
@@ -98,15 +98,14 @@ export function SandpackHotReload({ files, isDark }: SandpackHotReloadProps) {
         }
       }}
     >
-      <div className="h-full w-full relative">
+      <div className="h-full w-full relative flex flex-col">
         <SandpackController files={files} />
-        <SandpackLayout>
-          <SandpackPreview
-            showNavigator={false}
-            showOpenInCodeSandbox={false}
-            showRefreshButton={false}
-          />
-        </SandpackLayout>
+        <SandpackPreview
+          showNavigator={false}
+          showOpenInCodeSandbox={false}
+          showRefreshButton={false}
+          style={{ height: '100%', flex: 1 }}
+        />
       </div>
     </SandpackProvider>
   );
