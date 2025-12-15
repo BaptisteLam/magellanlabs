@@ -19,6 +19,7 @@ import supabaseLight from '@/assets/supabase-light.png';
 import { CodeTreeView } from '@/components/CodeEditor/CodeTreeView';
 import { MonacoEditor } from '@/components/CodeEditor/MonacoEditor';
 import { CustomIframePreview } from '@/components/CustomIframePreview';
+import TemplateCard from '@/components/TemplateCard';
 
 interface AISearchHeroProps {
   onGeneratedChange?: (hasGenerated: boolean) => void;
@@ -396,8 +397,75 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
     );
   }
 
+  // Templates data
+  const templates = [
+    {
+      title: "Artisan Plombier",
+      description: "Site vitrine pour artisan avec formulaire de contact et présentation des services.",
+      imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80",
+      messagesSaved: 12
+    },
+    {
+      title: "Cabinet de Conseil",
+      description: "Site professionnel pour cabinet de conseil avec présentation des offres et équipe.",
+      imageUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80",
+      messagesSaved: 15
+    },
+    {
+      title: "Restaurant",
+      description: "Site attractif avec menu interactif, réservations et galerie photos.",
+      imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&q=80",
+      messagesSaved: 18
+    },
+    {
+      title: "Coach Sportif",
+      description: "Plateforme claire pour coach avec programmes, témoignages et prise de RDV.",
+      imageUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&q=80",
+      messagesSaved: 10
+    },
+    {
+      title: "Agence Digitale",
+      description: "Site moderne pour agence avec portfolio, services et formulaire de contact.",
+      imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&q=80",
+      messagesSaved: 14
+    },
+    {
+      title: "Entreprise BTP",
+      description: "Site pour entreprise du bâtiment avec réalisations et devis en ligne.",
+      imageUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&q=80",
+      messagesSaved: 11
+    },
+    {
+      title: "Photographe",
+      description: "Portfolio visuel pour photographe avec galeries et tarifs.",
+      imageUrl: "https://images.unsplash.com/photo-1554048612-b6a482bc67e5?w=400&q=80",
+      messagesSaved: 16
+    },
+    {
+      title: "Cabinet Juridique",
+      description: "Site institutionnel pour avocat avec domaines d'expertise et contact.",
+      imageUrl: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&q=80",
+      messagesSaved: 13
+    },
+    {
+      title: "Commerce Local",
+      description: "Site pour boutique locale avec catalogue produits et informations pratiques.",
+      imageUrl: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&q=80",
+      messagesSaved: 9
+    }
+  ];
+
+  const handleTemplateView = (template: typeof templates[0]) => {
+    sonnerToast.info(`Aperçu du template "${template.title}"`);
+  };
+
+  const handleTemplateUse = (template: typeof templates[0]) => {
+    setInputValue(`Crée un site web pour ${template.title.toLowerCase()} : ${template.description}`);
+    sonnerToast.success(`Template "${template.title}" sélectionné`);
+  };
+
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff' }}>
+    <div className="relative min-h-screen flex flex-col items-center overflow-hidden pt-20" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff' }}>
       {/* Grid background - large squares, light gray */}
       <div className="absolute inset-0" 
            style={{ 
@@ -419,7 +487,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
 
 
       {/* Main content */}
-      <div className="relative z-10 w-full max-w-4xl px-4 text-center -mt-64">
+      <div className="relative z-10 w-full max-w-4xl px-4 text-center mt-16">
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#4cc9f0] bg-transparent mb-6 leading-none cursor-pointer backdrop-blur-sm">
           <Sparkles className="w-4 h-4 text-[#4cc9f0]" />
@@ -450,6 +518,49 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
             projectType={projectType}
             onProjectTypeChange={setProjectType}
           />
+        </div>
+      </div>
+
+      {/* Templates Widget */}
+      <div className="relative z-10 w-full max-w-6xl px-4 mt-24 mb-16">
+        <div 
+          className="w-full rounded-xl p-6 border"
+          style={{
+            backgroundColor: isDark ? 'hsl(var(--card))' : '#ffffff',
+            borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.8)',
+            boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04)'
+          }}
+        >
+          {/* Widget Header */}
+          <div className="mb-6 text-left">
+            <h2 
+              className="text-xl font-semibold mb-1"
+              style={{ color: isDark ? 'hsl(var(--foreground))' : '#334155' }}
+            >
+              Templates populaires
+            </h2>
+            <p 
+              className="text-sm"
+              style={{ color: isDark ? 'hsl(var(--muted-foreground))' : '#64748b' }}
+            >
+              Commence avec un template et personnalise-le en quelques clics
+            </p>
+          </div>
+
+          {/* Templates Grid 3x3 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {templates.map((template, index) => (
+              <TemplateCard
+                key={index}
+                title={template.title}
+                description={template.description}
+                imageUrl={template.imageUrl}
+                messagesSaved={template.messagesSaved}
+                onView={() => handleTemplateView(template)}
+                onUse={() => handleTemplateUse(template)}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>
