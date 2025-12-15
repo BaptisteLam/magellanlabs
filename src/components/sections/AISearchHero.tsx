@@ -473,15 +473,15 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
              backgroundSize: '80px 80px'
            }} 
       />
-      {/* Large cyan and teal glows with animation */}
+      {/* Large cyan and teal glows with animation - positioned behind prompt bar */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slow" 
+        <div className="absolute -top-[200px] left-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slow" 
              style={{ backgroundColor: 'rgba(91, 224, 229, 0.3)' }} />
-        <div className="absolute bottom-0 right-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slower" 
+        <div className="absolute top-[100px] right-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slower" 
              style={{ backgroundColor: 'rgba(3, 165, 192, 0.3)' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[120px] animate-pulse" 
+        <div className="absolute top-[50px] left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full blur-[120px] animate-pulse" 
              style={{ backgroundColor: 'rgba(91, 224, 229, 0.25)' }} />
-        <div className="absolute top-1/3 right-1/3 w-[700px] h-[700px] rounded-full blur-[140px] animate-pulse-slow" 
+        <div className="absolute top-0 right-1/3 w-[700px] h-[700px] rounded-full blur-[140px] animate-pulse-slow" 
              style={{ backgroundColor: 'rgba(3, 165, 192, 0.25)' }} />
       </div>
 
@@ -522,7 +522,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       </div>
 
       {/* Templates Widget */}
-      <div className="relative z-10 w-full max-w-6xl px-4 mt-24 mb-16">
+      <div className="relative z-10 w-full max-w-6xl px-4 mt-40 mb-16">
         <div 
           className="w-full rounded-xl p-6 border"
           style={{
