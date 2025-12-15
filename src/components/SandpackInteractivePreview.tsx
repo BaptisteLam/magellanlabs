@@ -120,19 +120,28 @@ export default function App() {
         autoReload: true,
         recompileMode: 'delayed',
         recompileDelay: 300,
+        externalResources: [
+          'https://cdn.tailwindcss.com' // Support Tailwind CSS
+        ]
+      }}
+      customSetup={{
+        dependencies: {
+          'react': '^18.3.1',
+          'react-dom': '^18.3.1'
+        }
       }}
     >
       <div className="h-full w-full relative">
         <SandpackLayout>
-          <SandpackPreview 
+          <SandpackPreview
             showNavigator={false}
             showOpenInCodeSandbox={false}
             showRefreshButton={false}
             style={{ height: '100%' }}
           />
         </SandpackLayout>
-        <SandpackController 
-          inspectMode={inspectMode} 
+        <SandpackController
+          inspectMode={inspectMode}
           onElementSelect={onElementSelect}
           onNavigationRequest={handleNavigationRequest}
         />

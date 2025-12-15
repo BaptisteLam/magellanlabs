@@ -268,6 +268,27 @@ export function useGenerateSite() {
                   setProgress('✨ Site ready!');
                   break;
 
+                case 'generation_event':
+                  // Nouveau type d'événement envoyé par le backend
+                  console.log('[useGenerateSite] Generation event:', data.data);
+                  if (data.data) {
+                    onGenerationEvent?.(data.data);
+                  }
+                  break;
+
+                case 'file_detected':
+                  // Fichier détecté pendant le streaming
+                  console.log('[useGenerateSite] File detected:', data.data.path);
+                  break;
+
+                case 'chunk':
+                  // Chunk de contenu (streaming progressif)
+                  if (data.data?.content) {
+                    accumulatedContent += data.data.content;
+                    onProgress?.(accumulatedContent);
+                  }
+                  break;
+
                 case 'error':
                   console.error('[useGenerateSite] Error:', data.data.message);
                   onError?.(data.data.message || 'Unknown error');

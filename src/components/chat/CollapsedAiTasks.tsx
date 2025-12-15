@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2, Lightbulb, FileText, Pencil, Plus, Search, ClipboardList, CheckCircle2, XCircle, FileEdit, Clock } from 'lucide-react';
+import { Loader2, Lightbulb, FileText, Pencil, Plus, Search, ClipboardList, CheckCircle2, XCircle, FileEdit, Clock, Layout, Palette, Code, FileCode, Settings, Component, BarChart3, Menu, Mail } from 'lucide-react';
 import type { GenerationEvent } from '@/types/agent';
 import { Progress } from '@/components/ui/progress';
 
@@ -84,17 +84,42 @@ export function CollapsedAiTasks({
     }
   }, [events, elapsedTime, isLoading]);
 
-  // Calcul de la progression
+  // Calcul de la progression amélioré
   const progress = useMemo(() => {
     if (!isLoading) return 100;
-    
-    const totalEvents = Math.max(events.length, 5);
+
     const completedEvents = events.filter(e => e.status === 'completed').length;
-    
-    if (completedEvents === 0) return 5; // Début
-    
+    const inProgressEvents = events.filter(e => e.status === 'in-progress').length;
+
+    // Déterminer le nombre total d'événements attendus basé sur la phase
+    const phases = events.map(e => e.phase).filter(Boolean);
+    const currentPhase = phases[phases.length - 1];
+
+    // Estimation du nombre total d'étapes en fonction de la phase
+    let estimatedTotal = 10; // Par défaut
+    if (currentPhase === 'analyzing') {
+      estimatedTotal = 2;
+    } else if (currentPhase === 'planning') {
+      estimatedTotal = 4;
+    } else if (currentPhase === 'generation') {
+      // Pendant la génération, estimer selon le nombre de fichiers déjà créés
+      const fileEvents = events.filter(e => e.file).length;
+      estimatedTotal = Math.max(fileEvents + 3, 8); // Au moins 8 étapes
+    } else if (currentPhase === 'validation') {
+      estimatedTotal = completedEvents + 2;
+    }
+
+    const totalEvents = Math.max(events.length, estimatedTotal);
+
+    if (completedEvents === 0 && inProgressEvents === 0) return 5; // Début
+
+    // Ajouter un bonus pour les événements en cours (compte comme 0.5)
+    const effectiveCompleted = completedEvents + (inProgressEvents * 0.5);
+
     // Progress de 5% à 95% basé sur les événements complétés
-    return Math.min(5 + (completedEvents / totalEvents) * 90, 95);
+    const calculatedProgress = 5 + (effectiveCompleted / totalEvents) * 90;
+
+    return Math.min(Math.max(calculatedProgress, 5), 95);
   }, [events, isLoading]);
 
   // Format du temps
@@ -113,11 +138,40 @@ export function CollapsedAiTasks({
   // Si pas d'événements et pas de chargement, ne rien afficher
   if (events.length === 0 && !isLoading) return null;
 
-  // Fonction pour obtenir l'icône selon le type d'événement
+  // Fonction pour obtenir l'icône selon le type d'événement et le message
   const getEventIcon = (event: GenerationEvent) => {
     const iconClass = "h-4 w-4 flex-shrink-0";
     const color = isDark ? '#94a3b8' : '#64748b';
-    
+
+    // Icônes spécifiques basées sur le message pour plus de variété
+    const message = event.message?.toLowerCase() || '';
+
+    if (message.includes('graphique') || message.includes('chart')) {
+      return <BarChart3 className={iconClass} style={{ color }} />;
+    }
+    if (message.includes('menu') || message.includes('navigation')) {
+      return <Menu className={iconClass} style={{ color }} />;
+    }
+    if (message.includes('style') || message.includes('css')) {
+      return <Palette className={iconClass} style={{ color }} />;
+    }
+    if (message.includes('composant') || message.includes('component')) {
+      return <Component className={iconClass} style={{ color }} />;
+    }
+    if (message.includes('formulaire') || message.includes('form') || message.includes('contact')) {
+      return <Mail className={iconClass} style={{ color }} />;
+    }
+    if (message.includes('html') || message.includes('structure')) {
+      return <Layout className={iconClass} style={{ color }} />;
+    }
+    if (message.includes('config') || message.includes('dépendances')) {
+      return <Settings className={iconClass} style={{ color }} />;
+    }
+    if (message.includes('code') || message.includes('typescript') || message.includes('javascript')) {
+      return <Code className={iconClass} style={{ color }} />;
+    }
+
+    // Icônes par type d'événement
     switch (event.type) {
       case 'thought':
         return <Lightbulb className={iconClass} style={{ color }} />;
@@ -132,7 +186,7 @@ export function CollapsedAiTasks({
       case 'plan':
         return <ClipboardList className={iconClass} style={{ color }} />;
       case 'write':
-        return <FileEdit className={iconClass} style={{ color }} />;
+        return <FileCode className={iconClass} style={{ color }} />;
       case 'error':
         return <XCircle className={`${iconClass} text-red-500`} />;
       default:
