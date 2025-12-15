@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { HotReloadableIframe } from './HotReloadableIframe';
 import { SandpackHotReload } from './SandpackHotReload';
 import { FloatingEditBar } from './FloatingEditBar';
@@ -20,34 +20,37 @@ function isReactProject(files: Record<string, string>): boolean {
   
   // Vérifier si des fichiers React existent
   const hasReactFiles = fileKeys.some(f => 
-    f.endsWith('.tsx') || f.endsWith('.jsx')
+    f.endsWith('.tsx') || f.endsWith('.jsx') ||
+    f.includes('App.tsx') || f.includes('main.tsx')
   );
   
   // Vérifier package.json pour react
   const packageJson = files['package.json'] || files['/package.json'];
+  let hasReactDep = false;
   if (packageJson) {
     try {
       const pkg = JSON.parse(packageJson);
-      if (pkg.dependencies?.react || pkg.devDependencies?.react) {
-        return true;
-      }
+      hasReactDep = !!(pkg.dependencies?.react || pkg.devDependencies?.react);
     } catch {
       // Ignorer les erreurs de parsing
     }
   }
   
-  return hasReactFiles;
+  const result = hasReactFiles || hasReactDep;
+  console.log('🔍 isReactProject:', { result, hasReactFiles, hasReactDep, fileCount: fileKeys.length, files: fileKeys.slice(0, 5) });
+  return result;
 }
 
 // Détecter si c'est un projet HTML statique simple
 function isStaticHTMLProject(files: Record<string, string>): boolean {
   const fileKeys = Object.keys(files);
   const htmlFiles = fileKeys.filter(f => f.endsWith('.html'));
-  const cssFiles = fileKeys.filter(f => f.endsWith('.css'));
-  const jsFiles = fileKeys.filter(f => f.endsWith('.js'));
+  const hasNoReactFiles = !fileKeys.some(f => f.endsWith('.tsx') || f.endsWith('.jsx'));
   
-  // C'est un projet HTML statique si on a des fichiers HTML/CSS/JS sans React
-  return htmlFiles.length > 0 && !isReactProject(files);
+  // C'est un projet HTML statique si on a des fichiers HTML sans React
+  const result = htmlFiles.length > 0 && hasNoReactFiles;
+  console.log('🔍 isStaticHTMLProject:', { result, htmlFiles: htmlFiles.length, hasNoReactFiles });
+  return result;
 }
 
 export function InteractivePreview({ 

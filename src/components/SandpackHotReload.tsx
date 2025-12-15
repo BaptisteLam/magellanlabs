@@ -14,25 +14,60 @@ interface SandpackHotReloadProps {
 function convertToSandpackFiles(files: Record<string, string>): Record<string, string> {
   const sandpackFiles: Record<string, string> = {};
   
-  // Vérifier si c'est déjà un projet React (avec App.tsx, index.tsx)
-  const hasReactFiles = Object.keys(files).some(f => 
+  console.log('🔄 convertToSandpackFiles - Input files:', Object.keys(files));
+  
+  // Vérifier si c'est déjà un projet React/TypeScript généré par Claude
+  const hasReactProject = Object.keys(files).some(f => 
     f.includes('App.tsx') || f.includes('App.jsx') || 
-    f.includes('index.tsx') || f.includes('main.tsx')
+    f.includes('main.tsx') || f.includes('src/main.tsx') ||
+    f.includes('package.json')
   );
   
-  if (hasReactFiles) {
-    // Projet React existant - normaliser les chemins
+  if (hasReactProject) {
+    console.log('✅ Projet React détecté - utilisation directe des fichiers');
+    
+    // Projet React existant - normaliser les chemins pour Sandpack
     Object.entries(files).forEach(([path, content]) => {
-      // Normaliser le chemin pour Sandpack (doit commencer par /)
-      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      // Ignorer certains fichiers de config non nécessaires pour Sandpack
+      if (path.includes('vite.config') || path.includes('tsconfig')) {
+        return;
+      }
+      
+      // Normaliser le chemin: /src/App.tsx -> /App.tsx pour Sandpack
+      let normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      
+      // Sandpack préfère les fichiers à la racine, pas dans /src
+      if (normalizedPath.startsWith('/src/')) {
+        normalizedPath = normalizedPath.replace('/src/', '/');
+      }
+      
       sandpackFiles[normalizedPath] = content;
     });
+    
+    // S'assurer qu'on a un index.tsx valide
+    if (!sandpackFiles['/index.tsx'] && sandpackFiles['/main.tsx']) {
+      sandpackFiles['/index.tsx'] = sandpackFiles['/main.tsx'];
+      delete sandpackFiles['/main.tsx'];
+    }
+    
+    // S'assurer qu'on a les styles
+    if (!sandpackFiles['/styles.css'] && sandpackFiles['/index.css']) {
+      sandpackFiles['/styles.css'] = sandpackFiles['/index.css'];
+      // Mettre à jour l'import dans App.tsx si nécessaire
+      if (sandpackFiles['/App.tsx']?.includes('./index.css')) {
+        sandpackFiles['/App.tsx'] = sandpackFiles['/App.tsx'].replace('./index.css', './styles.css');
+      }
+    }
+    
+    console.log('📦 Sandpack files (React):', Object.keys(sandpackFiles));
     return sandpackFiles;
   }
   
-  // Projet HTML/CSS/JS - le convertir en React
+  // Fallback: Projet HTML/CSS/JS vanilla - le convertir en React
+  console.log('⚠️ Projet HTML/CSS/JS détecté - conversion en React');
+  
   const htmlContent = files['index.html'] || files['/index.html'] || '';
-  const cssContent = files['styles.css'] || files['/styles.css'] || files['style.css'] || files['/style.css'] || '';
+  const cssContent = files['styles.css'] || files['/styles.css'] || files['style.css'] || files['/style.css'] || files['index.css'] || '';
   const jsContent = files['script.js'] || files['/script.js'] || '';
   
   // Extraire le body du HTML
@@ -47,7 +82,7 @@ function convertToSandpackFiles(files: Record<string, string>): Record<string, s
     .replace(/<!--[\s\S]*?-->/g, '')
     .trim();
 
-  // Créer App.tsx
+  // Créer App.tsx avec le HTML converti
   sandpackFiles['/App.tsx'] = `import './styles.css';
 
 export default function App() {
@@ -90,6 +125,7 @@ body {
 }
 `;
 
+  console.log('📦 Sandpack files (converted HTML):', Object.keys(sandpackFiles));
   return sandpackFiles;
 }
 

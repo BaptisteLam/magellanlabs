@@ -679,12 +679,19 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
                   }
                 })}\n\n`));
 
-                // Sauvegarder dans Supabase
+                // ✅ Convertir les fichiers en format Record<string, string> pour le frontend
+                const filesRecord: Record<string, string> = {};
+                for (const file of finalFiles) {
+                  filesRecord[file.path] = file.content;
+                }
+                console.log(`[generate-site] 📤 Sending ${Object.keys(filesRecord).length} files to frontend`);
+
+                // Sauvegarder dans Supabase (format objet pour compatibilité)
                 if (sessionId) {
                   await supabaseClient
                     .from('build_sessions')
                     .update({
-                      project_files: finalFiles,
+                      project_files: filesRecord,
                       project_type: projectType,
                       updated_at: new Date().toISOString()
                     })
@@ -702,10 +709,19 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
                   }
                 })}\n\n`));
 
+                // ✅ Event: files - Envoyer les fichiers AVANT complete
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'files',
+                  data: {
+                    files: filesRecord
+                  }
+                })}\n\n`));
+
                 // Event: complete avec tokens réels
                 safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'complete',
                   data: {
+                    files: filesRecord,
                     totalFiles: finalFiles.length,
                     projectType,
                     tokens: {
