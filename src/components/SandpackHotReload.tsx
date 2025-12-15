@@ -87,12 +87,21 @@ export function SandpackHotReload({ files, isDark }: SandpackHotReloadProps) {
         autoReload: false,
         recompileMode: 'delayed',
         recompileDelay: 300,
+        externalResources: [
+          'https://cdn.tailwindcss.com' // Support Tailwind CSS
+        ]
+      }}
+      customSetup={{
+        dependencies: {
+          'react': '^18.3.1',
+          'react-dom': '^18.3.1'
+        }
       }}
     >
       <div className="h-full w-full relative">
         <SandpackController files={files} />
         <SandpackLayout>
-          <SandpackPreview 
+          <SandpackPreview
             showNavigator={false}
             showOpenInCodeSandbox={false}
             showRefreshButton={false}

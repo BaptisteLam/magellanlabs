@@ -29,7 +29,7 @@ import AiGenerationMessage from '@/components/chat/AiGenerationMessage';
 import ChatOnlyMessage from '@/components/chat/ChatOnlyMessage';
 import { useGenerateSite } from '@/hooks/useGenerateSite';
 import html2canvas from 'html2canvas';
-import { TokenCounter } from '@/components/TokenCounter';
+import { MessageCounter } from '@/components/MessageCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
 import { analyzeIntent, identifyRelevantFiles, estimateGenerationTime } from '@/utils/intentAnalyzer';
 import { ASTModification } from '@/types/ast';
@@ -821,6 +821,17 @@ export default function BuilderSession() {
     isInitialGenerationRef.current = true;
     setIsQuickModLoading(true);
 
+    // Ajouter un message contextuel avant la génération
+    const contextMessage: Message = {
+      role: 'assistant',
+      content: "D'accord, je vais créer votre site. Laissez-moi analyser votre demande et planifier l'architecture du projet.",
+      created_at: new Date().toISOString(),
+      metadata: {
+        type: 'message'
+      }
+    };
+    setMessages(prev => [...prev, contextMessage]);
+
     // Créer le message de génération
     const generationStartTime = Date.now();
     generationStartTimeRef.current = generationStartTime;
@@ -992,6 +1003,23 @@ export default function BuilderSession() {
             }
             return prev;
           });
+
+          // Ajouter un message de résumé après la génération
+          const filesList = Object.keys(result.files)
+            .filter(f => !f.includes('config') && !f.includes('package.json'))
+            .slice(0, 5)
+            .map(f => `• ${f}`)
+            .join('\n');
+
+          const summaryMessage: Message = {
+            role: 'assistant',
+            content: `Parfait ! J'ai créé votre site avec ${fileCount} fichiers en ${thoughtSeconds} secondes. Voici ce que j'ai généré :\n\n${filesList}${fileCount > 5 ? `\n... et ${fileCount - 5} autres fichiers` : ''}\n\nVous pouvez maintenant visualiser votre site dans la preview à droite et me demander des modifications si besoin !`,
+            created_at: new Date().toISOString(),
+            metadata: {
+              type: 'message'
+            }
+          };
+          setMessages(prev => [...prev, summaryMessage]);
 
           sonnerToast.success(`Site créé avec succès ! (${fileCount} fichiers)`);
 
@@ -1790,7 +1818,7 @@ export default function BuilderSession() {
           }} onMouseEnter={e => e.currentTarget.style.color = '#03A5C0'} onMouseLeave={e => e.currentTarget.style.color = isDark ? '#fff' : '#9CA3AF'} />
           </button>
 
-          <TokenCounter isDark={isDark} userId={user?.id} />
+          <MessageCounter isDark={isDark} userId={user?.id} />
         </div>
 
         {/* Input caché pour le favicon */}

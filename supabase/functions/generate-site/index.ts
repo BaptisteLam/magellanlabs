@@ -477,10 +477,21 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
           }
         };
 
-        // Event: start
+        // Event: start avec phase d'analyse
         safeEnqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'start',
-          data: { sessionId }
+          data: { sessionId, phase: 'analyzing' }
+        })}\n\n`));
+
+        // Event: Analyse du prompt
+        safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+          type: 'generation_event',
+          data: {
+            type: 'analyze',
+            message: 'Analyse de votre demande',
+            status: 'in-progress',
+            phase: 'analyzing'
+          }
         })}\n\n`));
 
         const decoder = new TextDecoder();
@@ -531,6 +542,27 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
                 if (parsed.type === 'message_start' && parsed.message?.usage) {
                   inputTokens = parsed.message.usage.input_tokens || 0;
                   console.log(`[generate-site] 📊 Input tokens: ${inputTokens}`);
+
+                  // Event: Analyse terminée, début de génération
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'generation_event',
+                    data: {
+                      type: 'complete',
+                      message: 'Analyse terminée',
+                      status: 'completed',
+                      phase: 'analyzing'
+                    }
+                  })}\n\n`));
+
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'generation_event',
+                    data: {
+                      type: 'plan',
+                      message: 'Planification de l\'architecture',
+                      status: 'in-progress',
+                      phase: 'planning'
+                    }
+                  })}\n\n`));
                 }
                 
                 // Capturer les tokens d'output depuis message_delta
@@ -624,7 +656,29 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
                 
                 const totalTokens = inputTokens + outputTokens;
                 console.log(`[generate-site] 📊 FINAL TOKEN COUNT: Input=${inputTokens}, Output=${outputTokens}, Total=${totalTokens}`);
-                
+
+                // Event: Planification terminée
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'generation_event',
+                  data: {
+                    type: 'complete',
+                    message: 'Planification terminée',
+                    status: 'completed',
+                    phase: 'planning'
+                  }
+                })}\n\n`));
+
+                // Event: Validation en cours
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'generation_event',
+                  data: {
+                    type: 'analyze',
+                    message: 'Vérification et optimisation',
+                    status: 'in-progress',
+                    phase: 'validation'
+                  }
+                })}\n\n`));
+
                 // Sauvegarder dans Supabase
                 if (sessionId) {
                   await supabaseClient
@@ -637,11 +691,22 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
                     .eq('id', sessionId);
                 }
 
+                // Event: Validation terminée
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'generation_event',
+                  data: {
+                    type: 'complete',
+                    message: 'Validation terminée',
+                    status: 'completed',
+                    phase: 'validation'
+                  }
+                })}\n\n`));
+
                 // Event: complete avec tokens réels
                 safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'complete',
-                  data: { 
-                    totalFiles: finalFiles.length, 
+                  data: {
+                    totalFiles: finalFiles.length,
                     projectType,
                     tokens: {
                       input: inputTokens,
@@ -674,16 +739,72 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
                 // Parser optimisé: seulement tous les 500 caractères
                 if (accumulated.length % 500 < delta.length) {
                   const currentFiles = parseGeneratedCode(accumulated);
-                  
+
                   // Détecte les nouveaux fichiers
                   if (currentFiles.length > lastParsedFiles.length) {
                     const newFiles = currentFiles.slice(lastParsedFiles.length);
-                    
+
                     for (const file of newFiles) {
-                      // Event: file_detected
+                      // Générer un message contextuel basé sur le type de fichier
+                      let eventType = 'create';
+                      let message = '';
+
+                      if (file.path.includes('App.tsx') || file.path.includes('main.tsx')) {
+                        eventType = 'write';
+                        message = 'Création du composant principal';
+                      } else if (file.path.includes('component') || file.path.includes('Component')) {
+                        eventType = 'write';
+                        const componentName = file.path.split('/').pop()?.replace('.tsx', '').replace('.jsx', '');
+                        message = `Création du composant ${componentName}`;
+                      } else if (file.path.includes('.css') || file.path.includes('style')) {
+                        eventType = 'write';
+                        message = 'Mise en place des styles';
+                      } else if (file.path === 'package.json') {
+                        eventType = 'create';
+                        message = 'Configuration des dépendances';
+                      } else if (file.path === 'index.html') {
+                        eventType = 'create';
+                        message = 'Création de la structure HTML';
+                      } else if (file.path.includes('vite.config') || file.path.includes('tsconfig')) {
+                        eventType = 'create';
+                        message = 'Configuration du projet';
+                      } else if (file.path.includes('Chart') || file.path.includes('Graph')) {
+                        eventType = 'write';
+                        message = 'Création des graphiques';
+                      } else if (file.path.includes('Menu') || file.path.includes('Nav')) {
+                        eventType = 'write';
+                        message = 'Mise en place du menu de navigation';
+                      } else if (file.path.includes('Form') || file.path.includes('Contact')) {
+                        eventType = 'write';
+                        message = 'Création du formulaire';
+                      } else if (file.path.includes('Hero') || file.path.includes('Header')) {
+                        eventType = 'write';
+                        message = 'Création de la section hero';
+                      } else if (file.path.includes('Footer')) {
+                        eventType = 'write';
+                        message = 'Création du footer';
+                      } else {
+                        eventType = 'create';
+                        const fileName = file.path.split('/').pop();
+                        message = `Création de ${fileName}`;
+                      }
+
+                      // Event: file_detected avec message contextuel
                       safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                         type: 'file_detected',
                         data: { path: file.path, content: file.content, type: file.type }
+                      })}\n\n`));
+
+                      // Event: generation_event pour l'affichage user-friendly
+                      safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                        type: 'generation_event',
+                        data: {
+                          type: eventType,
+                          message: message,
+                          status: 'completed',
+                          phase: 'generation',
+                          file: file.path
+                        }
                       })}\n\n`));
                     }
                     
