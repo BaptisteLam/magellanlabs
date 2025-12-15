@@ -522,7 +522,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       </div>
 
       {/* Templates Widget */}
-      <div className="relative z-10 w-full max-w-6xl px-4 mt-40 mb-16">
+      <div className="relative z-10 w-full max-w-7xl px-4 mt-56 mb-16">
         <div 
           className="w-full rounded-xl p-6 border"
           style={{
