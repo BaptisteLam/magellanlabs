@@ -337,6 +337,41 @@ function SandpackController({
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateType, setUpdateType] = useState<'css' | 'html' | 'full' | null>(null);
 
+  // Écouter le message de reload depuis FakeUrlBar
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'reload') {
+        console.log('🔄 SandpackController: Reloading sandbox...');
+        setIsUpdating(true);
+        setUpdateType('full');
+        
+        // Force refresh en réinitialisant tous les fichiers
+        try {
+          // Réinitialiser le sandbox en mettant à jour tous les fichiers
+          Object.entries(files).forEach(([path, content]) => {
+            sandpack.updateFile(path, content + ' '); // Petit trick pour forcer l'update
+            sandpack.updateFile(path, content); // Remettre le contenu original
+          });
+          
+          // Alternative: utiliser resetAllFiles si disponible
+          if (typeof sandpack.resetAllFiles === 'function') {
+            sandpack.resetAllFiles();
+          }
+        } catch (error) {
+          console.error('Erreur reload:', error);
+        }
+        
+        setTimeout(() => {
+          setIsUpdating(false);
+          setUpdateType(null);
+        }, 500);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [sandpack, files]);
+
   // Envoyer le mode inspection à l'iframe Sandpack
   useEffect(() => {
     const iframe = document.querySelector('iframe[title="Sandpack Preview"]') as HTMLIFrameElement;
