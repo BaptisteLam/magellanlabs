@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { SandpackProvider, SandpackLayout, SandpackPreview, useSandpack } from '@codesandbox/sandpack-react';
+import { SandpackProvider, SandpackPreview, useSandpack } from '@codesandbox/sandpack-react';
 import { generate404Page } from '@/lib/generate404Page';
 import { type ElementInfo } from './InspectOverlay';
 import { usePreviewNavigation } from '@/hooks/usePreviewNavigation';
@@ -121,7 +121,7 @@ export default function App() {
         recompileMode: 'delayed',
         recompileDelay: 300,
         externalResources: [
-          'https://cdn.tailwindcss.com' // Support Tailwind CSS
+          'https://cdn.tailwindcss.com'
         ]
       }}
       customSetup={{
@@ -131,15 +131,13 @@ export default function App() {
         }
       }}
     >
-      <div className="h-full w-full relative">
-        <SandpackLayout>
-          <SandpackPreview
-            showNavigator={false}
-            showOpenInCodeSandbox={false}
-            showRefreshButton={false}
-            style={{ height: '100%' }}
-          />
-        </SandpackLayout>
+      <div className="h-full w-full relative flex flex-col">
+        <SandpackPreview
+          showNavigator={false}
+          showOpenInCodeSandbox={false}
+          showRefreshButton={false}
+          style={{ height: '100%', flex: 1 }}
+        />
         <SandpackController
           inspectMode={inspectMode}
           onElementSelect={onElementSelect}

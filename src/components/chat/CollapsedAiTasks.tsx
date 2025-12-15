@@ -97,9 +97,9 @@ export function CollapsedAiTasks({
 
     // Estimation du nombre total d'étapes en fonction de la phase
     let estimatedTotal = 10; // Par défaut
-    if (currentPhase === 'analyzing') {
+    if (currentPhase === 'analyze') {
       estimatedTotal = 2;
-    } else if (currentPhase === 'planning') {
+    } else if (currentPhase === 'context') {
       estimatedTotal = 4;
     } else if (currentPhase === 'generation') {
       // Pendant la génération, estimer selon le nombre de fichiers déjà créés

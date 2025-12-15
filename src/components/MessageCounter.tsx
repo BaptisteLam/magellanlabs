@@ -20,19 +20,21 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('messages_used')
+        .select('tokens_used')
         .eq('id', userId)
         .maybeSingle();
 
       if (error) {
         console.error('💬 MessageCounter: Erreur récupération messages:', error);
       } else if (data) {
-        console.log('💬 MessageCounter: Messages récupérés -', {
-          messages_used: data.messages_used || 0,
-          messages_quota: messagesQuota,
-          messages_remaining: messagesQuota - (data.messages_used || 0)
+        // Utiliser tokens_used comme proxy pour messages (1 message ≈ 1000 tokens)
+        const estimatedMessages = Math.floor((data.tokens_used || 0) / 1000);
+        console.log('💬 MessageCounter: Messages estimés -', {
+          tokens_used: data.tokens_used || 0,
+          messages_estimated: estimatedMessages,
+          messages_quota: messagesQuota
         });
-        setMessagesUsed(data.messages_used || 0);
+        setMessagesUsed(Math.min(estimatedMessages, messagesQuota));
       } else {
         console.warn('💬 MessageCounter: Aucune donnée de profil trouvée');
       }
@@ -55,13 +57,13 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
         (payload) => {
           console.log('💬 MessageCounter: Mise à jour en temps réel reçue:', payload.new);
           if (payload.new) {
-            const newMessagesUsed = payload.new.messages_used || 0;
-            console.log('💬 MessageCounter: Nouveaux messages -', {
-              messages_used: newMessagesUsed,
-              messages_quota: messagesQuota,
-              messages_remaining: messagesQuota - newMessagesUsed
+            const tokensUsed = (payload.new as { tokens_used?: number }).tokens_used || 0;
+            const estimatedMessages = Math.floor(tokensUsed / 1000);
+            console.log('💬 MessageCounter: Nouveaux messages estimés -', {
+              tokens_used: tokensUsed,
+              messages_estimated: estimatedMessages
             });
-            setMessagesUsed(newMessagesUsed);
+            setMessagesUsed(Math.min(estimatedMessages, messagesQuota));
           }
         }
       )
