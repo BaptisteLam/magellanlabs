@@ -171,14 +171,16 @@ const PromptBar = ({
           <div className="absolute top-3 left-3 right-3 pointer-events-none text-slate-400 whitespace-normal text-left" style={{ fontSize: '14px', textAlign: 'left' }}>
             <TextType
               text={[
-                "Développe mon site web pour mon cabinet d'avocat",
-                "Crée une landing page pour une application mobile de coaching sportif avec formulaire de contact.",
-                "Développe une marketplace pour louer des voiture entre particuliers avec système de comptes et avis utilisateurs.",
-                "Génère un site pour l'association de mon école.",
-                "Génère un site e-commerce minimaliste pour vendre des t-shirts pour marque.",
-                "Conçois mon site web de prise de rendez-vous pour coiffeurs avec calendrier.",
-                "Crée une app mobile iOS/Android de suivi nutritionnel, suivi des calories et notifications ect.",
-                "Crée moi un site pour mon cabinet de consultant."
+                "Je veux un site pour présenter mon activité d'artisan et faciliter la prise de contact.",
+                "Je souhaite un site professionnel pour valoriser mon cabinet de conseil et mes offres.",
+                "Je veux un site attractif pour présenter mon restaurant, le menu et les réservations.",
+                "Je souhaite une plateforme claire pour expliquer mon activité de coach ou formateur.",
+                "Je veux une présence en ligne moderne pour mettre en avant mon agence digitale.",
+                "Je souhaite un site pour présenter mes prestations dans le bâtiment.",
+                "Je veux un site visuel pour exposer mon travail de photographe ou vidéaste.",
+                "Je souhaite un site institutionnel pour présenter mon cabinet juridique ou comptable.",
+                "Je veux un site pour valoriser mon commerce local et mes produits.",
+                "Je souhaite un site informatif pour présenter mon association et ses actions."
               ]}
               typingSpeed={30}
               deletingSpeed={20}
