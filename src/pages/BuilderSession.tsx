@@ -2077,7 +2077,7 @@ export default function BuilderSession() {
                     sonnerToast.error('Impossible de restaurer cette version');
                   }
                 }} onGoToPrevious={async () => {
-                  // Utiliser le système de versioning R2
+                  // Utiliser le système de versioning Cloudflare
                   if (versions.length < 2) {
                     sonnerToast.error('Aucune version précédente disponible');
                     return;
@@ -2087,22 +2087,12 @@ export default function BuilderSession() {
                   const previousVersion = versions[1];
                   console.log('🔄 Rollback vers version précédente:', previousVersion.id);
                   
-                  const restoredFiles = await rollbackToVersion(previousVersion.id);
+                  const success = await rollbackToVersion(previousVersion.id);
                   
-                  if (restoredFiles) {
-                    updateFiles(restoredFiles, false);
-                    setGeneratedHtml(restoredFiles['index.html'] || '');
-                    if (selectedFile && restoredFiles[selectedFile]) {
-                      setSelectedFileContent(restoredFiles[selectedFile]);
-                    } else {
-                      const firstFile = Object.keys(restoredFiles)[0];
-                      if (firstFile) {
-                        setSelectedFile(firstFile);
-                        setSelectedFileContent(restoredFiles[firstFile]);
-                      }
-                    }
+                  if (success) {
                     // Recharger les versions après rollback
                     await fetchVersions();
+                    // Notifier l'utilisateur
                     sonnerToast.success('Version précédente restaurée');
                   }
                 }} /> : msg.metadata?.type === 'message' ?
@@ -2336,14 +2326,10 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
         sessionId={sessionId}
         open={showVersionHistory}
         onOpenChange={setShowVersionHistory}
-        onRollback={(files) => {
-          updateFiles(files, false);
-          setGeneratedHtml(files['index.html'] || '');
-          const firstFile = Object.keys(files)[0];
-          if (firstFile) {
-            setSelectedFile(firstFile);
-            setSelectedFileContent(files[firstFile]);
-          }
+        onRollback={() => {
+          // Recharger la preview pour afficher la version restaurée
+          forceSync();
+          sonnerToast.success('Version restaurée - la preview va se recharger');
         }}
       />
     </div>;
