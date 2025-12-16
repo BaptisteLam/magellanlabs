@@ -219,9 +219,9 @@ serve(async (req) => {
       });
       metadata.lastUpdated = Date.now();
 
-      // Limit versions
-      if (metadata.versions.length > 50) {
-        metadata.versions = metadata.versions.slice(0, 50);
+      // Limit versions to 10
+      if (metadata.versions.length > 10) {
+        metadata.versions = metadata.versions.slice(0, 10);
       }
 
       await fetch(

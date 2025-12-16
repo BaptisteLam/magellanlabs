@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const R2_BUCKET_URL = 'https://e9302a89deb439b6ea6652a9b0ccd8d1.r2.cloudflarestorage.com/magellan-versions';
-const MAX_VERSIONS = 50;
+const MAX_VERSIONS = 10;
 
 interface VersionMetadata {
   id: string;

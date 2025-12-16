@@ -68,7 +68,7 @@ export function VersionHistory({ sessionId, open, onOpenChange, onRollback }: Ve
               Historique des versions
             </DialogTitle>
             <DialogDescription>
-              Restaurez une version précédente ou créez un point de sauvegarde.
+              Restaurez une version précédente ou créez un point de sauvegarde. (10 versions max.)
             </DialogDescription>
           </DialogHeader>
 

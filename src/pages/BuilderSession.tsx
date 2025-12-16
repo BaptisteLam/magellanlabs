@@ -297,6 +297,14 @@ export default function BuilderSession() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [sessionId, projectFiles, messages, websiteTitle]);
 
+  // Charger les versions R2 au montage de la session
+  useEffect(() => {
+    if (sessionId && !sessionLoading) {
+      console.log('📋 Chargement des versions R2...');
+      fetchVersions();
+    }
+  }, [sessionId, sessionLoading]);
+
   // Traiter le prompt initial IMMÉDIATEMENT après chargement session
   useEffect(() => {
     const processInitialPrompt = async () => {
@@ -1101,6 +1109,9 @@ export default function BuilderSession() {
       }
 
       console.log('🎨 GENERATE SITE - Complete');
+      
+      // Recharger les versions R2 après génération
+      await fetchVersions();
     } catch (error) {
       console.error('❌ GENERATE SITE - Error:', error);
       sonnerToast.error('Échec de la génération du site');
@@ -1443,6 +1454,9 @@ export default function BuilderSession() {
         }
       }
       console.log('🔄 UNIFIED MODIFY - Complete');
+      
+      // Recharger les versions R2 après modification
+      await fetchVersions();
     } catch (error) {
       console.error('❌ UNIFIED MODIFY - Error:', error);
       sonnerToast.error('Échec du traitement de la demande');
@@ -1980,25 +1994,19 @@ export default function BuilderSession() {
                     sonnerToast.error('Impossible de restaurer cette version');
                   }
                 }} onGoToPrevious={async () => {
-                  const generationMessages = messages.map((m, i) => ({
-                    message: m,
-                    index: i
-                  })).filter(({
-                    message
-                  }) => message.role === 'assistant' && message.metadata?.type === 'generation').slice(-15);
-                  const currentGenIndex = currentVersionIndex !== null ? generationMessages.findIndex(r => r.index === currentVersionIndex) : generationMessages.length - 1;
-                  if (currentGenIndex <= 0) {
+                  // Utiliser le système de versioning R2
+                  if (versions.length < 2) {
                     sonnerToast.error('Aucune version précédente disponible');
                     return;
                   }
-                  const previousGen = generationMessages[currentGenIndex - 1];
-                  const targetMessage = previousGen.message;
-                  if (!targetMessage.id || !sessionId) return;
-                  const {
-                    data: chatMessage
-                  } = await supabase.from('chat_messages').select('metadata').eq('id', targetMessage.id).single();
-                  if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
-                    const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                  
+                  // La version actuelle est versions[0], la précédente est versions[1]
+                  const previousVersion = versions[1];
+                  console.log('🔄 Rollback vers version précédente:', previousVersion.id);
+                  
+                  const restoredFiles = await rollbackToVersion(previousVersion.id);
+                  
+                  if (restoredFiles) {
                     updateFiles(restoredFiles, false);
                     setGeneratedHtml(restoredFiles['index.html'] || '');
                     if (selectedFile && restoredFiles[selectedFile]) {
@@ -2010,14 +2018,9 @@ export default function BuilderSession() {
                         setSelectedFileContent(restoredFiles[firstFile]);
                       }
                     }
-                    setCurrentVersionIndex(previousGen.index);
-                    await supabase.from('build_sessions').update({
-                      project_files: convertFilesToArray(restoredFiles),
-                      updated_at: new Date().toISOString()
-                    }).eq('id', sessionId);
+                    // Recharger les versions après rollback
+                    await fetchVersions();
                     sonnerToast.success('Version précédente restaurée');
-                  } else {
-                    sonnerToast.error('Impossible de restaurer cette version');
                   }
                 }} /> : msg.metadata?.type === 'message' ?
                 // Message chat uniquement (plan d'action)
