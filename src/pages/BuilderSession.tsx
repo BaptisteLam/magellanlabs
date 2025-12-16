@@ -37,6 +37,7 @@ import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { PublishSuccessDialog } from '@/components/PublishSuccessDialog';
 import { useUnifiedModify } from '@/hooks/useUnifiedModify';
+import { useSyncPreview } from '@/hooks/useSyncPreview';
 interface Message {
   role: 'user' | 'assistant';
   content: string | Array<{
@@ -141,6 +142,14 @@ export default function BuilderSession() {
 
   // Hook pour génération de nouveaux sites complets
   const generateSiteHook = useGenerateSite();
+
+  // Hook pour sync automatique vers Cloudflare KV (preview temps réel)
+  const { previewUrl, isSyncing, forceSync } = useSyncPreview({
+    sessionId: sessionId!,
+    projectFiles,
+    debounceMs: 2000,
+    enabled: Object.keys(projectFiles).length > 0,
+  });
 
   // Événements IA pour la TaskList
   const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
@@ -2063,7 +2072,7 @@ export default function BuilderSession() {
           }}>
                   {isInitialGeneration && Object.keys(projectFiles).length === 0 ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
-                      <InteractivePreview projectFiles={projectFiles} isDark={isDark} inspectMode={inspectMode} onInspectModeChange={setInspectMode} onElementModify={async (prompt, elementInfo) => {
+                      <InteractivePreview projectFiles={projectFiles} isDark={isDark} inspectMode={inspectMode} onInspectModeChange={setInspectMode} previewUrl={previewUrl} isSyncing={isSyncing} onElementModify={async (prompt, elementInfo) => {
                 const contextualPrompt = `Modifier l'élément suivant dans le code :
 
 Type: <${elementInfo.tagName.toLowerCase()}>
@@ -2085,7 +2094,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                 </div> : <>
                   {isInitialGeneration ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} />
-                      <InteractivePreview projectFiles={projectFiles} isDark={isDark} inspectMode={inspectMode} onInspectModeChange={setInspectMode} onElementModify={async (prompt, elementInfo) => {
+                      <InteractivePreview projectFiles={projectFiles} isDark={isDark} inspectMode={inspectMode} onInspectModeChange={setInspectMode} previewUrl={previewUrl} isSyncing={isSyncing} onElementModify={async (prompt, elementInfo) => {
                 const contextualPrompt = `Modifier l'élément suivant dans le code :
 
 Type: <${elementInfo.tagName.toLowerCase()}>

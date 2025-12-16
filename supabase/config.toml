@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.publish-project]
 verify_jwt = true
+
+[functions.sync-preview]
+verify_jwt = true
