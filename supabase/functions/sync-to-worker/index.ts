@@ -356,10 +356,10 @@ serve(async (req) => {
 
     const formData = new FormData();
     formData.append('metadata', JSON.stringify({
-      main_module: 'worker.js',
+      body_part: 'worker.js',
       compatibility_date: '2024-01-01',
     }));
-    formData.append('worker.js', new Blob([workerScript], { type: 'application/javascript+module' }), 'worker.js');
+    formData.append('worker.js', new Blob([workerScript], { type: 'application/javascript' }), 'worker.js');
 
     const deployResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${workerName}`,
