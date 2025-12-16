@@ -6,15 +6,6 @@ verify_jwt = true
 [functions.send-contact-email]
 verify_jwt = false
 
-[functions.claude]
-verify_jwt = false
-
-[functions.html-to-react]
-verify_jwt = true
-
-[functions.ai-generate]
-verify_jwt = false
-
 [functions.generate-site]
 verify_jwt = true
 
@@ -22,12 +13,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.generate-screenshot]
-verify_jwt = true
-
-[functions.claude-stream]
-verify_jwt = false
-
-[functions.agent]
 verify_jwt = true
 
 [functions.generate-project-name]
@@ -43,9 +28,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.chat-only]
-verify_jwt = true
-
-[functions.agent-v2]
 verify_jwt = true
 
 [functions.memory]
