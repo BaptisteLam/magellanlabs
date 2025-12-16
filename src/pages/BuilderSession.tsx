@@ -994,7 +994,7 @@ export default function BuilderSession() {
           setIsInitialGeneration(false);
           isInitialGenerationRef.current = false;
         },
-        onComplete: (result) => {
+        onComplete: async (result) => {
           console.log('✅ Generation complete:', {
             filesCount: Object.keys(result.files).length,
             tokens: result.tokens,
@@ -1031,8 +1031,8 @@ export default function BuilderSession() {
           });
 
           // Message de résumé contextuel basé sur le prompt utilisateur
-          const lastUserMsg = messages.filter(m => m.role === 'user').pop();
-          const userPromptContext = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : '';
+          const lastUserMsgForContext = messages.filter(m => m.role === 'user').pop();
+          const userPromptContext = typeof lastUserMsgForContext?.content === 'string' ? lastUserMsgForContext.content : '';
           
           // Extraire le type de projet du prompt
           const projectKeywords = userPromptContext.toLowerCase();
@@ -1073,6 +1073,53 @@ export default function BuilderSession() {
           setMessages(prev => [...prev, summaryMessage]);
 
           sonnerToast.success(`Site créé avec succès ! (${fileCount} fichiers)`);
+
+          // ✅ SAUVEGARDER LES MESSAGES EN BASE DE DONNÉES
+          if (sessionId) {
+            try {
+              // 1. Sauvegarder le message utilisateur
+              if (lastUserMsgForContext) {
+                await supabase.from('chat_messages').insert([{
+                  session_id: sessionId,
+                  role: 'user',
+                  content: typeof lastUserMsgForContext.content === 'string' ? lastUserMsgForContext.content : JSON.stringify(lastUserMsgForContext.content),
+                  created_at: lastUserMsgForContext.created_at || new Date().toISOString()
+                }]);
+              }
+
+              // 2. Sauvegarder le message de génération avec toutes les métadonnées
+              await supabase.from('chat_messages').insert([{
+                session_id: sessionId,
+                role: 'assistant',
+                content: `Created ${fileCount} files in ${thoughtSeconds}s`,
+                token_count: result.tokens.total,
+                metadata: {
+                  type: 'generation',
+                  thought_duration: result.duration,
+                  intent_message: 'Creating your site...',
+                  generation_events: generationEventsRef.current,
+                  files_created: fileCount,
+                  new_files: Object.keys(result.files),
+                  total_tokens: result.tokens.total,
+                  input_tokens: result.tokens.input,
+                  output_tokens: result.tokens.output,
+                  project_files: result.files
+                }
+              }]);
+
+              // 3. Sauvegarder le message de résumé
+              await supabase.from('chat_messages').insert([{
+                session_id: sessionId,
+                role: 'assistant',
+                content: summaryMessage.content as string,
+                metadata: { type: 'message' }
+              }]);
+
+              console.log('✅ Messages sauvegardés en base de données');
+            } catch (saveError) {
+              console.error('❌ Erreur sauvegarde messages:', saveError);
+            }
+          }
 
           // ✅ Désactiver le mode génération initiale
           setIsInitialGeneration(false);
@@ -1392,7 +1439,7 @@ export default function BuilderSession() {
           setIsInitialGeneration(false);
           isInitialGenerationRef.current = false;
         },
-        onComplete: completeResult => {
+        onComplete: async (completeResult) => {
           console.log('✅ Complete:', completeResult);
           const duration = Date.now() - generationStartTime;
 
@@ -1423,6 +1470,42 @@ export default function BuilderSession() {
             }
             return prev;
           });
+
+          // ✅ SAUVEGARDER LES MESSAGES EN BASE DE DONNÉES
+          if (sessionId) {
+            try {
+              // 1. Sauvegarder le message utilisateur
+              await supabase.from('chat_messages').insert([{
+                session_id: sessionId,
+                role: 'user',
+                content: userPrompt,
+                created_at: new Date().toISOString()
+              }]);
+
+              // 2. Sauvegarder le message de génération avec toutes les métadonnées
+              await supabase.from('chat_messages').insert([{
+                session_id: sessionId,
+                role: 'assistant',
+                content: completeResult.message || 'Modifications applied',
+                token_count: completeResult.tokens?.total || 0,
+                metadata: {
+                  type: 'generation',
+                  thought_duration: duration,
+                  intent_message: 'Analyzing your request...',
+                  generation_events: generationEventsRef.current,
+                  files_modified: completeResult.modifications?.length || 0,
+                  modified_files: Object.keys(completeResult.updatedFiles || {}),
+                  total_tokens: completeResult.tokens?.total || 0,
+                  input_tokens: completeResult.tokens?.input || 0,
+                  output_tokens: completeResult.tokens?.output || 0,
+                  project_files: completeResult.updatedFiles
+                }
+              }]);
+              console.log('✅ Messages sauvegardés en base de données');
+            } catch (saveError) {
+              console.error('❌ Erreur sauvegarde messages:', saveError);
+            }
+          }
         }
       });
 
