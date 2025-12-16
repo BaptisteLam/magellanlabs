@@ -133,6 +133,7 @@ export type Database = {
           description: string | null
           email: string
           id: string
+          messages_used: number | null
           tokens_quota: number | null
           tokens_used: number | null
           updated_at: string | null
@@ -144,6 +145,7 @@ export type Database = {
           description?: string | null
           email: string
           id: string
+          messages_used?: number | null
           tokens_quota?: number | null
           tokens_used?: number | null
           updated_at?: string | null
@@ -155,6 +157,7 @@ export type Database = {
           description?: string | null
           email?: string
           id?: string
+          messages_used?: number | null
           tokens_quota?: number | null
           tokens_used?: number | null
           updated_at?: string | null

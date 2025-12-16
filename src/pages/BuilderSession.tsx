@@ -555,6 +555,9 @@ export default function BuilderSession() {
         ...projectFiles
       };
 
+      // Limiter aux 50 derniers messages pour optimiser l'espace
+      const limitedMessages = messages.slice(-50);
+
       // Récupérer le thumbnail existant
       const {
         data: existingSession
@@ -563,7 +566,7 @@ export default function BuilderSession() {
         error
       } = await supabase.from('build_sessions').update({
         project_files: filesObject,
-        messages: messages as any,
+        messages: limitedMessages as any,
         title: websiteTitle,
         project_type: projectType,
         thumbnail_url: existingSession?.thumbnail_url || null,
@@ -1397,51 +1400,32 @@ export default function BuilderSession() {
         }
       });
 
-      // Déduire les tokens du profil utilisateur
-      if (user?.id && receivedTokens.total > 0) {
-        console.log('💰 Deducting tokens from user profile:', {
-          userId: user.id,
-          tokensToDeduct: receivedTokens.total
-        });
+      // Incrémenter le compteur de messages utilisateur
+      if (user?.id) {
+        console.log('💬 Incrementing user message count (unified modify)');
         try {
-          const {
-            data: profile,
-            error: fetchError
-          } = await supabase.from('profiles').select('tokens_used').eq('id', user.id).single();
-          if (fetchError) {
-            console.error('❌ Error fetching profile:', fetchError);
-            return;
-          }
-          if (profile) {
-            const oldTokensUsed = profile.tokens_used || 0;
-            const newTokensUsed = oldTokensUsed + receivedTokens.total;
-            console.log('💰 Updating tokens:', {
-              old: oldTokensUsed,
-              new: newTokensUsed,
-              diff: receivedTokens.total
-            });
-            const {
-              error: updateError
-            } = await supabase.from('profiles').update({
-              tokens_used: newTokensUsed
-            }).eq('id', user.id);
+          const { data: profile, error: fetchError } = await supabase
+            .from('profiles')
+            .select('messages_used')
+            .eq('id', user.id)
+            .single();
+
+          if (!fetchError && profile) {
+            const currentMessages = (profile as any).messages_used || 0;
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({ messages_used: currentMessages + 1 } as any)
+              .eq('id', user.id);
+
             if (updateError) {
-              console.error('❌ Error updating tokens:', updateError);
+              console.error('❌ Error updating message count:', updateError);
             } else {
-              console.log('✅ Tokens successfully updated in database');
+              console.log('✅ Message count incremented:', currentMessages + 1);
             }
-          } else {
-            console.warn('⚠️ No profile found for user');
           }
         } catch (error) {
-          console.error('❌ Token deduction error:', error);
+          console.error('❌ Message count error:', error);
         }
-      } else {
-        console.log('⏭️ Skipping token deduction:', {
-          hasUser: !!user?.id,
-          hasTokens: receivedTokens.total > 0,
-          tokens: receivedTokens
-        });
       }
       console.log('🔄 UNIFIED MODIFY - Complete');
     } catch (error) {
