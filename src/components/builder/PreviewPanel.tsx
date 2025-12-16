@@ -10,6 +10,8 @@ interface PreviewPanelProps {
   previewMode?: 'desktop' | 'mobile';
   onInspectModeChange?: (mode: boolean) => void;
   onElementModify?: (prompt: string, elementInfo: ElementInfo) => void;
+  previewUrl: string;
+  isSyncing?: boolean;
 }
 
 export function PreviewPanel({
@@ -19,14 +21,16 @@ export function PreviewPanel({
   inspectMode = false,
   previewMode = 'desktop',
   onInspectModeChange = () => {},
-  onElementModify
+  onElementModify,
+  previewUrl,
+  isSyncing = false,
 }: PreviewPanelProps) {
   // Afficher GeneratingPreview pendant la génération
   if (isGenerating) {
     return <GeneratingPreview />;
   }
 
-  // Preview unifiée via Sandpack (plus de distinction website/webapp)
+  // Preview via iframe Cloudflare
   return (
     <InteractivePreview
       projectFiles={projectFiles}
@@ -34,6 +38,8 @@ export function PreviewPanel({
       onElementModify={onElementModify}
       inspectMode={inspectMode}
       onInspectModeChange={onInspectModeChange}
+      previewUrl={previewUrl}
+      isSyncing={isSyncing}
     />
   );
 }

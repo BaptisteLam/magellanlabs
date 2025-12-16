@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SandpackHotReload } from './SandpackHotReload';
+import { CloudflarePreview } from './CloudflarePreview';
 import { FloatingEditBar } from './FloatingEditBar';
 import { type ElementInfo } from './InspectOverlay';
 
@@ -9,6 +9,8 @@ interface InteractivePreviewProps {
   onElementModify?: (prompt: string, elementInfo: ElementInfo) => void;
   inspectMode: boolean;
   onInspectModeChange: (mode: boolean) => void;
+  previewUrl: string;
+  isSyncing?: boolean;
 }
 
 export type { ElementInfo };
@@ -18,7 +20,9 @@ export function InteractivePreview({
   isDark = false, 
   onElementModify, 
   inspectMode, 
-  onInspectModeChange 
+  onInspectModeChange,
+  previewUrl,
+  isSyncing = false,
 }: InteractivePreviewProps) {
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -49,12 +53,13 @@ export function InteractivePreview({
         </div>
       )}
 
-      {/* Preview unifiée via Sandpack */}
-      <SandpackHotReload 
-        files={projectFiles} 
+      {/* Preview via iframe Cloudflare */}
+      <CloudflarePreview 
+        previewUrl={previewUrl}
         isDark={isDark}
         inspectMode={inspectMode}
         onElementSelect={handleElementSelect}
+        isSyncing={isSyncing}
       />
 
       {/* Barre de prompt volante */}

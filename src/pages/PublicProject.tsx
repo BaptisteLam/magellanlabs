@@ -222,6 +222,7 @@ export default function PublicProject() {
             isDark={false}
             inspectMode={false}
             onInspectModeChange={() => {}}
+            previewUrl={`https://${subdomain}.builtbymagellan.com`}
           />
         )}
       </main>
