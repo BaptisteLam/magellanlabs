@@ -44,13 +44,30 @@ serve(async (req) => {
     const CLOUDFLARE_ACCOUNT_ID = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
     const CLOUDFLARE_KV_NAMESPACE_ID = Deno.env.get('CLOUDFLARE_KV_NAMESPACE_ID');
 
+    // Detailed logging for debugging
+    console.log('🔐 Checking Cloudflare credentials...');
+    console.log('  - CLOUDFLARE_API_TOKEN:', CLOUDFLARE_API_TOKEN ? `✅ Set (${CLOUDFLARE_API_TOKEN.substring(0, 8)}...)` : '❌ Missing');
+    console.log('  - CLOUDFLARE_ACCOUNT_ID:', CLOUDFLARE_ACCOUNT_ID ? `✅ Set (${CLOUDFLARE_ACCOUNT_ID})` : '❌ Missing');
+    console.log('  - CLOUDFLARE_KV_NAMESPACE_ID:', CLOUDFLARE_KV_NAMESPACE_ID ? `✅ Set (${CLOUDFLARE_KV_NAMESPACE_ID})` : '❌ Missing');
+
     if (!CLOUDFLARE_API_TOKEN || !CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_KV_NAMESPACE_ID) {
-      console.error('❌ Missing Cloudflare credentials');
-      return new Response(JSON.stringify({ error: 'Cloudflare credentials not configured' }), {
+      const missing = [];
+      if (!CLOUDFLARE_API_TOKEN) missing.push('CLOUDFLARE_API_TOKEN');
+      if (!CLOUDFLARE_ACCOUNT_ID) missing.push('CLOUDFLARE_ACCOUNT_ID');
+      if (!CLOUDFLARE_KV_NAMESPACE_ID) missing.push('CLOUDFLARE_KV_NAMESPACE_ID');
+      
+      console.error('❌ Missing Cloudflare credentials:', missing.join(', '));
+      return new Response(JSON.stringify({ 
+        error: 'Cloudflare credentials not configured',
+        missing 
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    console.log('✅ All Cloudflare credentials present, proceeding with KV upload...');
+    console.log(`📡 KV API URL: https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/...`);
 
     // ===== PHASE 1: Upload to KV (real-time preview) =====
     const uploadPromises = Object.entries(projectFiles).map(async ([path, content]) => {
@@ -59,24 +76,44 @@ serve(async (req) => {
       
       console.log(`  📤 Uploading to KV: ${kvKey}`);
 
-      const response = await fetch(
-        `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${encodeURIComponent(kvKey)}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
-            'Content-Type': 'text/plain',
-          },
-          body: content as string,
-        }
-      );
+      const kvUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${encodeURIComponent(kvKey)}`;
+      
+      const response = await fetch(kvUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+          'Content-Type': 'text/plain',
+        },
+        body: content as string,
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`❌ Failed to upload ${path}:`, errorText);
+        console.error(`❌ Failed to upload ${path}:`);
+        console.error(`   Status: ${response.status} ${response.statusText}`);
+        console.error(`   Response: ${errorText}`);
+        console.error(`   URL used: ${kvUrl}`);
+        
+        // Parse Cloudflare error for better debugging
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.errors && errorJson.errors[0]) {
+            const cfError = errorJson.errors[0];
+            console.error(`   CF Error Code: ${cfError.code}`);
+            console.error(`   CF Error Message: ${cfError.message}`);
+            
+            if (cfError.code === 10001) {
+              console.error('   💡 HINT: Token does not have KV write permissions. Verify token has "Workers KV Storage:Edit" permission.');
+            }
+          }
+        } catch (e) {
+          // Not JSON, already logged as text
+        }
+        
         throw new Error(`Failed to upload ${path}: ${errorText}`);
       }
 
+      console.log(`  ✅ Uploaded: ${path}`);
       return { path, success: true };
     });
 

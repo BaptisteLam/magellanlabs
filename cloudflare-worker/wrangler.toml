@@ -7,7 +7,7 @@ name = "magellan-sites-worker"
 
 [[kv_namespaces]]
 binding = "SITES_KV"
-id = "YOUR_KV_NAMESPACE_ID"  # À remplacer par l'ID du namespace KV créé dans Cloudflare
+id = "e6647451f41d4e0e8e1fc68ac7443b51"  # magellan-sites KV namespace
 
 # Routes pour gérer *.builtbymagellan.com
 # Alternative: configurer directement dans le dashboard Cloudflare
