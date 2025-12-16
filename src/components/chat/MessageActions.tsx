@@ -1,4 +1,4 @@
-import { Undo2, Copy, Coins } from 'lucide-react';
+import { Undo2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
@@ -7,7 +7,6 @@ interface MessageActionsProps {
   content: string;
   messageIndex: number;
   isLatestMessage: boolean;
-  tokenCount?: number;
   onRestore?: (messageIndex: number) => void;
   onGoToPrevious?: () => void;
   isDark?: boolean;
@@ -18,7 +17,6 @@ export function MessageActions({
   content, 
   messageIndex, 
   isLatestMessage, 
-  tokenCount,
   onRestore,
   onGoToPrevious,
   isDark,
@@ -86,25 +84,6 @@ export function MessageActions({
           </TooltipTrigger>
           <TooltipContent>
             <p className="text-xs">Copier le message</p>
-          </TooltipContent>
-        </Tooltip>
-
-        {/* Bouton Tokens */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-3 px-1 gap-0.5 hover:bg-[#03A5C0]/10 cursor-default"
-            >
-              <Coins className="h-2 w-2" style={{ color: '#03A5C0' }} />
-              <span className="text-xs" style={{ color: '#03A5C0', fontSize: '10px' }}>
-                {tokenCount ? tokenCount >= 1000 ? `${Math.round(tokenCount / 1000)}k` : tokenCount : '0'}
-              </span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="text-xs">Tokens utilisés</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

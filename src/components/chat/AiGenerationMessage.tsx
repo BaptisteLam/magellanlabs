@@ -50,7 +50,6 @@ export default function AiGenerationMessage({
     generation_events = [],
     files_created = 0,
     files_modified = 0,
-    total_tokens,
   } = message.metadata || {};
 
   const thoughtSeconds = Math.round(thought_duration / 1000);
@@ -79,18 +78,6 @@ export default function AiGenerationMessage({
     if (completedEvents === 0) return 5;
     return Math.min(5 + (completedEvents / totalEvents) * 90, 95);
   }, [generation_events, isLoading]);
-
-  // Générer un message de résumé court
-  const shortSummary = useMemo(() => {
-    if (files_created && files_modified) {
-      return `Created ${files_created} file${files_created > 1 ? 's' : ''} and modified ${files_modified} file${files_modified > 1 ? 's' : ''}.`;
-    } else if (files_created) {
-      return `Created ${files_created} new file${files_created > 1 ? 's' : ''}.`;
-    } else if (files_modified) {
-      return `Modified ${files_modified} file${files_modified > 1 ? 's' : ''}.`;
-    }
-    return 'Changes applied successfully.';
-  }, [files_created, files_modified]);
 
   return (
     <div className="space-y-3">
@@ -139,13 +126,12 @@ export default function AiGenerationMessage({
         </p>
       )}
 
-      {/* 5. Action buttons */}
-      {!isLoading && (
+      {/* 5. Action buttons - UNIQUEMENT sous le dernier message AI */}
+      {!isLoading && isLatestMessage && (
         <MessageActions
           content={contentString}
           messageIndex={messageIndex}
           isLatestMessage={isLatestMessage}
-          tokenCount={total_tokens || message.token_count}
           onRestore={onRestore}
           onGoToPrevious={onGoToPrevious}
         />

@@ -25,6 +25,7 @@ interface ChatOnlyMessageProps {
   onRestore: (messageIdx: number) => void;
   onGoToPrevious: () => void;
   onImplementPlan?: (plan: string) => void;
+  showImplementButton?: boolean;
 }
 
 export default function ChatOnlyMessage({
@@ -37,6 +38,7 @@ export default function ChatOnlyMessage({
   onRestore,
   onGoToPrevious,
   onImplementPlan,
+  showImplementButton = false,
 }: ChatOnlyMessageProps) {
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
@@ -149,11 +151,11 @@ export default function ChatOnlyMessage({
         {isTyping && <span className="inline-block w-1 h-4 bg-current animate-pulse ml-1" />}
       </div>
 
-      {/* Action buttons - seulement quand le typing est fini */}
-      {!isTyping && (
+      {/* Action buttons - seulement quand le typing est fini ET c'est le dernier message */}
+      {!isTyping && isLatestMessage && (
         <div className="space-y-3">
-          {/* Bouton "Implémenter le plan" */}
-          {onImplementPlan && (
+          {/* Bouton "Implémenter le plan" - UNIQUEMENT en mode chat */}
+          {showImplementButton && onImplementPlan && (
             <button
               onClick={() => onImplementPlan(contentString)}
               className="inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-sm gap-2 transition-all border rounded-full px-4 py-0"
@@ -171,7 +173,6 @@ export default function ChatOnlyMessage({
             content={contentString}
             messageIndex={messageIndex}
             isLatestMessage={isLatestMessage}
-            tokenCount={message.metadata?.total_tokens || message.token_count}
             onRestore={onRestore}
             onGoToPrevious={onGoToPrevious}
             hideUndoButton={true}
