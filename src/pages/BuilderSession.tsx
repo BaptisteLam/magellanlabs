@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, Home, X, Moon, Sun, Pencil, Download, Paperclip, Lightbulb, FileText, Edit, Loader, Smartphone, Monitor } from "lucide-react";
+import { Save, Eye, Home, X, Moon, Sun, Pencil, Download, Paperclip, Lightbulb, FileText, Edit, Loader, Smartphone, Monitor, History } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
 import JSZip from "jszip";
@@ -38,6 +38,8 @@ import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { PublishSuccessDialog } from '@/components/PublishSuccessDialog';
 import { useUnifiedModify } from '@/hooks/useUnifiedModify';
 import { useSyncPreview } from '@/hooks/useSyncPreview';
+import { useProjectVersions } from '@/hooks/useProjectVersions';
+import { VersionHistory } from '@/components/VersionHistory';
 interface Message {
   role: 'user' | 'assistant';
   content: string | Array<{
@@ -98,6 +100,7 @@ export default function BuilderSession() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [showPublishSuccess, setShowPublishSuccess] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
   // Hook optimisé pour la gestion des fichiers avec cache et sync
   const {
@@ -150,6 +153,9 @@ export default function BuilderSession() {
     debounceMs: 2000,
     enabled: Object.keys(projectFiles).length > 0,
   });
+
+  // Hook pour versioning R2
+  const { versions, isLoading: isVersionsLoading, isRollingBack, fetchVersions, rollbackToVersion } = useProjectVersions(sessionId);
 
   // Événements IA pour la TaskList
   const [aiEvents, setAiEvents] = useState<AIEvent[]>([]);
@@ -1878,6 +1884,23 @@ export default function BuilderSession() {
               </Tooltip>
             </TooltipProvider>
 
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={() => setShowVersionHistory(true)} variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
+                    borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
+                    backgroundColor: 'transparent',
+                    color: isDark ? 'hsl(var(--foreground))' : '#64748b'
+                  }}>
+                    <History className="w-3.5 h-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Historique des versions</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
             <Button onClick={handleSave} disabled={isSaving} variant="iconOnly" size="sm" className="h-8 text-xs">
               <Save className="w-3.5 h-3.5 mr-1.5" />
               Enregistrer
@@ -2221,5 +2244,21 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
 
       {/* Dialog de succès de publication */}
       <PublishSuccessDialog open={showPublishSuccess} onOpenChange={setShowPublishSuccess} publicUrl={deployedUrl || ''} projectName={cloudflareProjectName || websiteTitle} sessionId={sessionId} cloudflareProjectName={cloudflareProjectName || undefined} />
+
+      {/* Dialog historique des versions */}
+      <VersionHistory
+        sessionId={sessionId}
+        open={showVersionHistory}
+        onOpenChange={setShowVersionHistory}
+        onRollback={(files) => {
+          updateFiles(files, false);
+          setGeneratedHtml(files['index.html'] || '');
+          const firstFile = Object.keys(files)[0];
+          if (firstFile) {
+            setSelectedFile(firstFile);
+            setSelectedFileContent(files[firstFile]);
+          }
+        }}
+      />
     </div>;
 }
