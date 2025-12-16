@@ -1,11 +1,8 @@
 import { InteractivePreview } from '@/components/InteractivePreview';
 import { GeneratingPreview } from '@/components/GeneratingPreview';
-import { SandpackHotReload } from '@/components/SandpackHotReload';
-import { ExpoSnackPreview } from '@/components/ExpoSnackPreview';
 import type { ElementInfo } from '@/components/InteractivePreview';
 
 interface PreviewPanelProps {
-  projectType: 'website' | 'webapp' | 'mobile';
   projectFiles: Record<string, string>;
   isGenerating: boolean;
   isDark: boolean;
@@ -16,7 +13,6 @@ interface PreviewPanelProps {
 }
 
 export function PreviewPanel({
-  projectType,
   projectFiles,
   isGenerating,
   isDark,
@@ -25,39 +21,19 @@ export function PreviewPanel({
   onInspectModeChange = () => {},
   onElementModify
 }: PreviewPanelProps) {
-  // Afficher GeneratingPreview pendant toute la génération
-  const shouldShowLoading = isGenerating;
-  
-  if (shouldShowLoading) {
+  // Afficher GeneratingPreview pendant la génération
+  if (isGenerating) {
     return <GeneratingPreview />;
   }
 
-  // Site statique - utilise InteractivePreview avec HotReload
-  if (projectType === 'website') {
-    return (
-      <InteractivePreview
-        projectFiles={projectFiles}
-        isDark={isDark}
-        onElementModify={onElementModify}
-        inspectMode={inspectMode}
-        onInspectModeChange={onInspectModeChange}
-      />
-    );
-  }
-
-  // Application mobile - utilise ExpoSnackPreview
-  if (projectType === 'mobile') {
-    return (
-      <div className="h-full w-full flex items-center justify-center bg-background">
-        <ExpoSnackPreview files={projectFiles} isDark={isDark} />
-      </div>
-    );
-  }
-
-  // Application web - utilise Sandpack avec HMR
+  // Preview unifiée via Sandpack (plus de distinction website/webapp)
   return (
-    <div className="h-full w-full">
-      <SandpackHotReload files={projectFiles} isDark={isDark} />
-    </div>
+    <InteractivePreview
+      projectFiles={projectFiles}
+      isDark={isDark}
+      onElementModify={onElementModify}
+      inspectMode={inspectMode}
+      onInspectModeChange={onInspectModeChange}
+    />
   );
 }
