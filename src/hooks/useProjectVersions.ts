@@ -4,9 +4,10 @@ import { toast } from 'sonner';
 
 export interface Version {
   id: string;
+  number?: number;
   timestamp: number;
   message: string;
-  filesCount: number;
+  isCurrent?: boolean;
 }
 
 interface UseProjectVersionsReturn {
@@ -14,8 +15,7 @@ interface UseProjectVersionsReturn {
   isLoading: boolean;
   isRollingBack: boolean;
   fetchVersions: () => Promise<void>;
-  createVersion: (message: string) => Promise<boolean>;
-  rollbackToVersion: (versionId: string) => Promise<Record<string, string> | null>;
+  rollbackToVersion: (versionId: string) => Promise<boolean>;
 }
 
 export function useProjectVersions(sessionId: string | undefined): UseProjectVersionsReturn {
@@ -28,83 +28,61 @@ export function useProjectVersions(sessionId: string | undefined): UseProjectVer
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('project-versions', {
-        method: 'GET',
-        body: null,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      // Get session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Not authenticated');
+      }
 
-      // For GET requests, we need to use query params via the URL
-      // But supabase.functions.invoke doesn't support query params directly
-      // So we'll use a workaround with POST and action type
+      // Fetch Cloudflare Worker versions
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/project-versions?sessionId=${sessionId}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/worker-versions?sessionId=${sessionId}`,
         {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
         }
       );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch versions');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch versions');
       }
 
       const result = await response.json();
       setVersions(result.versions || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching versions:', error);
-      toast.error('Erreur lors du chargement des versions');
+      // Don't show toast for empty versions (Worker not deployed yet)
+      if (error.message !== 'Worker not found') {
+        toast.error('Erreur lors du chargement des versions');
+      }
+      setVersions([]);
     } finally {
       setIsLoading(false);
     }
   }, [sessionId]);
 
-  const createVersion = useCallback(async (message: string): Promise<boolean> => {
+  const rollbackToVersion = useCallback(async (versionId: string): Promise<boolean> => {
     if (!sessionId) return false;
-
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('project-versions', {
-        body: { sessionId, message },
-      });
-
-      if (error) throw error;
-
-      toast.success('Version créée');
-      await fetchVersions();
-      return true;
-    } catch (error) {
-      console.error('Error creating version:', error);
-      toast.error('Erreur lors de la création de la version');
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sessionId, fetchVersions]);
-
-  const rollbackToVersion = useCallback(async (versionId: string): Promise<Record<string, string> | null> => {
-    if (!sessionId) return null;
 
     setIsRollingBack(true);
     try {
-      const { data, error } = await supabase.functions.invoke('project-rollback', {
+      const { data, error } = await supabase.functions.invoke('worker-versions', {
         body: { sessionId, versionId },
       });
 
       if (error) throw error;
 
-      toast.success(`Restauré vers ${versionId}`);
+      toast.success(`Restauré vers la version`);
       await fetchVersions();
-      return data.files as Record<string, string>;
-    } catch (error) {
+      return true;
+    } catch (error: any) {
       console.error('Error rolling back:', error);
       toast.error('Erreur lors de la restauration');
-      return null;
+      return false;
     } finally {
       setIsRollingBack(false);
     }
@@ -115,7 +93,6 @@ export function useProjectVersions(sessionId: string | undefined): UseProjectVer
     isLoading,
     isRollingBack,
     fetchVersions,
-    createVersion,
     rollbackToVersion,
   };
 }

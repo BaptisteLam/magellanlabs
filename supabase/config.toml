@@ -51,11 +51,8 @@ verify_jwt = false
 [functions.publish-project]
 verify_jwt = true
 
-[functions.sync-preview]
+[functions.sync-to-worker]
 verify_jwt = true
 
-[functions.project-versions]
-verify_jwt = true
-
-[functions.project-rollback]
+[functions.worker-versions]
 verify_jwt = true

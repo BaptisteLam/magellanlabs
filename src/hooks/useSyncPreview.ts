@@ -12,6 +12,7 @@ interface SyncStatus {
   status: 'idle' | 'syncing' | 'synced' | 'error';
   lastSync: Date | null;
   previewUrl: string | null;
+  versionId: string | null;
   error: string | null;
 }
 
@@ -25,6 +26,7 @@ export function useSyncPreview({
     status: 'idle',
     lastSync: null,
     previewUrl: null,
+    versionId: null,
     error: null,
   });
 
@@ -32,22 +34,22 @@ export function useSyncPreview({
   const lastSyncedFilesRef = useRef<string>('');
   const isSyncingRef = useRef(false);
 
-  // Fonction pour synchroniser vers Cloudflare KV
-  const syncToCloudflare = useCallback(async () => {
+  // Sync to dedicated Worker via sync-to-worker
+  const syncToWorker = useCallback(async () => {
     if (!sessionId || !enabled || Object.keys(projectFiles).length === 0) {
       return;
     }
 
-    // Éviter les syncs multiples simultanés
+    // Avoid concurrent syncs
     if (isSyncingRef.current) {
-      console.log('⏸️ Sync déjà en cours, ignoré');
+      console.log('⏸️ Sync already in progress, skipped');
       return;
     }
 
-    // Vérifier si les fichiers ont changé
+    // Check if files changed
     const filesHash = JSON.stringify(projectFiles);
     if (filesHash === lastSyncedFilesRef.current) {
-      console.log('📦 Fichiers inchangés, sync ignoré');
+      console.log('📦 Files unchanged, sync skipped');
       return;
     }
 
@@ -55,40 +57,45 @@ export function useSyncPreview({
     setSyncStatus(prev => ({ ...prev, status: 'syncing', error: null }));
 
     try {
-      console.log('🔄 Synchronisation vers Cloudflare KV...');
-      console.log('📁 Fichiers:', Object.keys(projectFiles));
+      console.log('🚀 Deploying Worker for session:', sessionId);
+      console.log('📁 Files:', Object.keys(projectFiles));
 
-      const { data, error } = await supabase.functions.invoke('sync-preview', {
-        body: { sessionId, projectFiles },
+      const { data, error } = await supabase.functions.invoke('sync-to-worker', {
+        body: { 
+          sessionId, 
+          projectFiles,
+          message: `Auto-sync ${new Date().toLocaleTimeString('fr-FR')}`,
+        },
       });
 
       if (error) {
         throw new Error(error.message);
       }
 
-      console.log('✅ Sync réussi:', data);
+      console.log('✅ Worker deployed:', data);
       lastSyncedFilesRef.current = filesHash;
 
       setSyncStatus({
         status: 'synced',
         lastSync: new Date(),
         previewUrl: data.previewUrl || `https://${sessionId}.builtbymagellan.com`,
+        versionId: data.versionId || null,
         error: null,
       });
 
     } catch (err: any) {
-      console.error('❌ Erreur sync:', err);
+      console.error('❌ Sync error:', err);
       setSyncStatus(prev => ({
         ...prev,
         status: 'error',
-        error: err.message || 'Erreur de synchronisation',
+        error: err.message || 'Sync error',
       }));
     } finally {
       isSyncingRef.current = false;
     }
   }, [sessionId, projectFiles, enabled]);
 
-  // Déclencher le sync avec debounce quand les fichiers changent
+  // Debounced sync when files change
   useEffect(() => {
     if (!enabled || Object.keys(projectFiles).length === 0) {
       return;
@@ -101,7 +108,7 @@ export function useSyncPreview({
 
     // Set new timer
     debounceTimerRef.current = setTimeout(() => {
-      syncToCloudflare();
+      syncToWorker();
     }, debounceMs);
 
     return () => {
@@ -109,29 +116,29 @@ export function useSyncPreview({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [projectFiles, enabled, debounceMs, syncToCloudflare]);
+  }, [projectFiles, enabled, debounceMs, syncToWorker]);
 
-  // Sync initial au montage
+  // Initial sync on mount
   useEffect(() => {
     if (enabled && Object.keys(projectFiles).length > 0) {
-      // Sync immédiat au premier chargement
-      syncToCloudflare();
+      syncToWorker();
     }
-  }, [enabled]); // Seulement au changement de enabled, pas à chaque changement de projectFiles
+  }, [enabled]); // Only on enabled change, not every projectFiles change
 
-  // Forcer un sync immédiat
+  // Force immediate sync
   const forceSync = useCallback(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    lastSyncedFilesRef.current = ''; // Reset pour forcer la mise à jour
-    syncToCloudflare();
-  }, [syncToCloudflare]);
+    lastSyncedFilesRef.current = ''; // Reset to force update
+    syncToWorker();
+  }, [syncToWorker]);
 
   return {
     syncStatus,
     forceSync,
     previewUrl: syncStatus.previewUrl || `https://${sessionId}.builtbymagellan.com`,
+    versionId: syncStatus.versionId,
     isSyncing: syncStatus.status === 'syncing',
   };
 }
