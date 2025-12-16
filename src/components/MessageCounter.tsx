@@ -20,21 +20,19 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('tokens_used')
+        .select('messages_used')
         .eq('id', userId)
         .maybeSingle();
 
       if (error) {
         console.error('💬 MessageCounter: Erreur récupération messages:', error);
       } else if (data) {
-        // Utiliser tokens_used comme proxy pour messages (1 message ≈ 1000 tokens)
-        const estimatedMessages = Math.floor((data.tokens_used || 0) / 1000);
-        console.log('💬 MessageCounter: Messages estimés -', {
-          tokens_used: data.tokens_used || 0,
-          messages_estimated: estimatedMessages,
+        const used = (data as any).messages_used || 0;
+        console.log('💬 MessageCounter: Messages utilisés -', {
+          messages_used: used,
           messages_quota: messagesQuota
         });
-        setMessagesUsed(Math.min(estimatedMessages, messagesQuota));
+        setMessagesUsed(Math.min(used, messagesQuota));
       } else {
         console.warn('💬 MessageCounter: Aucune donnée de profil trouvée');
       }
@@ -57,13 +55,11 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
         (payload) => {
           console.log('💬 MessageCounter: Mise à jour en temps réel reçue:', payload.new);
           if (payload.new) {
-            const tokensUsed = (payload.new as { tokens_used?: number }).tokens_used || 0;
-            const estimatedMessages = Math.floor(tokensUsed / 1000);
-            console.log('💬 MessageCounter: Nouveaux messages estimés -', {
-              tokens_used: tokensUsed,
-              messages_estimated: estimatedMessages
+            const used = (payload.new as any).messages_used || 0;
+            console.log('💬 MessageCounter: Nouveaux messages utilisés -', {
+              messages_used: used
             });
-            setMessagesUsed(Math.min(estimatedMessages, messagesQuota));
+            setMessagesUsed(Math.min(used, messagesQuota));
           }
         }
       )

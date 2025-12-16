@@ -113,7 +113,6 @@ export function ChatPanel({
                         content={typeof msg.content === 'string' ? msg.content : ''}
                         messageIndex={index}
                         isLatestMessage={index === messages.length - 1}
-                        tokenCount={msg.metadata?.total_tokens || msg.token_count}
                         onRestore={onRevertToVersion}
                         isDark={isDark}
                       />

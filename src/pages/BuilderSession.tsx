@@ -1004,16 +1004,41 @@ export default function BuilderSession() {
             return prev;
           });
 
-          // Ajouter un message de résumé après la génération
-          const filesList = Object.keys(result.files)
-            .filter(f => !f.includes('config') && !f.includes('package.json'))
-            .slice(0, 5)
-            .map(f => `• ${f}`)
-            .join('\n');
+          // Message de résumé contextuel basé sur le prompt utilisateur
+          const lastUserMsg = messages.filter(m => m.role === 'user').pop();
+          const userPromptContext = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : '';
+          
+          // Extraire le type de projet du prompt
+          const projectKeywords = userPromptContext.toLowerCase();
+          let projectDescription = 'votre projet';
+          if (projectKeywords.includes('restaurant')) projectDescription = 'votre restaurant';
+          else if (projectKeywords.includes('agence')) projectDescription = 'votre agence';
+          else if (projectKeywords.includes('portfolio')) projectDescription = 'votre portfolio';
+          else if (projectKeywords.includes('boutique') || projectKeywords.includes('shop')) projectDescription = 'votre boutique';
+          else if (projectKeywords.includes('cabinet')) projectDescription = 'votre cabinet';
+          else if (projectKeywords.includes('blog')) projectDescription = 'votre blog';
+          else if (projectKeywords.includes('entreprise') || projectKeywords.includes('business')) projectDescription = 'votre entreprise';
+          else if (projectKeywords.includes('voyage')) projectDescription = 'votre agence de voyage';
+          
+          const hasContactForm = Object.values(result.files).some(content => 
+            content.includes('ContactForm') || content.includes('contact-form') || content.includes('formulaire')
+          );
+          const hasNavigation = Object.values(result.files).some(content => 
+            content.includes('Nav') || content.includes('navigation') || content.includes('menu')
+          );
+          
+          const features = [];
+          if (hasContactForm) features.push('un formulaire de contact fonctionnel');
+          if (hasNavigation) features.push('une navigation intuitive');
+          if (fileCount > 5) features.push('plusieurs sections bien structurées');
+          
+          const featuresText = features.length > 0 
+            ? `Le site inclut ${features.join(', ')}.` 
+            : '';
 
           const summaryMessage: Message = {
             role: 'assistant',
-            content: `Parfait ! J'ai créé votre site avec ${fileCount} fichiers en ${thoughtSeconds} secondes. Voici ce que j'ai généré :\n\n${filesList}${fileCount > 5 ? `\n... et ${fileCount - 5} autres fichiers` : ''}\n\nVous pouvez maintenant visualiser votre site dans la preview à droite et me demander des modifications si besoin !`,
+            content: `J'ai créé le site pour ${projectDescription} ! Le design est moderne et responsive. ${featuresText} Vous pouvez visualiser le résultat dans la preview et me demander des modifications si besoin.`,
             created_at: new Date().toISOString(),
             metadata: {
               type: 'message'
@@ -1029,43 +1054,31 @@ export default function BuilderSession() {
         }
       });
 
-      // Déduire les tokens
-      if (user?.id && receivedTokens.total > 0) {
-        console.log('💰 Deducting tokens from user profile:', receivedTokens);
+      // Incrémenter le compteur de messages utilisateur
+      if (user?.id) {
+        console.log('💬 Incrementing user message count');
         try {
           const { data: profile, error: fetchError } = await supabase
             .from('profiles')
-            .select('tokens_used')
+            .select('messages_used')
             .eq('id', user.id)
             .single();
 
-          if (fetchError) {
-            console.error('❌ Error fetching profile:', fetchError);
-            return;
-          }
-
-          if (profile) {
-            const oldTokensUsed = profile.tokens_used || 0;
-            const newTokensUsed = oldTokensUsed + receivedTokens.total;
-            console.log('💰 Updating tokens:', {
-              old: oldTokensUsed,
-              new: newTokensUsed,
-              diff: receivedTokens.total
-            });
-
+          if (!fetchError && profile) {
+            const currentMessages = (profile as any).messages_used || 0;
             const { error: updateError } = await supabase
               .from('profiles')
-              .update({ tokens_used: newTokensUsed })
+              .update({ messages_used: currentMessages + 1 } as any)
               .eq('id', user.id);
 
             if (updateError) {
-              console.error('❌ Error updating tokens:', updateError);
+              console.error('❌ Error updating message count:', updateError);
             } else {
-              console.log('✅ Tokens successfully updated in database');
+              console.log('✅ Message count incremented:', currentMessages + 1);
             }
           }
         } catch (error) {
-          console.error('❌ Token deduction error:', error);
+          console.error('❌ Message count error:', error);
         }
       }
 
@@ -1992,7 +2005,7 @@ export default function BuilderSession() {
                   }
                 }} /> : msg.metadata?.type === 'message' ?
                 // Message chat uniquement (plan d'action)
-                <ChatOnlyMessage message={msg} messageIndex={idx} isLatestMessage={idx === messages.length - 1} isDark={isDark} onRestore={async messageIdx => {
+                <ChatOnlyMessage message={msg} messageIndex={idx} isLatestMessage={idx === messages.length - 1} isDark={isDark} showImplementButton={chatMode} onRestore={async messageIdx => {
                   // Pas de restauration pour les messages chat
                   sonnerToast.info('Les messages de conversation ne modifient pas les fichiers');
                 }} onGoToPrevious={() => {
