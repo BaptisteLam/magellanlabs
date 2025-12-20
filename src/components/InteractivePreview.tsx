@@ -11,6 +11,8 @@ interface InteractivePreviewProps {
   onInspectModeChange: (mode: boolean) => void;
   previewUrl: string;
   isSyncing?: boolean;
+  syncError?: string | null;
+  onRetrySync?: () => void;
 }
 
 export type { ElementInfo };
@@ -23,6 +25,8 @@ export function InteractivePreview({
   onInspectModeChange,
   previewUrl,
   isSyncing = false,
+  syncError = null,
+  onRetrySync,
 }: InteractivePreviewProps) {
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -60,6 +64,8 @@ export function InteractivePreview({
         inspectMode={inspectMode}
         onElementSelect={handleElementSelect}
         isSyncing={isSyncing}
+        syncError={syncError}
+        onRetrySync={onRetrySync}
       />
 
       {/* Barre de prompt volante */}

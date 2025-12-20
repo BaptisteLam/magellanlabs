@@ -376,9 +376,23 @@ serve(async (req) => {
     if (!deployResponse.ok) {
       const errorData = await deployResponse.json();
       console.error('❌ Cloudflare deploy error:', errorData);
+      
+      // Extraire un message d'erreur lisible
+      const errorMessage = errorData.errors?.[0]?.message || 'Cloudflare deployment failed';
+      const errorCode = errorData.errors?.[0]?.code || 'UNKNOWN';
+      
+      // Messages d'erreur spécifiques selon le code
+      let userFriendlyMessage = 'Erreur de déploiement Cloudflare';
+      if (errorCode === 10000) {
+        userFriendlyMessage = 'Token Cloudflare invalide ou permissions insuffisantes. Vérifiez CLOUDFLARE_API_TOKEN.';
+      } else if (errorCode === 10007) {
+        userFriendlyMessage = 'Compte Cloudflare non trouvé. Vérifiez CLOUDFLARE_ACCOUNT_ID.';
+      }
+      
       return new Response(JSON.stringify({ 
-        error: 'Failed to deploy Worker',
-        details: errorData,
+        error: userFriendlyMessage,
+        code: errorCode,
+        details: errorMessage,
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

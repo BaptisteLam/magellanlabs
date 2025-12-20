@@ -72,13 +72,18 @@ export function useSyncPreview({
         throw new Error(error.message);
       }
 
+      // Vérifier si la réponse contient une erreur Cloudflare
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
       console.log('✅ Worker deployed:', data);
       lastSyncedFilesRef.current = filesHash;
 
       setSyncStatus({
         status: 'synced',
         lastSync: new Date(),
-        previewUrl: data.previewUrl || `https://${sessionId}.builtbymagellan.com`,
+        previewUrl: data.previewUrl || `https://magellan-${sessionId}.builtbymagellan.workers.dev`,
         versionId: data.versionId || null,
         error: null,
       });
@@ -88,7 +93,7 @@ export function useSyncPreview({
       setSyncStatus(prev => ({
         ...prev,
         status: 'error',
-        error: err.message || 'Sync error',
+        error: err.message || 'Erreur de synchronisation',
       }));
     } finally {
       isSyncingRef.current = false;
@@ -137,8 +142,9 @@ export function useSyncPreview({
   return {
     syncStatus,
     forceSync,
-    previewUrl: syncStatus.previewUrl || `https://${sessionId}.builtbymagellan.com`,
+    previewUrl: syncStatus.previewUrl || `https://magellan-${sessionId}.builtbymagellan.workers.dev`,
     versionId: syncStatus.versionId,
     isSyncing: syncStatus.status === 'syncing',
+    syncError: syncStatus.error,
   };
 }
