@@ -12,6 +12,8 @@ interface PreviewPanelProps {
   onElementModify?: (prompt: string, elementInfo: ElementInfo) => void;
   previewUrl: string;
   isSyncing?: boolean;
+  syncError?: string | null;
+  onRetrySync?: () => void;
 }
 
 export function PreviewPanel({
@@ -24,6 +26,8 @@ export function PreviewPanel({
   onElementModify,
   previewUrl,
   isSyncing = false,
+  syncError = null,
+  onRetrySync,
 }: PreviewPanelProps) {
   // Afficher GeneratingPreview pendant la génération
   if (isGenerating) {
@@ -40,6 +44,8 @@ export function PreviewPanel({
       onInspectModeChange={onInspectModeChange}
       previewUrl={previewUrl}
       isSyncing={isSyncing}
+      syncError={syncError}
+      onRetrySync={onRetrySync}
     />
   );
 }
