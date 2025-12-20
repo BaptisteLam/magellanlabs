@@ -12,6 +12,25 @@ interface ProjectFile {
   type: string;
 }
 
+// Nettoie le contenu d'un fichier des marqueurs markdown résiduels
+function cleanFileContent(content: string): string {
+  let cleaned = content.trim();
+  
+  // Supprimer les code blocks au début (```tsx, ```html, ```css, ```json, etc.)
+  cleaned = cleaned.replace(/^```[\w]*\s*\n?/gm, '');
+  
+  // Supprimer les code blocks à la fin (```)
+  cleaned = cleaned.replace(/\n?```\s*$/gm, '');
+  
+  // Supprimer les marqueurs résiduels au milieu du contenu
+  cleaned = cleaned.replace(/^```\s*$/gm, '');
+  
+  // Nettoyer les lignes vides multiples
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  
+  return cleaned.trim();
+}
+
 // Parser pour extraire les fichiers au format // FILE: path
 function parseGeneratedCode(code: string): ProjectFile[] {
   const files: ProjectFile[] = [];
@@ -30,11 +49,13 @@ function parseGeneratedCode(code: string): ProjectFile[] {
     const endIndex = nextMatch ? nextMatch.index! : code.length;
     let rawContent = code.slice(startIndex, endIndex).trim();
     
-    // Nettoyer les code blocks markdown si présents
-    // Exemples: ```json ... ```, ```typescript ... ```, etc.
+    // Nettoyer les code blocks markdown si présents (format ```xxx ... ```)
     const codeBlockMatch = rawContent.match(/^```[\w]*\n([\s\S]*?)```$/);
     if (codeBlockMatch) {
       rawContent = codeBlockMatch[1].trim();
+    } else {
+      // Appliquer le nettoyage général pour les marqueurs résiduels
+      rawContent = cleanFileContent(rawContent);
     }
     
     const extension = filePath.split('.').pop() || '';
@@ -57,7 +78,7 @@ function parseGeneratedCode(code: string): ProjectFile[] {
       
       files.push({
         path: path.trim(),
-        content: content.trim(),
+        content: cleanFileContent(content),
         type: getFileType(extension)
       });
     }
@@ -67,6 +88,12 @@ function parseGeneratedCode(code: string): ProjectFile[] {
   if (files.length === 0 && (code.includes('<!DOCTYPE html>') || code.includes('<html'))) {
     console.error('❌ ERREUR: Génération HTML uniquement détectée - CSS et JS requis!');
     throw new Error('La génération doit OBLIGATOIREMENT inclure HTML, CSS ET JavaScript. Impossible de créer uniquement du HTML.');
+  }
+  
+  // Log pour debug
+  console.log(`[parseGeneratedCode] Parsed ${files.length} files`);
+  for (const file of files) {
+    console.log(`  - ${file.path}: ${file.content.length} chars, starts with: "${file.content.substring(0, 50).replace(/\n/g, '\\n')}..."`);
   }
   
   return files;
