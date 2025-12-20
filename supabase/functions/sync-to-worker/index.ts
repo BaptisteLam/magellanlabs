@@ -6,11 +6,39 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Nettoie les fichiers des marqueurs markdown résiduels
+function sanitizeProjectFiles(files: Record<string, string>): Record<string, string> {
+  const cleaned: Record<string, string> = {};
+  
+  for (const [path, content] of Object.entries(files)) {
+    let cleanContent = content;
+    
+    // Supprimer les marqueurs markdown au début (```tsx, ```html, etc.)
+    cleanContent = cleanContent.replace(/^```[\w]*\s*\n?/gm, '');
+    
+    // Supprimer les marqueurs markdown à la fin (```)
+    cleanContent = cleanContent.replace(/\n?```\s*$/gm, '');
+    
+    // Supprimer les marqueurs isolés
+    cleanContent = cleanContent.replace(/^```\s*$/gm, '');
+    
+    // Nettoyer les lignes vides excessives
+    cleanContent = cleanContent.replace(/\n{3,}/g, '\n\n').trim();
+    
+    cleaned[path] = cleanContent;
+  }
+  
+  return cleaned;
+}
+
 // Generate the Worker script with embedded files
 function generateWorkerScript(sessionId: string, projectFiles: Record<string, string>): string {
+  // Sanitize files first to remove any markdown artifacts
+  const sanitizedFiles = sanitizeProjectFiles(projectFiles);
+  
   // Escape file contents for embedding in JS
   const escapedFiles: Record<string, string> = {};
-  for (const [path, content] of Object.entries(projectFiles)) {
+  for (const [path, content] of Object.entries(sanitizedFiles)) {
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     // Escape backticks and ${} for template literals
     escapedFiles[normalizedPath] = content
@@ -201,6 +229,10 @@ function getMimeType(path) {
     'html': 'text/html',
     'css': 'text/css',
     'js': 'application/javascript',
+    'jsx': 'application/javascript',
+    'ts': 'application/javascript',
+    'tsx': 'application/javascript',
+    'mjs': 'application/javascript',
     'json': 'application/json',
     'svg': 'image/svg+xml',
     'png': 'image/png',
