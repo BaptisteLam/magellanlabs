@@ -8,6 +8,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { CRMSidebar } from '@/components/crm/CRMSidebar';
 import { ModuleViewer } from '@/components/crm/ModuleViewer';
+import { CRMChatPanel } from '@/components/crm/CRMChatPanel';
 import { useThemeStore } from '@/stores/themeStore';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Sun, Moon } from 'lucide-react';
@@ -21,6 +22,7 @@ export default function ProjectCRM() {
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [projectTitle, setProjectTitle] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (projectId) {
@@ -154,7 +156,7 @@ export default function ProjectCRM() {
         {/* Module Content */}
         <main className="flex-1 overflow-auto">
           {selectedModuleId ? (
-            <ModuleViewer moduleId={selectedModuleId} />
+            <ModuleViewer key={refreshKey} moduleId={selectedModuleId} />
           ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center max-w-md">
@@ -174,6 +176,17 @@ export default function ProjectCRM() {
           )}
         </main>
       </div>
+
+      {/* Chat Panel pour créer des widgets dynamiquement */}
+      <CRMChatPanel
+        projectId={projectId}
+        currentModuleId={selectedModuleId}
+        onWidgetCreated={(widgetId) => {
+          console.log('Widget created:', widgetId);
+          // Rafraîchir la vue des widgets
+          setRefreshKey((prev) => prev + 1);
+        }}
+      />
     </div>
   );
 }
