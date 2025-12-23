@@ -17,6 +17,7 @@ import BuilderSession from "./pages/BuilderSession";
 import SessionPreview from "./pages/SessionPreview";
 import PublicProject from "./pages/PublicProject";
 import ProjectDashboard from "./pages/ProjectDashboard";
+import ProjectCRM from "./pages/ProjectCRM";
 import ScrollToTop from "./components/ScrollToTop";
 
 import { useThemeStore } from "./stores/themeStore";
@@ -46,6 +47,7 @@ function AppContent() {
         <Route path="/builder/:sessionId" element={<BuilderSession />} />
         <Route path="/preview/:sessionId" element={<SessionPreview />} />
         <Route path="/project/:projectId" element={<ProjectDashboard />} />
+        <Route path="/project/:projectId/crm" element={<ProjectCRM />} />
         <Route path="/p/:subdomain" element={<PublicProject />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
