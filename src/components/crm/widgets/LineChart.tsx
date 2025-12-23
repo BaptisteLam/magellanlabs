@@ -40,15 +40,16 @@ export default function LineChart({ widgetId, title, config }: WidgetProps) {
     setIsLoading(true);
     try {
       const { data: widgetData, error } = await supabase
-        .from('widget_data')
+        .from('widget_data' as any)
         .select('data')
         .eq('widget_id', widgetId)
         .maybeSingle();
 
       if (error) throw error;
 
-      if (widgetData?.data?.series) {
-        setData(widgetData.data.series);
+      const wd = widgetData as any;
+      if (wd?.data?.series) {
+        setData(wd.data.series);
       } else {
         // Données mockées
         setData(generateMockData());
@@ -132,7 +133,7 @@ export default function LineChart({ widgetId, title, config }: WidgetProps) {
   }
 
   const ChartComponent = chartType === 'area' ? AreaChart : RechartsLineChart;
-  const DataComponent = chartType === 'area' ? Area : Line;
+  const DataComponent: React.ComponentType<any> = chartType === 'area' ? Area : Line;
 
   return (
     <div className="space-y-4 h-full flex flex-col">

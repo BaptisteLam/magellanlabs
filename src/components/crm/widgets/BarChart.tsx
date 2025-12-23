@@ -34,15 +34,16 @@ export default function BarChart({ widgetId, title, config }: WidgetProps) {
     setIsLoading(true);
     try {
       const { data: widgetData, error } = await supabase
-        .from('widget_data')
+        .from('widget_data' as any)
         .select('data')
         .eq('widget_id', widgetId)
         .maybeSingle();
 
       if (error) throw error;
 
-      if (widgetData?.data?.series) {
-        setData(widgetData.data.series);
+      const wd = widgetData as any;
+      if (wd?.data?.series) {
+        setData(wd.data.series);
       } else {
         setData(generateMockData());
       }
