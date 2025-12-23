@@ -16,12 +16,14 @@ export type Database = {
     Tables: {
       build_sessions: {
         Row: {
+          business_sector: string | null
           cloudflare_deployment_url: string | null
           cloudflare_project_name: string | null
           created_at: string
           github_repo_name: string | null
           github_repo_url: string | null
           id: string
+          initial_modules_config: Json | null
           messages: Json | null
           netlify_deployment_url: string | null
           netlify_site_id: string | null
@@ -37,12 +39,14 @@ export type Database = {
           website_id: string | null
         }
         Insert: {
+          business_sector?: string | null
           cloudflare_deployment_url?: string | null
           cloudflare_project_name?: string | null
           created_at?: string
           github_repo_name?: string | null
           github_repo_url?: string | null
           id?: string
+          initial_modules_config?: Json | null
           messages?: Json | null
           netlify_deployment_url?: string | null
           netlify_site_id?: string | null
@@ -58,12 +62,14 @@ export type Database = {
           website_id?: string | null
         }
         Update: {
+          business_sector?: string | null
           cloudflare_deployment_url?: string | null
           cloudflare_project_name?: string | null
           created_at?: string
           github_repo_name?: string | null
           github_repo_url?: string | null
           id?: string
+          initial_modules_config?: Json | null
           messages?: Json | null
           netlify_deployment_url?: string | null
           netlify_site_id?: string | null
@@ -122,6 +128,100 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "build_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_modules: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          display_order: number | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          module_type: string
+          name: string
+          project_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          display_order?: number | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          module_type: string
+          name: string
+          project_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          display_order?: number | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          module_type?: string
+          name?: string
+          project_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_modules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "build_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_widgets: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          display_order: number | null
+          id: string
+          is_visible: boolean | null
+          layout: Json | null
+          module_id: string
+          title: string
+          updated_at: string | null
+          widget_type: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_visible?: boolean | null
+          layout?: Json | null
+          module_id: string
+          title: string
+          updated_at?: string | null
+          widget_type: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_visible?: boolean | null
+          layout?: Json | null
+          module_id?: string
+          title?: string
+          updated_at?: string | null
+          widget_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_widgets_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "crm_modules"
             referencedColumns: ["id"]
           },
         ]
@@ -632,6 +732,41 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      widget_data: {
+        Row: {
+          created_at: string | null
+          data: Json | null
+          id: string
+          metadata: Json | null
+          updated_at: string | null
+          widget_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          metadata?: Json | null
+          updated_at?: string | null
+          widget_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          metadata?: Json | null
+          updated_at?: string | null
+          widget_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "widget_data_widget_id_fkey"
+            columns: ["widget_id"]
+            isOneToOne: false
+            referencedRelation: "crm_widgets"
             referencedColumns: ["id"]
           },
         ]

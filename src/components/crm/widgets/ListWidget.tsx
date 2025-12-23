@@ -23,15 +23,16 @@ export default function ListWidget({ widgetId, title, config }: WidgetProps) {
     setIsLoading(true);
     try {
       const { data: widgetData, error } = await supabase
-        .from('widget_data')
+        .from('widget_data' as any)
         .select('data')
         .eq('widget_id', widgetId)
         .maybeSingle();
 
       if (error) throw error;
 
-      if (widgetData?.data?.items) {
-        setItems(widgetData.data.items);
+      const wd = widgetData as any;
+      if (wd?.data?.items) {
+        setItems(wd.data.items);
       } else {
         setItems(generateMockItems());
       }

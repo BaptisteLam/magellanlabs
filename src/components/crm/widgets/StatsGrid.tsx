@@ -28,15 +28,16 @@ export default function StatsGrid({ widgetId, title, config }: WidgetProps) {
     setIsLoading(true);
     try {
       const { data: widgetData, error } = await supabase
-        .from('widget_data')
+        .from('widget_data' as any)
         .select('data')
         .eq('widget_id', widgetId)
         .maybeSingle();
 
       if (error) throw error;
 
-      if (widgetData?.data?.stats) {
-        setStats(widgetData.data.stats);
+      const wd = widgetData as any;
+      if (wd?.data?.stats) {
+        setStats(wd.data.stats);
       } else {
         setStats(generateMockStats());
       }

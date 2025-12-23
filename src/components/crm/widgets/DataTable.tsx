@@ -55,15 +55,16 @@ export default function DataTable({ widgetId, title, config }: WidgetProps) {
     setIsLoading(true);
     try {
       const { data: widgetData, error } = await supabase
-        .from('widget_data')
+        .from('widget_data' as any)
         .select('data')
         .eq('widget_id', widgetId)
         .maybeSingle();
 
       if (error) throw error;
 
-      if (widgetData?.data?.rows) {
-        setData(widgetData.data.rows);
+      const wd = widgetData as any;
+      if (wd?.data?.rows) {
+        setData(wd.data.rows);
       } else {
         // Données mockées pour démonstration si vide
         setData(generateMockData(columns));

@@ -83,18 +83,18 @@ export class CRMGeneratorService {
    * @param projectId ID du projet
    * @returns Liste des modules avec leurs widgets
    */
-  async getProjectModules(projectId: string) {
+  async getProjectModules(projectId: string): Promise<any[]> {
     console.log('[CRMGenerator] Fetching modules for project:', projectId);
 
     const { data: modules, error } = await supabase
-      .from('crm_modules')
+      .from('crm_modules' as any)
       .select(`
         *,
         widgets:crm_widgets(*)
       `)
       .eq('project_id', projectId)
       .eq('is_active', true)
-      .order('display_order', { ascending: false }); // priority DESC
+      .order('display_order', { ascending: false });
 
     if (error) {
       console.error('[CRMGenerator] Error fetching modules:', error);
@@ -102,7 +102,7 @@ export class CRMGeneratorService {
     }
 
     console.log(`[CRMGenerator] Found ${modules?.length || 0} modules`);
-    return modules || [];
+    return (modules as any[]) || [];
   }
 
   /**
@@ -110,11 +110,11 @@ export class CRMGeneratorService {
    * @param moduleId ID du module
    * @returns Liste des widgets avec leurs données
    */
-  async getModuleWidgets(moduleId: string) {
+  async getModuleWidgets(moduleId: string): Promise<any[]> {
     console.log('[CRMGenerator] Fetching widgets for module:', moduleId);
 
     const { data: widgets, error } = await supabase
-      .from('crm_widgets')
+      .from('crm_widgets' as any)
       .select(`
         *,
         data:widget_data(*)
@@ -129,7 +129,7 @@ export class CRMGeneratorService {
     }
 
     console.log(`[CRMGenerator] Found ${widgets?.length || 0} widgets`);
-    return widgets || [];
+    return (widgets as any[]) || [];
   }
 
   /**
@@ -142,7 +142,7 @@ export class CRMGeneratorService {
 
     // Vérifier si des données existent déjà
     const { data: existing } = await supabase
-      .from('widget_data')
+      .from('widget_data' as any)
       .select('id')
       .eq('widget_id', widgetId)
       .maybeSingle();
@@ -150,7 +150,7 @@ export class CRMGeneratorService {
     if (existing) {
       // Update
       const { error } = await supabase
-        .from('widget_data')
+        .from('widget_data' as any)
         .update({ data, updated_at: new Date().toISOString() })
         .eq('widget_id', widgetId);
 
@@ -158,7 +158,7 @@ export class CRMGeneratorService {
     } else {
       // Insert
       const { error } = await supabase
-        .from('widget_data')
+        .from('widget_data' as any)
         .insert({ widget_id: widgetId, data });
 
       if (error) throw error;
@@ -176,7 +176,7 @@ export class CRMGeneratorService {
     console.log('[CRMGenerator] Creating widget:', widgetSpec.title);
 
     const { data, error } = await supabase
-      .from('crm_widgets')
+      .from('crm_widgets' as any)
       .insert({
         module_id: moduleId,
         widget_type: widgetSpec.widget_type,
@@ -193,7 +193,7 @@ export class CRMGeneratorService {
       throw error;
     }
 
-    console.log('[CRMGenerator] Widget created:', data.id);
+    console.log('[CRMGenerator] Widget created:', (data as any).id);
     return data;
   }
 
@@ -205,7 +205,7 @@ export class CRMGeneratorService {
     console.log('[CRMGenerator] Deleting widget:', widgetId);
 
     const { error } = await supabase
-      .from('crm_widgets')
+      .from('crm_widgets' as any)
       .delete()
       .eq('id', widgetId);
 
@@ -226,7 +226,7 @@ export class CRMGeneratorService {
     console.log('[CRMGenerator] Updating widget config:', widgetId);
 
     const { error } = await supabase
-      .from('crm_widgets')
+      .from('crm_widgets' as any)
       .update({ config, updated_at: new Date().toISOString() })
       .eq('id', widgetId);
 
