@@ -56,3 +56,15 @@ verify_jwt = true
 
 [functions.worker-versions]
 verify_jwt = true
+
+[functions.generate-crm]
+verify_jwt = true
+
+[functions.generate-widget]
+verify_jwt = true
+
+[functions.import-google-sheets]
+verify_jwt = true
+
+[functions.import-from-database]
+verify_jwt = true
