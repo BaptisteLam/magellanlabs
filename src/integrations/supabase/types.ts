@@ -181,10 +181,16 @@ export type Database = {
       }
       crm_widgets: {
         Row: {
+          code_version: number | null
           config: Json | null
           created_at: string | null
+          data_sources: Json | null
           display_order: number | null
+          generated_code: string | null
+          generation_prompt: string | null
+          generation_timestamp: string | null
           id: string
+          is_code_generated: boolean | null
           is_visible: boolean | null
           layout: Json | null
           module_id: string
@@ -193,10 +199,16 @@ export type Database = {
           widget_type: string
         }
         Insert: {
+          code_version?: number | null
           config?: Json | null
           created_at?: string | null
+          data_sources?: Json | null
           display_order?: number | null
+          generated_code?: string | null
+          generation_prompt?: string | null
+          generation_timestamp?: string | null
           id?: string
+          is_code_generated?: boolean | null
           is_visible?: boolean | null
           layout?: Json | null
           module_id: string
@@ -205,10 +217,16 @@ export type Database = {
           widget_type: string
         }
         Update: {
+          code_version?: number | null
           config?: Json | null
           created_at?: string | null
+          data_sources?: Json | null
           display_order?: number | null
+          generated_code?: string | null
+          generation_prompt?: string | null
+          generation_timestamp?: string | null
           id?: string
+          is_code_generated?: boolean | null
           is_visible?: boolean | null
           layout?: Json | null
           module_id?: string
@@ -776,6 +794,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      increment_code_version: { Args: { widget_uuid: string }; Returns: number }
       increment_view_count: {
         Args: { project_subdomain: string }
         Returns: undefined
