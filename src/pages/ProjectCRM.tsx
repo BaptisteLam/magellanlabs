@@ -9,9 +9,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { CRMSidebar } from '@/components/crm/CRMSidebar';
 import { ModuleViewer } from '@/components/crm/ModuleViewer';
 import { CRMChatPanel } from '@/components/crm/CRMChatPanel';
+import { TemplateGallery } from '@/components/crm/TemplateGallery';
 import { useThemeStore } from '@/stores/themeStore';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, Sun, Moon, Grid } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ProjectCRM() {
@@ -23,6 +24,7 @@ export default function ProjectCRM() {
   const [projectTitle, setProjectTitle] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isTemplateGalleryOpen, setIsTemplateGalleryOpen] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -130,6 +132,19 @@ export default function ProjectCRM() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Template Gallery Button */}
+          {selectedModuleId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTemplateGalleryOpen(true)}
+              className="border-[#03A5C0]/30 hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] hover:border-[#03A5C0]"
+            >
+              <Grid className="h-4 w-4 mr-2" />
+              Templates
+            </Button>
+          )}
+
           {/* Theme Toggle */}
           <Button
             variant="ghost"
@@ -187,6 +202,19 @@ export default function ProjectCRM() {
           setRefreshKey((prev) => prev + 1);
         }}
       />
+
+      {/* Template Gallery pour installer des widgets préconfigurés */}
+      {selectedModuleId && (
+        <TemplateGallery
+          open={isTemplateGalleryOpen}
+          onOpenChange={setIsTemplateGalleryOpen}
+          moduleId={selectedModuleId}
+          onTemplatesInstalled={() => {
+            // Rafraîchir la vue des widgets
+            setRefreshKey((prev) => prev + 1);
+          }}
+        />
+      )}
     </div>
   );
 }

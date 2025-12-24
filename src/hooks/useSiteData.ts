@@ -57,7 +57,7 @@ export function useSiteData(formNames?: string[]): UseSiteDataReturn {
     try {
       const { data: buildSession, error: fetchError } = await supabase
         .from('build_sessions')
-        .select('sections, forms, analytics, metadata')
+        .select('id, project_files, messages')
         .eq('id', projectId)
         .single();
 
@@ -69,23 +69,26 @@ export function useSiteData(formNames?: string[]): UseSiteDataReturn {
         throw new Error('Project not found');
       }
 
-      // Filtrer les formulaires si spécifié
+      // Les données du site sont stockées dans project_files (JSONB)
+      const projectFiles = buildSession.project_files as any;
+
+      // Extraire sections, forms, analytics, metadata depuis project_files
       let filteredData: SiteData = {
-        sections: buildSession.sections || [],
-        analytics: buildSession.analytics || {},
-        metadata: buildSession.metadata || {},
+        sections: projectFiles?.sections || [],
+        analytics: projectFiles?.analytics || {},
+        metadata: projectFiles?.metadata || {},
       };
 
-      if (formNames && buildSession.forms) {
+      if (formNames && projectFiles?.forms) {
         const filteredForms: Record<string, any> = {};
         formNames.forEach((name) => {
-          if (buildSession.forms[name]) {
-            filteredForms[name] = buildSession.forms[name];
+          if (projectFiles.forms[name]) {
+            filteredForms[name] = projectFiles.forms[name];
           }
         });
         filteredData.forms = filteredForms;
       } else {
-        filteredData.forms = buildSession.forms || {};
+        filteredData.forms = projectFiles?.forms || {};
       }
 
       setData(filteredData);
