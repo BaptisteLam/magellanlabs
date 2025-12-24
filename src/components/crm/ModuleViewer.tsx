@@ -1,11 +1,14 @@
 /**
  * ModuleViewer - Affiche les widgets d'un module CRM dans un grid layout
- * Grid système 12 colonnes avec react-grid-layout
+ * Supporte les widgets prédéfinis ET les widgets générés dynamiquement par code
  */
 
 import { useEffect, useState, Suspense } from 'react';
+import { motion } from 'framer-motion';
 import { crmGenerator } from '@/services/crmGenerator';
 import { WIDGET_REGISTRY, isValidWidgetType } from './widgets/WidgetRegistry';
+import { DynamicWidget } from './widgets/DynamicWidget';
+import { WidgetContextMenu } from './WidgetContextMenu';
 import { Loader2 } from 'lucide-react';
 
 interface ModuleViewerProps {
@@ -19,6 +22,10 @@ interface Widget {
   config: any;
   layout: { x: number; y: number; w: number; h: number };
   is_visible: boolean;
+  is_code_generated?: boolean;
+  generated_code?: string;
+  code_version?: number;
+  data_sources?: any;
   data?: any;
 }
 
@@ -92,14 +99,7 @@ export function ModuleViewer({ moduleId }: ModuleViewerProps) {
     <div className="p-6 space-y-6">
       {/* Grid CSS manuel (simplifié vs react-grid-layout pour Lovable-friendly) */}
       <div className="grid grid-cols-12 gap-4 auto-rows-[80px]">
-        {widgets.map((widget) => {
-          // Vérifier que le type de widget est valide
-          if (!isValidWidgetType(widget.widget_type)) {
-            console.warn(`[ModuleViewer] Unknown widget type: ${widget.widget_type}`);
-            return null;
-          }
-
-          const WidgetComponent = WIDGET_REGISTRY[widget.widget_type];
+        {widgets.map((widget, index) => {
           const layout = widget.layout || { x: 0, y: 0, w: 12, h: 4 };
 
           // Style CSS Grid
@@ -108,12 +108,68 @@ export function ModuleViewer({ moduleId }: ModuleViewerProps) {
             gridRow: `span ${layout.h}`,
           };
 
+          // Décider quel composant utiliser: DynamicWidget ou widget prédéfini
+          let widgetContent;
+
+          if (widget.is_code_generated && widget.generated_code) {
+            // Widget généré dynamiquement par Claude
+            widgetContent = (
+              <DynamicWidget
+                widgetId={widget.id}
+                generatedCode={widget.generated_code}
+                codeVersion={widget.code_version || 1}
+                title={widget.title}
+                config={widget.config}
+                dataSources={widget.data_sources}
+                onRegenerate={() => {
+                  // TODO: Implémenter la régénération via chat
+                  console.log('Regenerate widget:', widget.id);
+                }}
+              />
+            );
+          } else {
+            // Widget prédéfini du registry
+            if (!isValidWidgetType(widget.widget_type)) {
+              console.warn(`[ModuleViewer] Unknown widget type: ${widget.widget_type}`);
+              return null;
+            }
+
+            const WidgetComponent = WIDGET_REGISTRY[widget.widget_type];
+            widgetContent = (
+              <WidgetComponent
+                widgetId={widget.id}
+                title={widget.title}
+                config={widget.config}
+                data={widget.data}
+              />
+            );
+          }
+
           return (
-            <div
+            <motion.div
               key={widget.id}
               style={gridStyle}
-              className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+              className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow overflow-hidden relative group"
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{
+                duration: 0.4,
+                delay: index * 0.05,
+                ease: [0.23, 1, 0.32, 1],
+              }}
+              whileHover={{ scale: 1.02 }}
             >
+              {/* Menu contextuel */}
+              <WidgetContextMenu
+                widgetId={widget.id}
+                widgetTitle={widget.title}
+                isCodeGenerated={widget.is_code_generated}
+                onDuplicate={fetchWidgets}
+                onDelete={fetchWidgets}
+                onRegenerate={() => console.log('Regenerate', widget.id)}
+                onEdit={() => console.log('Edit', widget.id)}
+              />
+
               <Suspense
                 fallback={
                   <div className="flex items-center justify-center h-full">
@@ -121,14 +177,9 @@ export function ModuleViewer({ moduleId }: ModuleViewerProps) {
                   </div>
                 }
               >
-                <WidgetComponent
-                  widgetId={widget.id}
-                  title={widget.title}
-                  config={widget.config}
-                  data={widget.data}
-                />
+                {widgetContent}
               </Suspense>
-            </div>
+            </motion.div>
           );
         })}
       </div>
