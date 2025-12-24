@@ -209,14 +209,16 @@ Génère le code complet du widget modifié en JavaScript pur (React.createEleme
 
     // Créer ou mettre à jour le widget dans la DB
     if (existingWidgetId) {
-      // Mise à jour
+      // Incrémenter la version du code via RPC
+      const { data: newVersion } = await supabase.rpc('increment_code_version', { widget_uuid: existingWidgetId });
+      
+      // Mise à jour du widget
       const { data: updatedWidget, error: updateError } = await supabase
         .from('crm_widgets')
         .update({
           generated_code: generatedCode,
           generation_prompt: userPrompt,
           generation_timestamp: new Date().toISOString(),
-          code_version: supabase.rpc('increment_code_version', { widget_id: existingWidgetId }),
           updated_at: new Date().toISOString(),
         })
         .eq('id', existingWidgetId)
