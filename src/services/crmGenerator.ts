@@ -297,6 +297,31 @@ export class CRMGeneratorService {
     console.log('[CRMGenerator] Widget duplicated successfully:', newWidget.id);
     return newWidget;
   }
+
+  /**
+   * Met à jour l'ordre des widgets (pour drag & drop)
+   * @param widgetOrders Array d'objets {id, order} pour chaque widget
+   */
+  async updateWidgetOrder(widgetOrders: Array<{ id: string; order: number }>) {
+    console.log('[CRMGenerator] Updating widget order for', widgetOrders.length, 'widgets');
+
+    try {
+      // Mettre à jour chaque widget avec son nouveau display_order
+      const updates = widgetOrders.map(({ id, order }) =>
+        supabase
+          .from('crm_widgets')
+          .update({ display_order: order })
+          .eq('id', id)
+      );
+
+      await Promise.all(updates);
+
+      console.log('[CRMGenerator] Widget order updated successfully');
+    } catch (error) {
+      console.error('[CRMGenerator] Error updating widget order:', error);
+      throw error;
+    }
+  }
 }
 
 // Export d'une instance singleton
