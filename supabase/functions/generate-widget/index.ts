@@ -13,61 +13,66 @@ const SYSTEM_PROMPT = `Tu es un expert React/TypeScript spécialisé dans la gé
 CONTEXTE TECHNIQUE:
 - Stack: React 18, TypeScript, Tailwind CSS, shadcn/ui
 - Charts: Recharts (LineChart, BarChart, PieChart, AreaChart, etc.)
-- Icons: Lucide React (import * as Icons from 'lucide-react')
+- Icons: Lucide React (disponible via la variable "Icons")
 - Design System: Magellan cyan #03A5C0 comme couleur primaire
-- Composants disponibles: Card, Button, Table, Badge, Input, Select, Tabs, Dialog, etc.
 
-DONNÉES ACCESSIBLES:
-Via props.config, le widget peut accéder à:
-- config.siteData: données du site web (formulaires, analytics, sections)
-- config.crmData: données d'autres widgets CRM
-- config.externalData: données d'APIs externes
-
-HOOKS DISPONIBLES:
-- useState, useEffect, useMemo, useCallback, useRef
+VARIABLES DISPONIBLES DANS LE CONTEXTE:
+- React, useState, useEffect, useMemo, useCallback, useRef
+- Recharts: LineChart, BarChart, PieChart, AreaChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Line, Bar, Pie, Area, Cell, ResponsiveContainer
+- UI: Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter, Button, Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Input, Label, Tabs, TabsContent, TabsList, TabsTrigger, Progress, Skeleton
+- Icons: tous les icônes Lucide (Icons.Home, Icons.Users, Icons.DollarSign, etc.)
 - Utilitaires: formatCurrency(value, currency), formatDate(date), formatNumber(value), formatPercent(value)
 
+DONNÉES ACCESSIBLES VIA PROPS:
+- config: configuration du widget
+- widgetId: identifiant unique du widget
+- dataSources: sources de données externes
+
 RÈGLES STRICTES:
-1. Génère UNIQUEMENT du JavaScript pur (PAS de JSX, transformé en React.createElement)
+1. Génère UNIQUEMENT du JavaScript pur (PAS de JSX, utilise React.createElement)
 2. Le code doit définir une fonction "GeneratedWidget" qui prend {config, widgetId, dataSources}
-3. Utilise UNIQUEMENT les imports et utilitaires mentionnés (pas de fetch/axios/etc.)
+3. N'importe RIEN - toutes les dépendances sont déjà dans le contexte
 4. Gestion d'erreurs complète avec try/catch
-5. Loading states avec skeletons appropriés
-6. Responsive design (mobile-first)
-7. Accessibilité (ARIA labels, keyboard navigation)
-8. Respecter le design system Magellan (#03A5C0 comme accent)
+5. Loading states avec Skeleton
+6. Responsive design
+7. Couleur primaire: #03A5C0
 
 STRUCTURE ATTENDUE:
 function GeneratedWidget({ config, widgetId, dataSources }) {
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // Chargement des données
-  }, []);
+  // Données statiques pour la démo (remplacer par dataSources en prod)
+  const demoData = [
+    { name: 'Jan', value: 4000 },
+    { name: 'Fév', value: 3000 },
+    { name: 'Mar', value: 5000 },
+  ];
 
-  if (loading) {
-    return React.createElement('div', { className: 'animate-pulse h-64 bg-muted rounded' });
-  }
-
-  return React.createElement('div', { className: 'p-6' },
-    // Contenu du widget
+  return React.createElement(Card, { className: 'h-full' },
+    React.createElement(CardHeader, null,
+      React.createElement(CardTitle, null, 'Mon Widget')
+    ),
+    React.createElement(CardContent, null,
+      React.createElement(ResponsiveContainer, { width: '100%', height: 300 },
+        React.createElement(LineChart, { data: demoData },
+          React.createElement(XAxis, { dataKey: 'name' }),
+          React.createElement(YAxis, null),
+          React.createElement(Tooltip, null),
+          React.createElement(Line, { type: 'monotone', dataKey: 'value', stroke: '#03A5C0' })
+        )
+      )
+    )
   );
 }
 
-IMPORTANT:
-- Utilise React.createElement() au lieu de JSX
-- Exemple: React.createElement('div', {className: 'p-4'}, 'Hello')
-- Pour les composants: React.createElement(Card, {className: 'p-6'}, children)
-- N'utilise PAS de <div>, <Card>, etc. UNIQUEMENT React.createElement
+EXEMPLES React.createElement:
+- Div: React.createElement('div', { className: 'p-4' }, 'Hello')
+- Card: React.createElement(Card, { className: 'p-6' }, children)
+- Icon: React.createElement(Icons.Home, { className: 'w-6 h-6' })
+- Multiple children: React.createElement('div', null, child1, child2, child3)
 
-EXEMPLES DE PROMPTS:
-- "Créer un graphique des ventes par région"
-- "Tableau des 10 derniers clients avec filtres"
-- "KPI du CA mensuel vs objectif"
-- "Calendrier des rendez-vous clients"
-
-Génère du code JavaScript pur et autonome.`;
+Génère du code JavaScript pur et fonctionnel.`;
 
 interface GenerateWidgetRequest {
   projectId: string;
@@ -246,12 +251,12 @@ Génère le code complet du widget modifié en JavaScript pur (React.createEleme
         }
       );
     } else {
-      // Nouvelle création
+      // Nouvelle création - utiliser 'dynamic' pour les widgets générés par IA
       const { data: newWidget, error: insertError } = await supabase
         .from('crm_widgets')
         .insert({
           module_id: moduleId,
-          widget_type: 'custom',
+          widget_type: 'dynamic',
           title: defaultTitle,
           generated_code: generatedCode,
           is_code_generated: true,

@@ -6,6 +6,17 @@
  */
 
 import React from 'react';
+import * as Recharts from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import * as LucideIcons from 'lucide-react';
 
 // Cache des composants compilés pour éviter les recompilations
 const componentCache = new Map<string, React.ComponentType<any>>();
@@ -30,6 +41,68 @@ export interface WidgetContext {
   formatPercent: (value: number) => string;
 }
 
+// Contexte d'exécution complet pour les widgets générés
+const WIDGET_CONTEXT = {
+  // React
+  React,
+  useState: React.useState,
+  useEffect: React.useEffect,
+  useMemo: React.useMemo,
+  useCallback: React.useCallback,
+  useRef: React.useRef,
+  
+  // Recharts
+  Recharts,
+  LineChart: Recharts.LineChart,
+  BarChart: Recharts.BarChart,
+  PieChart: Recharts.PieChart,
+  AreaChart: Recharts.AreaChart,
+  XAxis: Recharts.XAxis,
+  YAxis: Recharts.YAxis,
+  CartesianGrid: Recharts.CartesianGrid,
+  Tooltip: Recharts.Tooltip,
+  Legend: Recharts.Legend,
+  Line: Recharts.Line,
+  Bar: Recharts.Bar,
+  Pie: Recharts.Pie,
+  Area: Recharts.Area,
+  Cell: Recharts.Cell,
+  ResponsiveContainer: Recharts.ResponsiveContainer,
+  
+  // shadcn/ui components
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+  Button,
+  Badge,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Input,
+  Label,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Progress,
+  Skeleton,
+  
+  // Icons
+  Icons: LucideIcons,
+  
+  // Utilitaires
+  formatCurrency,
+  formatDate,
+  formatNumber,
+  formatPercent,
+};
+
 /**
  * Compile du code React en composant exécutable
  *
@@ -47,21 +120,12 @@ export function compileReactCode(
   }
 
   try {
+    // Liste des noms de paramètres pour la fonction
+    const contextKeys = Object.keys(WIDGET_CONTEXT);
+    
     // Créer une fonction qui retourne le composant
-    // Le code doit retourner un composant React valide
     const componentFactory = new Function(
-      'React',
-      'useState',
-      'useEffect',
-      'useMemo',
-      'useCallback',
-      'useRef',
-      'config',
-      'widgetId',
-      'formatCurrency',
-      'formatDate',
-      'formatNumber',
-      'formatPercent',
+      ...contextKeys,
       `
       "use strict";
       ${code}
@@ -69,27 +133,25 @@ export function compileReactCode(
       `
     );
 
-    const Component = componentFactory(
-      React,
-      React.useState,
-      React.useEffect,
-      React.useMemo,
-      React.useCallback,
-      React.useRef,
-      // Ces paramètres seront fournis via props
-      undefined, // config
-      undefined, // widgetId
-      formatCurrency,
-      formatDate,
-      formatNumber,
-      formatPercent
+    // Créer le composant de base avec le contexte
+    const BaseComponent = componentFactory(
+      ...contextKeys.map(key => WIDGET_CONTEXT[key as keyof typeof WIDGET_CONTEXT])
     );
+    
+    // Wrapper qui passe config et widgetId comme props
+    const WrappedComponent: React.FC<{ config?: any; widgetId?: string; dataSources?: any }> = (props) => {
+      return React.createElement(BaseComponent, {
+        config: props.config || {},
+        widgetId: props.widgetId || '',
+        dataSources: props.dataSources || {},
+      });
+    };
 
     // Mettre en cache
-    componentCache.set(cacheKey, Component);
+    componentCache.set(cacheKey, WrappedComponent);
 
-    return Component;
-  } catch (error) {
+    return WrappedComponent;
+  } catch (error: any) {
     console.error('[WidgetCompiler] Compilation error:', error);
     throw new Error(`Failed to compile widget: ${error.message}`);
   }

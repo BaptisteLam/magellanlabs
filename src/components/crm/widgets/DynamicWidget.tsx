@@ -17,10 +17,11 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface DynamicWidgetProps {
   widgetId: string;
-  generatedCode: string;
-  codeVersion: number;
   title: string;
   config?: any;
+  data?: any;
+  generatedCode?: string;
+  codeVersion?: number;
   dataSources?: {
     site_forms?: string[];
     crm_widgets?: string[];
@@ -28,25 +29,28 @@ export interface DynamicWidgetProps {
   };
   onRegenerate?: () => void;
   onEdit?: () => void;
+  onUpdate?: (newData: any) => void;
+  onConfigUpdate?: (newConfig: any) => void;
 }
 
 export function DynamicWidget({
   widgetId,
-  generatedCode,
-  codeVersion,
+  generatedCode = '',
+  codeVersion = 1,
   title,
   config = {},
   dataSources,
   onRegenerate,
-  onEdit,
 }: DynamicWidgetProps) {
   const [Component, setComponent] = useState<React.ComponentType<any> | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isCompiling, setIsCompiling] = useState(true);
+  const [isCompiling, setIsCompiling] = useState(!!generatedCode);
   const { toast } = useToast();
 
   useEffect(() => {
-    compileWidget();
+    if (generatedCode) {
+      compileWidget();
+    }
   }, [generatedCode, codeVersion]);
 
   const compileWidget = async () => {
@@ -89,6 +93,23 @@ export function DynamicWidget({
       });
     }
   };
+
+  // Pas de code généré - afficher un placeholder
+  if (!generatedCode) {
+    return (
+      <Card className="p-6 border-dashed border-2">
+        <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+          <Code className="w-12 h-12 mb-4 opacity-30" />
+          <p className="text-sm text-center font-medium">{title}</p>
+          <p className="text-xs text-center mt-2">
+            Ce widget n'a pas encore de code généré.
+            <br />
+            Utilisez le chat pour le personnaliser.
+          </p>
+        </div>
+      </Card>
+    );
+  }
 
   // Affichage pendant la compilation
   if (isCompiling) {
@@ -251,3 +272,5 @@ export function DynamicWidgetSkeleton() {
     </Card>
   );
 }
+
+export default DynamicWidget;

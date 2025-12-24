@@ -21,7 +21,8 @@ export type WidgetType =
   | 'progress-bar'
   | 'list'
   | 'gallery'
-  | 'custom';
+  | 'custom'
+  | 'dynamic';
 
 export interface WidgetProps {
   widgetId: string;
@@ -42,6 +43,7 @@ const FormWidget = React.lazy(() => import('./FormWidget'));
 const CalendarWidget = React.lazy(() => import('./CalendarWidget'));
 const ListWidget = React.lazy(() => import('./ListWidget'));
 const StatsGrid = React.lazy(() => import('./StatsGrid'));
+const DynamicWidget = React.lazy(() => import('./DynamicWidget'));
 
 /**
  * Registry principal des widgets
@@ -65,7 +67,8 @@ export const WIDGET_REGISTRY: Record<WidgetType, React.LazyExoticComponent<React
   'timeline': ListWidget, // TODO: Implémenter TimelineWidget
   'progress-bar': KPICard, // Similaire à KPI
   'gallery': ListWidget, // TODO: Implémenter GalleryWidget
-  'custom': ListWidget, // Fallback
+  'custom': DynamicWidget, // Widget avec code généré
+  'dynamic': DynamicWidget, // Widget généré par IA
 };
 
 /**
@@ -171,6 +174,12 @@ export const WIDGET_METADATA: Record<WidgetType, {
     label: 'Widget Personnalisé',
     description: 'Widget généré par code',
     icon: 'Code',
+    category: 'display'
+  },
+  'dynamic': {
+    label: 'Widget IA',
+    description: 'Widget généré dynamiquement par IA',
+    icon: 'Sparkles',
     category: 'display'
   }
 };
