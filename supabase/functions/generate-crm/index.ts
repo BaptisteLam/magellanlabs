@@ -90,19 +90,24 @@ TYPES DE MODULES DISPONIBLES:
 - support: Support client, tickets, SAV
 - custom: Module personnalisé
 
-TYPES DE WIDGETS DISPONIBLES:
-- data-table: Tableau de données (avec colonnes configurables)
-- kpi-card: Carte KPI (métrique unique)
-- line-chart: Graphique en ligne
-- bar-chart: Graphique en barres
-- pie-chart: Graphique circulaire
+TYPES DE WIDGETS DISPONIBLES (utilise EXACTEMENT ces noms avec le tiret):
+- kpi-card: Carte KPI (métrique unique avec icône et couleur)
+- data-table: Tableau de données (avec colonnes configurables, filtres, pagination)
+- line-chart: Graphique en ligne (évolution temporelle)
+- bar-chart: Graphique en barres (comparaisons)
+- pie-chart: Graphique circulaire (répartition)
+- area-chart: Graphique en aires
 - form: Formulaire de saisie
-- calendar: Calendrier
+- calendar: Calendrier / planning
 - map: Carte géographique
-- kanban: Tableau Kanban
+- kanban: Tableau Kanban (drag & drop)
 - timeline: Timeline / Gantt
-- stats-grid: Grille de statistiques
+- stats-grid: Grille de statistiques (plusieurs KPIs)
 - list: Liste simple
+- progress-bar: Barre de progression
+- gallery: Galerie d'images
+- custom: Widget personnalisé
+- dynamic: Widget généré dynamiquement par IA
 
 CONFIGURATION DES WIDGETS:
 
