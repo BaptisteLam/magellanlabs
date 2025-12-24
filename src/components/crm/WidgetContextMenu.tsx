@@ -20,6 +20,7 @@ import {
   Download,
   Code,
   RefreshCw,
+  Upload,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { crmGenerator } from '@/services/crmGenerator';
@@ -32,6 +33,7 @@ export interface WidgetContextMenuProps {
   onEdit?: () => void;
   onDelete?: () => void;
   onRegenerate?: () => void;
+  onImportData?: () => void;
 }
 
 export function WidgetContextMenu({
@@ -42,6 +44,7 @@ export function WidgetContextMenu({
   onEdit,
   onDelete,
   onRegenerate,
+  onImportData,
 }: WidgetContextMenuProps) {
   const { toast } = useToast();
 
@@ -153,6 +156,15 @@ export function WidgetContextMenu({
           <DropdownMenuItem onClick={onRegenerate}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Régénérer
+          </DropdownMenuItem>
+        )}
+
+        <DropdownMenuSeparator />
+
+        {onImportData && (
+          <DropdownMenuItem onClick={onImportData}>
+            <Upload className="mr-2 h-4 w-4" />
+            Importer des données
           </DropdownMenuItem>
         )}
 
