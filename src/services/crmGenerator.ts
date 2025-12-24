@@ -237,6 +237,66 @@ export class CRMGeneratorService {
 
     console.log('[CRMGenerator] Widget config updated successfully');
   }
+
+  /**
+   * Duplique un widget existant
+   * @param widgetId ID du widget à dupliquer
+   * @returns Le nouveau widget créé
+   */
+  async duplicateWidget(widgetId: string) {
+    console.log('[CRMGenerator] Duplicating widget:', widgetId);
+
+    // Récupérer le widget original
+    const { data: originalWidget, error: fetchError } = await supabase
+      .from('crm_widgets')
+      .select('*')
+      .eq('id', widgetId)
+      .single();
+
+    if (fetchError || !originalWidget) {
+      console.error('[CRMGenerator] Error fetching widget to duplicate:', fetchError);
+      throw new Error('Widget not found');
+    }
+
+    // Créer une copie du widget
+    const { id, created_at, updated_at, ...widgetData } = originalWidget;
+
+    const { data: newWidget, error: insertError } = await supabase
+      .from('crm_widgets')
+      .insert({
+        ...widgetData,
+        title: `${widgetData.title} (copie)`,
+        display_order: (widgetData.display_order || 0) + 1,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('[CRMGenerator] Error duplicating widget:', insertError);
+      throw insertError;
+    }
+
+    // Dupliquer les données si elles existent
+    const { data: originalData } = await supabase
+      .from('widget_data')
+      .select('*')
+      .eq('widget_id', widgetId)
+      .maybeSingle();
+
+    if (originalData) {
+      const { id: dataId, widget_id, created_at: dataCreatedAt, updated_at: dataUpdatedAt, ...data } = originalData;
+
+      await supabase
+        .from('widget_data')
+        .insert({
+          widget_id: newWidget.id,
+          ...data,
+        });
+    }
+
+    console.log('[CRMGenerator] Widget duplicated successfully:', newWidget.id);
+    return newWidget;
+  }
 }
 
 // Export d'une instance singleton

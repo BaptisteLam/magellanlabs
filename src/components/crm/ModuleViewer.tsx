@@ -4,9 +4,11 @@
  */
 
 import { useEffect, useState, Suspense } from 'react';
+import { motion } from 'framer-motion';
 import { crmGenerator } from '@/services/crmGenerator';
 import { WIDGET_REGISTRY, isValidWidgetType } from './widgets/WidgetRegistry';
 import { DynamicWidget } from './widgets/DynamicWidget';
+import { WidgetContextMenu } from './WidgetContextMenu';
 import { Loader2 } from 'lucide-react';
 
 interface ModuleViewerProps {
@@ -97,7 +99,7 @@ export function ModuleViewer({ moduleId }: ModuleViewerProps) {
     <div className="p-6 space-y-6">
       {/* Grid CSS manuel (simplifié vs react-grid-layout pour Lovable-friendly) */}
       <div className="grid grid-cols-12 gap-4 auto-rows-[80px]">
-        {widgets.map((widget) => {
+        {widgets.map((widget, index) => {
           const layout = widget.layout || { x: 0, y: 0, w: 12, h: 4 };
 
           // Style CSS Grid
@@ -144,11 +146,30 @@ export function ModuleViewer({ moduleId }: ModuleViewerProps) {
           }
 
           return (
-            <div
+            <motion.div
               key={widget.id}
               style={gridStyle}
-              className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+              className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow overflow-hidden relative group"
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{
+                duration: 0.4,
+                delay: index * 0.05,
+                ease: [0.23, 1, 0.32, 1],
+              }}
+              whileHover={{ scale: 1.02 }}
             >
+              {/* Menu contextuel */}
+              <WidgetContextMenu
+                widgetId={widget.id}
+                widgetTitle={widget.title}
+                isCodeGenerated={widget.is_code_generated}
+                onDuplicate={fetchWidgets}
+                onDelete={fetchWidgets}
+                onRegenerate={() => console.log('Regenerate', widget.id)}
+                onEdit={() => console.log('Edit', widget.id)}
+              />
+
               <Suspense
                 fallback={
                   <div className="flex items-center justify-center h-full">
@@ -158,7 +179,7 @@ export function ModuleViewer({ moduleId }: ModuleViewerProps) {
               >
                 {widgetContent}
               </Suspense>
-            </div>
+            </motion.div>
           );
         })}
       </div>
