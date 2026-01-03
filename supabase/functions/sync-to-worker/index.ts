@@ -1,3 +1,13 @@
+/**
+ * ⚠️ DEPRECATED - This function is no longer used
+ *
+ * Please use sync-to-kv instead, which writes files to Cloudflare KV
+ * instead of deploying individual Workers per session.
+ *
+ * This function remains for backward compatibility with existing Workers
+ * but should not be called by new code.
+ */
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
