@@ -1,18 +1,19 @@
 /**
- * ProjectCRM - Page principale du CRM
- * Affiche la sidebar avec modules et le ModuleViewer
+ * ProjectCRM - Page principale du CRM (modèle flexible)
+ * Interface bac à sable avec Canvas, ObjectSidebar et ConversationalPrompt
  */
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { CRMSidebar } from '@/components/crm/CRMSidebar';
-import { ModuleViewer } from '@/components/crm/ModuleViewer';
-import { CRMChatPanel } from '@/components/crm/CRMChatPanel';
-import { TemplateGallery } from '@/components/crm/TemplateGallery';
-import { useThemeStore } from '@/stores/themeStore';
+import { GridBackground } from '@/components/crm/GridBackground';
+import { ObjectSidebar } from '@/components/crm/ObjectSidebar';
+import { Canvas } from '@/components/crm/Canvas';
+import { ConversationalPrompt } from '@/components/crm/ConversationalPrompt';
+import { useEditMode } from '@/hooks/useEditMode';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Sun, Moon, Grid } from 'lucide-react';
+import { ArrowLeft, Sun, Moon } from 'lucide-react';
+import { useThemeStore } from '@/stores/themeStore';
 import { toast } from 'sonner';
 
 export default function ProjectCRM() {
@@ -20,11 +21,12 @@ export default function ProjectCRM() {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useThemeStore();
 
-  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
+  const [selectedObjectType, setSelectedObjectType] = useState<string | null>(null);
   const [projectTitle, setProjectTitle] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [isTemplateGalleryOpen, setIsTemplateGalleryOpen] = useState(false);
+
+  // Edit mode state pour le mode édition
+  const editModeState = useEditMode();
 
   useEffect(() => {
     if (projectId) {
@@ -101,120 +103,104 @@ export default function ProjectCRM() {
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col">
-      {/* Background avec cadrillage */}
-      <div
-        className="fixed inset-0 -z-10"
-        style={{
-          backgroundImage: isDark
-            ? 'linear-gradient(rgba(3, 165, 192, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(3, 165, 192, 0.03) 1px, transparent 1px)'
-            : 'linear-gradient(rgba(3, 165, 192, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(3, 165, 192, 0.05) 1px, transparent 1px)',
-          backgroundSize: '50px 50px',
-        }}
-      />
-
-      {/* Header */}
-      <header className="flex-shrink-0 h-16 border-b border-border/50 bg-card/80 backdrop-blur-sm px-6 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(`/builder/${projectId}`)}
-            className="hover:text-[#03A5C0]"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">{projectTitle}</h1>
-            <p className="text-xs text-muted-foreground">CRM / ERP</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Template Gallery Button */}
-          {selectedModuleId && (
+    <GridBackground>
+      <div className="min-h-screen w-full flex flex-col">
+        {/* Header */}
+        <header className="flex-shrink-0 h-16 border-b border-white/10 bg-surface/80 backdrop-blur-sm px-6 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-4">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsTemplateGalleryOpen(true)}
-              className="border-[#03A5C0]/30 hover:bg-[#03A5C0]/10 hover:text-[#03A5C0] hover:border-[#03A5C0]"
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/builder/${projectId}`)}
+              className="hover:text-[#03A5C0]"
             >
-              <Grid className="h-4 w-4 mr-2" />
-              Templates
+              <ArrowLeft className="h-5 w-5" />
             </Button>
-          )}
 
-          {/* Theme Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="hover:text-[#03A5C0]"
-          >
-            {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
-
-          {/* TODO Phase 3: Bouton Chat Flottant */}
-        </div>
-      </header>
-
-      {/* Main Layout */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
-        <CRMSidebar
-          projectId={projectId}
-          currentModuleId={selectedModuleId}
-          onModuleSelect={setSelectedModuleId}
-        />
-
-        {/* Module Content */}
-        <main className="flex-1 overflow-auto">
-          {selectedModuleId ? (
-            <ModuleViewer key={refreshKey} moduleId={selectedModuleId} />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center max-w-md">
-                <div className="w-20 h-20 rounded-full bg-[#03A5C0]/10 flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-10 h-10 text-[#03A5C0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                </div>
-                <h2 className="text-xl font-semibold text-foreground mb-2">
-                  Bienvenue dans votre CRM
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Sélectionnez un module dans la sidebar pour commencer
-                </p>
-              </div>
+            <div>
+              <h1 className="text-lg font-semibold text-white">{projectTitle}</h1>
+              <p className="text-xs text-gray-400">CRM Bac à sable</p>
             </div>
-          )}
-        </main>
-      </div>
+          </div>
 
-      {/* Chat Panel pour créer des widgets dynamiquement */}
-      <CRMChatPanel
-        projectId={projectId}
-        currentModuleId={selectedModuleId}
-        onWidgetCreated={(widgetId) => {
-          console.log('Widget created:', widgetId);
-          // Rafraîchir la vue des widgets
-          setRefreshKey((prev) => prev + 1);
-        }}
-      />
+          <div className="flex items-center gap-2">
+            {/* Mode Édition Toggle */}
+            <Button
+              variant={editModeState.editMode ? 'default' : 'outline'}
+              size="sm"
+              onClick={editModeState.toggleEditMode}
+              className={editModeState.editMode ? 'bg-cyan-500 hover:bg-cyan-600' : ''}
+            >
+              {editModeState.editMode ? 'Mode Lecture' : 'Mode Édition'}
+            </Button>
 
-      {/* Template Gallery pour installer des widgets préconfigurés */}
-      {selectedModuleId && (
-        <TemplateGallery
-          open={isTemplateGalleryOpen}
-          onOpenChange={setIsTemplateGalleryOpen}
-          moduleId={selectedModuleId}
-          onTemplatesInstalled={() => {
-            // Rafraîchir la vue des widgets
-            setRefreshKey((prev) => prev + 1);
+            {/* Theme Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="hover:text-[#03A5C0]"
+            >
+              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+          </div>
+        </header>
+
+        {/* Main Layout */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Sidebar gauche avec liste des objets */}
+          <div className="w-64 border-r border-white/10 bg-surface/30 backdrop-blur-sm overflow-y-auto">
+            <ObjectSidebar
+              projectId={projectId}
+              selectedObjectType={selectedObjectType}
+              onSelectObject={setSelectedObjectType}
+            />
+          </div>
+
+          {/* Canvas principal */}
+          <main className="flex-1 overflow-hidden">
+            {selectedObjectType ? (
+              <Canvas
+                projectId={projectId}
+                objectType={selectedObjectType}
+                editMode={editModeState.editMode}
+                onElementSelect={editModeState.selectElement}
+                onElementHover={editModeState.hoverElement}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center max-w-md">
+                  <div className="w-20 h-20 rounded-full bg-cyan-500/10 flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-10 h-10 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <h2 className="text-xl font-semibold text-white mb-2">
+                    Bienvenue dans votre CRM Bac à sable
+                  </h2>
+                  <p className="text-sm text-gray-400 mb-4">
+                    Sélectionnez un objet dans la sidebar pour commencer à travailler
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    💡 Utilisez le mode édition pour modifier les éléments par survol
+                  </p>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+
+        {/* Conversational Prompt flottant (logo Magellan en bas à droite) */}
+        <ConversationalPrompt
+          projectId={projectId}
+          currentObjectType={selectedObjectType}
+          selectedElement={editModeState.selectedElement}
+          onCommandExecuted={() => {
+            // Rafraîchir la vue après une commande
+            console.log('[ProjectCRM] Command executed, refreshing...');
           }}
         />
-      )}
-    </div>
+      </div>
+    </GridBackground>
   );
 }

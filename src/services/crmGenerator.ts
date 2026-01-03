@@ -1,32 +1,17 @@
 /**
- * Service de génération CRM/ERP intelligent
- * Analyse le secteur d'activité et génère automatiquement des modules métier
+ * Service de génération CRM/ERP intelligent (modèle flexible JSONB)
+ * Analyse le secteur d'activité et génère automatiquement des object_definitions
  */
 
 import { supabase } from '@/integrations/supabase/client';
-
-export interface ModuleSpec {
-  name: string;
-  module_type: string;
-  icon: string;
-  priority: number;
-  description: string;
-  widgets: WidgetSpec[];
-}
-
-export interface WidgetSpec {
-  widget_type: string;
-  title: string;
-  config: any;
-  layout?: { x: number; y: number; w: number; h: number };
-}
+import { ObjectDefinition, FieldDefinition } from '@/types/crm-objects';
 
 export interface CRMGenerationResult {
   success: boolean;
   business_sector: string;
   sector_confidence: number;
   business_description: string;
-  modules_count: number;
+  objects_count: number;
   token_usage: {
     input_tokens: number;
     output_tokens: number;
@@ -36,10 +21,10 @@ export interface CRMGenerationResult {
 
 export class CRMGeneratorService {
   /**
-   * Génère les modules CRM pour un projet
+   * Génère les object_definitions CRM pour un projet
    * @param projectId ID du projet build_session
    * @param userPrompt Prompt initial de l'utilisateur
-   * @returns Résultat de la génération avec secteur détecté et nombre de modules créés
+   * @returns Résultat de la génération avec secteur détecté et nombre d'objets créés
    */
   async generateCRM(
     projectId: string,
@@ -49,7 +34,7 @@ export class CRMGeneratorService {
     console.log('[CRMGenerator] User prompt:', userPrompt.substring(0, 100) + '...');
 
     try {
-      // Appel à l'Edge Function Supabase
+      // Appel à l'Edge Function Supabase (maintenant génère object_definitions)
       const { data, error } = await supabase.functions.invoke('generate-crm', {
         body: {
           projectId,
@@ -68,7 +53,7 @@ export class CRMGeneratorService {
 
       console.log('[CRMGenerator] CRM generated successfully');
       console.log(`[CRMGenerator] Sector: ${data.business_sector} (confidence: ${data.sector_confidence})`);
-      console.log(`[CRMGenerator] Modules created: ${data.modules_count}`);
+      console.log(`[CRMGenerator] Objects created: ${data.objects_count}`);
       console.log(`[CRMGenerator] Tokens used: ${data.token_usage.total_tokens} / 30000`);
 
       return data as CRMGenerationResult;
@@ -79,248 +64,233 @@ export class CRMGeneratorService {
   }
 
   /**
-   * Récupère les modules CRM d'un projet
+   * Récupère les object_definitions d'un projet
    * @param projectId ID du projet
-   * @returns Liste des modules avec leurs widgets
+   * @returns Liste des object definitions
    */
-  async getProjectModules(projectId: string): Promise<any[]> {
-    console.log('[CRMGenerator] Fetching modules for project:', projectId);
+  async getProjectObjects(projectId: string): Promise<ObjectDefinition[]> {
+    console.log('[CRMGenerator] Fetching object definitions for project:', projectId);
 
-    const { data: modules, error } = await supabase
-      .from('crm_modules' as any)
-      .select(`
-        *,
-        widgets:crm_widgets(*)
-      `)
+    const { data: objects, error } = await supabase
+      .from('object_definitions')
+      .select('*')
       .eq('project_id', projectId)
-      .eq('is_active', true)
       .order('display_order', { ascending: false });
 
     if (error) {
-      console.error('[CRMGenerator] Error fetching modules:', error);
+      console.error('[CRMGenerator] Error fetching object definitions:', error);
       throw error;
     }
 
-    console.log(`[CRMGenerator] Found ${modules?.length || 0} modules`);
-    return (modules as any[]) || [];
+    console.log(`[CRMGenerator] Found ${objects?.length || 0} object definitions`);
+    return (objects as ObjectDefinition[]) || [];
   }
 
   /**
-   * Récupère les widgets d'un module
-   * @param moduleId ID du module
-   * @returns Liste des widgets avec leurs données
+   * Récupère une object_definition par nom
+   * @param projectId ID du projet
+   * @param objectType Nom de l'objet (ex: "contacts", "deals")
+   * @returns La définition de l'objet
    */
-  async getModuleWidgets(moduleId: string): Promise<any[]> {
-    console.log('[CRMGenerator] Fetching widgets for module:', moduleId);
+  async getObjectDefinition(projectId: string, objectType: string): Promise<ObjectDefinition | null> {
+    console.log('[CRMGenerator] Fetching object definition:', objectType);
 
-    const { data: widgets, error } = await supabase
-      .from('crm_widgets' as any)
-      .select(`
-        *,
-        data:widget_data(*)
-      `)
-      .eq('module_id', moduleId)
-      .eq('is_visible', true)
-      .order('display_order');
-
-    if (error) {
-      console.error('[CRMGenerator] Error fetching widgets:', error);
-      throw error;
-    }
-
-    console.log(`[CRMGenerator] Found ${widgets?.length || 0} widgets`);
-    return (widgets as any[]) || [];
-  }
-
-  /**
-   * Met à jour les données d'un widget
-   * @param widgetId ID du widget
-   * @param data Nouvelles données
-   */
-  async updateWidgetData(widgetId: string, data: any) {
-    console.log('[CRMGenerator] Updating widget data:', widgetId);
-
-    // Vérifier si des données existent déjà
-    const { data: existing } = await supabase
-      .from('widget_data' as any)
-      .select('id')
-      .eq('widget_id', widgetId)
+    const { data: object, error } = await supabase
+      .from('object_definitions')
+      .select('*')
+      .eq('project_id', projectId)
+      .eq('name', objectType)
       .maybeSingle();
 
-    if (existing) {
-      // Update
-      const { error } = await supabase
-        .from('widget_data' as any)
-        .update({ data, updated_at: new Date().toISOString() })
-        .eq('widget_id', widgetId);
-
-      if (error) throw error;
-    } else {
-      // Insert
-      const { error } = await supabase
-        .from('widget_data' as any)
-        .insert({ widget_id: widgetId, data });
-
-      if (error) throw error;
+    if (error) {
+      console.error('[CRMGenerator] Error fetching object definition:', error);
+      throw error;
     }
 
-    console.log('[CRMGenerator] Widget data updated successfully');
+    return object as ObjectDefinition | null;
   }
 
   /**
-   * Crée un nouveau widget dans un module (via prompt utilisateur)
-   * @param moduleId ID du module
-   * @param widgetSpec Spécification du widget
+   * Crée une nouvelle object_definition
+   * @param projectId ID du projet
+   * @param objectData Données de l'objet
+   * @returns L'object_definition créée
    */
-  async createWidget(moduleId: string, widgetSpec: WidgetSpec) {
-    console.log('[CRMGenerator] Creating widget:', widgetSpec.title);
+  async createObjectDefinition(
+    projectId: string,
+    objectData: Partial<ObjectDefinition>
+  ): Promise<ObjectDefinition> {
+    console.log('[CRMGenerator] Creating object definition:', objectData.name);
 
     const { data, error } = await supabase
-      .from('crm_widgets' as any)
+      .from('object_definitions')
       .insert({
-        module_id: moduleId,
-        widget_type: widgetSpec.widget_type,
-        title: widgetSpec.title,
-        config: widgetSpec.config,
-        layout: widgetSpec.layout || { x: 0, y: 0, w: 12, h: 4 },
-        is_visible: true
+        project_id: projectId,
+        ...objectData,
+        is_system: false,
+        generated_by_ai: false
       })
       .select()
       .single();
 
     if (error) {
-      console.error('[CRMGenerator] Error creating widget:', error);
+      console.error('[CRMGenerator] Error creating object definition:', error);
       throw error;
     }
 
-    console.log('[CRMGenerator] Widget created:', (data as any).id);
-    return data;
+    console.log('[CRMGenerator] Object definition created:', (data as ObjectDefinition).id);
+    return data as ObjectDefinition;
   }
 
   /**
-   * Supprime un widget
-   * @param widgetId ID du widget
+   * Met à jour une object_definition
+   * @param objectId ID de l'object_definition
+   * @param updates Données à mettre à jour
    */
-  async deleteWidget(widgetId: string) {
-    console.log('[CRMGenerator] Deleting widget:', widgetId);
+  async updateObjectDefinition(objectId: string, updates: Partial<ObjectDefinition>) {
+    console.log('[CRMGenerator] Updating object definition:', objectId);
 
     const { error } = await supabase
-      .from('crm_widgets' as any)
+      .from('object_definitions')
+      .update(updates)
+      .eq('id', objectId);
+
+    if (error) {
+      console.error('[CRMGenerator] Error updating object definition:', error);
+      throw error;
+    }
+
+    console.log('[CRMGenerator] Object definition updated successfully');
+  }
+
+  /**
+   * Supprime une object_definition
+   * @param objectId ID de l'object_definition
+   */
+  async deleteObjectDefinition(objectId: string) {
+    console.log('[CRMGenerator] Deleting object definition:', objectId);
+
+    const { error } = await supabase
+      .from('object_definitions')
       .delete()
-      .eq('id', widgetId);
+      .eq('id', objectId);
 
     if (error) {
-      console.error('[CRMGenerator] Error deleting widget:', error);
+      console.error('[CRMGenerator] Error deleting object definition:', error);
       throw error;
     }
 
-    console.log('[CRMGenerator] Widget deleted successfully');
+    console.log('[CRMGenerator] Object definition deleted successfully');
   }
 
   /**
-   * Met à jour la configuration d'un widget
-   * @param widgetId ID du widget
-   * @param config Nouvelle configuration
+   * Ajoute un champ à une object_definition
+   * @param objectId ID de l'object_definition
+   * @param field Définition du nouveau champ
    */
-  async updateWidgetConfig(widgetId: string, config: any) {
-    console.log('[CRMGenerator] Updating widget config:', widgetId);
+  async addField(objectId: string, field: FieldDefinition) {
+    console.log('[CRMGenerator] Adding field to object:', objectId, field.name);
 
-    const { error } = await supabase
-      .from('crm_widgets' as any)
-      .update({ config, updated_at: new Date().toISOString() })
-      .eq('id', widgetId);
-
-    if (error) {
-      console.error('[CRMGenerator] Error updating widget config:', error);
-      throw error;
-    }
-
-    console.log('[CRMGenerator] Widget config updated successfully');
-  }
-
-  /**
-   * Duplique un widget existant
-   * @param widgetId ID du widget à dupliquer
-   * @returns Le nouveau widget créé
-   */
-  async duplicateWidget(widgetId: string) {
-    console.log('[CRMGenerator] Duplicating widget:', widgetId);
-
-    // Récupérer le widget original
-    const { data: originalWidget, error: fetchError } = await supabase
-      .from('crm_widgets')
-      .select('*')
-      .eq('id', widgetId)
+    // Récupérer l'object_definition actuelle
+    const { data: object, error: fetchError } = await supabase
+      .from('object_definitions')
+      .select('fields')
+      .eq('id', objectId)
       .single();
 
-    if (fetchError || !originalWidget) {
-      console.error('[CRMGenerator] Error fetching widget to duplicate:', fetchError);
-      throw new Error('Widget not found');
+    if (fetchError) {
+      throw fetchError;
     }
 
-    // Créer une copie du widget
-    const { id, created_at, updated_at, ...widgetData } = originalWidget;
+    // Ajouter le nouveau champ
+    const updatedFields = [...((object as any).fields || []), field];
 
-    const { data: newWidget, error: insertError } = await supabase
-      .from('crm_widgets')
-      .insert({
-        ...widgetData,
-        title: `${widgetData.title} (copie)`,
-        display_order: (widgetData.display_order || 0) + 1,
-      })
-      .select()
-      .single();
+    // Mettre à jour
+    const { error: updateError } = await supabase
+      .from('object_definitions')
+      .update({ fields: updatedFields })
+      .eq('id', objectId);
 
-    if (insertError) {
-      console.error('[CRMGenerator] Error duplicating widget:', insertError);
-      throw insertError;
+    if (updateError) {
+      throw updateError;
     }
 
-    // Dupliquer les données si elles existent
-    const { data: originalData } = await supabase
-      .from('widget_data')
-      .select('*')
-      .eq('widget_id', widgetId)
-      .maybeSingle();
-
-    if (originalData) {
-      const { id: dataId, widget_id, created_at: dataCreatedAt, updated_at: dataUpdatedAt, ...data } = originalData;
-
-      await supabase
-        .from('widget_data')
-        .insert({
-          widget_id: newWidget.id,
-          ...data,
-        });
-    }
-
-    console.log('[CRMGenerator] Widget duplicated successfully:', newWidget.id);
-    return newWidget;
+    console.log('[CRMGenerator] Field added successfully');
   }
 
   /**
-   * Met à jour l'ordre des widgets (pour drag & drop)
-   * @param widgetOrders Array d'objets {id, order} pour chaque widget
+   * Met à jour un champ dans une object_definition
+   * @param objectId ID de l'object_definition
+   * @param fieldId ID du champ à modifier
+   * @param updates Modifications du champ
    */
-  async updateWidgetOrder(widgetOrders: Array<{ id: string; order: number }>) {
-    console.log('[CRMGenerator] Updating widget order for', widgetOrders.length, 'widgets');
+  async updateField(objectId: string, fieldId: string, updates: Partial<FieldDefinition>) {
+    console.log('[CRMGenerator] Updating field:', fieldId);
 
-    try {
-      // Mettre à jour chaque widget avec son nouveau display_order
-      const updates = widgetOrders.map(({ id, order }) =>
-        supabase
-          .from('crm_widgets')
-          .update({ display_order: order })
-          .eq('id', id)
-      );
+    // Récupérer l'object_definition actuelle
+    const { data: object, error: fetchError } = await supabase
+      .from('object_definitions')
+      .select('fields')
+      .eq('id', objectId)
+      .single();
 
-      await Promise.all(updates);
-
-      console.log('[CRMGenerator] Widget order updated successfully');
-    } catch (error) {
-      console.error('[CRMGenerator] Error updating widget order:', error);
-      throw error;
+    if (fetchError) {
+      throw fetchError;
     }
+
+    // Modifier le champ
+    const updatedFields = ((object as any).fields || []).map((f: FieldDefinition) =>
+      f.id === fieldId ? { ...f, ...updates } : f
+    );
+
+    // Mettre à jour
+    const { error: updateError } = await supabase
+      .from('object_definitions')
+      .update({ fields: updatedFields })
+      .eq('id', objectId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    console.log('[CRMGenerator] Field updated successfully');
+  }
+
+  /**
+   * Supprime un champ d'une object_definition
+   * @param objectId ID de l'object_definition
+   * @param fieldId ID du champ à supprimer
+   */
+  async deleteField(objectId: string, fieldId: string) {
+    console.log('[CRMGenerator] Deleting field:', fieldId);
+
+    // Récupérer l'object_definition actuelle
+    const { data: object, error: fetchError } = await supabase
+      .from('object_definitions')
+      .select('fields')
+      .eq('id', objectId)
+      .single();
+
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    // Supprimer le champ
+    const updatedFields = ((object as any).fields || []).filter(
+      (f: FieldDefinition) => f.id !== fieldId
+    );
+
+    // Mettre à jour
+    const { error: updateError } = await supabase
+      .from('object_definitions')
+      .update({ fields: updatedFields })
+      .eq('id', objectId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    console.log('[CRMGenerator] Field deleted successfully');
   }
 }
 
