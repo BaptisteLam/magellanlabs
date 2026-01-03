@@ -68,3 +68,6 @@ verify_jwt = true
 
 [functions.import-from-database]
 verify_jwt = true
+
+[functions.sync-to-kv]
+verify_jwt = false
