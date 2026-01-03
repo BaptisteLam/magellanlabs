@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Eye, ExternalLink } from 'lucide-react';
 import { InteractivePreview } from '@/components/InteractivePreview';
-import { Sandpack } from '@codesandbox/sandpack-react';
 import { useSubdomain } from '@/hooks/useSubdomain';
 
 interface ProjectData {
@@ -198,33 +197,13 @@ export default function PublicProject() {
 
       {/* Preview */}
       <main className="w-full h-[calc(100vh-80px)]">
-        {project.project_type === 'webapp' ? (
-          <Sandpack
-            theme="light"
-            template="react-ts"
-            files={Object.fromEntries(
-              Object.entries(project.project_files).map(([path, content]) => [
-                path.startsWith('/') ? path : `/${path}`,
-                { code: content }
-              ])
-            )}
-            options={{
-              showNavigator: false,
-              showTabs: false,
-              showLineNumbers: false,
-              editorHeight: "100%",
-              editorWidthPercentage: 0,
-            }}
-          />
-        ) : (
-          <InteractivePreview
-            projectFiles={project.project_files}
-            isDark={false}
-            inspectMode={false}
-            onInspectModeChange={() => {}}
-            previewUrl={`https://${subdomain}.builtbymagellan.com`}
-          />
-        )}
+        <InteractivePreview
+          projectFiles={project.project_files}
+          isDark={false}
+          inspectMode={false}
+          onInspectModeChange={() => {}}
+          previewUrl={`https://${subdomain}.builtbymagellan.com`}
+        />
       </main>
 
       {/* Footer */}

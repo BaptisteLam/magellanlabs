@@ -34,8 +34,8 @@ export function useSyncPreview({
   const lastSyncedFilesRef = useRef<string>('');
   const isSyncingRef = useRef(false);
 
-  // Sync to dedicated Worker via sync-to-worker
-  const syncToWorker = useCallback(async () => {
+  // Sync to Cloudflare KV via sync-to-kv
+  const syncToKV = useCallback(async () => {
     if (!sessionId || !enabled || Object.keys(projectFiles).length === 0) {
       return;
     }
@@ -57,14 +57,13 @@ export function useSyncPreview({
     setSyncStatus(prev => ({ ...prev, status: 'syncing', error: null }));
 
     try {
-      console.log('🚀 Deploying Worker for session:', sessionId);
+      console.log('🔄 Syncing to KV for session:', sessionId);
       console.log('📁 Files:', Object.keys(projectFiles));
 
-      const { data, error } = await supabase.functions.invoke('sync-to-worker', {
-        body: { 
-          sessionId, 
+      const { data, error } = await supabase.functions.invoke('sync-to-kv', {
+        body: {
+          sessionId,
           projectFiles,
-          message: `Auto-sync ${new Date().toLocaleTimeString('fr-FR')}`,
         },
       });
 
@@ -72,18 +71,18 @@ export function useSyncPreview({
         throw new Error(error.message);
       }
 
-      // Vérifier si la réponse contient une erreur Cloudflare
+      // Vérifier si la réponse contient une erreur
       if (data?.error) {
         throw new Error(data.error);
       }
 
-      console.log('✅ Worker deployed:', data);
+      console.log('✅ KV synced:', data);
       lastSyncedFilesRef.current = filesHash;
 
       setSyncStatus({
         status: 'synced',
         lastSync: new Date(),
-        previewUrl: data.previewUrl || `https://magellan-${sessionId}.builtbymagellan.workers.dev`,
+        previewUrl: data.previewUrl || `https://${sessionId}.builtbymagellan.com`,
         versionId: data.versionId || null,
         error: null,
       });
@@ -113,7 +112,7 @@ export function useSyncPreview({
 
     // Set new timer
     debounceTimerRef.current = setTimeout(() => {
-      syncToWorker();
+      syncToKV();
     }, debounceMs);
 
     return () => {
@@ -121,12 +120,12 @@ export function useSyncPreview({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [projectFiles, enabled, debounceMs, syncToWorker]);
+  }, [projectFiles, enabled, debounceMs, syncToKV]);
 
   // Initial sync on mount
   useEffect(() => {
     if (enabled && Object.keys(projectFiles).length > 0) {
-      syncToWorker();
+      syncToKV();
     }
   }, [enabled]); // Only on enabled change, not every projectFiles change
 
@@ -136,13 +135,13 @@ export function useSyncPreview({
       clearTimeout(debounceTimerRef.current);
     }
     lastSyncedFilesRef.current = ''; // Reset to force update
-    syncToWorker();
-  }, [syncToWorker]);
+    syncToKV();
+  }, [syncToKV]);
 
   return {
     syncStatus,
     forceSync,
-    previewUrl: syncStatus.previewUrl || `https://magellan-${sessionId}.builtbymagellan.workers.dev`,
+    previewUrl: syncStatus.previewUrl || `https://${sessionId}.builtbymagellan.com`,
     versionId: syncStatus.versionId,
     isSyncing: syncStatus.status === 'syncing',
     syncError: syncStatus.error,
