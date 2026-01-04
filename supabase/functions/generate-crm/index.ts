@@ -9,27 +9,34 @@ const corsHeaders = {
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 const MAX_CRM_TOKENS = 30000; // Budget max pour la génération CRM
 
-interface ModuleSpec {
+interface FieldDefinition {
+  id: string;
   name: string;
-  module_type: string;
-  icon: string;
-  priority: number;
-  description: string;
-  widgets: WidgetSpec[];
+  label: string;
+  type: string;
+  isRequired: boolean;
+  isUnique: boolean;
+  isSearchable: boolean;
+  config?: any;
 }
 
-interface WidgetSpec {
-  widget_type: string;
-  title: string;
-  config: any;
-  layout?: { x: number; y: number; w: number; h: number };
+interface ObjectDefinitionSpec {
+  name: string;
+  singularLabel: string;
+  pluralLabel: string;
+  icon: string;
+  color: string;
+  description: string;
+  fields: FieldDefinition[];
+  viewConfig?: any;
+  displayOrder: number;
 }
 
 interface CRMGenerationResult {
   business_sector: string;
   sector_confidence: number;
   business_description: string;
-  suggested_modules: ModuleSpec[];
+  suggested_objects: ObjectDefinitionSpec[];
   token_usage: {
     input_tokens: number;
     output_tokens: number;
@@ -38,14 +45,14 @@ interface CRMGenerationResult {
 }
 
 /**
- * Prompt système pour l'analyse de secteur et génération de modules CRM
+ * Prompt système pour l'analyse de secteur et génération d'objets CRM flexibles
  */
-const SYSTEM_PROMPT = `Tu es un expert en CRM/ERP qui analyse des prompts utilisateurs pour générer des modules métier personnalisés.
+const SYSTEM_PROMPT = `Tu es un expert en CRM/ERP qui analyse des prompts utilisateurs pour générer des objets métier personnalisés dans un modèle de données flexible (inspiré d'Attio).
 
 Ta mission:
 1. Analyser le prompt pour détecter le secteur d'activité
-2. Générer entre 5 et 10 modules CRM pertinents pour ce secteur
-3. Pour chaque module, créer 2-5 widgets utiles
+2. Générer entre 3 et 8 objets CRM pertinents pour ce secteur (équivalent des "tables" ou "entités")
+3. Pour chaque objet, créer 5-15 champs (fields) utiles
 
 SECTEURS POSSIBLES:
 - real_estate: Agence immobilière, gestion locative
@@ -67,110 +74,159 @@ SECTEURS POSSIBLES:
 - logistics: Transport, livraison, logistique
 - other: Autre secteur
 
-MODULES STANDARDS FRÉQUENTS (à inclure si pertinent):
-- Analytiques (analytics): Tableaux de bord, statistiques, KPIs
-- Contact (clients): Gestion contacts, leads, CRM
-- Blog (marketing): Blog, articles, content marketing
-- Facture (finance): Facturation, devis, paiements
-- Finance (finance): Comptabilité, trésorerie, budget
-- Marketing (marketing): Campagnes, newsletters, SEO
-- Paramètres (custom): Configuration, préférences
+OBJETS STANDARDS FRÉQUENTS (à inclure si pertinent):
+- Contacts: Personnes, clients, leads
+- Companies: Entreprises, organisations
+- Deals: Opportunités, ventes, contrats
+- Projects: Projets, dossiers, affaires
+- Products: Produits, services, catalogue
+- Invoices: Factures, devis, paiements
+- Tasks: Tâches, actions, TODO
+- Events: Événements, rendez-vous, visites
 
-TYPES DE MODULES DISPONIBLES:
-- inventory: Gestion de stock/biens/produits
-- sales: Ventes, commandes, transactions
-- clients: Gestion clients, contacts, leads
-- analytics: Statistiques, dashboards, KPIs
-- appointments: Rendez-vous, visites, planning
-- contracts: Contrats, mandats, documents
-- marketing: Campagnes, newsletters, SEO
-- finance: Comptabilité, facturation, trésorerie
-- hr: Ressources humaines, employés
-- projects: Gestion de projets, tasks
-- support: Support client, tickets, SAV
-- custom: Module personnalisé
+TYPES DE CHAMPS DISPONIBLES (16 types supportés):
+- text: Texte court (nom, titre, etc.)
+- email: Email avec validation
+- phone: Téléphone formaté
+- url: URL avec lien cliquable
+- number: Nombre entier ou décimal
+- currency: Montant avec devise
+- date: Date simple
+- datetime: Date et heure
+- checkbox: Boolean true/false
+- select: Liste déroulante (choix unique)
+- multi_select: Liste à choix multiples
+- status: Statut avec couleurs (nouveau, en cours, terminé, etc.)
+- relation: Relation vers un autre objet
+- user: Référence à un utilisateur
+- rating: Note de 1 à 5 étoiles
+- json: Données structurées JSON
 
-TYPES DE WIDGETS DISPONIBLES (utilise EXACTEMENT ces noms avec le tiret):
-- kpi-card: Carte KPI (métrique unique avec icône et couleur)
-- data-table: Tableau de données (avec colonnes configurables, filtres, pagination)
-- line-chart: Graphique en ligne (évolution temporelle)
-- bar-chart: Graphique en barres (comparaisons)
-- pie-chart: Graphique circulaire (répartition)
-- area-chart: Graphique en aires
-- form: Formulaire de saisie
-- calendar: Calendrier / planning
-- map: Carte géographique
-- kanban: Tableau Kanban (drag & drop)
-- timeline: Timeline / Gantt
-- stats-grid: Grille de statistiques (plusieurs KPIs)
-- list: Liste simple
-- progress-bar: Barre de progression
-- gallery: Galerie d'images
-- custom: Widget personnalisé
-- dynamic: Widget généré dynamiquement par IA
+CONFIGURATION DES CHAMPS:
 
-CONFIGURATION DES WIDGETS:
-
-Pour data-table:
+Pour text, email, phone, url:
 {
-  "columns": [
-    {
-      "key": "field_name",
-      "label": "Label Affiché",
-      "type": "text" | "currency" | "number" | "date" | "badge" | "boolean",
-      "currency": "EUR", // si type = currency
-      "unit": "m²", // si type = number
-      "values": {"key": "Label"} // si type = badge
-    }
+  "placeholder": "Texte par défaut",
+  "maxLength": 255,
+  "helpText": "Description du champ"
+}
+
+Pour number:
+{
+  "min": 0,
+  "max": 100,
+  "precision": 2,
+  "unit": "kg" | "m²" | "%"
+}
+
+Pour currency:
+{
+  "currency": "EUR" | "USD" | "GBP",
+  "precision": 2
+}
+
+Pour select, multi_select, status:
+{
+  "options": [
+    {"id": "opt1", "label": "Option 1", "color": "#03A5C0", "icon": "🟢"},
+    {"id": "opt2", "label": "Option 2", "color": "#F59E0B"}
   ],
-  "filters": ["field1", "field2"],
-  "sortable": true,
-  "pagination": true,
-  "actions": ["edit", "view", "delete", "duplicate"]
+  "placeholder": "Sélectionner..."
 }
 
-Pour kpi-card:
+Pour relation:
 {
-  "icon": "Home" | "DollarSign" | "Users" | "ShoppingCart" etc.,
-  "color": "#03A5C0",
-  "format": "number" | "currency" | "percent"
-}
-
-Pour line-chart / bar-chart / pie-chart:
-{
-  "xAxis": {"key": "month", "label": "Mois"},
-  "yAxis": {"key": "revenue", "label": "CA", "format": "currency"},
-  "color": "#03A5C0",
-  "smooth": true, // pour line-chart
-  "stacked": false // pour bar-chart
+  "targetObject": "contacts" | "companies" | "deals" etc.,
+  "displayField": "name",
+  "allowMultiple": false
 }
 
 RÈGLES IMPORTANTES:
-1. Génère entre 5 et 10 modules (ni plus, ni moins)
-2. Chaque module doit avoir 2-5 widgets
-3. Les modules standards (Analytiques, Contact, Blog, Facture, Finance, Marketing) sont fréquents MAIS ne les mets que s'ils sont pertinents
-4. Sois créatif : invente des modules spécifiques au métier
-5. Les widgets doivent être utiles et pratiques
-6. Utilise des icônes Lucide React (ex: "Package", "Users", "Calendar", "BarChart3")
-7. priority: 1-10 (10 = très important, 1 = peu important)
+1. Génère entre 3 et 8 objets (ni plus, ni moins)
+2. Chaque objet doit avoir 5-15 champs pertinents
+3. TOUJOURS inclure ces champs de base pour chaque objet:
+   - Un champ "name" ou "title" (text, required, unique)
+   - Un champ "description" ou "notes" (text)
+   - Un champ de statut (status) si pertinent
+4. Les objets standards (Contacts, Companies, Deals) sont fréquents MAIS ne les mets que s'ils sont pertinents
+5. Sois créatif : invente des objets spécifiques au métier
+6. Utilise des icônes Lucide React (ex: "Users", "Briefcase", "Package", "Calendar", "DollarSign")
+7. displayOrder: 1-10 (10 = très important, 1 = peu important)
+8. Utilise la couleur Magellan cyan #03A5C0 pour les objets principaux
+
+EXEMPLES D'OBJETS PAR SECTEUR:
+
+Immobilier (real_estate):
+- Properties (Biens immobiliers): fields = [address, price, surface, rooms, type, status, photos]
+- Clients: fields = [name, email, phone, budget, search_criteria]
+- Visits: fields = [property, client, date, feedback, interested]
+
+E-commerce:
+- Products: fields = [name, description, price, stock, category, sku, images]
+- Orders: fields = [customer, items, total, status, shipping_address, tracking]
+- Customers: fields = [name, email, lifetime_value, segment]
+
+Restaurant:
+- Reservations: fields = [customer_name, date, time, guests, table, special_requests, status]
+- Menu_Items: fields = [name, description, price, category, allergens, available]
+- Tables: fields = [number, capacity, location, status]
 
 RÉPONDS UNIQUEMENT EN JSON VALIDE:
 {
   "business_sector": "secteur_code",
   "sector_confidence": 0.0-1.0,
   "business_description": "Description courte du métier",
-  "suggested_modules": [
+  "suggested_objects": [
     {
-      "name": "Nom du Module",
-      "module_type": "type",
-      "icon": "LucideIconName",
-      "priority": 1-10,
-      "description": "Description du module",
-      "widgets": [
+      "name": "contacts",
+      "singularLabel": "Contact",
+      "pluralLabel": "Contacts",
+      "icon": "Users",
+      "color": "#03A5C0",
+      "description": "Gestion des contacts clients",
+      "displayOrder": 10,
+      "viewConfig": {
+        "default": "table",
+        "available": ["table", "kanban"]
+      },
+      "fields": [
         {
-          "widget_type": "type",
-          "title": "Titre du Widget",
-          "config": {...}
+          "id": "fld_name",
+          "name": "name",
+          "label": "Nom complet",
+          "type": "text",
+          "isRequired": true,
+          "isUnique": false,
+          "isSearchable": true,
+          "config": {
+            "placeholder": "Jean Dupont",
+            "maxLength": 100
+          }
+        },
+        {
+          "id": "fld_email",
+          "name": "email",
+          "label": "Email",
+          "type": "email",
+          "isRequired": true,
+          "isUnique": true,
+          "isSearchable": true
+        },
+        {
+          "id": "fld_status",
+          "name": "status",
+          "label": "Statut",
+          "type": "status",
+          "isRequired": true,
+          "isUnique": false,
+          "isSearchable": false,
+          "config": {
+            "options": [
+              {"id": "lead", "label": "Lead", "color": "#F59E0B"},
+              {"id": "client", "label": "Client", "color": "#10B981"},
+              {"id": "inactive", "label": "Inactif", "color": "#6B7280"}
+            ]
+          }
         }
       ]
     }
@@ -178,9 +234,9 @@ RÉPONDS UNIQUEMENT EN JSON VALIDE:
 }`;
 
 /**
- * Appelle Claude API pour analyser le secteur et générer les modules CRM
+ * Appelle Claude API pour analyser le secteur et générer les objets CRM
  */
-async function generateCRMModules(userPrompt: string): Promise<CRMGenerationResult> {
+async function generateCRMObjects(userPrompt: string): Promise<CRMGenerationResult> {
   console.log('[generate-crm] Analyzing prompt:', userPrompt.substring(0, 100));
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -236,101 +292,63 @@ async function generateCRMModules(userPrompt: string): Promise<CRMGenerationResu
   }
 
   // Validation
-  if (!result.business_sector || !result.suggested_modules || !Array.isArray(result.suggested_modules)) {
+  if (!result.business_sector || !result.suggested_objects || !Array.isArray(result.suggested_objects)) {
     throw new Error('Invalid CRM generation result structure');
   }
 
-  // Vérifier que nous avons bien entre 5 et 10 modules
-  if (result.suggested_modules.length < 5 || result.suggested_modules.length > 10) {
-    console.warn(`[generate-crm] Expected 5-10 modules, got ${result.suggested_modules.length}`);
+  // Vérifier que nous avons bien entre 3 et 8 objets
+  if (result.suggested_objects.length < 3 || result.suggested_objects.length > 8) {
+    console.warn(`[generate-crm] Expected 3-8 objects, got ${result.suggested_objects.length}`);
   }
 
-  console.log(`[generate-crm] Generated ${result.suggested_modules.length} modules for sector: ${result.business_sector}`);
+  console.log(`[generate-crm] Generated ${result.suggested_objects.length} objects for sector: ${result.business_sector}`);
 
   return result;
 }
 
 /**
- * Crée les modules CRM en base de données
+ * Crée les object_definitions en base de données
  */
-async function createModulesInDB(
+async function createObjectDefinitionsInDB(
   supabase: any,
   projectId: string,
-  modules: ModuleSpec[]
+  objects: ObjectDefinitionSpec[]
 ): Promise<void> {
-  console.log(`[generate-crm] Creating ${modules.length} modules in DB for project ${projectId}`);
+  console.log(`[generate-crm] Creating ${objects.length} object definitions in DB for project ${projectId}`);
 
-  for (const moduleSpec of modules) {
-    // 1. Créer le module
-    const { data: module, error: moduleError } = await supabase
-      .from('crm_modules')
+  for (const objectSpec of objects) {
+    // Créer l'object_definition
+    const { data: objectDef, error: objectError } = await supabase
+      .from('object_definitions')
       .insert({
         project_id: projectId,
-        name: moduleSpec.name,
-        module_type: moduleSpec.module_type,
-        icon: moduleSpec.icon,
-        display_order: moduleSpec.priority,
-        config: {
-          description: moduleSpec.description,
-          color: '#03A5C0'
+        name: objectSpec.name,
+        singular_label: objectSpec.singularLabel,
+        plural_label: objectSpec.pluralLabel,
+        icon: objectSpec.icon,
+        color: objectSpec.color || '#03A5C0',
+        description: objectSpec.description,
+        fields: objectSpec.fields,
+        view_config: objectSpec.viewConfig || {
+          default: 'table',
+          available: ['table', 'kanban', 'timeline']
         },
-        is_active: true
+        settings: {},
+        is_system: false,
+        generated_by_ai: true,
+        display_order: objectSpec.displayOrder || 0
       })
       .select()
       .single();
 
-    if (moduleError) {
-      console.error('[generate-crm] Error creating module:', moduleError);
-      throw moduleError;
+    if (objectError) {
+      console.error('[generate-crm] Error creating object definition:', objectError);
+      throw objectError;
     }
 
-    console.log(`[generate-crm] Created module: ${moduleSpec.name} (${module.id})`);
-
-    // 2. Créer les widgets du module
-    if (moduleSpec.widgets && moduleSpec.widgets.length > 0) {
-      const widgetsToInsert = moduleSpec.widgets.map((widget, index) => {
-        // Calculer le layout par défaut si non fourni
-        const layout = widget.layout || calculateLayout(index, moduleSpec.widgets.length);
-
-        return {
-          module_id: module.id,
-          widget_type: widget.widget_type,
-          title: widget.title,
-          config: widget.config,
-          layout: layout,
-          display_order: index,
-          is_visible: true
-        };
-      });
-
-      const { error: widgetsError } = await supabase
-        .from('crm_widgets')
-        .insert(widgetsToInsert);
-
-      if (widgetsError) {
-        console.error('[generate-crm] Error creating widgets:', widgetsError);
-        throw widgetsError;
-      }
-
-      console.log(`[generate-crm] Created ${widgetsToInsert.length} widgets for module ${moduleSpec.name}`);
-    }
+    console.log(`[generate-crm] Created object definition: ${objectSpec.name} (${objectDef.id})`);
+    console.log(`[generate-crm]   → ${objectSpec.fields.length} fields defined`);
   }
-}
-
-/**
- * Calcule le layout automatique pour un widget dans une grille 12 colonnes
- */
-function calculateLayout(index: number, totalWidgets: number): { x: number; y: number; w: number; h: number } {
-  // Simple layout: 2 colonnes pour la plupart des widgets
-  const col = index % 2;
-  const row = Math.floor(index / 2);
-
-  return {
-    x: col * 6,  // Grid 12 colonnes, donc 6 colonnes par widget
-    y: row * 4,  // Hauteur de 4 unités par widget
-    w: 6,
-    h: 4
-  };
 }
 
 serve(async (req) => {
@@ -367,15 +385,15 @@ serve(async (req) => {
 
     console.log(`[generate-crm] Starting CRM generation for project ${projectId}`);
 
-    // 1. Générer les modules via Claude API
-    const crmResult = await generateCRMModules(userPrompt);
+    // 1. Générer les objets via Claude API
+    const crmResult = await generateCRMObjects(userPrompt);
 
     // 2. Mettre à jour le projet avec le secteur détecté
     const { error: updateError } = await supabaseClient
       .from('build_sessions')
       .update({
         business_sector: crmResult.business_sector,
-        initial_modules_config: crmResult.suggested_modules
+        initial_modules_config: crmResult.suggested_objects
       })
       .eq('id', projectId);
 
@@ -384,8 +402,8 @@ serve(async (req) => {
       throw updateError;
     }
 
-    // 3. Créer les modules et widgets en DB
-    await createModulesInDB(supabaseClient, projectId, crmResult.suggested_modules);
+    // 3. Créer les object_definitions en DB
+    await createObjectDefinitionsInDB(supabaseClient, projectId, crmResult.suggested_objects);
 
     console.log('[generate-crm] CRM generation completed successfully');
 
@@ -395,7 +413,7 @@ serve(async (req) => {
         business_sector: crmResult.business_sector,
         sector_confidence: crmResult.sector_confidence,
         business_description: crmResult.business_description,
-        modules_count: crmResult.suggested_modules.length,
+        objects_count: crmResult.suggested_objects.length,
         token_usage: crmResult.token_usage
       }),
       {
