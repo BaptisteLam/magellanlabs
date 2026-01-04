@@ -7,6 +7,9 @@ import { useState } from 'react';
 import { ViewType } from '@/types/crm-objects';
 import { ViewSwitcher } from './ViewSwitcher';
 import { TableView } from './views/TableView';
+import { KanbanView } from './views/KanbanView';
+import { TimelineView } from './views/TimelineView';
+import { CalendarView } from './views/CalendarView';
 import { Button } from '@/components/ui/button';
 import { Edit, Eye, Filter, Plus, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -14,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ObjectForm } from './ObjectForm';
 import { useToast } from '@/hooks/use-toast';
-import { useDeleteManyObjects } from '@/hooks/useCRMObjects';
+import { useDeleteManyObjects, useObjectDefinition } from '@/hooks/useCRMObjects';
 
 interface CanvasProps {
   projectId: string;
@@ -24,6 +27,7 @@ interface CanvasProps {
 
 export function Canvas({ projectId, objectType, className }: CanvasProps) {
   const { toast } = useToast();
+  const { data: definition } = useObjectDefinition(projectId, objectType);
   const [currentView, setCurrentView] = useState<ViewType>('table');
   const [editMode, setEditMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,47 +134,68 @@ export function Canvas({ projectId, objectType, className }: CanvasProps) {
       </div>
 
       {/* View Content */}
-      <div className="flex-1 overflow-auto p-6">
-        {currentView === 'table' && (
-          <TableView
-            projectId={projectId}
-            objectType={objectType}
-            queryOptions={{
-              search: searchQuery || undefined,
-              searchFields: ['name', 'email', 'title'], // À adapter selon l'objet
-            }}
-            onCreateRecord={handleCreateRecord}
-            onEditRecord={handleEditRecord}
-            onDeleteRecords={handleDeleteRecords}
-          />
-        )}
-
-        {currentView === 'kanban' && (
+      <div className="flex-1 overflow-auto">
+        {!definition ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
-                <span className="text-4xl">🚧</span>
-              </div>
-              <p className="text-gray-400 font-medium mb-2">Vue Kanban</p>
-              <p className="text-sm text-gray-600">
-                Cette vue sera implémentée dans les prochaines phases
-              </p>
-            </div>
+            <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        )}
+        ) : (
+          <>
+            {currentView === 'table' && (
+              <div className="p-6">
+                <TableView
+                  projectId={projectId}
+                  objectType={objectType}
+                  definition={definition}
+                  queryOptions={{
+                    search: searchQuery || undefined,
+                    searchFields: ['name', 'email', 'title'],
+                  }}
+                  onCreateRecord={handleCreateRecord}
+                  onEditRecord={handleEditRecord}
+                  onDeleteRecords={handleDeleteRecords}
+                />
+              </div>
+            )}
 
-        {currentView === 'timeline' && (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
-                <span className="text-4xl">🚧</span>
-              </div>
-              <p className="text-gray-400 font-medium mb-2">Vue Timeline</p>
-              <p className="text-sm text-gray-600">
-                Cette vue sera implémentée dans les prochaines phases
-              </p>
-            </div>
-          </div>
+            {currentView === 'kanban' && (
+              <KanbanView
+                projectId={projectId}
+                objectType={objectType}
+                definition={definition}
+                queryOptions={{
+                  search: searchQuery || undefined,
+                }}
+                onCreateRecord={handleCreateRecord}
+                onEditRecord={handleEditRecord}
+              />
+            )}
+
+            {currentView === 'timeline' && (
+              <TimelineView
+                projectId={projectId}
+                objectType={objectType}
+                definition={definition}
+                queryOptions={{
+                  search: searchQuery || undefined,
+                }}
+                onEditRecord={handleEditRecord}
+              />
+            )}
+
+            {currentView === 'calendar' && (
+              <CalendarView
+                projectId={projectId}
+                objectType={objectType}
+                definition={definition}
+                queryOptions={{
+                  search: searchQuery || undefined,
+                }}
+                onCreateRecord={handleCreateRecord}
+                onEditRecord={handleEditRecord}
+              />
+            )}
+          </>
         )}
       </div>
 
