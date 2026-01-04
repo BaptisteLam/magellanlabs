@@ -33,7 +33,7 @@ export function useGenerateCRM() {
 
       // Notification de succès avec détails
       toast.success('CRM généré avec succès !', {
-        description: `${result.modules_count} modules créés pour ${result.business_description}`,
+        description: `${result.objects_count} objets créés pour ${result.business_description}`,
         duration: 5000,
       });
 

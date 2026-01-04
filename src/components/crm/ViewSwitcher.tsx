@@ -3,7 +3,7 @@
  */
 
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, Kanban, Calendar as CalendarIcon, Timeline } from 'lucide-react';
+import { Table, Kanban, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { ViewType } from '@/types/crm-objects';
 
 interface ViewSwitcherProps {
@@ -16,7 +16,7 @@ interface ViewSwitcherProps {
 const VIEW_ICONS: Record<ViewType, React.ComponentType<{ className?: string }>> = {
   table: Table,
   kanban: Kanban,
-  timeline: Timeline,
+  timeline: Clock,
   calendar: CalendarIcon,
 };
 

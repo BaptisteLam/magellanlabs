@@ -64,16 +64,25 @@ export function ObjectForm({
     }
 
     try {
-      const result = isEditing
-        ? await updateMutation.mutateAsync({ id: recordId, data: formData })
-        : await createMutation.mutateAsync(formData);
+      if (isEditing) {
+        await updateMutation.mutateAsync({ id: recordId, data: formData });
+      } else {
+        await createMutation.mutateAsync(formData);
+      }
 
       toast({
         title: isEditing ? 'Modifié avec succès' : 'Créé avec succès',
         description: `${definition?.singularLabel} ${isEditing ? 'modifié' : 'créé'}`,
       });
 
-      onSuccess?.(result);
+      onSuccess?.({
+        id: recordId || 'new',
+        projectId,
+        objectType,
+        data: formData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
     } catch (error) {
       console.error('Failed to save:', error);
       toast({
