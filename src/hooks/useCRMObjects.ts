@@ -83,7 +83,7 @@ export function useUpdateObjectDefinition(projectId: string) {
 export function useObjects(projectId: string, objectType: string, options?: QueryOptions) {
   return useQuery({
     queryKey: ['objects', projectId, objectType, options],
-    queryFn: () => objectService.records.findMany(projectId, objectType, options),
+    queryFn: () => objectService.objects.findMany(projectId, objectType, options),
     enabled: !!projectId && !!objectType,
     staleTime: 1000 * 30, // Cache 30 secondes (données plus volatiles)
   });
@@ -95,7 +95,7 @@ export function useObjects(projectId: string, objectType: string, options?: Quer
 export function useObject(projectId: string, objectType: string, id: string) {
   return useQuery({
     queryKey: ['object', projectId, objectType, id],
-    queryFn: () => objectService.records.findById(projectId, objectType, id),
+    queryFn: () => objectService.objects.findById(projectId, objectType, id),
     enabled: !!projectId && !!objectType && !!id,
   });
 }
@@ -106,7 +106,7 @@ export function useObject(projectId: string, objectType: string, id: string) {
 export function useObjectsCount(projectId: string, objectType: string, options?: QueryOptions) {
   return useQuery({
     queryKey: ['objects-count', projectId, objectType, options?.filters],
-    queryFn: () => objectService.records.count(projectId, objectType, options?.filters),
+    queryFn: () => objectService.objects.count(projectId, objectType, options?.filters),
     enabled: !!projectId && !!objectType,
   });
 }
@@ -119,7 +119,7 @@ export function useCreateObject(projectId: string, objectType: string) {
 
   return useMutation({
     mutationFn: (data: Record<string, unknown>) =>
-      objectService.records.create(projectId, objectType, data),
+      objectService.objects.create(projectId, objectType, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['objects', projectId, objectType] });
       queryClient.invalidateQueries({ queryKey: ['objects-count', projectId, objectType] });
@@ -135,7 +135,7 @@ export function useUpdateObject(projectId: string, objectType: string) {
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Record<string, unknown>> }) =>
-      objectService.records.update(projectId, objectType, id, data),
+      objectService.objects.update(projectId, objectType, id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['objects', projectId, objectType] });
       queryClient.invalidateQueries({ queryKey: ['object', projectId, objectType, id] });
@@ -151,7 +151,7 @@ export function useDeleteObject(projectId: string, objectType: string) {
 
   return useMutation({
     mutationFn: (id: string) =>
-      objectService.records.delete(projectId, objectType, id),
+      objectService.objects.delete(projectId, objectType, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['objects', projectId, objectType] });
       queryClient.invalidateQueries({ queryKey: ['objects-count', projectId, objectType] });
@@ -167,7 +167,7 @@ export function useDeleteManyObjects(projectId: string, objectType: string) {
 
   return useMutation({
     mutationFn: (ids: string[]) =>
-      objectService.records.deleteMany(projectId, objectType, ids),
+      objectService.objects.deleteMany(projectId, objectType, ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['objects', projectId, objectType] });
       queryClient.invalidateQueries({ queryKey: ['objects-count', projectId, objectType] });
@@ -214,7 +214,7 @@ export function useDeleteRelation(projectId: string) {
 
   return useMutation({
     mutationFn: (relationId: string) =>
-      objectService.relations.deleteRelation(projectId, relationId),
+      objectService.relations.deleteRelation(relationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['object-relations', projectId] });
     },

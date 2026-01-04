@@ -152,8 +152,8 @@ export default function ProjectCRM() {
           <div className="w-64 border-r border-white/10 bg-surface/30 backdrop-blur-sm overflow-y-auto">
             <ObjectSidebar
               projectId={projectId}
-              selectedObjectType={selectedObjectType}
-              onSelectObject={setSelectedObjectType}
+              currentObjectType={selectedObjectType || undefined}
+              onSelectObject={(type) => setSelectedObjectType(type)}
             />
           </div>
 
@@ -163,9 +163,6 @@ export default function ProjectCRM() {
               <Canvas
                 projectId={projectId}
                 objectType={selectedObjectType}
-                editMode={editModeState.editMode}
-                onElementSelect={editModeState.selectElement}
-                onElementHover={editModeState.hoverElement}
               />
             ) : (
               <div className="flex items-center justify-center h-full">
@@ -193,12 +190,8 @@ export default function ProjectCRM() {
         {/* Conversational Prompt flottant (logo Magellan en bas à droite) */}
         <ConversationalPrompt
           projectId={projectId}
-          currentObjectType={selectedObjectType}
-          selectedElement={editModeState.selectedElement}
-          onCommandExecuted={() => {
-            // Rafraîchir la vue après une commande
-            console.log('[ProjectCRM] Command executed, refreshing...');
-          }}
+          currentObjectType={selectedObjectType || undefined}
+          selectedElement={editModeState.selectedElement || undefined}
         />
       </div>
     </GridBackground>
