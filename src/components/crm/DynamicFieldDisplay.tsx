@@ -63,7 +63,7 @@ export function DynamicFieldDisplay({ field, value, className }: DynamicFieldDis
 
     case 'number':
       const numberValue = Number(value);
-      const unit = field.config?.unit;
+      const unit = (field.config as any)?.unit;
       return (
         <span className={cn('text-sm text-white font-mono', className)}>
           {numberValue.toLocaleString('fr-FR')}

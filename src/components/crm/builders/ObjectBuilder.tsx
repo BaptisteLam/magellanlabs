@@ -90,17 +90,9 @@ export function ObjectBuilder({ projectId, objectId, onSave, onCancel }: ObjectB
   const loadObject = async () => {
     setIsLoading(true);
     try {
-      const objectDef = await crmGenerator.getObjectDefinition(projectId, objectId!);
-      if (objectDef) {
-        setName(objectDef.name);
-        setSingularLabel(objectDef.singularLabel);
-        setPluralLabel(objectDef.pluralLabel);
-        setDescription(objectDef.description || '');
-        setIcon(objectDef.icon || 'Box');
-        setColor(objectDef.color || '#03A5C0');
-        setFields(objectDef.fields || []);
-        setViewConfig(objectDef.viewConfig || viewConfig);
-      }
+      // TODO: Implement getObjectDefinition when object_definitions table exists
+      console.warn('[ObjectBuilder] getObjectDefinition not implemented yet');
+      toast.error('Fonctionnalité non implémentée');
     } catch (error) {
       console.error('Error loading object:', error);
       toast.error('Erreur lors du chargement de l\'objet');
@@ -123,42 +115,9 @@ export function ObjectBuilder({ projectId, objectId, onSave, onCancel }: ObjectB
 
     setIsSaving(true);
     try {
-      let result: ObjectDefinition;
-
-      if (objectId) {
-        // Update existing
-        await crmGenerator.updateObjectDefinition(objectId, {
-          name,
-          singularLabel,
-          pluralLabel,
-          description,
-          icon,
-          color,
-          fields,
-          viewConfig,
-        } as Partial<ObjectDefinition>);
-
-        const updated = await crmGenerator.getObjectDefinition(projectId, name);
-        result = updated!;
-      } else {
-        // Create new
-        result = await crmGenerator.createObjectDefinition(projectId, {
-          name,
-          singularLabel,
-          pluralLabel,
-          description,
-          icon,
-          color,
-          fields,
-          viewConfig,
-          displayOrder: 0,
-          isSystem: false,
-          generatedByAi: false,
-        } as Partial<ObjectDefinition>);
-      }
-
-      toast.success(objectId ? 'Objet mis à jour' : 'Objet créé avec succès');
-      onSave?.(result);
+      // TODO: Implement object definition CRUD when object_definitions table exists
+      console.warn('[ObjectBuilder] Object definition CRUD not implemented yet');
+      toast.error('Fonctionnalité non implémentée - tables object_definitions requises');
     } catch (error) {
       console.error('Error saving object:', error);
       toast.error('Erreur lors de l\'enregistrement');

@@ -69,5 +69,5 @@ verify_jwt = true
 [functions.import-from-database]
 verify_jwt = true
 
-[functions.sync-to-kv]
-verify_jwt = false
+[functions.sync-to-vercel]
+verify_jwt = true

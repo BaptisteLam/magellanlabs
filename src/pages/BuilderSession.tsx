@@ -146,8 +146,8 @@ export default function BuilderSession() {
   // Hook pour génération de nouveaux sites complets
   const generateSiteHook = useGenerateSite();
 
-  // Hook pour sync automatique vers Cloudflare KV (preview temps réel)
-  const { previewUrl, isSyncing, forceSync, syncError } = useSyncPreview({
+  // Hook pour sync automatique vers Vercel (preview temps réel)
+  const { previewUrl, isSyncing, forceSync, syncError, deploymentStatus } = useSyncPreview({
     sessionId: sessionId!,
     projectFiles,
     debounceMs: 2000,

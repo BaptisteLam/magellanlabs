@@ -146,7 +146,6 @@ export function Canvas({ projectId, objectType, className }: CanvasProps) {
                 <TableView
                   projectId={projectId}
                   objectType={objectType}
-                  definition={definition}
                   queryOptions={{
                     search: searchQuery || undefined,
                     searchFields: ['name', 'email', 'title'],
