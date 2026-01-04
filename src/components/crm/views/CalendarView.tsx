@@ -218,9 +218,9 @@ export function CalendarView({
                             backgroundColor: `${color}20`,
                             borderLeft: `3px solid ${color}`,
                           }}
-                          title={record.data[definition.fields[0]?.name] as string}
+                          title={String(record.data[definition.fields[0]?.name] || '')}
                         >
-                          {record.data[definition.fields[0]?.name] || 'Sans nom'}
+                          {String(record.data[definition.fields[0]?.name] || 'Sans nom')}
                         </button>
                       );
                     })}

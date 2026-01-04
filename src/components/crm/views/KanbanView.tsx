@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import { useObjects, useUpdateObject, useDeleteObjects } from '@/hooks/useCRMObjects';
+import { useObjects, useUpdateObject, useDeleteObject } from '@/hooks/useCRMObjects';
 import { ObjectDefinition, CustomObject } from '@/types/crm-objects';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ export function KanbanView({
 }: KanbanViewProps) {
   const { data: records = [], isLoading } = useObjects(projectId, objectType, queryOptions);
   const updateMutation = useUpdateObject(projectId, objectType);
-  const deleteMutation = useDeleteObjects(projectId, objectType);
+  const deleteMutation = useDeleteObject(projectId, objectType);
 
   const [draggedRecordId, setDraggedRecordId] = useState<string | null>(null);
 
@@ -111,7 +111,7 @@ export function KanbanView({
 
   const handleDelete = async (recordId: string) => {
     try {
-      await deleteMutation.mutateAsync([recordId]);
+      await deleteMutation.mutateAsync(recordId);
       toast.success('Record supprimé');
     } catch (error) {
       console.error('Error deleting record:', error);
@@ -186,7 +186,7 @@ export function KanbanView({
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <CardTitle className="text-sm font-medium text-white">
-                          {record.data[definition.fields[0]?.name] || 'Sans nom'}
+                          {String(record.data[definition.fields[0]?.name] || 'Sans nom')}
                         </CardTitle>
 
                         <DropdownMenu>

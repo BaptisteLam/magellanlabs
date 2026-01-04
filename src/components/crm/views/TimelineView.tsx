@@ -174,7 +174,7 @@ export function TimelineView({
                         onClick={() => onEditRecord?.(record.id)}
                         className="text-sm text-white hover:text-cyan-400 text-left truncate w-full"
                       >
-                        {record.data[definition.fields[0]?.name] || 'Sans nom'}
+                        {String(record.data[definition.fields[0]?.name] || 'Sans nom')}
                       </button>
                       <div className="text-xs text-gray-400 mt-1">
                         {format(record.startDate, 'd MMM', { locale: fr })}
@@ -192,8 +192,8 @@ export function TimelineView({
                         }}
                         onClick={() => onEditRecord?.(record.id)}
                       >
-                        <span className="text-xs text-white font-medium truncate px-2">
-                          {record.data[definition.fields[0]?.name]}
+                      <span className="text-xs text-white font-medium truncate px-2">
+                          {String(record.data[definition.fields[0]?.name] || '')}
                         </span>
                       </div>
                     </div>

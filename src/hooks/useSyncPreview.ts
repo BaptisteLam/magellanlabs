@@ -12,7 +12,8 @@ interface SyncStatus {
   status: 'idle' | 'syncing' | 'synced' | 'error';
   lastSync: Date | null;
   previewUrl: string | null;
-  versionId: string | null;
+  deploymentId: string | null;
+  deploymentStatus: string;
   error: string | null;
 }
 
@@ -26,7 +27,8 @@ export function useSyncPreview({
     status: 'idle',
     lastSync: null,
     previewUrl: null,
-    versionId: null,
+    deploymentId: null,
+    deploymentStatus: 'READY',
     error: null,
   });
 
@@ -34,8 +36,8 @@ export function useSyncPreview({
   const lastSyncedFilesRef = useRef<string>('');
   const isSyncingRef = useRef(false);
 
-  // Sync to Cloudflare KV via sync-to-kv
-  const syncToKV = useCallback(async () => {
+  // Sync to Vercel via sync-to-vercel
+  const syncToVercel = useCallback(async () => {
     if (!sessionId || !enabled || Object.keys(projectFiles).length === 0) {
       return;
     }
@@ -54,13 +56,13 @@ export function useSyncPreview({
     }
 
     isSyncingRef.current = true;
-    setSyncStatus(prev => ({ ...prev, status: 'syncing', error: null }));
+    setSyncStatus(prev => ({ ...prev, status: 'syncing', error: null, deploymentStatus: 'BUILDING' }));
 
     try {
-      console.log('🔄 Syncing to KV for session:', sessionId);
+      console.log('🔄 Syncing to Vercel for session:', sessionId);
       console.log('📁 Files:', Object.keys(projectFiles));
 
-      const { data, error } = await supabase.functions.invoke('sync-to-kv', {
+      const { data, error } = await supabase.functions.invoke('sync-to-vercel', {
         body: {
           sessionId,
           projectFiles,
@@ -71,19 +73,20 @@ export function useSyncPreview({
         throw new Error(error.message);
       }
 
-      // Vérifier si la réponse contient une erreur
+      // Check if response contains an error
       if (data?.error) {
         throw new Error(data.error);
       }
 
-      console.log('✅ KV synced:', data);
+      console.log('✅ Vercel synced:', data);
       lastSyncedFilesRef.current = filesHash;
 
       setSyncStatus({
         status: 'synced',
         lastSync: new Date(),
-        previewUrl: data.previewUrl || `https://${sessionId}.builtbymagellan.com`,
-        versionId: data.versionId || null,
+        previewUrl: data.previewUrl || null,
+        deploymentId: data.deploymentId || null,
+        deploymentStatus: data.status || 'READY',
         error: null,
       });
 
@@ -92,6 +95,7 @@ export function useSyncPreview({
       setSyncStatus(prev => ({
         ...prev,
         status: 'error',
+        deploymentStatus: 'ERROR',
         error: err.message || 'Erreur de synchronisation',
       }));
     } finally {
@@ -112,7 +116,7 @@ export function useSyncPreview({
 
     // Set new timer
     debounceTimerRef.current = setTimeout(() => {
-      syncToKV();
+      syncToVercel();
     }, debounceMs);
 
     return () => {
@@ -120,12 +124,12 @@ export function useSyncPreview({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [projectFiles, enabled, debounceMs, syncToKV]);
+  }, [projectFiles, enabled, debounceMs, syncToVercel]);
 
   // Initial sync on mount
   useEffect(() => {
     if (enabled && Object.keys(projectFiles).length > 0) {
-      syncToKV();
+      syncToVercel();
     }
   }, [enabled]); // Only on enabled change, not every projectFiles change
 
@@ -135,14 +139,15 @@ export function useSyncPreview({
       clearTimeout(debounceTimerRef.current);
     }
     lastSyncedFilesRef.current = ''; // Reset to force update
-    syncToKV();
-  }, [syncToKV]);
+    syncToVercel();
+  }, [syncToVercel]);
 
   return {
     syncStatus,
     forceSync,
-    previewUrl: syncStatus.previewUrl || `https://${sessionId}.builtbymagellan.com`,
-    versionId: syncStatus.versionId,
+    previewUrl: syncStatus.previewUrl,
+    deploymentId: syncStatus.deploymentId,
+    deploymentStatus: syncStatus.deploymentStatus,
     isSyncing: syncStatus.status === 'syncing',
     syncError: syncStatus.error,
   };
