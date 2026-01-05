@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CloudflarePreview } from './CloudflarePreview';
+import { VercelPreview } from './VercelPreview';
 import { FloatingEditBar } from './FloatingEditBar';
 import { type ElementInfo } from './InspectOverlay';
 
@@ -13,6 +13,7 @@ interface InteractivePreviewProps {
   isSyncing?: boolean;
   syncError?: string | null;
   onRetrySync?: () => void;
+  deploymentStatus?: string;
 }
 
 export type { ElementInfo };
@@ -27,6 +28,7 @@ export function InteractivePreview({
   isSyncing = false,
   syncError = null,
   onRetrySync,
+  deploymentStatus,
 }: InteractivePreviewProps) {
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -57,15 +59,14 @@ export function InteractivePreview({
         </div>
       )}
 
-      {/* Preview via iframe Cloudflare */}
-      <CloudflarePreview 
+      {/* Preview via iframe Vercel */}
+      <VercelPreview 
         previewUrl={previewUrl}
         isDark={isDark}
         inspectMode={inspectMode}
-        onElementSelect={handleElementSelect}
         isSyncing={isSyncing}
         syncError={syncError}
-        onRetrySync={onRetrySync}
+        deploymentStatus={deploymentStatus}
       />
 
       {/* Barre de prompt volante */}
