@@ -39,6 +39,7 @@ export function useSyncPreview({
   // Sync to Vercel via sync-to-vercel
   const syncToVercel = useCallback(async () => {
     if (!sessionId || !enabled || Object.keys(projectFiles).length === 0) {
+      console.log('⏭️ Sync skipped: missing sessionId, disabled, or no files');
       return;
     }
 
@@ -55,13 +56,16 @@ export function useSyncPreview({
       return;
     }
 
+    const fileCount = Object.keys(projectFiles).length;
+    console.log(`🔄 Starting sync to Vercel for session: ${sessionId.substring(0, 8)}...`);
+    console.log(`📁 Files to sync: ${fileCount}`);
+
     isSyncingRef.current = true;
     setSyncStatus(prev => ({ ...prev, status: 'syncing', error: null, deploymentStatus: 'BUILDING' }));
 
-    try {
-      console.log('🔄 Syncing to Vercel for session:', sessionId);
-      console.log('📁 Files:', Object.keys(projectFiles));
+    const startTime = Date.now();
 
+    try {
       const { data, error } = await supabase.functions.invoke('sync-to-vercel', {
         body: {
           sessionId,
@@ -78,7 +82,11 @@ export function useSyncPreview({
         throw new Error(data.error);
       }
 
-      console.log('✅ Vercel synced:', data);
+      const duration = Date.now() - startTime;
+      console.log(`✅ Vercel sync complete in ${duration}ms`);
+      console.log(`📊 Result: ${data.filesUploaded || 0} new, ${data.filesUnchanged || 0} unchanged`);
+      console.log(`🌐 Preview URL: ${data.previewUrl}`);
+      
       lastSyncedFilesRef.current = filesHash;
 
       setSyncStatus({

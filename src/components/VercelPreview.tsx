@@ -34,25 +34,26 @@ export function VercelPreview({
   const [iframeError, setIframeError] = useState(false);
   const [lastSyncedUrl, setLastSyncedUrl] = useState<string | null>(null);
 
-  // Reload iframe when URL changes after sync
+  // Reload iframe when URL changes after sync and deployment is ready
   useEffect(() => {
-    if (previewUrl && previewUrl !== lastSyncedUrl && !isSyncing) {
+    if (previewUrl && previewUrl !== lastSyncedUrl && !isSyncing && deploymentStatus === 'READY') {
+      console.log(`🔄 Preview URL changed: ${previewUrl}`);
       setLastSyncedUrl(previewUrl);
       setIsLoading(true);
       setIframeError(false);
 
       // Force reload by resetting src
       if (iframeRef.current) {
-        const currentSrc = iframeRef.current.src;
         iframeRef.current.src = '';
         setTimeout(() => {
           if (iframeRef.current) {
             iframeRef.current.src = previewUrl;
+            console.log('🖼️ Iframe reloaded with new URL');
           }
         }, 100);
       }
     }
-  }, [previewUrl, isSyncing, lastSyncedUrl]);
+  }, [previewUrl, isSyncing, lastSyncedUrl, deploymentStatus]);
 
   const handleIframeLoad = () => {
     setIsLoading(false);
