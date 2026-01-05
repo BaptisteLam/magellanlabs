@@ -2171,7 +2171,7 @@ export default function BuilderSession() {
           }}>
                   {isInitialGeneration && Object.keys(projectFiles).length === 0 ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
-                      <InteractivePreview projectFiles={projectFiles} isDark={isDark} inspectMode={inspectMode} onInspectModeChange={setInspectMode} previewUrl={previewUrl} isSyncing={isSyncing} syncError={syncError} onRetrySync={forceSync} onElementModify={async (prompt, elementInfo) => {
+                      <InteractivePreview projectFiles={projectFiles} isDark={isDark} inspectMode={inspectMode} onInspectModeChange={setInspectMode} previewUrl={previewUrl} isSyncing={isSyncing} syncError={syncError} onRetrySync={forceSync} deploymentStatus={deploymentStatus} onElementModify={async (prompt, elementInfo) => {
                 const contextualPrompt = `Modifier l'élément suivant dans le code :
 
 Type: <${elementInfo.tagName.toLowerCase()}>
@@ -2193,7 +2193,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                 </div> : <>
                   {isInitialGeneration ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} />
-                      <InteractivePreview projectFiles={projectFiles} isDark={isDark} inspectMode={inspectMode} onInspectModeChange={setInspectMode} previewUrl={previewUrl} isSyncing={isSyncing} syncError={syncError} onRetrySync={forceSync} onElementModify={async (prompt, elementInfo) => {
+                      <InteractivePreview projectFiles={projectFiles} isDark={isDark} inspectMode={inspectMode} onInspectModeChange={setInspectMode} previewUrl={previewUrl} isSyncing={isSyncing} syncError={syncError} onRetrySync={forceSync} deploymentStatus={deploymentStatus} onElementModify={async (prompt, elementInfo) => {
                 const contextualPrompt = `Modifier l'élément suivant dans le code :
 
 Type: <${elementInfo.tagName.toLowerCase()}>
