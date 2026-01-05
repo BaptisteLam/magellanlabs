@@ -33,6 +33,8 @@ function sanitizeProjectFiles(files: Record<string, string>): Record<string, str
 }
 
 serve(async (req) => {
+  const startTime = Date.now();
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -44,6 +46,7 @@ serve(async (req) => {
     // Authenticate user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('❌ Missing authorization header');
       return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -62,17 +65,21 @@ serve(async (req) => {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
+      console.error('❌ Authentication failed:', authError?.message);
       return new Response(JSON.stringify({ error: 'Authentication failed' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    console.log(`👤 User authenticated: ${user.id.substring(0, 8)}...`);
+
     // Get Vercel credentials
     const VERCEL_API_TOKEN = Deno.env.get('VERCEL_API_TOKEN');
     const VERCEL_TEAM_ID = Deno.env.get('VERCEL_TEAM_ID');
 
     if (!VERCEL_API_TOKEN) {
+      console.error('❌ VERCEL_API_TOKEN not configured');
       return new Response(JSON.stringify({ error: 'VERCEL_API_TOKEN not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -83,6 +90,7 @@ serve(async (req) => {
     const { sessionId, projectFiles } = await req.json();
 
     if (!sessionId || !projectFiles || Object.keys(projectFiles).length === 0) {
+      console.error('❌ Missing sessionId or projectFiles');
       return new Response(
         JSON.stringify({ error: 'Missing sessionId or projectFiles' }),
         {
@@ -92,7 +100,8 @@ serve(async (req) => {
       );
     }
 
-    console.log(`📁 Processing ${Object.keys(projectFiles).length} files for session: ${sessionId}`);
+    const fileCount = Object.keys(projectFiles).length;
+    console.log(`📁 Processing ${fileCount} files for session: ${sessionId.substring(0, 8)}...`);
 
     // Verify session ownership
     const { data: session, error: sessionError } = await supabase
@@ -103,6 +112,7 @@ serve(async (req) => {
       .single();
 
     if (sessionError || !session) {
+      console.error('❌ Session not found or unauthorized');
       return new Response(JSON.stringify({ error: 'Session not found or unauthorized' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -114,6 +124,9 @@ serve(async (req) => {
 
     // Step 1: Upload files to Vercel and calculate hashes
     const fileHashes: Record<string, string> = {};
+    let uploadedCount = 0;
+    let existingCount = 0;
+
     const uploadPromises: Promise<void>[] = [];
 
     for (const [filePath, content] of Object.entries(sanitizedFiles)) {
@@ -136,12 +149,14 @@ serve(async (req) => {
           body: content,
         });
 
-        if (!uploadResponse.ok && uploadResponse.status !== 409) {
-          // 409 means file already exists, which is fine
+        if (uploadResponse.status === 409) {
+          // File already exists (same content)
+          existingCount++;
+        } else if (!uploadResponse.ok) {
           const errorText = await uploadResponse.text();
           console.error(`❌ Failed to upload ${filePath}:`, errorText);
         } else {
-          console.log(`✅ Uploaded: ${filePath}`);
+          uploadedCount++;
         }
       };
 
@@ -149,7 +164,7 @@ serve(async (req) => {
     }
 
     await Promise.all(uploadPromises);
-    console.log(`📤 Uploaded ${Object.keys(fileHashes).length} files`);
+    console.log(`📤 Files: ${uploadedCount} uploaded, ${existingCount} already exist (unchanged)`);
 
     // Step 2: Create deployment
     const projectName = `magellan-${sessionId.substring(0, 8)}`;
@@ -170,7 +185,7 @@ serve(async (req) => {
       projectSettings: {
         framework: null, // Static files
       },
-      target: 'preview', // Use preview instead of production for instant availability
+      target: 'preview',
     };
 
     console.log('🚀 Creating Vercel deployment...');
@@ -196,10 +211,14 @@ serve(async (req) => {
     }
 
     const deployment = await deployResponse.json();
-    console.log('✅ Deployment created:', deployment.url);
+    const previewUrl = `https://${deployment.url}`;
+    const totalTime = Date.now() - startTime;
+    
+    console.log(`✅ Deployment created: ${deployment.url}`);
+    console.log(`⏱️ Total time: ${totalTime}ms`);
+    console.log(`📊 Summary: ${fileCount} files, ${uploadedCount} new, ${existingCount} unchanged`);
 
     // Update session with public URL
-    const previewUrl = `https://${deployment.url}`;
     await supabase
       .from('build_sessions')
       .update({
@@ -218,8 +237,11 @@ serve(async (req) => {
         previewUrl,
         deploymentId: deployment.id,
         deploymentUrl: deployment.url,
-        filesCount: Object.keys(fileHashes).length,
+        filesCount: fileCount,
+        filesUploaded: uploadedCount,
+        filesUnchanged: existingCount,
         status: deployment.readyState || 'BUILDING',
+        duration: totalTime,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
