@@ -71,3 +71,6 @@ verify_jwt = true
 
 [functions.sync-to-vercel]
 verify_jwt = true
+
+[functions.check-vercel-deployment]
+verify_jwt = true

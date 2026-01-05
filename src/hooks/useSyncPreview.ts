@@ -13,7 +13,7 @@ interface SyncStatus {
   lastSync: Date | null;
   previewUrl: string | null;
   deploymentId: string | null;
-  deploymentStatus: string;
+  deploymentStatus: 'QUEUED' | 'BUILDING' | 'READY' | 'ERROR' | 'CANCELED';
   error: string | null;
 }
 
@@ -35,6 +35,7 @@ export function useSyncPreview({
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSyncedFilesRef = useRef<string>('');
   const isSyncingRef = useRef(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync to Vercel via sync-to-vercel
   const syncToVercel = useCallback(async () => {
@@ -89,14 +90,21 @@ export function useSyncPreview({
       
       lastSyncedFilesRef.current = filesHash;
 
+      const initialStatus = data.status || 'BUILDING';
+      
       setSyncStatus({
-        status: 'synced',
+        status: initialStatus === 'READY' ? 'synced' : 'syncing',
         lastSync: new Date(),
         previewUrl: data.previewUrl || null,
         deploymentId: data.deploymentId || null,
-        deploymentStatus: data.status || 'READY',
+        deploymentStatus: initialStatus,
         error: null,
       });
+
+      // Start polling if deployment is still building
+      if (initialStatus !== 'READY' && data.deploymentId) {
+        startPolling(data.deploymentId);
+      }
 
     } catch (err: any) {
       console.error('❌ Sync error:', err);
@@ -110,6 +118,63 @@ export function useSyncPreview({
       isSyncingRef.current = false;
     }
   }, [sessionId, projectFiles, enabled]);
+
+  // Poll Vercel deployment status
+  const startPolling = useCallback((deploymentId: string) => {
+    // Clear any existing polling
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+
+    console.log(`🔄 Starting deployment status polling for: ${deploymentId}`);
+
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        if (!session?.session?.access_token) {
+          console.warn('⚠️ No session for polling');
+          return;
+        }
+
+        // Call a simple function to check deployment status via Vercel API
+        const { data, error } = await supabase.functions.invoke('check-vercel-deployment', {
+          body: { deploymentId },
+        });
+
+        if (error) {
+          console.error('❌ Polling error:', error);
+          return;
+        }
+
+        const newStatus = data?.status || 'BUILDING';
+        console.log(`📊 Deployment status: ${newStatus}`);
+
+        if (newStatus === 'READY' || newStatus === 'ERROR' || newStatus === 'CANCELED') {
+          // Stop polling
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+
+          setSyncStatus(prev => ({
+            ...prev,
+            status: newStatus === 'READY' ? 'synced' : 'error',
+            deploymentStatus: newStatus,
+            error: newStatus === 'ERROR' ? 'Build failed' : null,
+          }));
+
+          console.log(`✅ Deployment complete: ${newStatus}`);
+        } else {
+          setSyncStatus(prev => ({
+            ...prev,
+            deploymentStatus: newStatus,
+          }));
+        }
+      } catch (err) {
+        console.error('❌ Polling exception:', err);
+      }
+    }, 5000); // Poll every 5 seconds
+  }, []);
 
   // Debounced sync when files change
   useEffect(() => {
@@ -140,6 +205,15 @@ export function useSyncPreview({
       syncToVercel();
     }
   }, [enabled]); // Only on enabled change, not every projectFiles change
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Force immediate sync
   const forceSync = useCallback(() => {

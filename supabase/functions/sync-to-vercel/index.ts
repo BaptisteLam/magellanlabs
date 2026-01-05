@@ -179,11 +179,38 @@ serve(async (req) => {
       ? `https://api.vercel.com/v13/deployments?teamId=${VERCEL_TEAM_ID}`
       : 'https://api.vercel.com/v13/deployments';
 
+    // Add vercel.json for SPA routing if not present
+    const vercelConfigContent = JSON.stringify({
+      rewrites: [{ source: "/(.*)", destination: "/" }]
+    });
+    const vercelConfigSha = await calculateSHA1(vercelConfigContent);
+    
+    // Upload vercel.json
+    const vercelConfigUrl = VERCEL_TEAM_ID
+      ? `https://api.vercel.com/v2/files?teamId=${VERCEL_TEAM_ID}`
+      : 'https://api.vercel.com/v2/files';
+    
+    await fetch(vercelConfigUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${VERCEL_API_TOKEN}`,
+        'Content-Type': 'application/octet-stream',
+        'x-vercel-digest': vercelConfigSha,
+      },
+      body: vercelConfigContent,
+    });
+    
+    // Add vercel.json to deployment files
+    deploymentFiles.push({ file: '/vercel.json', sha: vercelConfigSha });
+
     const deploymentPayload = {
       name: projectName,
       files: deploymentFiles,
       projectSettings: {
-        framework: null, // Static files
+        framework: 'vite',
+        buildCommand: 'npm run build',
+        outputDirectory: 'dist',
+        installCommand: 'npm install',
       },
       target: 'preview',
     };
