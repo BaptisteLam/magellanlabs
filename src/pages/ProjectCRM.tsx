@@ -1,6 +1,7 @@
 /**
  * ProjectCRM - Page principale du CRM (modèle flexible)
  * Interface bac à sable avec Canvas, ObjectSidebar et ConversationalPrompt
+ * Synced: 2026-01-06
  */
 
 import { useState, useEffect } from 'react';
