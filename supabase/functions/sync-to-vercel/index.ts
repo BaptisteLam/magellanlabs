@@ -212,7 +212,6 @@ serve(async (req) => {
         outputDirectory: 'dist',
         installCommand: 'npm install',
       },
-      target: 'preview',
     };
 
     console.log('🚀 Creating Vercel deployment...');
