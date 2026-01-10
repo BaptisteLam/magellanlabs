@@ -1,6 +1,6 @@
-import { InteractivePreview } from '@/components/InteractivePreview';
+import { InteractiveSandpackPreview } from '@/components/InteractiveSandpackPreview';
 import { GeneratingPreview } from '@/components/GeneratingPreview';
-import type { ElementInfo } from '@/components/InteractivePreview';
+import type { ElementInfo } from '@/components/InteractiveSandpackPreview';
 
 interface PreviewPanelProps {
   projectFiles: Record<string, string>;
@@ -10,10 +10,6 @@ interface PreviewPanelProps {
   previewMode?: 'desktop' | 'mobile';
   onInspectModeChange?: (mode: boolean) => void;
   onElementModify?: (prompt: string, elementInfo: ElementInfo) => void;
-  previewUrl: string;
-  isSyncing?: boolean;
-  syncError?: string | null;
-  onRetrySync?: () => void;
 }
 
 export function PreviewPanel({
@@ -24,28 +20,20 @@ export function PreviewPanel({
   previewMode = 'desktop',
   onInspectModeChange = () => {},
   onElementModify,
-  previewUrl,
-  isSyncing = false,
-  syncError = null,
-  onRetrySync,
 }: PreviewPanelProps) {
   // Afficher GeneratingPreview pendant la génération
   if (isGenerating) {
     return <GeneratingPreview />;
   }
 
-  // Preview via iframe Cloudflare
+  // Preview via Sandpack
   return (
-    <InteractivePreview
+    <InteractiveSandpackPreview
       projectFiles={projectFiles}
-      isDark={isDark}
-      onElementModify={onElementModify}
+      previewMode={previewMode}
       inspectMode={inspectMode}
       onInspectModeChange={onInspectModeChange}
-      previewUrl={previewUrl}
-      isSyncing={isSyncing}
-      syncError={syncError}
-      onRetrySync={onRetrySync}
+      onElementModify={onElementModify}
     />
   );
 }

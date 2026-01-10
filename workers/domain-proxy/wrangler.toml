@@ -1,9 +1,0 @@
-name = "domain-proxy"
-main = "worker.js"
-compatibility_date = "2024-01-01"
-
-# Note: CLOUDFLARE_KV_NAMESPACE_ID est configuré dans les secrets Supabase
-# Le KV namespace ID sera utilisé lors du déploiement via l'API Cloudflare
-
-# Routes - Ce worker sera accessible sur proxy.builtbymagellan.com
-# et sur tous les domaines personnalisés qui pointent vers lui

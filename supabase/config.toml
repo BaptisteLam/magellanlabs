@@ -1,8 +1,5 @@
 project_id = "mtmroennrczdcaasrilw"
 
-[functions.deploy-worker]
-verify_jwt = true
-
 [functions.send-contact-email]
 verify_jwt = false
 
@@ -16,15 +13,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.generate-project-name]
-verify_jwt = true
-
-[functions.get-cloudflare-analytics]
-verify_jwt = true
-
-[functions.check-cloudflare-config]
-verify_jwt = true
-
-[functions.add-custom-domain]
 verify_jwt = true
 
 [functions.chat-only]
@@ -45,16 +33,7 @@ verify_jwt = true
 [functions.domain-connect-verify]
 verify_jwt = true
 
-[functions.setup-domain-proxy]
-verify_jwt = false
-
 [functions.publish-project]
-verify_jwt = true
-
-[functions.sync-to-worker]
-verify_jwt = true
-
-[functions.worker-versions]
 verify_jwt = true
 
 [functions.generate-crm]
@@ -67,12 +46,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.import-from-database]
-verify_jwt = true
-
-[functions.sync-to-vercel]
-verify_jwt = true
-
-[functions.check-vercel-deployment]
 verify_jwt = true
 
 [functions.publish-to-netlify]
