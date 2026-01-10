@@ -6,6 +6,7 @@ import {
 } from '@codesandbox/sandpack-react';
 import { useThemeStore } from '@/stores/themeStore';
 import { injectInspectorIntoFiles } from '@/lib/sandpackInspector';
+import { Loader } from 'lucide-react';
 
 interface SandpackPreviewProps {
   projectFiles: Record<string, string>;
@@ -367,10 +368,25 @@ body {
     return `sandpack-${fileCount}-${enableInspector}-${filesHash}`;
   }, [sandpackFiles, enableInspector]);
 
-  if (Object.keys(projectFiles).length === 0) {
+  // ✅ FIX: Afficher un loader au lieu de "Hello World" quand les fichiers sont vides
+  // Vérifier si on a au moins un fichier React valide (App.tsx ou main.tsx)
+  const hasValidReactFiles = useMemo(() => {
+    const keys = Object.keys(projectFiles);
+    return keys.some(k => 
+      k.includes('App.tsx') || 
+      k.includes('App.jsx') || 
+      k.includes('main.tsx') ||
+      k.includes('index.tsx')
+    );
+  }, [projectFiles]);
+
+  if (Object.keys(projectFiles).length === 0 || !hasValidReactFiles) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-background text-muted-foreground">
-        <p>Aucun fichier à prévisualiser</p>
+      <div className="w-full h-full flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader className="animate-spin h-8 w-8 mx-auto mb-4 text-[#03A5C0]" />
+          <p className="text-muted-foreground">Chargement du projet...</p>
+        </div>
       </div>
     );
   }

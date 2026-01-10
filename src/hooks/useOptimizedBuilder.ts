@@ -104,23 +104,32 @@ export function useOptimizedBuilder({
   /**
    * Met à jour les fichiers avec lazy loading
    */
-  const updateFiles = useCallback(async (
+  const updateFiles = useCallback((
     newFiles: Record<string, string>,
     triggerSave: boolean = true
   ) => {
-    // Lazy loading des fichiers selon priorité
-    const loadedFiles = await LazyFileLoader.loadFiles(newFiles, visibleFiles);
-    
-    setProjectFiles(loadedFiles);
+    // ✅ FIX: Mettre à jour IMMÉDIATEMENT avec TOUS les fichiers
+    // Sans passer par LazyFileLoader qui peut retourner des fichiers incomplets
+    setProjectFiles(prev => {
+      const merged = { ...prev, ...newFiles };
+      console.log('📁 updateFiles: Updated projectFiles', {
+        prevCount: Object.keys(prev).length,
+        newCount: Object.keys(newFiles).length,
+        mergedCount: Object.keys(merged).length
+      });
+      return merged;
+    });
 
-    // Hot reload si changements CSS/HTML seulement
-    // Le hook useHotReload détecte automatiquement les changements
+    // Lazy loading en arrière-plan (optionnel, ne bloque pas l'affichage)
+    if (visibleFiles.length > 0) {
+      LazyFileLoader.loadFiles(newFiles, visibleFiles).catch(console.error);
+    }
     
     // Trigger sync si autoSave activé
     if (triggerSave && autoSave) {
-      triggerSync(newFiles); // On sync tous les fichiers, pas juste les loadedFiles
+      triggerSync(newFiles);
     }
-  }, [projectFiles, visibleFiles, autoSave, triggerSync]);
+  }, [visibleFiles, autoSave, triggerSync]);
 
   /**
    * Met à jour un seul fichier
