@@ -7,6 +7,17 @@ import { useThemeStore } from '@/stores/themeStore';
 import PromptBar from '@/components/PromptBar';
 import TemplateCard from '@/components/TemplateCard';
 
+// Import template images
+import agenceImg from '@/assets/templates/agence.jpeg';
+import centreActiviteImg from '@/assets/templates/centre-activite.jpeg';
+import immobilierImg from '@/assets/templates/immobilier.jpeg';
+import pagePersoImg from '@/assets/templates/page-perso.jpeg';
+import webinaireImg from '@/assets/templates/webinaire.jpeg';
+import mariageImg from '@/assets/templates/mariage.jpeg';
+import logicielImg from '@/assets/templates/logiciel.jpeg';
+import restaurantImg from '@/assets/templates/restaurant.jpeg';
+import hotelImg from '@/assets/templates/hotel.jpeg';
+import systemeNumeriqueImg from '@/assets/templates/systeme-numerique.jpeg';
 interface AISearchHeroProps {
   onGeneratedChange?: (hasGenerated: boolean) => void;
 }
@@ -111,58 +122,64 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
 
   const templates = [
     {
-      title: "Artisan Plombier",
-      description: "Site vitrine pour artisan avec formulaire de contact et présentation des services.",
-      imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80",
-      messagesSaved: 12
-    },
-    {
-      title: "Cabinet de Conseil",
-      description: "Site professionnel pour cabinet de conseil avec présentation des offres et équipe.",
-      imageUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80",
+      title: "Agence Marketing",
+      description: "Landing page professionnelle pour agence de marketing digital avec services et portfolio.",
+      imageUrl: agenceImg,
       messagesSaved: 15
     },
     {
-      title: "Restaurant",
-      description: "Site attractif avec menu interactif, réservations et galerie photos.",
-      imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&q=80",
+      title: "Centre de Fitness",
+      description: "Site complet pour salle de sport avec abonnements, équipements et planning des cours.",
+      imageUrl: centreActiviteImg,
       messagesSaved: 18
     },
     {
-      title: "Coach Sportif",
-      description: "Plateforme claire pour coach avec programmes, témoignages et prise de RDV.",
-      imageUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&q=80",
-      messagesSaved: 10
+      title: "Agence Immobilière",
+      description: "Plateforme immobilière élégante avec listings de propriétés et estimations.",
+      imageUrl: immobilierImg,
+      messagesSaved: 20
     },
     {
-      title: "Agence Digitale",
-      description: "Site moderne pour agence avec portfolio, services et formulaire de contact.",
-      imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&q=80",
+      title: "Page Personnelle",
+      description: "Portfolio professionnel pour consultant ou freelance avec parcours et services.",
+      imageUrl: pagePersoImg,
+      messagesSaved: 12
+    },
+    {
+      title: "Webinaire & Formation",
+      description: "Landing page de conversion pour webinaire avec inscription et témoignages.",
+      imageUrl: webinaireImg,
       messagesSaved: 14
     },
     {
-      title: "Entreprise BTP",
-      description: "Site pour entreprise du bâtiment avec réalisations et devis en ligne.",
-      imageUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&q=80",
-      messagesSaved: 11
-    },
-    {
-      title: "Photographe",
-      description: "Portfolio visuel pour photographe avec galeries et tarifs.",
-      imageUrl: "https://images.unsplash.com/photo-1554048612-b6a482bc67e5?w=400&q=80",
+      title: "Mariage & Événement",
+      description: "Site élégant pour mariage avec galerie photos, programme et RSVP.",
+      imageUrl: mariageImg,
       messagesSaved: 16
     },
     {
-      title: "Cabinet Juridique",
-      description: "Site institutionnel pour avocat avec domaines d'expertise et contact.",
-      imageUrl: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&q=80",
-      messagesSaved: 13
+      title: "Logiciel SaaS",
+      description: "Landing page moderne pour produit SaaS avec fonctionnalités et pricing.",
+      imageUrl: logicielImg,
+      messagesSaved: 22
     },
     {
-      title: "Commerce Local",
-      description: "Site pour boutique locale avec catalogue produits et informations pratiques.",
-      imageUrl: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&q=80",
-      messagesSaved: 9
+      title: "Restaurant",
+      description: "Site gastronomique avec menu, réservations et ambiance culinaire.",
+      imageUrl: restaurantImg,
+      messagesSaved: 17
+    },
+    {
+      title: "Hôtel & Hébergement",
+      description: "Site hôtelier de luxe avec chambres, services et réservation en ligne.",
+      imageUrl: hotelImg,
+      messagesSaved: 19
+    },
+    {
+      title: "Produit Numérique",
+      description: "Page de vente pour cours en ligne ou produit digital avec témoignages.",
+      imageUrl: systemeNumeriqueImg,
+      messagesSaved: 21
     }
   ];
 
@@ -231,46 +248,37 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         </div>
       </div>
 
-      {/* Templates Widget */}
-      <div className="relative z-10 w-full max-w-7xl px-4 mt-56 mb-16">
-        <div 
-          className="w-full rounded-xl p-6 border"
-          style={{
-            backgroundColor: isDark ? 'hsl(var(--card))' : '#ffffff',
-            borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.8)',
-            boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04)'
-          }}
-        >
-          {/* Widget Header */}
-          <div className="mb-6 text-left">
-            <h2 
-              className="text-xl font-semibold mb-1"
-              style={{ color: isDark ? 'hsl(var(--foreground))' : '#334155' }}
-            >
-              Templates populaires
-            </h2>
-            <p 
-              className="text-sm"
-              style={{ color: isDark ? 'hsl(var(--muted-foreground))' : '#64748b' }}
-            >
-              Commence avec un template et personnalise-le en quelques clics
-            </p>
-          </div>
+      {/* Templates Gallery */}
+      <div className="relative z-10 w-full max-w-7xl px-4 mt-32 mb-16">
+        {/* Section Header */}
+        <div className="mb-8 text-center">
+          <h2 
+            className="text-2xl md:text-3xl font-bold mb-2"
+            style={{ color: isDark ? 'hsl(var(--foreground))' : '#1e293b' }}
+          >
+            Templates populaires
+          </h2>
+          <p 
+            className="text-base"
+            style={{ color: isDark ? 'hsl(var(--muted-foreground))' : '#64748b' }}
+          >
+            Commence avec un template et personnalise-le en quelques clics
+          </p>
+        </div>
 
-          {/* Templates Grid 3x3 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {templates.map((template, index) => (
-              <TemplateCard
-                key={index}
-                title={template.title}
-                description={template.description}
-                imageUrl={template.imageUrl}
-                messagesSaved={template.messagesSaved}
-                onView={() => handleTemplateView(template)}
-                onUse={() => handleTemplateUse(template)}
-              />
-            ))}
-          </div>
+        {/* Templates Grid - 3 columns responsive */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {templates.map((template, index) => (
+            <TemplateCard
+              key={index}
+              title={template.title}
+              description={template.description}
+              imageUrl={template.imageUrl}
+              messagesSaved={template.messagesSaved}
+              onView={() => handleTemplateView(template)}
+              onUse={() => handleTemplateUse(template)}
+            />
+          ))}
         </div>
       </div>
     </div>
