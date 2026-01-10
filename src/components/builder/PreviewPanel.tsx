@@ -23,29 +23,18 @@ export function PreviewPanel({
   onInspectModeChange = () => {},
   onElementModify,
 }: PreviewPanelProps) {
-  // ✅ FIX: Vérifier si on a des fichiers React valides
-  const hasValidFiles = useMemo(() => {
-    const keys = Object.keys(projectFiles);
-    if (keys.length === 0) return false;
-    return keys.some(k => 
-      k.includes('App.tsx') || 
-      k.includes('App.jsx') || 
-      k.includes('main.tsx') ||
-      k.includes('index.tsx')
-    );
-  }, [projectFiles]);
-
   // Afficher GeneratingPreview pendant la génération
   if (isGenerating) {
     return <GeneratingPreview />;
   }
 
-  // ✅ FIX: Afficher un loader si les fichiers ne sont pas encore prêts
-  if (!hasValidFiles) {
+  // Si aucun fichier n'est encore disponible, afficher un état de chargement.
+  // (Sinon, on laisse Sandpack tenter le rendu + gérer les erreurs)
+  if (Object.keys(projectFiles).length === 0) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-background">
         <div className="text-center">
-          <Loader className="animate-spin h-8 w-8 mx-auto mb-4 text-[#03A5C0]" />
+          <Loader className="animate-spin h-8 w-8 mx-auto mb-4 text-primary" />
           <p className="text-muted-foreground">Chargement du projet...</p>
         </div>
       </div>

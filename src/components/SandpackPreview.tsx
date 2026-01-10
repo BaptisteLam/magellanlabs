@@ -486,7 +486,7 @@ const SandpackContent = forwardRef<
         showRefreshButton={false}
         showNavigator={false}
         showRestartButton={false}
-        showSandpackErrorOverlay={false}
+        showSandpackErrorOverlay={true}
         style={{ 
           height: '100%', 
           width: '100%',
