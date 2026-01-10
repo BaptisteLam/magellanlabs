@@ -70,6 +70,7 @@ interface Message {
   };
 }
 import { IndexedDBCache } from '@/services/indexedDBCache';
+import { parseProjectFiles } from '@/lib/projectFilesParser';
 export default function BuilderSession() {
   const {
     sessionId
@@ -397,115 +398,34 @@ export default function BuilderSession() {
           setProjectType(data.project_type as 'website' | 'webapp' | 'mobile');
         }
 
-        // 📦 Parser et restaurer les fichiers de projet avec validation stricte
+        // 📦 Parser et restaurer les fichiers de projet avec la fonction utilitaire
         console.log('📦 Starting project files restoration...');
         try {
-          const projectFilesData = data.project_files as any;
-          console.log('📦 Raw project_files data type:', typeof projectFilesData, Array.isArray(projectFilesData) ? `(array, ${projectFilesData.length} items)` : '');
-          if (projectFilesData) {
-            let filesMap: Record<string, string> = {};
+          const validatedFilesMap = parseProjectFiles(data.project_files);
+          
+          if (Object.keys(validatedFilesMap).length > 0) {
+            console.log('✅ PROJECT FILES RESTORATION SUCCESS:', Object.keys(validatedFilesMap).length, 'files');
+            updateFiles(validatedFilesMap, false); // Pas de sync car c'est un chargement initial
+            setGeneratedHtml(validatedFilesMap['index.html'] || '');
 
-            // 🔧 Support de 3 formats: array, object direct, ou object-qui-était-un-array
-            if (Array.isArray(projectFilesData) && projectFilesData.length > 0) {
-              // Format array: [{path, content}, ...]
-              console.log('📦 Loading project files (array format):', projectFilesData.length, 'files');
-              projectFilesData.forEach((file: any, index: number) => {
-                if (file.path && file.content) {
-                  filesMap[file.path] = file.content;
-                  console.log(`  ✅ [${index + 1}/${projectFilesData.length}] ${file.path} : ${file.content.length} chars`);
-                } else {
-                  console.warn(`  ⚠️ [${index + 1}/${projectFilesData.length}] Invalid file structure:`, {
-                    hasPath: !!file.path,
-                    hasContent: !!file.content
-                  });
-                }
-              });
-            } else if (typeof projectFilesData === 'object' && Object.keys(projectFilesData).length > 0) {
-              // Détecter si c'est un objet-qui-était-un-array: clés numériques avec {path, content}
-              const firstKey = Object.keys(projectFilesData)[0];
-              const firstValue = projectFilesData[firstKey];
-              if (/^\d+$/.test(firstKey) && typeof firstValue === 'object' && firstValue.path && firstValue.content) {
-                // Format object-array corrompu: {"0": {path, content}, "1": {...}}
-                console.log('📦 Loading project files (corrupted array-as-object format):', Object.keys(projectFilesData).length, 'files');
-                Object.values(projectFilesData).forEach((file: any, index: number) => {
-                  if (file.path && file.content) {
-                    filesMap[file.path] = file.content;
-                    console.log(`  ✅ [${index + 1}] ${file.path} : ${file.content.length} chars`);
-                  } else {
-                    console.warn(`  ⚠️ [${index + 1}] Invalid file structure:`, {
-                      hasPath: !!file.path,
-                      hasContent: !!file.content
-                    });
-                  }
-                });
-              } else {
-                // Format object standard: {path: content, ...}
-                console.log('📦 Loading project files (object format):', Object.keys(projectFilesData).length, 'files');
-                filesMap = projectFilesData;
-                Object.entries(filesMap).forEach(([path, content], index) => {
-                  console.log(`  ✅ [${index + 1}/${Object.keys(filesMap).length}] ${path} : ${typeof content === 'string' ? content.length : 0} chars`);
-                });
-              }
+            // Charger le favicon s'il existe
+            const faviconFile = Object.keys(validatedFilesMap).find(path => path.startsWith('public/favicon.'));
+            if (faviconFile) {
+              setCurrentFavicon(validatedFilesMap[faviconFile]);
+              console.log('✅ Favicon restored:', faviconFile);
             }
-
-            // 🔍 Validation finale des noms de fichiers
-            const validatedFilesMap: Record<string, string> = {};
-            let hasInvalidKeys = false;
-            Object.entries(filesMap).forEach(([key, value]) => {
-              // Vérifier que la clé est un nom de fichier valide ET que la valeur est une string
-              if (typeof key === 'string' && key.includes('.') && !/^\d+$/.test(key) && typeof value === 'string') {
-                validatedFilesMap[key] = value;
-              } else {
-                console.warn('⚠️ Invalid file entry detected and skipped:', {
-                  key,
-                  valueType: typeof value
-                });
-                hasInvalidKeys = true;
-              }
-            });
-            if (hasInvalidKeys) {
-              console.warn('⚠️ Some invalid file keys were found and removed from the project');
-            }
-            if (Object.keys(validatedFilesMap).length > 0) {
-              console.log('✅ =====================================');
-              console.log('✅ PROJECT FILES RESTORATION SUCCESS');
-              console.log('✅ Total files restored:', Object.keys(validatedFilesMap).length);
-              console.log('✅ Files:', Object.keys(validatedFilesMap).join(', '));
-              console.log('✅ =====================================');
-              updateFiles(validatedFilesMap, false); // Pas de sync car c'est un chargement initial
-              setGeneratedHtml(validatedFilesMap['index.html'] || '');
-
-              // Charger le favicon s'il existe
-              const faviconFile = Object.keys(validatedFilesMap).find(path => path.startsWith('public/favicon.'));
-              if (faviconFile) {
-                setCurrentFavicon(validatedFilesMap[faviconFile]);
-                console.log('✅ Favicon restored:', faviconFile);
-              }
-              const firstFile = Object.keys(validatedFilesMap)[0];
-              if (firstFile) {
-                setSelectedFile(firstFile);
-                setSelectedFileContent(validatedFilesMap[firstFile]);
-                console.log('✅ First file selected:', firstFile);
-              }
-            } else {
-              console.error('❌ =====================================');
-              console.error('❌ PROJECT FILES RESTORATION FAILED');
-              console.error('❌ No files found after parsing');
-              console.error('❌ =====================================');
-              // Pas besoin d'initialiser à vide, le hook le gère
-              setGeneratedHtml('');
+            const firstFile = Object.keys(validatedFilesMap)[0];
+            if (firstFile) {
+              setSelectedFile(firstFile);
+              setSelectedFileContent(validatedFilesMap[firstFile]);
+              console.log('✅ First file selected:', firstFile);
             }
           } else {
-            console.error('❌ =====================================');
-            console.error('❌ PROJECT FILES DATA IS NULL/UNDEFINED');
-            console.error('❌ Cannot restore project files');
-            console.error('❌ =====================================');
-            // Pas besoin d'initialiser à vide, le hook le gère
+            console.error('❌ PROJECT FILES RESTORATION FAILED - No files found');
             setGeneratedHtml('');
           }
         } catch (err) {
           console.error('❌ Error parsing project_files:', err);
-          // Pas besoin d'initialiser à vide, le hook le gère
           setGeneratedHtml('');
         }
 

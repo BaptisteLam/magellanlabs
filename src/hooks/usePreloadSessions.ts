@@ -6,6 +6,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { IndexedDBCache } from '@/services/indexedDBCache';
+import { parseProjectFiles } from '@/lib/projectFilesParser';
 
 interface PreloadedSession {
   sessionId: string;
@@ -55,21 +56,27 @@ export function usePreloadSessions() {
       if (sessions && sessions.length > 0) {
         console.log(`🌐 Fetched ${sessions.length} sessions from Supabase`);
 
+        // Parser les fichiers avec le bon format
+        const parsedSessions = sessions.map(session => ({
+          ...session,
+          parsedFiles: parseProjectFiles(session.project_files)
+        }));
+
         // Mettre à jour le cache IndexedDB
         await Promise.all(
-          sessions.map(session =>
+          parsedSessions.map(session =>
             IndexedDBCache.saveProject(
               session.id,
-              (session.project_files as Record<string, string>) || {},
+              session.parsedFiles,
               'synced'
             )
           )
         );
 
         setPreloadedSessions(
-          sessions.map(s => ({
+          parsedSessions.map(s => ({
             sessionId: s.id,
-            projectFiles: (s.project_files as Record<string, string>) || {},
+            projectFiles: s.parsedFiles,
             title: s.title || 'Untitled',
             lastAccessed: new Date(s.updated_at).getTime()
           }))
@@ -118,7 +125,8 @@ export function usePreloadSessions() {
       if (error) throw error;
 
       if (session) {
-        const projectFiles = (session.project_files as Record<string, string>) || {};
+        // Parser les fichiers avec le bon format
+        const projectFiles = parseProjectFiles(session.project_files);
         
         // Sauvegarder dans le cache
         await IndexedDBCache.saveProject(sessionId, projectFiles, 'synced');
