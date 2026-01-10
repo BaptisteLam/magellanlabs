@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import {
   SandpackProvider,
   SandpackPreview as SandpackPreviewComponent,
@@ -6,19 +6,60 @@ import {
   useSandpack,
 } from '@codesandbox/sandpack-react';
 import { useThemeStore } from '@/stores/themeStore';
+import { injectInspectorIntoFiles } from '@/lib/sandpackInspector';
 
 interface SandpackPreviewProps {
   projectFiles: Record<string, string>;
   previewMode?: 'desktop' | 'mobile';
   showConsole?: boolean;
+  enableInspector?: boolean;
+  onIframeReady?: (iframe: HTMLIFrameElement | null) => void;
+}
+
+export interface SandpackPreviewHandle {
+  getIframe: () => HTMLIFrameElement | null;
+  sendMessage: (message: any) => void;
 }
 
 // Composant interne pour accéder au contexte Sandpack
-function SandpackContent({ showConsole = false }: { showConsole?: boolean }) {
+const SandpackContent = forwardRef<
+  SandpackPreviewHandle,
+  { showConsole?: boolean; onIframeReady?: (iframe: HTMLIFrameElement | null) => void }
+>(({ showConsole = false, onIframeReady }, ref) => {
   const { sandpack } = useSandpack();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  
+  // Trouver l'iframe Sandpack
+  useEffect(() => {
+    const findIframe = () => {
+      if (containerRef.current) {
+        const iframe = containerRef.current.querySelector('iframe');
+        if (iframe && iframe !== iframeRef.current) {
+          iframeRef.current = iframe;
+          onIframeReady?.(iframe);
+        }
+      }
+    };
+    
+    findIframe();
+    const observer = new MutationObserver(findIframe);
+    if (containerRef.current) {
+      observer.observe(containerRef.current, { childList: true, subtree: true });
+    }
+    
+    return () => observer.disconnect();
+  }, [onIframeReady]);
+  
+  useImperativeHandle(ref, () => ({
+    getIframe: () => iframeRef.current,
+    sendMessage: (message: any) => {
+      iframeRef.current?.contentWindow?.postMessage(message, '*');
+    }
+  }));
   
   return (
-    <div className="w-full h-full flex flex-col">
+    <div ref={containerRef} className="w-full h-full flex flex-col">
       <div className="flex-1 relative">
         <SandpackPreviewComponent
           showOpenInCodeSandbox={false}
@@ -33,13 +74,17 @@ function SandpackContent({ showConsole = false }: { showConsole?: boolean }) {
       )}
     </div>
   );
-}
+});
 
-export function SandpackPreview({ 
+SandpackContent.displayName = 'SandpackContent';
+
+export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreviewProps>(({ 
   projectFiles, 
   previewMode = 'desktop',
-  showConsole = false 
-}: SandpackPreviewProps) {
+  showConsole = false,
+  enableInspector = false,
+  onIframeReady
+}, ref) => {
   const { isDark } = useThemeStore();
 
   // Convertir les fichiers au format Sandpack (préfixe /)
@@ -75,8 +120,9 @@ export function SandpackPreview({
       files['/index.html'].active = true;
     }
 
-    return files;
-  }, [projectFiles]);
+    // Injecter le script d'inspection si activé
+    return injectInspectorIntoFiles(files, enableInspector);
+  }, [projectFiles, enableInspector]);
 
   // Dépendances courantes pour les projets React
   const dependencies = useMemo(() => ({
@@ -104,8 +150,8 @@ export function SandpackPreview({
 
   // Clé stable pour éviter les re-renders inutiles
   const sandpackKey = useMemo(() => {
-    return `sandpack-${Object.keys(projectFiles).length}-${template}`;
-  }, [Object.keys(projectFiles).length, template]);
+    return `sandpack-${Object.keys(projectFiles).length}-${template}-${enableInspector}`;
+  }, [Object.keys(projectFiles).length, template, enableInspector]);
 
   if (Object.keys(projectFiles).length === 0) {
     return (
@@ -134,10 +180,16 @@ export function SandpackPreview({
           autoReload: true,
         }}
       >
-        <SandpackContent showConsole={showConsole} />
+        <SandpackContent 
+          ref={ref}
+          showConsole={showConsole} 
+          onIframeReady={onIframeReady}
+        />
       </SandpackProvider>
     </div>
   );
-}
+});
+
+SandpackPreview.displayName = 'SandpackPreview';
 
 export default SandpackPreview;
