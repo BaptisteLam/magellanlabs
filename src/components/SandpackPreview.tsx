@@ -91,31 +91,82 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
   const sandpackFiles = useMemo(() => {
     const files: Record<string, { code: string; active?: boolean }> = {};
     
+    // Filtrer les fichiers de config qui ne sont pas nécessaires pour Sandpack
+    const skipFiles = ['package.json', 'vite.config.ts', 'tsconfig.json', 'tsconfig.node.json'];
+    
     Object.entries(projectFiles).forEach(([path, content]) => {
+      // Ignorer les fichiers de config
+      const fileName = path.split('/').pop() || '';
+      if (skipFiles.includes(fileName)) return;
+      
       // Ajouter le préfixe / si absent
       const sandpackPath = path.startsWith('/') ? path : `/${path}`;
       files[sandpackPath] = { code: content };
     });
 
-    // S'assurer qu'on a un fichier d'entrée
-    if (!files['/index.html'] && !files['/src/main.tsx'] && !files['/src/App.tsx']) {
-      // Créer une structure React basique si aucun fichier d'entrée
-      if (Object.keys(files).length === 0) {
-        files['/src/App.tsx'] = {
-          code: `export default function App() {
-  return <div className="p-8">
-    <h1 className="text-2xl font-bold">Nouveau projet</h1>
-    <p>Commencez à éditer votre code...</p>
-  </div>
+    // Vérifier si on a App.tsx (avec ou sans préfixe src/)
+    const hasAppTsx = files['/src/App.tsx'] || files['/App.tsx'];
+    const hasMainTsx = files['/src/main.tsx'] || files['/main.tsx'];
+    const hasIndexHtml = files['/index.html'];
+
+    // Créer une structure React basique si les fichiers d'entrée sont manquants
+    if (!hasAppTsx && Object.keys(files).length === 0) {
+      files['/src/App.tsx'] = {
+        code: `export default function App() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-gray-800 mb-4">Nouveau projet</h1>
+        <p className="text-gray-600">Commencez à éditer votre code...</p>
+      </div>
+    </div>
+  );
 }`,
-          active: true
-        };
-      }
+        active: true
+      };
+    }
+
+    // Si on a App.tsx mais pas main.tsx, le créer
+    if ((files['/src/App.tsx'] || files['/App.tsx']) && !hasMainTsx) {
+      const appPath = files['/src/App.tsx'] ? './App' : '../App';
+      files['/src/main.tsx'] = {
+        code: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from '${appPath}';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);`
+      };
+    }
+
+    // S'assurer qu'on a un fichier CSS de base
+    if (!files['/src/index.css'] && !files['/index.css']) {
+      files['/src/index.css'] = {
+        code: `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+}`
+      };
     }
 
     // Marquer le fichier actif
     if (files['/src/App.tsx']) {
       files['/src/App.tsx'].active = true;
+    } else if (files['/App.tsx']) {
+      files['/App.tsx'].active = true;
     } else if (files['/index.html']) {
       files['/index.html'].active = true;
     }
@@ -135,23 +186,14 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
     "framer-motion": "^12.0.0",
   }), []);
 
-  // Déterminer le template en fonction du contenu
-  const template = useMemo(() => {
-    if (projectFiles['index.html'] || projectFiles['/index.html']) {
-      // Si on a un index.html avec du React, utiliser vite-react-ts
-      const indexContent = projectFiles['index.html'] || projectFiles['/index.html'] || '';
-      if (indexContent.includes('react') || indexContent.includes('React')) {
-        return 'vite-react-ts';
-      }
-      return 'static';
-    }
-    return 'vite-react-ts';
-  }, [projectFiles]);
+  // Toujours utiliser vite-react-ts pour Sandpack
+  const template = 'vite-react-ts';
 
   // Clé stable pour éviter les re-renders inutiles
   const sandpackKey = useMemo(() => {
-    return `sandpack-${Object.keys(projectFiles).length}-${template}-${enableInspector}`;
-  }, [Object.keys(projectFiles).length, template, enableInspector]);
+    const fileCount = Object.keys(sandpackFiles).length;
+    return `sandpack-${fileCount}-${enableInspector}`;
+  }, [Object.keys(sandpackFiles).length, enableInspector]);
 
   if (Object.keys(projectFiles).length === 0) {
     return (
@@ -170,7 +212,7 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
         template={template as any}
         files={sandpackFiles}
         customSetup={{
-          dependencies: template === 'vite-react-ts' ? dependencies : undefined,
+          dependencies,
         }}
         theme={isDark ? 'dark' : 'light'}
         options={{
