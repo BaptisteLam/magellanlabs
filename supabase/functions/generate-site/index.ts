@@ -31,6 +31,41 @@ function cleanFileContent(content: string): string {
   return cleaned.trim();
 }
 
+// Normalise les chemins de fichiers pour Sandpack
+function normalizePath(path: string): string {
+  let normalized = path.trim();
+  
+  // Ajouter / au début si absent
+  if (!normalized.startsWith('/')) {
+    normalized = '/' + normalized;
+  }
+  
+  // Ne pas modifier les fichiers de config à la racine
+  const rootFiles = ['/package.json', '/vite.config.ts', '/tsconfig.json', '/tsconfig.node.json', '/index.html'];
+  if (rootFiles.includes(normalized)) {
+    return normalized;
+  }
+  
+  // Ajouter /src/ si c'est un fichier source sans préfixe src
+  if (!normalized.startsWith('/src/') && (
+    normalized.endsWith('.tsx') || 
+    normalized.endsWith('.ts') || 
+    normalized.endsWith('.jsx') || 
+    normalized.endsWith('.js') ||
+    normalized.endsWith('.css')
+  )) {
+    // Si le chemin commence par /components/, /hooks/, etc., ajouter /src devant
+    if (normalized.match(/^\/(components|hooks|utils|lib|services|pages|styles)\//)) {
+      normalized = '/src' + normalized;
+    } else if (!normalized.includes('/')) {
+      // Fichier à la racine comme /App.tsx -> /src/App.tsx
+      normalized = '/src' + normalized;
+    }
+  }
+  
+  return normalized;
+}
+
 // Parser pour extraire les fichiers au format // FILE: path
 function parseGeneratedCode(code: string): ProjectFile[] {
   const files: ProjectFile[] = [];
@@ -41,7 +76,7 @@ function parseGeneratedCode(code: string): ProjectFile[] {
   
   for (let i = 0; i < matches.length; i++) {
     const match = matches[i];
-    const filePath = match[1].trim();
+    let filePath = match[1].trim();
     const startIndex = match.index! + match[0].length;
     
     // Trouve le contenu jusqu'au prochain fichier
@@ -57,6 +92,9 @@ function parseGeneratedCode(code: string): ProjectFile[] {
       // Appliquer le nettoyage général pour les marqueurs résiduels
       rawContent = cleanFileContent(rawContent);
     }
+    
+    // Normaliser le chemin
+    filePath = normalizePath(filePath);
     
     const extension = filePath.split('.').pop() || '';
     
@@ -74,26 +112,21 @@ function parseGeneratedCode(code: string): ProjectFile[] {
     
     while ((match = codeBlockRegex.exec(code)) !== null) {
       const [, path, content] = match;
-      const extension = path.split('.').pop() || '';
+      const normalizedPath = normalizePath(path.trim());
+      const extension = normalizedPath.split('.').pop() || '';
       
       files.push({
-        path: path.trim(),
+        path: normalizedPath,
         content: cleanFileContent(content),
         type: getFileType(extension)
       });
     }
   }
   
-  // Format 3: HTML standalone - REJETER si pas de CSS et JS
-  if (files.length === 0 && (code.includes('<!DOCTYPE html>') || code.includes('<html'))) {
-    console.error('❌ ERREUR: Génération HTML uniquement détectée - CSS et JS requis!');
-    throw new Error('La génération doit OBLIGATOIREMENT inclure HTML, CSS ET JavaScript. Impossible de créer uniquement du HTML.');
-  }
-  
   // Log pour debug
   console.log(`[parseGeneratedCode] Parsed ${files.length} files`);
   for (const file of files) {
-    console.log(`  - ${file.path}: ${file.content.length} chars, starts with: "${file.content.substring(0, 50).replace(/\n/g, '\\n')}..."`);
+    console.log(`  - ${file.path}: ${file.content.length} chars`);
   }
   
   return files;
@@ -126,20 +159,6 @@ function getFileType(extension: string): string {
   };
   
   return typeMap[extension.toLowerCase()] || 'text';
-}
-
-// Détecte la structure du projet
-function detectProjectStructure(files: ProjectFile[]): string {
-  const paths = files.map(f => f.path);
-  
-  if (paths.some(p => p.includes('package.json'))) {
-    if (paths.some(p => p.includes('next.config'))) return 'nextjs';
-    if (paths.some(p => p.includes('vite.config'))) return 'react';
-    if (paths.some(p => p.includes('vue.config'))) return 'vue';
-    return 'react';
-  }
-  
-  return 'html';
 }
 
 serve(async (req) => {
@@ -191,99 +210,20 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 
-    // Prompt système REACT UNIQUEMENT - Génère toujours des projets React/Vite avec TypeScript
-    const systemPrompt = `Tu es un expert développeur React/TypeScript spécialisé dans la création de projets web React modernes, visuellement impressionnants et professionnels.
+    // PROMPT SYSTÈME OPTIMISÉ POUR SANDPACK
+    // Sandpack gère automatiquement: package.json, vite.config, tsconfig, index.html
+    // Claude doit générer UNIQUEMENT les fichiers src/
+    const systemPrompt = `Tu es un expert React/TypeScript. Tu génères des projets React pour prévisualisation dans Sandpack.
 
-🎯 ARCHITECTURE OBLIGATOIRE : REACT/VITE + TYPESCRIPT
-Tu DOIS TOUJOURS générer des projets React avec Vite et TypeScript. PAS de HTML/CSS/JS vanilla.
+🎯 IMPORTANT: Sandpack gère automatiquement la configuration (package.json, vite.config, tsconfig, index.html).
+Tu dois générer UNIQUEMENT les fichiers sources dans src/.
 
-STRUCTURE OBLIGATOIRE POUR TOUS LES PROJETS :
-
-// FILE: package.json
-{
-  "name": "projet-moderne",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "typescript": "^5.2.2",
-    "vite": "^5.3.1"
-  }
-}
-
-// FILE: vite.config.ts
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-export default defineConfig({
-  plugins: [react()],
-})
-
-// FILE: tsconfig.json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
-  },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
-}
-
-// FILE: tsconfig.node.json
-{
-  "compilerOptions": {
-    "composite": true,
-    "skipLibCheck": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true
-  },
-  "include": ["vite.config.ts"]
-}
-
-// FILE: index.html
-<!doctype html>
-<html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Projet Moderne</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+📁 STRUCTURE OBLIGATOIRE À GÉNÉRER:
 
 // FILE: src/main.tsx
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
+import App from './App'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -293,15 +233,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 
 // FILE: src/App.tsx
-[Composant principal avec PLUSIEURS sections complètes - minimum 150+ lignes de JSX]
-[Utilise useState, useEffect et autres hooks React pour l'interactivité]
-[Plusieurs composants bien structurés]
+[Composant principal avec sections complètes - 100+ lignes de JSX]
+[Import et utilise TOUS les composants que tu crées]
 
 // FILE: src/index.css
-[Styles CSS modernes : variables CSS, gradients, animations, responsive - minimum 80+ lignes]
+[Styles CSS modernes avec variables, animations, responsive - 80+ lignes]
 
-🔥 FORMULAIRE DE CONTACT OBLIGATOIRE EN REACT :
-Pour CHAQUE projet généré, tu DOIS inclure un composant de formulaire de contact fonctionnel :
+// FILE: src/components/[NomComposant].tsx
+[Chaque composant importé dans App.tsx DOIT avoir son fichier]
+
+🔥 FORMULAIRE DE CONTACT OBLIGATOIRE:
 
 // FILE: src/components/ContactForm.tsx
 import { useState, FormEvent } from 'react'
@@ -334,14 +275,14 @@ export default function ContactForm() {
 
       if (response.ok) {
         setStatus('success')
-        setMessage('✅ Message envoyé avec succès !')
+        setMessage('Message envoyé avec succès!')
         setFormData({ name: '', email: '', phone: '', message: '' })
       } else {
         throw new Error('Erreur serveur')
       }
     } catch (error) {
       setStatus('error')
-      setMessage('❌ Erreur lors de l\\'envoi. Réessayez.')
+      setMessage('Erreur lors de l\\'envoi. Réessayez.')
     }
   }
 
@@ -349,84 +290,39 @@ export default function ContactForm() {
     <section className="contact-section">
       <h2>Contactez-nous</h2>
       <form onSubmit={handleSubmit} className="contact-form">
-        <input
-          type="text"
-          placeholder="Votre nom"
-          required
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-        />
-        <input
-          type="email"
-          placeholder="Votre email"
-          required
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-        />
-        <input
-          type="tel"
-          placeholder="Téléphone (optionnel)"
-          value={formData.phone}
-          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-        />
-        <textarea
-          placeholder="Votre message"
-          required
-          value={formData.message}
-          onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-        />
-        <button type="submit" disabled={status === 'loading'}>
-          {status === 'loading' ? 'Envoi...' : 'Envoyer'}
-        </button>
+        <input type="text" placeholder="Votre nom" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+        <input type="email" placeholder="Votre email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+        <input type="tel" placeholder="Téléphone (optionnel)" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+        <textarea placeholder="Votre message" required value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} />
+        <button type="submit" disabled={status === 'loading'}>{status === 'loading' ? 'Envoi...' : 'Envoyer'}</button>
       </form>
       {message && <div className={\`form-message \${status}\`}>{message}</div>}
     </section>
   )
 }
 
-RÈGLES DE GÉNÉRATION :
-1. **TOUJOURS REACT** : Génère UNIQUEMENT des projets React/Vite avec TypeScript - JAMAIS de HTML/CSS/JS vanilla
-2. **CONTENU COMPLET** : Minimum 150+ lignes de JSX dans App.tsx avec plusieurs sections
-3. **COMPOSANTS RÉUTILISABLES** : Crée au moins 3-4 composants dans src/components/
-4. **HOOKS REACT** : Utilise useState, useEffect, et autres hooks pour l'interactivité
-5. **TYPESCRIPT** : Tous les fichiers .tsx avec types appropriés
-6. **DESIGN MODERNE** : Animations CSS, gradients, responsive, palette de couleurs harmonieuse
+⚠️ RÈGLES CRITIQUES:
+1. CHAQUE composant importé dans App.tsx DOIT avoir son fichier correspondant généré
+2. Les imports utilisent ./ ou ../ relatifs (pas de @/ car Sandpack ne le supporte pas nativement)
+3. Tous les chemins commencent par src/
+4. Design moderne: gradients, ombres, animations, responsive
+5. TypeScript strict avec types appropriés
+6. Utilise useState, useEffect pour l'interactivité
 
-FORMAT DE SORTIE (OBLIGATOIRE) :
-Chaque fichier DOIT être précédé de :
-// FILE: chemin/complet/fichier.extension
+❌ NE PAS GÉNÉRER:
+- package.json (Sandpack le gère)
+- vite.config.ts (Sandpack le gère)
+- tsconfig.json (Sandpack le gère)
+- index.html (Sandpack le gère)
 
-STRUCTURE MINIMALE REQUISE :
-✅ package.json (avec React + Vite + TypeScript)
-✅ vite.config.ts
-✅ tsconfig.json
-✅ tsconfig.node.json
-✅ index.html (avec <div id="root">)
-✅ src/main.tsx (point d'entrée React)
-✅ src/App.tsx (composant principal riche - 150+ lignes)
-✅ src/index.css (styles modernes - 80+ lignes)
-✅ src/components/ContactForm.tsx (formulaire de contact)
-✅ src/components/[Autres].tsx (au moins 2-3 composants supplémentaires)
+FORMAT DE SORTIE:
+// FILE: src/chemin/fichier.tsx
+[contenu du fichier]
 
-EXIGENCES DE QUALITÉ :
-✅ Design moderne avec gradients, ombres, animations CSS
-✅ Responsive mobile-first (breakpoints tablet et desktop)
-✅ Typographie élégante avec hiérarchie claire
-✅ Palette de couleurs harmonieuse (3-5 couleurs)
-✅ Contenu textuel réaliste et substantiel
-✅ Interactivité riche avec React hooks (useState, useEffect, etc.)
-✅ Composants bien organisés et réutilisables
-✅ Types TypeScript appropriés
+// FILE: src/chemin/autre.tsx
+[contenu]
 
-❌ INTERDIT :
-- Générer du HTML/CSS/JS vanilla
-- Projets avec moins de 150 lignes de JSX
-- "Hello World" ou contenu minimaliste
-- Design basique sans style
-- Absence de composants
-- Pas de types TypeScript
-
-Génère maintenant un projet React/Vite complet, professionnel et visuellement impressionnant avec TypeScript.`;
+Génère maintenant un projet React complet et professionnel.`;
 
     // Appel Claude API avec streaming
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -451,7 +347,6 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
       const errorText = await response.text();
       console.error('[generate-site] Claude API error:', response.status, errorText);
       
-      // Return generic error message to user
       const statusMessages: Record<number, string> = {
         400: 'Invalid request. Please check your input.',
         401: 'Authentication failed. Please try again.',
@@ -465,7 +360,7 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
       );
     }
 
-    // Stream SSE avec parsing en temps réel et events structurés
+    // Stream SSE avec parsing en temps réel
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
@@ -475,7 +370,7 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
           return;
         }
 
-        let streamClosed = false; // Flag pour éviter d'enqueuer après fermeture
+        let streamClosed = false;
 
         const safeEnqueue = (data: Uint8Array) => {
           if (!streamClosed) {
@@ -504,13 +399,12 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
           }
         };
 
-        // Event: start avec phase d'analyse
+        // Event: start
         safeEnqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'start',
           data: { sessionId, phase: 'analyzing' }
         })}\n\n`));
 
-        // Event: Analyse du prompt
         safeEnqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'generation_event',
           data: {
@@ -526,16 +420,14 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
         let lastParsedFiles: ProjectFile[] = [];
         let timeout: number | null = null;
         
-        // Variables pour capturer les tokens réels de Claude
         let inputTokens = 0;
         let outputTokens = 0;
 
-        // Timeout de 120 secondes (2 minutes)
         timeout = setTimeout(() => {
           console.error('[generate-site] Timeout après 120s');
           safeEnqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'error',
-            data: { message: 'Timeout: La génération a pris trop de temps. Veuillez réessayer avec une demande plus simple.' }
+            data: { message: 'Timeout: La génération a pris trop de temps.' }
           })}\n\n`));
           closeStream();
         }, 120000);
@@ -553,11 +445,7 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
               
               if (!line.trim() || line.startsWith(':') || line === '') continue;
               
-              // Claude SSE format: "event: content_block_delta" suivi de "data: {...}"
-              if (line.startsWith('event:')) {
-                continue; // Skip event type lines
-              }
-              
+              if (line.startsWith('event:')) continue;
               if (!line.startsWith('data:')) continue;
               
               const dataStr = line.replace('data:', '').trim();
@@ -565,12 +453,10 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
               try {
                 const parsed = JSON.parse(dataStr);
                 
-                // Capturer les tokens depuis message_start
                 if (parsed.type === 'message_start' && parsed.message?.usage) {
                   inputTokens = parsed.message.usage.input_tokens || 0;
-                  console.log(`[generate-site] 📊 Input tokens: ${inputTokens}`);
+                  console.log(`[generate-site] Input tokens: ${inputTokens}`);
 
-                  // Event: Analyse terminée, début de génération
                   safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                     type: 'generation_event',
                     data: {
@@ -585,172 +471,100 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
                     type: 'generation_event',
                     data: {
                       type: 'plan',
-                      message: 'Planification de l\'architecture',
+                      message: 'Génération du code React',
                       status: 'in-progress',
-                      phase: 'planning'
+                      phase: 'generation'
                     }
                   })}\n\n`));
                 }
                 
-                // Capturer les tokens d'output depuis message_delta
                 if (parsed.type === 'message_delta' && parsed.usage) {
                   outputTokens = parsed.usage.output_tokens || 0;
-                  console.log(`[generate-site] 📊 Output tokens so far: ${outputTokens}`);
                 }
               } catch (e) {
-                // Ignore parsing errors for non-JSON lines
+                // Ignore
               }
               
               // Claude envoie un [DONE] ou message_stop
               if (dataStr === '[DONE]' || dataStr.includes('"type":"message_stop"')) {
                 if (timeout) clearTimeout(timeout);
                 
-                // ✅ VALIDATION DU CONTENU FINAL
-                console.log(`[generate-site] 📏 Final accumulated content: ${accumulated.length} characters`);
+                console.log(`[generate-site] Final content: ${accumulated.length} characters`);
                 
                 if (!accumulated || accumulated.trim().length === 0) {
-                  console.error("[generate-site] ❌ ERROR: Accumulated content is empty!");
+                  console.error("[generate-site] ERROR: Empty content");
                   safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                     type: 'error',
-                    data: { message: 'Le contenu généré est vide — génération échouée' }
+                    data: { message: 'Contenu généré vide' }
                   })}\n\n`));
                   closeStream();
                   return;
                 }
 
-                if (accumulated.length < 100) {
-                  console.error(`[generate-site] ❌ ERROR: Content too short (${accumulated.length} chars)`);
-                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'error',
-                    data: { message: `Contenu trop court (${accumulated.length} caractères) — génération échouée` }
-                  })}\n\n`));
-                  closeStream();
-                  return;
-                }
-
-                console.log(`[generate-site] 🧠 Content preview (first 200 chars): ${accumulated.substring(0, 200)}...`);
-                
-                // Parsing final et sauvegarde
+                // Parsing final
                 const finalFiles = parseGeneratedCode(accumulated);
-                const projectType = detectProjectStructure(finalFiles);
                 
-                console.log(`[generate-site] 📦 Parsed ${finalFiles.length} files, type: ${projectType}`);
+                console.log(`[generate-site] Parsed ${finalFiles.length} files`);
                 
-                // ✅ VALIDATION STRICTE DU HTML
-                const htmlFile = finalFiles.find(f => f.path === 'index.html' || f.path.endsWith('/index.html'));
-                if (htmlFile) {
-                  const htmlContent = htmlFile.content;
-                  console.log(`[generate-site] 📄 index.html size: ${htmlContent.length} characters`);
-                  console.log(`[generate-site] 🧠 HTML preview (first 200 chars): ${htmlContent.substring(0, 200)}...`);
-                  
-                  if (htmlContent.length < 50) {
-                    console.error(`[generate-site] ❌ ERROR: index.html too short (${htmlContent.length} chars)`);
-                    safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                      type: 'error',
-                      data: { message: `HTML trop court (${htmlContent.length} caractères) — génération échouée` }
-                    })}\n\n`));
-                    closeStream();
-                    return;
-                  }
-
-                  // Vérifier les balises essentielles
-                  const hasHtml = htmlContent.includes('<html');
-                  const hasHead = htmlContent.includes('<head');
-                  const hasBody = htmlContent.includes('<body');
-                  
-                  console.log(`[generate-site] 🔍 HTML validation: <html>=${hasHtml}, <head>=${hasHead}, <body>=${hasBody}`);
-                  
-                  if (!hasHtml || !hasHead || !hasBody) {
-                    console.error("[generate-site] ❌ ERROR: Missing essential HTML tags");
-                    safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                      type: 'error',
-                      data: { message: 'HTML invalide - balises essentielles manquantes (<html>, <head>, ou <body>)' }
-                    })}\n\n`));
-                    closeStream();
-                    return;
-                  }
-
-                  console.log(`[generate-site] ✅ index.html validated successfully (${htmlContent.length} chars)`);
-                } else {
-                  console.error("[generate-site] ❌ ERROR: No index.html file found in parsed files");
+                // Validation: au moins App.tsx et main.tsx
+                const hasApp = finalFiles.some(f => f.path.includes('App.tsx'));
+                const hasMain = finalFiles.some(f => f.path.includes('main.tsx'));
+                
+                if (!hasApp && !hasMain) {
+                  console.error("[generate-site] ERROR: Missing App.tsx or main.tsx");
                   safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                     type: 'error',
-                    data: { message: 'Aucun fichier index.html trouvé — génération échouée' }
+                    data: { message: 'Fichiers React essentiels manquants (App.tsx, main.tsx)' }
                   })}\n\n`));
                   closeStream();
                   return;
                 }
                 
                 const totalTokens = inputTokens + outputTokens;
-                console.log(`[generate-site] 📊 FINAL TOKEN COUNT: Input=${inputTokens}, Output=${outputTokens}, Total=${totalTokens}`);
+                console.log(`[generate-site] Tokens: Input=${inputTokens}, Output=${outputTokens}, Total=${totalTokens}`);
 
-                // Event: Planification terminée
                 safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'generation_event',
                   data: {
                     type: 'complete',
-                    message: 'Planification terminée',
+                    message: 'Génération terminée',
                     status: 'completed',
-                    phase: 'planning'
+                    phase: 'generation'
                   }
                 })}\n\n`));
 
-                // Event: Validation en cours
-                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'generation_event',
-                  data: {
-                    type: 'analyze',
-                    message: 'Vérification et optimisation',
-                    status: 'in-progress',
-                    phase: 'validation'
-                  }
-                })}\n\n`));
-
-                // ✅ Convertir les fichiers en format Record<string, string> pour le frontend
+                // Convertir en Record<string, string>
                 const filesRecord: Record<string, string> = {};
                 for (const file of finalFiles) {
                   filesRecord[file.path] = file.content;
                 }
-                console.log(`[generate-site] 📤 Sending ${Object.keys(filesRecord).length} files to frontend`);
+                console.log(`[generate-site] Sending ${Object.keys(filesRecord).length} files`);
 
-                // Sauvegarder dans Supabase (format objet pour compatibilité)
+                // Sauvegarder dans Supabase
                 if (sessionId) {
                   await supabaseClient
                     .from('build_sessions')
                     .update({
                       project_files: filesRecord,
-                      project_type: projectType,
+                      project_type: 'react',
                       updated_at: new Date().toISOString()
                     })
                     .eq('id', sessionId);
                 }
 
-                // Event: Validation terminée
-                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'generation_event',
-                  data: {
-                    type: 'complete',
-                    message: 'Validation terminée',
-                    status: 'completed',
-                    phase: 'validation'
-                  }
-                })}\n\n`));
-
-                // ✅ Event: files - Envoyer les fichiers AVANT complete
+                // Event: files
                 safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'files',
-                  data: {
-                    files: filesRecord
-                  }
+                  data: { files: filesRecord }
                 })}\n\n`));
 
-                // Event: complete avec tokens réels
+                // Event: complete
                 safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'complete',
                   data: {
                     files: filesRecord,
                     totalFiles: finalFiles.length,
-                    projectType,
+                    projectType: 'react',
                     tokens: {
                       input: inputTokens,
                       output: outputTokens,
@@ -765,84 +579,48 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
 
               try {
                 const json = JSON.parse(dataStr);
-                
-                // Support Claude streaming format: { type: "content_block_delta", delta: { text: "..." } }
-                // ET OpenAI format: { choices: [{ delta: { content: "..." } }] }
                 const delta = json?.delta?.text || json?.choices?.[0]?.delta?.content || '';
                 if (!delta) continue;
 
                 accumulated += delta;
                 
-                // Event: chunk (streaming progressif)
                 safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'chunk',
                   data: { content: delta }
                 })}\n\n`));
 
-                // Parser optimisé: seulement tous les 500 caractères
+                // Parser tous les 500 caractères
                 if (accumulated.length % 500 < delta.length) {
                   const currentFiles = parseGeneratedCode(accumulated);
 
-                  // Détecte les nouveaux fichiers
                   if (currentFiles.length > lastParsedFiles.length) {
                     const newFiles = currentFiles.slice(lastParsedFiles.length);
 
                     for (const file of newFiles) {
-                      // Générer un message contextuel basé sur le type de fichier
-                      let eventType = 'create';
                       let message = '';
+                      const fileName = file.path.split('/').pop()?.replace('.tsx', '').replace('.ts', '').replace('.css', '');
 
-                      if (file.path.includes('App.tsx') || file.path.includes('main.tsx')) {
-                        eventType = 'write';
+                      if (file.path.includes('App.tsx')) {
                         message = 'Création du composant principal';
-                      } else if (file.path.includes('component') || file.path.includes('Component')) {
-                        eventType = 'write';
-                        const componentName = file.path.split('/').pop()?.replace('.tsx', '').replace('.jsx', '');
-                        message = `Création du composant ${componentName}`;
-                      } else if (file.path.includes('.css') || file.path.includes('style')) {
-                        eventType = 'write';
+                      } else if (file.path.includes('main.tsx')) {
+                        message = 'Point d\'entrée React';
+                      } else if (file.path.includes('.css')) {
                         message = 'Mise en place des styles';
-                      } else if (file.path === 'package.json') {
-                        eventType = 'create';
-                        message = 'Configuration des dépendances';
-                      } else if (file.path === 'index.html') {
-                        eventType = 'create';
-                        message = 'Création de la structure HTML';
-                      } else if (file.path.includes('vite.config') || file.path.includes('tsconfig')) {
-                        eventType = 'create';
-                        message = 'Configuration du projet';
-                      } else if (file.path.includes('Chart') || file.path.includes('Graph')) {
-                        eventType = 'write';
-                        message = 'Création des graphiques';
-                      } else if (file.path.includes('Menu') || file.path.includes('Nav')) {
-                        eventType = 'write';
-                        message = 'Mise en place du menu de navigation';
-                      } else if (file.path.includes('Form') || file.path.includes('Contact')) {
-                        eventType = 'write';
-                        message = 'Création du formulaire';
-                      } else if (file.path.includes('Hero') || file.path.includes('Header')) {
-                        eventType = 'write';
-                        message = 'Création de la section hero';
-                      } else if (file.path.includes('Footer')) {
-                        eventType = 'write';
-                        message = 'Création du footer';
+                      } else if (file.path.includes('components/')) {
+                        message = `Composant ${fileName}`;
                       } else {
-                        eventType = 'create';
-                        const fileName = file.path.split('/').pop();
                         message = `Création de ${fileName}`;
                       }
 
-                      // Event: file_detected avec message contextuel
                       safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                         type: 'file_detected',
-                        data: { path: file.path, content: file.content, type: file.type }
+                        data: { path: file.path, type: file.type }
                       })}\n\n`));
 
-                      // Event: generation_event pour l'affichage user-friendly
                       safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                         type: 'generation_event',
                         data: {
-                          type: eventType,
+                          type: 'write',
                           message: message,
                           status: 'completed',
                           phase: 'generation',
@@ -860,7 +638,6 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
             }
           }
           
-          // Si on sort de la boucle sans avoir reçu [DONE]
           if (!streamClosed) {
             if (timeout) clearTimeout(timeout);
             closeStream();
@@ -869,7 +646,6 @@ Génère maintenant un projet React/Vite complet, professionnel et visuellement 
           if (timeout) clearTimeout(timeout);
           console.error('[generate-site] Stream error:', error);
           
-          // Event: error
           safeEnqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'error',
             data: { message: error instanceof Error ? error.message : 'Erreur inconnue' }

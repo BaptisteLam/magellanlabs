@@ -41,18 +41,19 @@ export function InteractiveSandpackPreview({
   const containerRef = useRef<HTMLDivElement>(null);
   const sandpackRef = useRef<SandpackPreviewHandle>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Gérer les messages de l'inspector injecté dans Sandpack
   const handleInspectorMessage = useCallback((data: any) => {
     switch (data.type) {
       case 'inspector-loaded':
       case 'inspector-ready':
+        console.log('[InteractiveSandpackPreview] Inspector ready');
         setInspectorReady(true);
         break;
         
       case 'inspect-element-hover':
         if (data.elementInfo) {
-          // Ajuster les coordonnées relative à l'iframe
           const iframe = iframeRef.current;
           if (iframe && data.elementInfo.boundingRect) {
             const iframeRect = iframe.getBoundingClientRect();
@@ -74,7 +75,6 @@ export function InteractiveSandpackPreview({
         
       case 'inspect-element-selected':
         if (data.elementInfo) {
-          // Ajuster les coordonnées relative à l'iframe
           const iframe = iframeRef.current;
           if (iframe && data.elementInfo.boundingRect) {
             const iframeRect = iframe.getBoundingClientRect();
@@ -100,17 +100,53 @@ export function InteractiveSandpackPreview({
     }
   }, [onInspectModeChange]);
 
-  // Envoyer le mode inspection quand il change
+  // Activer/désactiver le mode inspection avec retry
   useEffect(() => {
-    if (sandpackRef.current) {
-      sandpackRef.current.setInspectMode(inspectMode);
+    // Nettoyer le timeout précédent
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
     }
     
-    // Reset hover quand on désactive le mode
-    if (!inspectMode) {
+    if (inspectMode) {
+      // Activer le mode inspection
+      const activateInspectMode = () => {
+        if (sandpackRef.current) {
+          sandpackRef.current.setInspectMode(true);
+        }
+      };
+      
+      // Activer immédiatement
+      activateInspectMode();
+      
+      // Si l'inspector n'est pas encore prêt, réessayer
+      if (!inspectorReady) {
+        const retryInterval = setInterval(() => {
+          console.log('[InteractiveSandpackPreview] Retrying inspect mode activation...');
+          activateInspectMode();
+        }, 500);
+        
+        // Arrêter après 5 secondes
+        retryTimeoutRef.current = setTimeout(() => {
+          clearInterval(retryInterval);
+        }, 5000);
+        
+        return () => {
+          clearInterval(retryInterval);
+          if (retryTimeoutRef.current) {
+            clearTimeout(retryTimeoutRef.current);
+          }
+        };
+      }
+    } else {
+      // Désactiver le mode inspection
+      if (sandpackRef.current) {
+        sandpackRef.current.setInspectMode(false);
+      }
       setHoveredElement(null);
+      setInspectorReady(false);
     }
-  }, [inspectMode]);
+  }, [inspectMode, inspectorReady]);
 
   // Callback quand l'iframe est prête
   const handleIframeReady = useCallback((iframe: HTMLIFrameElement | null) => {
@@ -162,7 +198,7 @@ export function InteractiveSandpackPreview({
         </div>
       )}
 
-      {/* Outline de l'élément survolé (affiché au-dessus de l'iframe) */}
+      {/* Outline de l'élément survolé */}
       {inspectMode && hoveredElement?.boundingRect && (
         <div
           className="fixed pointer-events-none z-10"
@@ -176,7 +212,6 @@ export function InteractiveSandpackPreview({
             borderRadius: '4px'
           }}
         >
-          {/* Label de l'élément */}
           <div 
             className="absolute -top-6 left-0 px-2 py-0.5 text-xs font-mono rounded"
             style={{
