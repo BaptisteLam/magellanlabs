@@ -244,7 +244,7 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
 }, ref) => {
   const { isDark } = useThemeStore();
 
-  // Convertir les fichiers au format Sandpack (préfixe /)
+  // 🔧 Convertir les fichiers au format Sandpack - FORCE REACT/TYPESCRIPT
   const sandpackFiles = useMemo(() => {
     let files: Record<string, { code: string; active?: boolean }> = {};
     
@@ -254,15 +254,21 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
       paths: Object.keys(projectFiles),
       hasApp: Object.keys(projectFiles).some(k => k.toLowerCase().includes('app.tsx'))
     });
+
+    // Retourner vide si pas de fichiers
+    if (Object.keys(projectFiles).length === 0) {
+      console.warn('⚠️ [SandpackPreview] No project files to process');
+      return files;
+    }
     
-    // Fichiers à ignorer (config Vite, etc.)
+    // Fichiers à ignorer (config Vite gérée par Sandpack)
     const skipFiles = [
       'package.json', 'package-lock.json', 'bun.lockb',
       'vite.config.ts', 'vite.config.js',
       'tsconfig.json', 'tsconfig.node.json', 'tsconfig.app.json',
       'postcss.config.js', 'tailwind.config.ts', 'tailwind.config.js',
       '.gitignore', 'README.md', '.env', '.env.local',
-      'eslint.config.js', 'components.json'
+      'eslint.config.js', 'components.json', 'index.html'
     ];
     
     Object.entries(projectFiles).forEach(([path, content]) => {
@@ -276,21 +282,32 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
       // Normaliser le chemin - ajouter / au début
       let sandpackPath = path.startsWith('/') ? path : `/${path}`;
       
-      // ✅ FIX: Normalisation robuste - S'assurer que les fichiers sources sont dans /src/
+      // 🎯 FORCE: Tous les fichiers sources doivent être dans /src/
       if (!sandpackPath.startsWith('/src/') && !sandpackPath.startsWith('/public/')) {
-        // Si c'est un fichier source (.tsx, .ts, .jsx, .js, .css)
         if (sandpackPath.match(/\.(tsx|ts|jsx|js|css)$/)) {
-          // Vérifier si c'est un chemin comme /components/... ou /hooks/...
-          if (sandpackPath.match(/^\/(components|hooks|utils|lib|services|pages|styles)\//)) {
-            sandpackPath = `/src${sandpackPath}`;
-          } else if (!sandpackPath.slice(1).includes('/')) {
-            // Fichier à la racine comme /App.tsx -> /src/App.tsx
-            sandpackPath = `/src${sandpackPath}`;
+          // Normaliser vers /src/
+          const cleanPath = sandpackPath.replace(/^\/+/, '');
+          if (cleanPath.startsWith('src/')) {
+            sandpackPath = '/' + cleanPath;
+          } else if (cleanPath.match(/^(components|hooks|utils|lib|services|pages|styles)\//)) {
+            sandpackPath = '/src/' + cleanPath;
+          } else {
+            sandpackPath = '/src/' + cleanPath;
           }
         }
       }
       
-      files[sandpackPath] = { code: content };
+      // Nettoyer le contenu des marqueurs markdown résiduels
+      let cleanContent = content;
+      if (typeof cleanContent === 'string') {
+        cleanContent = cleanContent.trim();
+        // Supprimer les code blocks markdown si présents
+        if (cleanContent.startsWith('```')) {
+          cleanContent = cleanContent.replace(/^```[\w]*\n/, '').replace(/\n```$/, '');
+        }
+      }
+      
+      files[sandpackPath] = { code: cleanContent };
     });
 
     console.log('🔍 [SandpackPreview] Normalized files:', Object.keys(files));
@@ -355,10 +372,12 @@ body {
     return injectInspectorIntoFiles(files, enableInspector);
   }, [projectFiles, enableInspector]);
 
-  // Dépendances courantes pour les projets React
+  // 🔧 Dépendances pour React avec toutes les librairies courantes
   const dependencies = useMemo(() => ({
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
     "lucide-react": "^0.462.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.6.0",
@@ -422,6 +441,14 @@ body {
     );
   }
 
+  // 🎯 Log final pour debug
+  console.log('🚀 [SandpackPreview] Rendering Sandpack with:', {
+    fileCount: Object.keys(sandpackFiles).length,
+    files: Object.keys(sandpackFiles),
+    hasApp: !!sandpackFiles['/src/App.tsx'],
+    hasMain: !!sandpackFiles['/src/main.tsx'],
+  });
+
   return (
     <div 
       className={`w-full h-full sandpack-container ${previewMode === 'mobile' ? 'max-w-[375px] mx-auto border-x border-border' : ''}`}
@@ -432,13 +459,18 @@ body {
         files={sandpackFiles}
         customSetup={{
           dependencies,
+          entry: '/src/main.tsx',
         }}
         theme={isDark ? 'dark' : 'light'}
         options={{
           recompileMode: 'delayed',
-          recompileDelay: 300,
+          recompileDelay: 200,
           autorun: true,
           autoReload: true,
+          bundlerURL: 'https://sandpack-bundler.codesandbox.io',
+          externalResources: [
+            'https://cdn.tailwindcss.com',
+          ],
         }}
       >
         <SandpackContent 
