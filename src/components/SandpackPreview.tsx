@@ -6,7 +6,6 @@ import {
 } from '@codesandbox/sandpack-react';
 import { useThemeStore } from '@/stores/themeStore';
 import { injectInspectorIntoFiles } from '@/lib/sandpackInspector';
-import { Loader } from 'lucide-react';
 
 // 🔧 Liste exhaustive des icônes lucide-react pour corrections JSX
 const LUCIDE_ICONS = [
@@ -38,7 +37,7 @@ const LUCIDE_ICONS = [
   'Leaf', 'Droplet', 'Flame', 'Snowflake', 'Cloud', 'CloudRain', 'CloudSnow'
 ].join('|');
 
-// 🔧 Fonction pour corriger les erreurs JSX courantes dans le code généré par l'IA
+// 🔧 PHASE 4: Fonction AMÉLIORÉE pour corriger les erreurs JSX courantes
 function fixJSXSyntaxErrors(code: string, filePath: string): string {
   if (!filePath.match(/\.(tsx|jsx)$/)) return code;
   
@@ -87,18 +86,191 @@ function fixJSXSyntaxErrors(code: string, filePath: string): string {
   const iconOnlySpaces = new RegExp(`<(${LUCIDE_ICONS})\\s+>`, 'g');
   fixed = fixed.replace(iconOnlySpaces, '<$1 />');
   
+  // 10. NOUVEAU: Corriger les balises HTML self-closing oubliées (img, br, hr, input, etc.)
+  const selfClosingTags = ['img', 'br', 'hr', 'input', 'meta', 'link', 'area', 'base', 'col', 'embed', 'param', 'source', 'track', 'wbr'];
+  selfClosingTags.forEach(tag => {
+    // Pattern: <img src="..." > → <img src="..." />
+    const pattern = new RegExp(`<${tag}(\\s+[^>]*[^/])>`, 'gi');
+    fixed = fixed.replace(pattern, `<${tag}$1 />`);
+    // Pattern: <img> → <img />
+    const emptyPattern = new RegExp(`<${tag}>`, 'gi');
+    fixed = fixed.replace(emptyPattern, `<${tag} />`);
+  });
+  
+  // 11. NOUVEAU: Corriger les fragments mal formés
+  fixed = fixed.replace(/<>(\s*\n\s*)+$/gm, '<></>');
+  fixed = fixed.replace(/<\/>\s*<\/>/g, '</>');
+  
+  // 12. NOUVEAU: Corriger les accolades JSX non fermées dans les attributs simples
+  fixed = fixed.replace(/=\{([^{}]*[^}])\n(\s*[a-zA-Z]+=)/g, '={$1}\n$2');
+  
+  // 13. NOUVEAU: Supprimer les imports dupliqués de React (cause d'erreur)
+  const importLines = fixed.split('\n');
+  const seenImports = new Set<string>();
+  const cleanedLines = importLines.filter(line => {
+    const importMatch = line.match(/^import\s+.*\s+from\s+['"]([^'"]+)['"]/);
+    if (importMatch) {
+      const key = importMatch[0];
+      if (seenImports.has(key)) {
+        return false; // Supprimer l'import dupliqué
+      }
+      seenImports.add(key);
+    }
+    return true;
+  });
+  fixed = cleanedLines.join('\n');
+  
   // Log si des corrections ont été faites
   if (fixed !== original) {
     console.log(`🔧 [fixJSXSyntaxErrors] Fixed JSX syntax in ${filePath}`);
-    // Log les différences pour debug
-    const originalLines = original.split('\n').length;
-    const fixedLines = fixed.split('\n').length;
-    if (originalLines !== fixedLines) {
-      console.log(`   Lines: ${originalLines} -> ${fixedLines}`);
-    }
   }
   
   return fixed;
+}
+
+// 🔧 PHASE 3: Normalisation INTELLIGENTE des chemins avec aliases
+function normalizeFilePath(path: string): string {
+  let normalized = path.startsWith('/') ? path : '/' + path;
+  
+  // Aliases courants pour mapper vers la structure /src/
+  const aliases: Record<string, string> = {
+    '/App.tsx': '/src/App.tsx',
+    '/App.jsx': '/src/App.jsx',
+    '/app.tsx': '/src/App.tsx',
+    '/app.jsx': '/src/App.jsx',
+    '/main.tsx': '/src/main.tsx',
+    '/index.tsx': '/src/main.tsx', // Alias index → main
+    '/index.jsx': '/src/main.jsx',
+    '/index.css': '/src/index.css',
+    '/styles.css': '/src/index.css',
+    '/style.css': '/src/index.css',
+  };
+  
+  // Appliquer l'alias si existe
+  if (aliases[normalized]) {
+    console.log(`📁 [normalizeFilePath] Alias applied: ${normalized} → ${aliases[normalized]}`);
+    return aliases[normalized];
+  }
+  
+  // Forcer les fichiers source dans /src/ sauf exceptions
+  if (normalized.match(/\.(tsx|jsx|ts|js|css)$/) && !normalized.startsWith('/src/') && !normalized.startsWith('/public/')) {
+    const cleanPath = normalized.replace(/^\/+/, '');
+    // Si déjà préfixé src/, ne pas doubler
+    if (!cleanPath.startsWith('src/')) {
+      const newPath = '/src/' + cleanPath;
+      console.log(`📁 [normalizeFilePath] Forced to /src/: ${normalized} → ${newPath}`);
+      return newPath;
+    }
+  }
+  
+  return normalized;
+}
+
+// 🔧 PHASE 1: Détecter si c'est un projet HTML pur et le convertir en React
+function detectAndConvertHTMLProject(files: Record<string, string>): Record<string, string> {
+  const hasReactFiles = Object.keys(files).some(k => 
+    k.match(/\.(tsx|jsx)$/) && !k.includes('node_modules')
+  );
+  
+  // Si on a déjà des fichiers React, ne pas convertir
+  if (hasReactFiles) {
+    console.log('🔍 [detectAndConvertHTMLProject] React files found, skipping conversion');
+    return files;
+  }
+  
+  // Chercher un index.html
+  const htmlFile = Object.entries(files).find(([k]) => 
+    k.endsWith('.html') || k.endsWith('.htm')
+  );
+  
+  // Chercher un fichier CSS
+  const cssFile = Object.entries(files).find(([k]) => k.endsWith('.css'));
+  
+  if (htmlFile) {
+    const [htmlPath, htmlContent] = htmlFile;
+    console.log(`🔄 [detectAndConvertHTMLProject] Converting HTML project from ${htmlPath}`);
+    
+    // Extraire le body du HTML
+    const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    const bodyContent = bodyMatch ? bodyMatch[1].trim() : htmlContent;
+    
+    // Échapper les backticks pour le template literal
+    const escapedBody = bodyContent.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+    
+    // Créer un projet React à partir du HTML
+    const convertedFiles = {
+      ...files,
+      '/src/App.tsx': `import React from 'react';
+import './index.css';
+
+export default function App() {
+  return (
+    <div dangerouslySetInnerHTML={{ __html: \`${escapedBody}\` }} />
+  );
+}`,
+      '/src/main.tsx': `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);`,
+      '/src/index.css': cssFile ? cssFile[1] : '/* Converted from HTML project */'
+    };
+    
+    console.log('✅ [detectAndConvertHTMLProject] HTML project converted to React');
+    return convertedFiles;
+  }
+  
+  return files;
+}
+
+// 🔧 PHASE 2: Créer un fallback React si aucun fichier valide n'est trouvé
+function createFallbackReactProject(existingFiles: Record<string, { code: string; active?: boolean }>): Record<string, { code: string; active?: boolean }> {
+  // Lister les fichiers existants pour debug
+  const existingPaths = Object.keys(existingFiles).join(', ');
+  console.log(`🔧 [createFallbackReactProject] Creating fallback from existing files: ${existingPaths}`);
+  
+  // Créer un App.tsx de fallback
+  const fallbackApp = `import React from 'react';
+import './index.css';
+
+export default function App() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-8">
+      <div className="text-center max-w-md">
+        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#03A5C0]/10 flex items-center justify-center">
+          <svg className="w-8 h-8 text-[#03A5C0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-bold text-gray-800 mb-3">Génération en cours...</h1>
+        <p className="text-gray-600 mb-4">Votre site est en train d'être créé.</p>
+        <p className="text-sm text-gray-500">Le contenu apparaîtra dès qu'il sera prêt.</p>
+      </div>
+    </div>
+  );
+}`;
+
+  const fallbackMain = `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);`;
+
+  return {
+    ...existingFiles,
+    '/src/App.tsx': { code: fallbackApp, active: true },
+    '/src/main.tsx': { code: fallbackMain },
+  };
 }
 
 interface SandpackPreviewProps {
@@ -218,6 +390,7 @@ function createMissingComponentStubs(files: Record<string, { code: string; activ
     });
     
     files[path] = { code: stubCode };
+    console.log(`📦 [createMissingComponentStubs] Created stub for ${path}`);
   });
   
   return files;
@@ -327,116 +500,8 @@ const SandpackContent = forwardRef<
 
 SandpackContent.displayName = 'SandpackContent';
 
-export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreviewProps>(({ 
-  projectFiles, 
-  previewMode = 'desktop',
-  showConsole = false,
-  enableInspector = false,
-  onIframeReady,
-  onInspectorMessage
-}, ref) => {
-  const { isDark } = useThemeStore();
-
-  // 🔧 Convertir les fichiers au format Sandpack - FORCE REACT/TYPESCRIPT
-  const sandpackFiles = useMemo(() => {
-    let files: Record<string, { code: string; active?: boolean }> = {};
-    
-    // 🔍 DEBUG: Log des fichiers reçus
-    console.log('🔍 [SandpackPreview] Received files:', {
-      count: Object.keys(projectFiles).length,
-      paths: Object.keys(projectFiles),
-      hasApp: Object.keys(projectFiles).some(k => k.toLowerCase().includes('app.tsx'))
-    });
-
-    // Retourner vide si pas de fichiers
-    if (Object.keys(projectFiles).length === 0) {
-      console.warn('⚠️ [SandpackPreview] No project files to process');
-      return files;
-    }
-    
-    // Fichiers à ignorer (config Vite gérée par Sandpack)
-    const skipFiles = [
-      'package.json', 'package-lock.json', 'bun.lockb',
-      'vite.config.ts', 'vite.config.js',
-      'tsconfig.json', 'tsconfig.node.json', 'tsconfig.app.json',
-      'postcss.config.js', 'tailwind.config.ts', 'tailwind.config.js',
-      '.gitignore', 'README.md', '.env', '.env.local',
-      'eslint.config.js', 'components.json', 'index.html'
-    ];
-    
-    Object.entries(projectFiles).forEach(([path, content]) => {
-      // Ignorer les fichiers de config
-      const fileName = path.split('/').pop() || '';
-      if (skipFiles.includes(fileName)) return;
-      
-      // Ignorer les dossiers de config
-      if (path.includes('node_modules/') || path.includes('.git/')) return;
-      
-      // Normaliser le chemin - ajouter / au début
-      let sandpackPath = path.startsWith('/') ? path : `/${path}`;
-      
-      // 🎯 FORCE: Tous les fichiers sources doivent être dans /src/
-      if (!sandpackPath.startsWith('/src/') && !sandpackPath.startsWith('/public/')) {
-        if (sandpackPath.match(/\.(tsx|ts|jsx|js|css)$/)) {
-          // Normaliser vers /src/
-          const cleanPath = sandpackPath.replace(/^\/+/, '');
-          if (cleanPath.startsWith('src/')) {
-            sandpackPath = '/' + cleanPath;
-          } else if (cleanPath.match(/^(components|hooks|utils|lib|services|pages|styles)\//)) {
-            sandpackPath = '/src/' + cleanPath;
-          } else {
-            sandpackPath = '/src/' + cleanPath;
-          }
-        }
-      }
-      
-      // Nettoyer le contenu des marqueurs markdown résiduels
-      let cleanContent = content;
-      if (typeof cleanContent === 'string') {
-        cleanContent = cleanContent.trim();
-        // Supprimer les code blocks markdown si présents
-        if (cleanContent.startsWith('```')) {
-          cleanContent = cleanContent.replace(/^```[\w]*\n/, '').replace(/\n```$/, '');
-        }
-        
-        // 🔧 Appliquer les corrections JSX automatiques pour les fichiers TSX/JSX
-        cleanContent = fixJSXSyntaxErrors(cleanContent, sandpackPath);
-      }
-      
-      files[sandpackPath] = { code: cleanContent };
-    });
-
-    console.log('🔍 [SandpackPreview] Normalized files:', Object.keys(files));
-
-    // Vérifier si on a App.tsx (avec ou sans préfixe src/)
-    const hasAppTsx = files['/src/App.tsx'] || files['/App.tsx'];
-    const hasMainTsx = files['/src/main.tsx'] || files['/main.tsx'];
-
-    // ✅ FIX: Ne PAS créer de template par défaut - laisser le loader s'afficher
-    // La création de template "Nouveau projet" causait le problème "Hello World"
-    // Si aucun fichier valide, le composant affichera un loader à la place
-
-    // Si on a App.tsx mais pas main.tsx, le créer
-    if ((files['/src/App.tsx'] || files['/App.tsx']) && !hasMainTsx) {
-      const appPath = files['/src/App.tsx'] ? './App' : '../App';
-      files['/src/main.tsx'] = {
-        code: `import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from '${appPath}';
-import './index.css';
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);`
-      };
-    }
-
-    // S'assurer qu'on a un fichier CSS de base COMPLET (pas de directives @tailwind)
-    if (!files['/src/index.css'] && !files['/index.css']) {
-      files['/src/index.css'] = {
-        code: `/* Reset et styles de base */
+// CSS de base complet pour les projets générés
+const BASE_CSS = `/* Reset et styles de base */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { 
@@ -681,8 +746,105 @@ input:focus, textarea:focus {
 }
 .form-message.success { background: #d1fae5; color: #065f46; }
 .form-message.error { background: #fee2e2; color: #991b1b; }
-`
+`;
+
+export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreviewProps>(({ 
+  projectFiles, 
+  previewMode = 'desktop',
+  showConsole = false,
+  enableInspector = false,
+  onIframeReady,
+  onInspectorMessage
+}, ref) => {
+  const { isDark } = useThemeStore();
+
+  // 🔧 Convertir les fichiers au format Sandpack - APPROCHE TOLÉRANTE
+  const sandpackFiles = useMemo(() => {
+    let files: Record<string, { code: string; active?: boolean }> = {};
+    
+    // 🔍 DEBUG: Log des fichiers reçus
+    console.log('🔍 [SandpackPreview] Received files:', {
+      count: Object.keys(projectFiles).length,
+      paths: Object.keys(projectFiles),
+    });
+
+    // Si aucun fichier, on ne retourne pas vide - on crée un fallback
+    if (Object.keys(projectFiles).length === 0) {
+      console.warn('⚠️ [SandpackPreview] No project files - creating fallback');
+      return createFallbackReactProject({});
+    }
+    
+    // 🔧 PHASE 1: Tenter de convertir un projet HTML en React
+    const convertedFiles = detectAndConvertHTMLProject(projectFiles);
+    
+    // Fichiers à ignorer (config Vite gérée par Sandpack)
+    const skipFiles = [
+      'package.json', 'package-lock.json', 'bun.lockb',
+      'vite.config.ts', 'vite.config.js',
+      'tsconfig.json', 'tsconfig.node.json', 'tsconfig.app.json',
+      'postcss.config.js', 'tailwind.config.ts', 'tailwind.config.js',
+      '.gitignore', 'README.md', '.env', '.env.local',
+      'eslint.config.js', 'components.json', 'index.html'
+    ];
+    
+    Object.entries(convertedFiles).forEach(([path, content]) => {
+      // Ignorer les fichiers de config
+      const fileName = path.split('/').pop() || '';
+      if (skipFiles.includes(fileName)) return;
+      
+      // Ignorer les dossiers de config
+      if (path.includes('node_modules/') || path.includes('.git/')) return;
+      
+      // 🔧 PHASE 3: Normalisation INTELLIGENTE avec aliases
+      let sandpackPath = normalizeFilePath(path);
+      
+      // Nettoyer le contenu des marqueurs markdown résiduels
+      let cleanContent = content;
+      if (typeof cleanContent === 'string') {
+        cleanContent = cleanContent.trim();
+        // Supprimer les code blocks markdown si présents
+        if (cleanContent.startsWith('```')) {
+          cleanContent = cleanContent.replace(/^```[\w]*\n/, '').replace(/\n```$/, '');
+        }
+        
+        // 🔧 PHASE 4: Appliquer les corrections JSX automatiques
+        cleanContent = fixJSXSyntaxErrors(cleanContent, sandpackPath);
+      }
+      
+      files[sandpackPath] = { code: cleanContent };
+    });
+
+    console.log('🔍 [SandpackPreview] Normalized files:', Object.keys(files));
+
+    // 🔧 PHASE 2: Vérifier si on a les fichiers React essentiels, sinon créer un fallback
+    const hasAppTsx = files['/src/App.tsx'] || files['/src/App.jsx'];
+    const hasMainTsx = files['/src/main.tsx'] || files['/src/main.jsx'];
+
+    // Si pas de App.tsx valide, créer un fallback
+    if (!hasAppTsx) {
+      console.warn('⚠️ [SandpackPreview] No App.tsx found - creating fallback');
+      files = createFallbackReactProject(files);
+    }
+    // Si on a App.tsx mais pas main.tsx, le créer
+    else if (!hasMainTsx) {
+      console.log('📝 [SandpackPreview] Creating missing main.tsx');
+      files['/src/main.tsx'] = {
+        code: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);`
       };
+    }
+
+    // S'assurer qu'on a un fichier CSS de base COMPLET
+    if (!files['/src/index.css'] && !files['/index.css']) {
+      files['/src/index.css'] = { code: BASE_CSS };
     }
     
     // ✅ Toujours ajouter un index.html personnalisé avec Tailwind CDN
@@ -720,10 +882,6 @@ input:focus, textarea:focus {
     // Marquer le fichier actif
     if (files['/src/App.tsx']) {
       files['/src/App.tsx'].active = true;
-    } else if (files['/App.tsx']) {
-      files['/App.tsx'].active = true;
-    } else if (files['/index.html']) {
-      files['/index.html'].active = true;
     }
 
     // Injecter le script d'inspection si activé
@@ -755,63 +913,9 @@ input:focus, textarea:focus {
     return `sandpack-${fileCount}-${hasApp}-${contentHash}`;
   }, [sandpackFiles]);
 
-  // ✅ FIX: Validation renforcée - vérifier dans sandpackFiles APRÈS normalisation
-  const hasValidReactFiles = useMemo(() => {
-    // Vérifier d'abord dans sandpackFiles (fichiers normalisés)
-    const sandpackKeys = Object.keys(sandpackFiles);
-    if (sandpackKeys.length > 0) {
-      const hasInSandpack = sandpackKeys.some(k => 
-        k === '/src/App.tsx' || 
-        k === '/src/App.jsx' || 
-        k === '/src/main.tsx' ||
-        k === '/src/index.tsx'
-      );
-      if (hasInSandpack) return true;
-    }
-    
-    // Fallback: vérifier dans projectFiles (avant normalisation)
-    const keys = Object.keys(projectFiles);
-    if (keys.length === 0) return false;
-    
-    return keys.some(k => {
-      const normalized = k.toLowerCase();
-      return normalized.endsWith('app.tsx') || 
-             normalized.endsWith('app.jsx') || 
-             normalized.endsWith('main.tsx') ||
-             normalized.endsWith('index.tsx') ||
-             normalized.includes('/app.tsx') ||
-             normalized.includes('/app.jsx');
-    });
-  }, [projectFiles, sandpackFiles]);
-
-  // ✅ FIX: Guard empêchant le rendu de Sandpack si pas de fichiers valides
-  // Cela évite l'affichage du template "Hello World" par défaut
-  if (Object.keys(projectFiles).length === 0 || !hasValidReactFiles) {
-    console.warn('⚠️ [SandpackPreview] No valid React files, showing loader instead of Hello World');
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <Loader className="animate-spin h-10 w-10 mx-auto text-[#03A5C0]" />
-          <p className="text-muted-foreground font-medium">En attente du code généré...</p>
-          <p className="text-xs text-muted-foreground/60">La preview apparaîtra une fois le code prêt</p>
-        </div>
-      </div>
-    );
-  }
+  // 🔧 PHASE 5: PLUS DE VALIDATION STRICTE - Sandpack gère toujours le rendu
+  // Le fallback est déjà créé dans sandpackFiles si nécessaire
   
-  // ✅ FIX: Vérifier aussi que sandpackFiles n'est pas vide après normalisation
-  if (Object.keys(sandpackFiles).length === 0) {
-    console.warn('⚠️ [SandpackPreview] No sandpack files after normalization');
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <Loader className="animate-spin h-10 w-10 mx-auto text-[#03A5C0]" />
-          <p className="text-muted-foreground font-medium">Préparation de la preview...</p>
-        </div>
-      </div>
-    );
-  }
-
   // 🎯 Log final pour debug
   console.log('🚀 [SandpackPreview] Rendering Sandpack with:', {
     fileCount: Object.keys(sandpackFiles).length,
