@@ -8,6 +8,44 @@ import { useThemeStore } from '@/stores/themeStore';
 import { injectInspectorIntoFiles } from '@/lib/sandpackInspector';
 import { Loader } from 'lucide-react';
 
+// 🔧 Fonction pour corriger les erreurs JSX courantes dans le code généré par l'IA
+function fixJSXSyntaxErrors(code: string, filePath: string): string {
+  if (!filePath.match(/\.(tsx|jsx)$/)) return code;
+  
+  let fixed = code;
+  
+  // 1. Corriger les composants lucide-react mal fermés (ex: <Mail\n au lieu de <Mail />)
+  // Pattern: <ComponentName suivi de newline ou espace sans /> ni >
+  fixed = fixed.replace(/<(Mail|Phone|MapPin|Star|Hotel|Palmtree|Check|X|Menu|ArrowRight|ArrowLeft|ChevronDown|ChevronUp|ChevronRight|ChevronLeft|Home|User|Settings|Search|Heart|Clock|Calendar|Send|Loader|AlertCircle|Info|CheckCircle|XCircle|Plus|Minus|Edit|Trash|Download|Upload|Share|Link|ExternalLink|Copy|Eye|EyeOff|Lock|Unlock|Key|Bell|BellOff|Bookmark|Flag|Filter|Grid|List|MoreHorizontal|MoreVertical|RefreshCw|RotateCw|Save|Scissors|Shield|Shuffle|Sidebar|Skip|Sliders|Smartphone|Speaker|Square|Sun|Moon|Sunrise|Sunset|Table|Tag|Target|Terminal|ThumbsUp|ThumbsDown|Trash2|TrendingUp|TrendingDown|Triangle|Tv|Twitter|Type|Umbrella|Underline|Undo|Unlock|UploadCloud|UserCheck|UserMinus|UserPlus|Users|Video|VideoOff|Voicemail|Volume|Volume1|Volume2|VolumeX|Watch|Wifi|WifiOff|Wind|Zap|ZoomIn|ZoomOut|Facebook|Instagram|Linkedin|Youtube|Github|Globe|Award|Briefcase|Building|Car|Coffee|Compass|CreditCard|DollarSign|Euro|Gift|Headphones|Image|Layers|Layout|LifeBuoy|Loader2|Map|MessageCircle|MessageSquare|Mic|MicOff|Monitor|Package|PaperClip|Pause|Percent|Phone|PhoneCall|PhoneForwarded|PhoneIncoming|PhoneMissed|PhoneOff|PhoneOutgoing|PieChart|Play|PlayCircle|PlusCircle|Pocket|Power|Printer|Radio|Repeat|Rewind|ShoppingBag|ShoppingCart|Sparkles|Waves)(\s*)(\n|\s{2,})(\s*)(className|size|strokeWidth|color|onClick|aria-label)/g, 
+    '<$1 $5');
+  
+  // 2. Corriger les icônes lucide-react sans fermeture (standalone)
+  // Ex: <Mail className="..."> devrait être <Mail className="..." />
+  fixed = fixed.replace(/<(Mail|Phone|MapPin|Star|Hotel|Palmtree|Check|X|Menu|ArrowRight|ArrowLeft|ChevronDown|ChevronUp|ChevronRight|ChevronLeft|Home|User|Settings|Search|Heart|Clock|Calendar|Send|Loader|AlertCircle|Info|CheckCircle|XCircle|Plus|Minus|Edit|Trash|Download|Upload|Share|Link|ExternalLink|Copy|Eye|EyeOff|Lock|Unlock|Key|Bell|BellOff|Bookmark|Flag|Filter|Grid|List|MoreHorizontal|MoreVertical|RefreshCw|RotateCw|Save|Scissors|Shield|Shuffle|Sidebar|Skip|Sliders|Smartphone|Speaker|Square|Sun|Moon|Sunrise|Sunset|Table|Tag|Target|Terminal|ThumbsUp|ThumbsDown|Trash2|TrendingUp|TrendingDown|Triangle|Tv|Twitter|Type|Umbrella|Underline|Undo|Unlock|UploadCloud|UserCheck|UserMinus|UserPlus|Users|Video|VideoOff|Voicemail|Volume|Volume1|Volume2|VolumeX|Watch|Wifi|WifiOff|Wind|Zap|ZoomIn|ZoomOut|Facebook|Instagram|Linkedin|Youtube|Github|Globe|Award|Briefcase|Building|Car|Coffee|Compass|CreditCard|DollarSign|Euro|Gift|Headphones|Image|Layers|Layout|LifeBuoy|Loader2|Map|MessageCircle|MessageSquare|Mic|MicOff|Monitor|Package|PaperClip|Pause|Percent|Phone|PhoneCall|PhoneForwarded|PhoneIncoming|PhoneMissed|PhoneOff|PhoneOutgoing|PieChart|Play|PlayCircle|PlusCircle|Pocket|Power|Printer|Radio|Repeat|Rewind|ShoppingBag|ShoppingCart|Sparkles|Waves)(\s+[^>]*[^/])>/g,
+    '<$1$2 />');
+  
+  // 3. Corriger les icônes sans attributs qui ne sont pas auto-fermées
+  fixed = fixed.replace(/<(Mail|Phone|MapPin|Star|Hotel|Palmtree|Check|X|Menu|ArrowRight|ArrowLeft|ChevronDown|ChevronUp|Home|User|Settings|Search|Heart|Clock|Calendar|Send|Loader|AlertCircle|Info|CheckCircle|XCircle|Plus|Minus|Edit|Trash|Download|Upload|Share|Globe|Award|Sparkles|Waves)>/g,
+    '<$1 />');
+  
+  // 4. Supprimer les balises fermantes pour les icônes (elles sont auto-fermantes)
+  fixed = fixed.replace(/<\/(Mail|Phone|MapPin|Star|Hotel|Palmtree|Check|X|Menu|ArrowRight|ArrowLeft|ChevronDown|ChevronUp|ChevronRight|ChevronLeft|Home|User|Settings|Search|Heart|Clock|Calendar|Send|Loader|AlertCircle|Info|CheckCircle|XCircle|Plus|Minus|Edit|Trash|Download|Upload|Share|Link|ExternalLink|Copy|Eye|EyeOff|Lock|Unlock|Key|Bell|BellOff|Bookmark|Flag|Filter|Grid|List|MoreHorizontal|MoreVertical|RefreshCw|RotateCw|Save|Scissors|Shield|Shuffle|Sidebar|Skip|Sliders|Smartphone|Speaker|Square|Sun|Moon|Sunrise|Sunset|Table|Tag|Target|Terminal|ThumbsUp|ThumbsDown|Trash2|TrendingUp|TrendingDown|Globe|Award|Sparkles|Waves)>/g, 
+    '');
+  
+  // 5. Corriger les doubles /> 
+  fixed = fixed.replace(/\s*\/>\s*\/>/g, ' />');
+  
+  // 6. Corriger les attributs className coupés en milieu de ligne
+  fixed = fixed.replace(/className="\s*\n\s*/g, 'className="');
+  
+  // Log si des corrections ont été faites
+  if (fixed !== code) {
+    console.log(`🔧 [fixJSXSyntaxErrors] Fixed JSX syntax in ${filePath}`);
+  }
+  
+  return fixed;
+}
+
 interface SandpackPreviewProps {
   projectFiles: Record<string, string>;
   previewMode?: 'desktop' | 'mobile';
@@ -305,6 +343,9 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
         if (cleanContent.startsWith('```')) {
           cleanContent = cleanContent.replace(/^```[\w]*\n/, '').replace(/\n```$/, '');
         }
+        
+        // 🔧 Appliquer les corrections JSX automatiques pour les fichiers TSX/JSX
+        cleanContent = fixJSXSyntaxErrors(cleanContent, sandpackPath);
       }
       
       files[sandpackPath] = { code: cleanContent };
