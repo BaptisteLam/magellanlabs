@@ -15,25 +15,21 @@ const TemplateCard = ({ title, description, imageUrl, messagesSaved, onView, onU
 
   return (
     <div className="group relative">
-      {/* Card Container */}
+      {/* Card Container - Scale tout le module au hover */}
       <div 
-        className="rounded-2xl overflow-visible transition-all duration-300 hover:shadow-xl"
+        className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.03]"
         style={{
           backgroundColor: isDark ? 'hsl(var(--card))' : '#ffffff',
           boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.1)'
         }}
       >
-        {/* Image Container - Ratio 1:1, overflow visible pour effet hors cadre */}
+        {/* Image Container - Ratio 1:1 */}
         <div className="relative aspect-square rounded-t-2xl overflow-hidden">
-          <div className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-110 group-hover:-translate-y-2 origin-center">
-            <img 
-              src={imageUrl} 
-              alt={title}
-              className="w-full h-full object-cover object-top rounded-t-2xl shadow-lg transition-shadow duration-500 group-hover:shadow-2xl"
-            />
-          </div>
-          {/* Overlay on hover */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 rounded-t-2xl pointer-events-none" />
+          <img 
+            src={imageUrl} 
+            alt={title}
+            className="w-full h-full object-cover object-top"
+          />
         </div>
 
         {/* Content */}
