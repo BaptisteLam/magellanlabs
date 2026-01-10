@@ -31,7 +31,7 @@ function cleanFileContent(content: string): string {
   return cleaned.trim();
 }
 
-// Normalise les chemins de fichiers pour Sandpack
+// Normalise les chemins de fichiers pour Sandpack - FORCE /src/ pour TOUS les fichiers source
 function normalizePath(path: string): string {
   let normalized = path.trim();
   
@@ -46,23 +46,25 @@ function normalizePath(path: string): string {
     return normalized;
   }
   
-  // Ajouter /src/ si c'est un fichier source sans préfixe src
-  if (!normalized.startsWith('/src/') && (
-    normalized.endsWith('.tsx') || 
-    normalized.endsWith('.ts') || 
-    normalized.endsWith('.jsx') || 
-    normalized.endsWith('.js') ||
-    normalized.endsWith('.css')
-  )) {
-    // Si le chemin commence par /components/, /hooks/, etc., ajouter /src devant
-    if (normalized.match(/^\/(components|hooks|utils|lib|services|pages|styles)\//)) {
-      normalized = '/src' + normalized;
-    } else if (!normalized.includes('/')) {
-      // Fichier à la racine comme /App.tsx -> /src/App.tsx
-      normalized = '/src' + normalized;
+  // 🔧 FIX: Forcer TOUS les fichiers source vers /src/
+  const isSourceFile = normalized.match(/\.(tsx?|jsx?|css)$/);
+  if (isSourceFile && !normalized.startsWith('/src/')) {
+    // Supprimer le / initial pour reconstruire le chemin
+    const cleanPath = normalized.replace(/^\/+/, '');
+    
+    // Si déjà préfixé src/, ne pas doubler
+    if (cleanPath.startsWith('src/')) {
+      normalized = '/' + cleanPath;
+    } else if (cleanPath.match(/^(components|hooks|utils|lib|services|pages|styles)\//)) {
+      // Si c'est un dossier connu, ajouter /src/ devant
+      normalized = '/src/' + cleanPath;
+    } else {
+      // TOUS les autres fichiers source vont dans /src/
+      normalized = '/src/' + cleanPath;
     }
   }
   
+  console.log(`[normalizePath] ${path} -> ${normalized}`);
   return normalized;
 }
 
@@ -187,6 +189,78 @@ function parseGeneratedCode(code: string): ProjectFile[] {
         let rawContent = cleanedCode.slice(startIndex, endIndex).trim();
         
         // Extraire le contenu du code block si présent
+        const codeBlockMatch = rawContent.match(/```[\w]*\n([\s\S]*?)```/);
+        if (codeBlockMatch) {
+          rawContent = codeBlockMatch[1].trim();
+        } else {
+          rawContent = cleanFileContent(rawContent);
+        }
+        
+        filePath = normalizePath(filePath);
+        const extension = filePath.split('.').pop() || '';
+        
+        files.push({
+          path: filePath,
+          content: rawContent,
+          type: getFileType(extension)
+        });
+      }
+    }
+  }
+  
+  // Format 5: **src/path.tsx** (markdown bold)
+  if (files.length === 0) {
+    const boldRegex = /\*\*\s*((?:src\/)?[\w/.-]+\.(?:tsx?|jsx?|css))\s*\*\*/g;
+    const boldMatches = [...cleanedCode.matchAll(boldRegex)];
+    
+    if (boldMatches.length > 0) {
+      console.log(`[parseGeneratedCode] Found ${boldMatches.length} files with **bold** format`);
+      
+      for (let i = 0; i < boldMatches.length; i++) {
+        const match = boldMatches[i];
+        let filePath = match[1].trim();
+        const startIndex = match.index! + match[0].length;
+        
+        const nextMatch = boldMatches[i + 1];
+        const endIndex = nextMatch ? nextMatch.index! : cleanedCode.length;
+        let rawContent = cleanedCode.slice(startIndex, endIndex).trim();
+        
+        const codeBlockMatch = rawContent.match(/```[\w]*\n([\s\S]*?)```/);
+        if (codeBlockMatch) {
+          rawContent = codeBlockMatch[1].trim();
+        } else {
+          rawContent = cleanFileContent(rawContent);
+        }
+        
+        filePath = normalizePath(filePath);
+        const extension = filePath.split('.').pop() || '';
+        
+        files.push({
+          path: filePath,
+          content: rawContent,
+          type: getFileType(extension)
+        });
+      }
+    }
+  }
+  
+  // Format 6: ## File: src/path.tsx ou ## src/path.tsx (H2 header)
+  if (files.length === 0) {
+    const h2Regex = /##\s*(?:File:\s*)?((?:src\/)?[\w/.-]+\.(?:tsx?|jsx?|css))\s*\n/g;
+    const h2Matches = [...cleanedCode.matchAll(h2Regex)];
+    
+    if (h2Matches.length > 0) {
+      console.log(`[parseGeneratedCode] Found ${h2Matches.length} files with ## H2 format`);
+      
+      for (let i = 0; i < h2Matches.length; i++) {
+        const match = h2Matches[i];
+        let filePath = match[1].trim();
+        const startIndex = match.index! + match[0].length;
+        
+        const nextMatch = h2Matches[i + 1];
+        const endIndex = nextMatch ? nextMatch.index! : cleanedCode.length;
+        let rawContent = cleanedCode.slice(startIndex, endIndex).trim();
+        
         const codeBlockMatch = rawContent.match(/```[\w]*\n([\s\S]*?)```/);
         if (codeBlockMatch) {
           rawContent = codeBlockMatch[1].trim();
