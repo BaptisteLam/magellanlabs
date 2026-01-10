@@ -8,39 +8,94 @@ import { useThemeStore } from '@/stores/themeStore';
 import { injectInspectorIntoFiles } from '@/lib/sandpackInspector';
 import { Loader } from 'lucide-react';
 
+// 🔧 Liste exhaustive des icônes lucide-react pour corrections JSX
+const LUCIDE_ICONS = [
+  'Mail', 'Phone', 'MapPin', 'Star', 'Hotel', 'Palmtree', 'Check', 'X', 'Menu',
+  'ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'ChevronDown', 'ChevronUp',
+  'ChevronRight', 'ChevronLeft', 'Home', 'User', 'Settings', 'Search', 'Heart',
+  'Clock', 'Calendar', 'Send', 'Loader', 'Loader2', 'AlertCircle', 'Info',
+  'CheckCircle', 'XCircle', 'Plus', 'Minus', 'Edit', 'Trash', 'Trash2',
+  'Download', 'Upload', 'Share', 'Link', 'ExternalLink', 'Copy', 'Eye', 'EyeOff',
+  'Lock', 'Unlock', 'Key', 'Bell', 'BellOff', 'Bookmark', 'Flag', 'Filter',
+  'Grid', 'List', 'MoreHorizontal', 'MoreVertical', 'RefreshCw', 'RotateCw',
+  'Save', 'Scissors', 'Shield', 'Shuffle', 'Sidebar', 'Skip', 'Sliders',
+  'Smartphone', 'Speaker', 'Square', 'Sun', 'Moon', 'Sunrise', 'Sunset',
+  'Table', 'Tag', 'Target', 'Terminal', 'ThumbsUp', 'ThumbsDown',
+  'TrendingUp', 'TrendingDown', 'Triangle', 'Tv', 'Twitter', 'Type',
+  'Umbrella', 'Underline', 'Undo', 'UploadCloud', 'UserCheck', 'UserMinus',
+  'UserPlus', 'Users', 'Video', 'VideoOff', 'Voicemail', 'Volume', 'Volume1',
+  'Volume2', 'VolumeX', 'Watch', 'Wifi', 'WifiOff', 'Wind', 'Zap', 'ZoomIn',
+  'ZoomOut', 'Facebook', 'Instagram', 'Linkedin', 'Youtube', 'Github', 'Globe',
+  'Award', 'Briefcase', 'Building', 'Car', 'Coffee', 'Compass', 'CreditCard',
+  'DollarSign', 'Euro', 'Gift', 'Headphones', 'Image', 'Layers', 'Layout',
+  'LifeBuoy', 'Map', 'MessageCircle', 'MessageSquare', 'Mic', 'MicOff',
+  'Monitor', 'Package', 'PaperClip', 'Pause', 'Percent', 'PhoneCall',
+  'PhoneForwarded', 'PhoneIncoming', 'PhoneMissed', 'PhoneOff', 'PhoneOutgoing',
+  'PieChart', 'Play', 'PlayCircle', 'PlusCircle', 'Pocket', 'Power', 'Printer',
+  'Radio', 'Repeat', 'Rewind', 'ShoppingBag', 'ShoppingCart', 'Sparkles', 'Waves',
+  'Utensils', 'Bed', 'Bath', 'Wifi', 'Parking', 'AirVent', 'Dumbbell', 'Pool',
+  'Plane', 'Train', 'Bus', 'Bicycle', 'Ship', 'Mountain', 'Trees', 'Flower',
+  'Leaf', 'Droplet', 'Flame', 'Snowflake', 'Cloud', 'CloudRain', 'CloudSnow'
+].join('|');
+
 // 🔧 Fonction pour corriger les erreurs JSX courantes dans le code généré par l'IA
 function fixJSXSyntaxErrors(code: string, filePath: string): string {
   if (!filePath.match(/\.(tsx|jsx)$/)) return code;
   
   let fixed = code;
+  const original = code;
   
-  // 1. Corriger les composants lucide-react mal fermés (ex: <Mail\n au lieu de <Mail />)
-  // Pattern: <ComponentName suivi de newline ou espace sans /> ni >
-  fixed = fixed.replace(/<(Mail|Phone|MapPin|Star|Hotel|Palmtree|Check|X|Menu|ArrowRight|ArrowLeft|ChevronDown|ChevronUp|ChevronRight|ChevronLeft|Home|User|Settings|Search|Heart|Clock|Calendar|Send|Loader|AlertCircle|Info|CheckCircle|XCircle|Plus|Minus|Edit|Trash|Download|Upload|Share|Link|ExternalLink|Copy|Eye|EyeOff|Lock|Unlock|Key|Bell|BellOff|Bookmark|Flag|Filter|Grid|List|MoreHorizontal|MoreVertical|RefreshCw|RotateCw|Save|Scissors|Shield|Shuffle|Sidebar|Skip|Sliders|Smartphone|Speaker|Square|Sun|Moon|Sunrise|Sunset|Table|Tag|Target|Terminal|ThumbsUp|ThumbsDown|Trash2|TrendingUp|TrendingDown|Triangle|Tv|Twitter|Type|Umbrella|Underline|Undo|Unlock|UploadCloud|UserCheck|UserMinus|UserPlus|Users|Video|VideoOff|Voicemail|Volume|Volume1|Volume2|VolumeX|Watch|Wifi|WifiOff|Wind|Zap|ZoomIn|ZoomOut|Facebook|Instagram|Linkedin|Youtube|Github|Globe|Award|Briefcase|Building|Car|Coffee|Compass|CreditCard|DollarSign|Euro|Gift|Headphones|Image|Layers|Layout|LifeBuoy|Loader2|Map|MessageCircle|MessageSquare|Mic|MicOff|Monitor|Package|PaperClip|Pause|Percent|Phone|PhoneCall|PhoneForwarded|PhoneIncoming|PhoneMissed|PhoneOff|PhoneOutgoing|PieChart|Play|PlayCircle|PlusCircle|Pocket|Power|Printer|Radio|Repeat|Rewind|ShoppingBag|ShoppingCart|Sparkles|Waves)(\s*)(\n|\s{2,})(\s*)(className|size|strokeWidth|color|onClick|aria-label)/g, 
-    '<$1 $5');
+  // 0. Nettoyer les retours à la ligne Windows
+  fixed = fixed.replace(/\r\n/g, '\n');
   
-  // 2. Corriger les icônes lucide-react sans fermeture (standalone)
-  // Ex: <Mail className="..."> devrait être <Mail className="..." />
-  fixed = fixed.replace(/<(Mail|Phone|MapPin|Star|Hotel|Palmtree|Check|X|Menu|ArrowRight|ArrowLeft|ChevronDown|ChevronUp|ChevronRight|ChevronLeft|Home|User|Settings|Search|Heart|Clock|Calendar|Send|Loader|AlertCircle|Info|CheckCircle|XCircle|Plus|Minus|Edit|Trash|Download|Upload|Share|Link|ExternalLink|Copy|Eye|EyeOff|Lock|Unlock|Key|Bell|BellOff|Bookmark|Flag|Filter|Grid|List|MoreHorizontal|MoreVertical|RefreshCw|RotateCw|Save|Scissors|Shield|Shuffle|Sidebar|Skip|Sliders|Smartphone|Speaker|Square|Sun|Moon|Sunrise|Sunset|Table|Tag|Target|Terminal|ThumbsUp|ThumbsDown|Trash2|TrendingUp|TrendingDown|Triangle|Tv|Twitter|Type|Umbrella|Underline|Undo|Unlock|UploadCloud|UserCheck|UserMinus|UserPlus|Users|Video|VideoOff|Voicemail|Volume|Volume1|Volume2|VolumeX|Watch|Wifi|WifiOff|Wind|Zap|ZoomIn|ZoomOut|Facebook|Instagram|Linkedin|Youtube|Github|Globe|Award|Briefcase|Building|Car|Coffee|Compass|CreditCard|DollarSign|Euro|Gift|Headphones|Image|Layers|Layout|LifeBuoy|Loader2|Map|MessageCircle|MessageSquare|Mic|MicOff|Monitor|Package|PaperClip|Pause|Percent|Phone|PhoneCall|PhoneForwarded|PhoneIncoming|PhoneMissed|PhoneOff|PhoneOutgoing|PieChart|Play|PlayCircle|PlusCircle|Pocket|Power|Printer|Radio|Repeat|Rewind|ShoppingBag|ShoppingCart|Sparkles|Waves)(\s+[^>]*[^/])>/g,
-    '<$1$2 />');
+  // 1. Pattern AGRESSIF: icône suivie de newline puis attribut (cas <Mail\n  className)
+  const iconNewlinePattern = new RegExp(
+    `<(${LUCIDE_ICONS})\\s*\\n\\s*(className|size|strokeWidth|color|onClick|aria-label|style)`,
+    'g'
+  );
+  fixed = fixed.replace(iconNewlinePattern, '<$1 $2');
   
-  // 3. Corriger les icônes sans attributs qui ne sont pas auto-fermées
-  fixed = fixed.replace(/<(Mail|Phone|MapPin|Star|Hotel|Palmtree|Check|X|Menu|ArrowRight|ArrowLeft|ChevronDown|ChevronUp|Home|User|Settings|Search|Heart|Clock|Calendar|Send|Loader|AlertCircle|Info|CheckCircle|XCircle|Plus|Minus|Edit|Trash|Download|Upload|Share|Globe|Award|Sparkles|Waves)>/g,
-    '<$1 />');
+  // 2. Icônes avec attributs mais terminées par > au lieu de />
+  const iconWithAttrsNoClose = new RegExp(
+    `<(${LUCIDE_ICONS})(\\s+[^>]*[^/])>(?!\\s*</)`,
+    'g'
+  );
+  fixed = fixed.replace(iconWithAttrsNoClose, '<$1$2 />');
   
-  // 4. Supprimer les balises fermantes pour les icônes (elles sont auto-fermantes)
-  fixed = fixed.replace(/<\/(Mail|Phone|MapPin|Star|Hotel|Palmtree|Check|X|Menu|ArrowRight|ArrowLeft|ChevronDown|ChevronUp|ChevronRight|ChevronLeft|Home|User|Settings|Search|Heart|Clock|Calendar|Send|Loader|AlertCircle|Info|CheckCircle|XCircle|Plus|Minus|Edit|Trash|Download|Upload|Share|Link|ExternalLink|Copy|Eye|EyeOff|Lock|Unlock|Key|Bell|BellOff|Bookmark|Flag|Filter|Grid|List|MoreHorizontal|MoreVertical|RefreshCw|RotateCw|Save|Scissors|Shield|Shuffle|Sidebar|Skip|Sliders|Smartphone|Speaker|Square|Sun|Moon|Sunrise|Sunset|Table|Tag|Target|Terminal|ThumbsUp|ThumbsDown|Trash2|TrendingUp|TrendingDown|Globe|Award|Sparkles|Waves)>/g, 
-    '');
+  // 3. Icônes vides non auto-fermées: <Icon> -> <Icon />
+  const iconEmptyNoClose = new RegExp(`<(${LUCIDE_ICONS})>`, 'g');
+  fixed = fixed.replace(iconEmptyNoClose, '<$1 />');
   
-  // 5. Corriger les doubles /> 
+  // 4. Supprimer les balises fermantes des icônes: </Icon> -> (rien)
+  const iconClosingTag = new RegExp(`</(${LUCIDE_ICONS})>`, 'g');
+  fixed = fixed.replace(iconClosingTag, '');
+  
+  // 5. Corriger les doubles />
   fixed = fixed.replace(/\s*\/>\s*\/>/g, ' />');
   
-  // 6. Corriger les attributs className coupés en milieu de ligne
+  // 6. Corriger className coupé en milieu de ligne
   fixed = fixed.replace(/className="\s*\n\s*/g, 'className="');
   
+  // 7. Corriger les attributs coupés: size={\n  24} -> size={24}
+  fixed = fixed.replace(/(size|strokeWidth|width|height)=\{\s*\n\s*(\d+)\s*\}/g, '$1={$2}');
+  
+  // 8. Corriger les icônes tronquées: <Mail (sans suite) -> <Mail />
+  const truncatedIcon = new RegExp(`<(${LUCIDE_ICONS})\\s*$`, 'gm');
+  fixed = fixed.replace(truncatedIcon, '<$1 />');
+  
+  // 9. Corriger les icônes avec seulement des espaces: <Mail   > -> <Mail />
+  const iconOnlySpaces = new RegExp(`<(${LUCIDE_ICONS})\\s+>`, 'g');
+  fixed = fixed.replace(iconOnlySpaces, '<$1 />');
+  
   // Log si des corrections ont été faites
-  if (fixed !== code) {
+  if (fixed !== original) {
     console.log(`🔧 [fixJSXSyntaxErrors] Fixed JSX syntax in ${filePath}`);
+    // Log les différences pour debug
+    const originalLines = original.split('\n').length;
+    const fixedLines = fixed.split('\n').length;
+    if (originalLines !== fixedLines) {
+      console.log(`   Lines: ${originalLines} -> ${fixedLines}`);
+    }
   }
   
   return fixed;
@@ -700,12 +755,24 @@ input:focus, textarea:focus {
     return `sandpack-${fileCount}-${hasApp}-${contentHash}`;
   }, [sandpackFiles]);
 
-  // ✅ FIX: Validation renforcée des fichiers React valides
+  // ✅ FIX: Validation renforcée - vérifier dans sandpackFiles APRÈS normalisation
   const hasValidReactFiles = useMemo(() => {
+    // Vérifier d'abord dans sandpackFiles (fichiers normalisés)
+    const sandpackKeys = Object.keys(sandpackFiles);
+    if (sandpackKeys.length > 0) {
+      const hasInSandpack = sandpackKeys.some(k => 
+        k === '/src/App.tsx' || 
+        k === '/src/App.jsx' || 
+        k === '/src/main.tsx' ||
+        k === '/src/index.tsx'
+      );
+      if (hasInSandpack) return true;
+    }
+    
+    // Fallback: vérifier dans projectFiles (avant normalisation)
     const keys = Object.keys(projectFiles);
     if (keys.length === 0) return false;
     
-    // Vérifier avec ou sans préfixe /src/, insensible à la casse
     return keys.some(k => {
       const normalized = k.toLowerCase();
       return normalized.endsWith('app.tsx') || 
@@ -715,7 +782,7 @@ input:focus, textarea:focus {
              normalized.includes('/app.tsx') ||
              normalized.includes('/app.jsx');
     });
-  }, [projectFiles]);
+  }, [projectFiles, sandpackFiles]);
 
   // ✅ FIX: Guard empêchant le rendu de Sandpack si pas de fichiers valides
   // Cela évite l'affichage du template "Hello World" par défaut
