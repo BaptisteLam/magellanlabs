@@ -40,6 +40,9 @@ import { useUnifiedModify } from '@/hooks/useUnifiedModify';
 import { useProjectVersions } from '@/hooks/useProjectVersions';
 import { VersionHistory } from '@/components/VersionHistory';
 import type { ElementInfo } from '@/components/InteractiveSandpackPreview';
+import { IndexedDBCache } from '@/services/indexedDBCache';
+import { parseProjectFiles } from '@/lib/projectFilesParser';
+
 interface Message {
   role: 'user' | 'assistant';
   content: string | Array<{
@@ -69,8 +72,7 @@ interface Message {
     [key: string]: any;
   };
 }
-import { IndexedDBCache } from '@/services/indexedDBCache';
-import { parseProjectFiles } from '@/lib/projectFilesParser';
+
 export default function BuilderSession() {
   const {
     sessionId
