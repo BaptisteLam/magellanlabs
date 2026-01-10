@@ -28,6 +28,8 @@ export function useOptimizedBuilder({
   const [projectFiles, setProjectFiles] = useState<Record<string, string>>(initialFiles);
   const [visibleFiles, setVisibleFiles] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // ✅ FIX: Flag pour indiquer que des fichiers ont été chargés au moins une fois
+  const [hasLoadedFiles, setHasLoadedFiles] = useState(false);
 
   // Sync manager pour sauvegarde optimisée
   const {
@@ -120,6 +122,11 @@ export function useOptimizedBuilder({
       return merged;
     });
 
+    // ✅ FIX: Marquer que des fichiers ont été chargés
+    if (Object.keys(newFiles).length > 0) {
+      setHasLoadedFiles(true);
+    }
+
     // Lazy loading en arrière-plan (optionnel, ne bloque pas l'affichage)
     if (visibleFiles.length > 0) {
       LazyFileLoader.loadFiles(newFiles, visibleFiles).catch(console.error);
@@ -175,6 +182,7 @@ export function useOptimizedBuilder({
     projectFiles,
     isLoading,
     isOnline,
+    hasLoadedFiles, // ✅ FIX: Exposer le flag
     
     // Sync status
     syncStatus,
