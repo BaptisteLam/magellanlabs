@@ -838,13 +838,21 @@ export default function BuilderSession() {
           console.log('📝 Progress:', content.length, 'characters');
         },
         onFiles: async (files) => {
-          console.log('📦 Files received:', Object.keys(files));
+          // 🔍 DEBUG: Logs détaillés pour diagnostic preview
+          console.log('📦 [BuilderSession] Files received:', {
+            count: Object.keys(files).length,
+            paths: Object.keys(files),
+            hasApp: Object.keys(files).some(k => k.toLowerCase().includes('app.tsx')),
+            hasMain: Object.keys(files).some(k => k.toLowerCase().includes('main.tsx')),
+            sample: Object.entries(files)[0]?.[1]?.substring(0, 100)
+          });
 
           // Mettre à jour les fichiers
           await updateFiles(files, true);
 
           // ✅ FIX: Marquer les fichiers comme prêts pour la preview
           if (Object.keys(files).length > 0) {
+            console.log('✅ [BuilderSession] Setting isFilesReady = true');
             setIsFilesReady(true);
           }
 

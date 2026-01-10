@@ -248,6 +248,13 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
   const sandpackFiles = useMemo(() => {
     let files: Record<string, { code: string; active?: boolean }> = {};
     
+    // 🔍 DEBUG: Log des fichiers reçus
+    console.log('🔍 [SandpackPreview] Received files:', {
+      count: Object.keys(projectFiles).length,
+      paths: Object.keys(projectFiles),
+      hasApp: Object.keys(projectFiles).some(k => k.toLowerCase().includes('app.tsx'))
+    });
+    
     // Fichiers à ignorer (config Vite, etc.)
     const skipFiles = [
       'package.json', 'package-lock.json', 'bun.lockb',
@@ -266,37 +273,35 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
       // Ignorer les dossiers de config
       if (path.includes('node_modules/') || path.includes('.git/')) return;
       
-      // Normaliser le chemin - ajouter /src/ si nécessaire
+      // Normaliser le chemin - ajouter / au début
       let sandpackPath = path.startsWith('/') ? path : `/${path}`;
       
-      // Si le fichier est à la racine et est un .tsx/.ts/.jsx/.js, le mettre dans /src/
-      if (!sandpackPath.includes('/src/') && /^\/(App|main|index)\.(tsx|ts|jsx|js)$/.test(sandpackPath)) {
-        sandpackPath = `/src${sandpackPath}`;
+      // ✅ FIX: Normalisation robuste - S'assurer que les fichiers sources sont dans /src/
+      if (!sandpackPath.startsWith('/src/') && !sandpackPath.startsWith('/public/')) {
+        // Si c'est un fichier source (.tsx, .ts, .jsx, .js, .css)
+        if (sandpackPath.match(/\.(tsx|ts|jsx|js|css)$/)) {
+          // Vérifier si c'est un chemin comme /components/... ou /hooks/...
+          if (sandpackPath.match(/^\/(components|hooks|utils|lib|services|pages|styles)\//)) {
+            sandpackPath = `/src${sandpackPath}`;
+          } else if (!sandpackPath.slice(1).includes('/')) {
+            // Fichier à la racine comme /App.tsx -> /src/App.tsx
+            sandpackPath = `/src${sandpackPath}`;
+          }
+        }
       }
       
       files[sandpackPath] = { code: content };
     });
 
+    console.log('🔍 [SandpackPreview] Normalized files:', Object.keys(files));
+
     // Vérifier si on a App.tsx (avec ou sans préfixe src/)
     const hasAppTsx = files['/src/App.tsx'] || files['/App.tsx'];
     const hasMainTsx = files['/src/main.tsx'] || files['/main.tsx'];
 
-    // Créer une structure React basique si les fichiers d'entrée sont manquants
-    if (!hasAppTsx && Object.keys(files).length === 0) {
-      files['/src/App.tsx'] = {
-        code: `export default function App() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-800 mb-4">Nouveau projet</h1>
-        <p className="text-gray-600">Commencez à éditer votre code...</p>
-      </div>
-    </div>
-  );
-}`,
-        active: true
-      };
-    }
+    // ✅ FIX: Ne PAS créer de template par défaut - laisser le loader s'afficher
+    // La création de template "Nouveau projet" causait le problème "Hello World"
+    // Si aucun fichier valide, le composant affichera un loader à la place
 
     // Si on a App.tsx mais pas main.tsx, le créer
     if ((files['/src/App.tsx'] || files['/App.tsx']) && !hasMainTsx) {
@@ -361,32 +366,57 @@ body {
     "framer-motion": "^12.0.0",
   }), []);
 
-  // Clé stable pour éviter les re-renders inutiles
+  // Clé stable basée sur le contenu réel pour éviter les re-renders inutiles
   const sandpackKey = useMemo(() => {
     const fileCount = Object.keys(sandpackFiles).length;
-    const filesHash = Object.keys(sandpackFiles).sort().join(',').substring(0, 100);
-    return `sandpack-${fileCount}-${enableInspector}-${filesHash}`;
-  }, [sandpackFiles, enableInspector]);
+    const hasApp = sandpackFiles['/src/App.tsx'] ? 'yes' : 'no';
+    // Hash simple basé sur la longueur du contenu
+    const contentHash = Object.values(sandpackFiles)
+      .map(f => f.code.length)
+      .reduce((a, b) => a + b, 0);
+    return `sandpack-${fileCount}-${hasApp}-${contentHash}`;
+  }, [sandpackFiles]);
 
-  // ✅ FIX: Afficher un loader au lieu de "Hello World" quand les fichiers sont vides
-  // Vérifier si on a au moins un fichier React valide (App.tsx ou main.tsx)
+  // ✅ FIX: Validation renforcée des fichiers React valides
   const hasValidReactFiles = useMemo(() => {
     const keys = Object.keys(projectFiles);
-    return keys.some(k => 
-      k.includes('App.tsx') || 
-      k.includes('App.jsx') || 
-      k.includes('main.tsx') ||
-      k.includes('index.tsx')
-    );
+    if (keys.length === 0) return false;
+    
+    // Vérifier avec ou sans préfixe /src/, insensible à la casse
+    return keys.some(k => {
+      const normalized = k.toLowerCase();
+      return normalized.endsWith('app.tsx') || 
+             normalized.endsWith('app.jsx') || 
+             normalized.endsWith('main.tsx') ||
+             normalized.endsWith('index.tsx') ||
+             normalized.includes('/app.tsx') ||
+             normalized.includes('/app.jsx');
+    });
   }, [projectFiles]);
 
+  // ✅ FIX: Guard empêchant le rendu de Sandpack si pas de fichiers valides
+  // Cela évite l'affichage du template "Hello World" par défaut
   if (Object.keys(projectFiles).length === 0 || !hasValidReactFiles) {
+    console.warn('⚠️ [SandpackPreview] No valid React files, showing loader instead of Hello World');
     return (
       <div className="w-full h-full flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <Loader className="animate-spin h-10 w-10 mx-auto text-[#03A5C0]" />
           <p className="text-muted-foreground font-medium">En attente du code généré...</p>
           <p className="text-xs text-muted-foreground/60">La preview apparaîtra une fois le code prêt</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // ✅ FIX: Vérifier aussi que sandpackFiles n'est pas vide après normalisation
+  if (Object.keys(sandpackFiles).length === 0) {
+    console.warn('⚠️ [SandpackPreview] No sandpack files after normalization');
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Loader className="animate-spin h-10 w-10 mx-auto text-[#03A5C0]" />
+          <p className="text-muted-foreground font-medium">Préparation de la preview...</p>
         </div>
       </div>
     );

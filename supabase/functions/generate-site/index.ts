@@ -66,54 +66,100 @@ function normalizePath(path: string): string {
   return normalized;
 }
 
-// Parser pour extraire les fichiers au format // FILE: path
+// Parser pour extraire les fichiers - supporte plusieurs formats de sortie Claude
 function parseGeneratedCode(code: string): ProjectFile[] {
   const files: ProjectFile[] = [];
   
-  // Format 1: // FILE: path suivi du contenu (avec ou sans code blocks)
-  const fileRegex = /\/\/\s*FILE:\s*(.+?)(?:\n|$)/g;
-  const matches = [...code.matchAll(fileRegex)];
+  // Log pour debug
+  console.log('[parseGeneratedCode] Input length:', code.length);
+  console.log('[parseGeneratedCode] First 300 chars:', code.substring(0, 300));
   
-  for (let i = 0; i < matches.length; i++) {
-    const match = matches[i];
-    let filePath = match[1].trim();
-    const startIndex = match.index! + match[0].length;
-    
-    // Trouve le contenu jusqu'au prochain fichier
-    const nextMatch = matches[i + 1];
-    const endIndex = nextMatch ? nextMatch.index! : code.length;
-    let rawContent = code.slice(startIndex, endIndex).trim();
-    
-    // Nettoyer les code blocks markdown si présents (format ```xxx ... ```)
-    const codeBlockMatch = rawContent.match(/^```[\w]*\n([\s\S]*?)```$/);
-    if (codeBlockMatch) {
-      rawContent = codeBlockMatch[1].trim();
-    } else {
-      // Appliquer le nettoyage général pour les marqueurs résiduels
-      rawContent = cleanFileContent(rawContent);
-    }
-    
-    // Normaliser le chemin
-    filePath = normalizePath(filePath);
-    
-    const extension = filePath.split('.').pop() || '';
-    
-    files.push({
-      path: filePath,
-      content: rawContent,
-      type: getFileType(extension)
-    });
+  // Nettoyer les wrappers markdown globaux si présents
+  let cleanedCode = code.trim();
+  if (cleanedCode.startsWith('```')) {
+    cleanedCode = cleanedCode.replace(/^```[\w]*\n/, '').replace(/\n```$/, '');
   }
   
-  // Format 2: code blocks avec nom de fichier (```json:package.json)
+  // Format 1: // FILE: path suivi du contenu (format préféré)
+  const fileRegex = /\/\/\s*FILE:\s*(.+?)(?:\n|$)/g;
+  const matches = [...cleanedCode.matchAll(fileRegex)];
+  
+  if (matches.length > 0) {
+    console.log(`[parseGeneratedCode] Found ${matches.length} files with // FILE: format`);
+    
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i];
+      let filePath = match[1].trim();
+      const startIndex = match.index! + match[0].length;
+      
+      // Trouve le contenu jusqu'au prochain fichier
+      const nextMatch = matches[i + 1];
+      const endIndex = nextMatch ? nextMatch.index! : cleanedCode.length;
+      let rawContent = cleanedCode.slice(startIndex, endIndex).trim();
+      
+      // Nettoyer les code blocks markdown si présents
+      const codeBlockMatch = rawContent.match(/^```[\w]*\n([\s\S]*?)```$/);
+      if (codeBlockMatch) {
+        rawContent = codeBlockMatch[1].trim();
+      } else {
+        rawContent = cleanFileContent(rawContent);
+      }
+      
+      // Normaliser le chemin
+      filePath = normalizePath(filePath);
+      
+      const extension = filePath.split('.').pop() || '';
+      
+      files.push({
+        path: filePath,
+        content: rawContent,
+        type: getFileType(extension)
+      });
+    }
+  }
+  
+  // Format 2: --- FILE: path --- (format alternatif)
   if (files.length === 0) {
-    const codeBlockRegex = /```(?:[\w]+)?:?([\w/.]+)\n([\s\S]*?)```/g;
+    const altRegex = /---\s*FILE:\s*(.+?)\s*---/g;
+    const altMatches = [...cleanedCode.matchAll(altRegex)];
+    
+    if (altMatches.length > 0) {
+      console.log(`[parseGeneratedCode] Found ${altMatches.length} files with --- FILE: --- format`);
+      
+      for (let i = 0; i < altMatches.length; i++) {
+        const match = altMatches[i];
+        let filePath = match[1].trim();
+        const startIndex = match.index! + match[0].length;
+        
+        const nextMatch = altMatches[i + 1];
+        const endIndex = nextMatch ? nextMatch.index! : cleanedCode.length;
+        let rawContent = cleanedCode.slice(startIndex, endIndex).trim();
+        
+        rawContent = cleanFileContent(rawContent);
+        filePath = normalizePath(filePath);
+        
+        const extension = filePath.split('.').pop() || '';
+        
+        files.push({
+          path: filePath,
+          content: rawContent,
+          type: getFileType(extension)
+        });
+      }
+    }
+  }
+  
+  // Format 3: code blocks avec nom de fichier (```tsx:src/App.tsx)
+  if (files.length === 0) {
+    const codeBlockRegex = /```(?:[\w]+)?:?([\w/.-]+\.(?:tsx?|jsx?|css))\n([\s\S]*?)```/g;
     let match;
     
-    while ((match = codeBlockRegex.exec(code)) !== null) {
+    while ((match = codeBlockRegex.exec(cleanedCode)) !== null) {
       const [, path, content] = match;
       const normalizedPath = normalizePath(path.trim());
       const extension = normalizedPath.split('.').pop() || '';
+      
+      console.log(`[parseGeneratedCode] Found file in code block: ${normalizedPath}`);
       
       files.push({
         path: normalizedPath,
@@ -123,8 +169,45 @@ function parseGeneratedCode(code: string): ProjectFile[] {
     }
   }
   
-  // Log pour debug
-  console.log(`[parseGeneratedCode] Parsed ${files.length} files`);
+  // Format 4: ### src/path.tsx (format header markdown)
+  if (files.length === 0) {
+    const headerRegex = /###\s+((?:src\/)?[\w/.-]+\.(?:tsx?|jsx?|css))\s*\n/g;
+    const headerMatches = [...cleanedCode.matchAll(headerRegex)];
+    
+    if (headerMatches.length > 0) {
+      console.log(`[parseGeneratedCode] Found ${headerMatches.length} files with ### format`);
+      
+      for (let i = 0; i < headerMatches.length; i++) {
+        const match = headerMatches[i];
+        let filePath = match[1].trim();
+        const startIndex = match.index! + match[0].length;
+        
+        const nextMatch = headerMatches[i + 1];
+        const endIndex = nextMatch ? nextMatch.index! : cleanedCode.length;
+        let rawContent = cleanedCode.slice(startIndex, endIndex).trim();
+        
+        // Extraire le contenu du code block si présent
+        const codeBlockMatch = rawContent.match(/```[\w]*\n([\s\S]*?)```/);
+        if (codeBlockMatch) {
+          rawContent = codeBlockMatch[1].trim();
+        } else {
+          rawContent = cleanFileContent(rawContent);
+        }
+        
+        filePath = normalizePath(filePath);
+        const extension = filePath.split('.').pop() || '';
+        
+        files.push({
+          path: filePath,
+          content: rawContent,
+          type: getFileType(extension)
+        });
+      }
+    }
+  }
+  
+  // Log final
+  console.log(`[parseGeneratedCode] Parsed ${files.length} files total:`);
   for (const file of files) {
     console.log(`  - ${file.path}: ${file.content.length} chars`);
   }
