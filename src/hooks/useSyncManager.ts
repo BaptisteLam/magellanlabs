@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { IndexedDBCache } from '@/services/indexedDBCache';
 import { useToast } from '@/hooks/use-toast';
+import { parseProjectFiles } from '@/lib/projectFilesParser';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
 
@@ -56,7 +57,7 @@ export function useSyncManager({
 
       if (fetchError) throw fetchError;
 
-      const oldFiles = (currentSession?.project_files as Record<string, string>) || {};
+      const oldFiles = parseProjectFiles(currentSession?.project_files);
 
       // Calculer le diff
       const diff = IndexedDBCache.calculateDiff(oldFiles, projectFiles);
