@@ -383,9 +383,10 @@ body {
   if (Object.keys(projectFiles).length === 0 || !hasValidReactFiles) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-background">
-        <div className="text-center">
-          <Loader className="animate-spin h-8 w-8 mx-auto mb-4 text-[#03A5C0]" />
-          <p className="text-muted-foreground">Chargement du projet...</p>
+        <div className="text-center space-y-4">
+          <Loader className="animate-spin h-10 w-10 mx-auto text-[#03A5C0]" />
+          <p className="text-muted-foreground font-medium">En attente du code généré...</p>
+          <p className="text-xs text-muted-foreground/60">La preview apparaîtra une fois le code prêt</p>
         </div>
       </div>
     );

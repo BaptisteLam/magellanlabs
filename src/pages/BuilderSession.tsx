@@ -113,7 +113,8 @@ export default function BuilderSession() {
     updateFiles,
     updateFile,
     saveNow,
-    isOnline
+    isOnline,
+    hasLoadedFiles // ✅ FIX: Flag pour savoir si des fichiers ont été chargés
   } = useOptimizedBuilder({
     sessionId: sessionId!,
     autoSave: true,
@@ -165,6 +166,9 @@ export default function BuilderSession() {
   // Flag pour savoir si on est en première génération
   const [isInitialGeneration, setIsInitialGeneration] = useState(false);
   const isInitialGenerationRef = useRef(false);
+
+  // ✅ FIX: Flag pour indiquer que les fichiers générés sont prêts à être affichés
+  const [isFilesReady, setIsFilesReady] = useState(false);
 
   // Flag pour éviter de traiter le prompt initial plusieurs fois
   const [initialPromptProcessed, setInitialPromptProcessed] = useState(false);
@@ -406,6 +410,7 @@ export default function BuilderSession() {
           if (Object.keys(validatedFilesMap).length > 0) {
             console.log('✅ PROJECT FILES RESTORATION SUCCESS:', Object.keys(validatedFilesMap).length, 'files');
             updateFiles(validatedFilesMap, false); // Pas de sync car c'est un chargement initial
+            setIsFilesReady(true); // ✅ FIX: Marquer les fichiers comme prêts
             setGeneratedHtml(validatedFilesMap['index.html'] || '');
 
             // Charger le favicon s'il existe
@@ -837,6 +842,11 @@ export default function BuilderSession() {
 
           // Mettre à jour les fichiers
           await updateFiles(files, true);
+
+          // ✅ FIX: Marquer les fichiers comme prêts pour la preview
+          if (Object.keys(files).length > 0) {
+            setIsFilesReady(true);
+          }
 
           // Définir le HTML généré
           if (files['index.html']) {
@@ -2009,7 +2019,7 @@ export default function BuilderSession() {
             backgroundColor: isDark ? 'hsl(var(--background))' : 'hsl(var(--background))',
             borderColor: isDark ? 'hsl(var(--border))' : 'hsl(var(--border))'
           }}>
-                  {isInitialGeneration && Object.keys(projectFiles).length === 0 ? <GeneratingPreview /> : <>
+                  {(isInitialGeneration || !isFilesReady) && Object.keys(projectFiles).length === 0 ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
                       <InteractiveSandpackPreview 
                         projectFiles={projectFiles} 
@@ -2036,7 +2046,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
               }} />
                     </>}
                 </div> : <>
-                  {isInitialGeneration ? <GeneratingPreview /> : <>
+                  {(isInitialGeneration && !isFilesReady) ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} />
                       <InteractiveSandpackPreview 
                         projectFiles={projectFiles} 
