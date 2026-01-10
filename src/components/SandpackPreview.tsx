@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useMemo, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import {
   SandpackProvider,
   SandpackPreview as SandpackPreviewComponent,
@@ -14,21 +14,65 @@ interface SandpackPreviewProps {
   showConsole?: boolean;
   enableInspector?: boolean;
   onIframeReady?: (iframe: HTMLIFrameElement | null) => void;
+  onInspectorMessage?: (message: any) => void;
 }
 
 export interface SandpackPreviewHandle {
   getIframe: () => HTMLIFrameElement | null;
   sendMessage: (message: any) => void;
+  setInspectMode: (enabled: boolean) => void;
 }
 
 // Composant interne pour accéder au contexte Sandpack
 const SandpackContent = forwardRef<
   SandpackPreviewHandle,
-  { showConsole?: boolean; onIframeReady?: (iframe: HTMLIFrameElement | null) => void }
->(({ showConsole = false, onIframeReady }, ref) => {
+  { 
+    showConsole?: boolean; 
+    enableInspector?: boolean;
+    onIframeReady?: (iframe: HTMLIFrameElement | null) => void;
+    onInspectorMessage?: (message: any) => void;
+  }
+>(({ showConsole = false, enableInspector = false, onIframeReady, onInspectorMessage }, ref) => {
   const { sandpack } = useSandpack();
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const inspectorReadyRef = useRef(false);
+  
+  // Envoyer le mode inspection à l'iframe
+  const setInspectMode = useCallback((enabled: boolean) => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({
+        type: enabled ? 'inspect-mode-on' : 'inspect-mode-off'
+      }, '*');
+    }
+  }, []);
+  
+  // Écouter les messages de l'iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type?.startsWith('inspect-')) {
+        onInspectorMessage?.(event.data);
+        
+        if (event.data.type === 'inspector-loaded' || event.data.type === 'inspector-ready') {
+          inspectorReadyRef.current = true;
+          // Si le mode inspection est activé, l'envoyer
+          if (enableInspector) {
+            setInspectMode(true);
+          }
+        }
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [enableInspector, onInspectorMessage, setInspectMode]);
+  
+  // Activer/désactiver le mode inspection quand la prop change
+  useEffect(() => {
+    if (inspectorReadyRef.current) {
+      setInspectMode(enableInspector);
+    }
+  }, [enableInspector, setInspectMode]);
   
   // Trouver l'iframe Sandpack
   useEffect(() => {
@@ -55,7 +99,8 @@ const SandpackContent = forwardRef<
     getIframe: () => iframeRef.current,
     sendMessage: (message: any) => {
       iframeRef.current?.contentWindow?.postMessage(message, '*');
-    }
+    },
+    setInspectMode
   }));
   
   return (
@@ -83,7 +128,8 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
   previewMode = 'desktop',
   showConsole = false,
   enableInspector = false,
-  onIframeReady
+  onIframeReady,
+  onInspectorMessage
 }, ref) => {
   const { isDark } = useThemeStore();
 
@@ -91,23 +137,38 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
   const sandpackFiles = useMemo(() => {
     const files: Record<string, { code: string; active?: boolean }> = {};
     
-    // Filtrer les fichiers de config qui ne sont pas nécessaires pour Sandpack
-    const skipFiles = ['package.json', 'vite.config.ts', 'tsconfig.json', 'tsconfig.node.json'];
+    // Fichiers à ignorer (config Vite, etc.)
+    const skipFiles = [
+      'package.json', 'package-lock.json', 'bun.lockb',
+      'vite.config.ts', 'vite.config.js',
+      'tsconfig.json', 'tsconfig.node.json', 'tsconfig.app.json',
+      'postcss.config.js', 'tailwind.config.ts', 'tailwind.config.js',
+      '.gitignore', 'README.md', '.env', '.env.local',
+      'eslint.config.js', 'components.json'
+    ];
     
     Object.entries(projectFiles).forEach(([path, content]) => {
       // Ignorer les fichiers de config
       const fileName = path.split('/').pop() || '';
       if (skipFiles.includes(fileName)) return;
       
-      // Ajouter le préfixe / si absent
-      const sandpackPath = path.startsWith('/') ? path : `/${path}`;
+      // Ignorer les dossiers de config
+      if (path.includes('node_modules/') || path.includes('.git/')) return;
+      
+      // Normaliser le chemin - ajouter /src/ si nécessaire
+      let sandpackPath = path.startsWith('/') ? path : `/${path}`;
+      
+      // Si le fichier est à la racine et est un .tsx/.ts/.jsx/.js, le mettre dans /src/
+      if (!sandpackPath.includes('/src/') && /^\/(App|main|index)\.(tsx|ts|jsx|js)$/.test(sandpackPath)) {
+        sandpackPath = `/src${sandpackPath}`;
+      }
+      
       files[sandpackPath] = { code: content };
     });
 
     // Vérifier si on a App.tsx (avec ou sans préfixe src/)
     const hasAppTsx = files['/src/App.tsx'] || files['/App.tsx'];
     const hasMainTsx = files['/src/main.tsx'] || files['/main.tsx'];
-    const hasIndexHtml = files['/index.html'];
 
     // Créer une structure React basique si les fichiers d'entrée sont manquants
     if (!hasAppTsx && Object.keys(files).length === 0) {
@@ -186,14 +247,12 @@ body {
     "framer-motion": "^12.0.0",
   }), []);
 
-  // Toujours utiliser vite-react-ts pour Sandpack
-  const template = 'vite-react-ts';
-
   // Clé stable pour éviter les re-renders inutiles
   const sandpackKey = useMemo(() => {
     const fileCount = Object.keys(sandpackFiles).length;
-    return `sandpack-${fileCount}-${enableInspector}`;
-  }, [Object.keys(sandpackFiles).length, enableInspector]);
+    const filesHash = Object.keys(sandpackFiles).sort().join(',').substring(0, 100);
+    return `sandpack-${fileCount}-${enableInspector}-${filesHash}`;
+  }, [sandpackFiles, enableInspector]);
 
   if (Object.keys(projectFiles).length === 0) {
     return (
@@ -209,7 +268,7 @@ body {
     >
       <SandpackProvider
         key={sandpackKey}
-        template={template as any}
+        template="vite-react-ts"
         files={sandpackFiles}
         customSetup={{
           dependencies,
@@ -224,8 +283,10 @@ body {
       >
         <SandpackContent 
           ref={ref}
-          showConsole={showConsole} 
+          showConsole={showConsole}
+          enableInspector={enableInspector}
           onIframeReady={onIframeReady}
+          onInspectorMessage={onInspectorMessage}
         />
       </SandpackProvider>
     </div>
