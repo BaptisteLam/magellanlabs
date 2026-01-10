@@ -383,6 +383,7 @@ body {
     "tailwind-merge": "^2.6.0",
     "class-variance-authority": "^0.7.1",
     "framer-motion": "^12.0.0",
+    "@emotion/is-prop-valid": "^1.2.2", // ✅ Requis par framer-motion dans Sandpack
   }), []);
 
   // Clé stable basée sur le contenu réel pour éviter les re-renders inutiles
