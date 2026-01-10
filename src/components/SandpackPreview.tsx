@@ -2,7 +2,6 @@ import { useMemo, useEffect, useRef, forwardRef, useImperativeHandle, useCallbac
 import {
   SandpackProvider,
   SandpackPreview as SandpackPreviewComponent,
-  SandpackConsole,
   useSandpack,
 } from '@codesandbox/sandpack-react';
 import { useThemeStore } from '@/stores/themeStore';
@@ -21,6 +20,113 @@ export interface SandpackPreviewHandle {
   getIframe: () => HTMLIFrameElement | null;
   sendMessage: (message: any) => void;
   setInspectMode: (enabled: boolean) => void;
+}
+
+// Détecter les imports manquants et créer des stubs
+function createMissingComponentStubs(files: Record<string, { code: string; active?: boolean }>) {
+  const imports: Map<string, string[]> = new Map();
+  
+  // Scanner tous les fichiers pour les imports
+  Object.entries(files).forEach(([filePath, { code }]) => {
+    if (!filePath.endsWith('.tsx') && !filePath.endsWith('.jsx') && !filePath.endsWith('.ts') && !filePath.endsWith('.js')) return;
+    
+    // Regex pour détecter les imports de composants locaux
+    const importRegex = /import\s+(?:(\w+)|{\s*([^}]+)\s*})\s+from\s+['"](\.[^'"]+)['"]/g;
+    let match;
+    
+    while ((match = importRegex.exec(code)) !== null) {
+      const defaultImport = match[1];
+      const namedImports = match[2];
+      const importPath = match[3];
+      
+      // Résoudre le chemin relatif
+      const basePath = filePath.split('/').slice(0, -1).join('/');
+      let resolvedPath = importPath;
+      
+      if (importPath.startsWith('./')) {
+        resolvedPath = `${basePath}/${importPath.slice(2)}`;
+      } else if (importPath.startsWith('../')) {
+        const parts = basePath.split('/');
+        parts.pop();
+        resolvedPath = `${parts.join('/')}/${importPath.slice(3)}`;
+      }
+      
+      // Ajouter extension si manquante
+      if (!resolvedPath.match(/\.(tsx?|jsx?|css)$/)) {
+        resolvedPath += '.tsx';
+      }
+      
+      // Normaliser le chemin
+      if (!resolvedPath.startsWith('/')) {
+        resolvedPath = '/' + resolvedPath;
+      }
+      
+      // Collecter les exports nécessaires
+      const exports: string[] = [];
+      if (defaultImport) exports.push(`default:${defaultImport}`);
+      if (namedImports) {
+        namedImports.split(',').forEach(imp => {
+          const name = imp.trim().split(' as ')[0].trim();
+          if (name) exports.push(name);
+        });
+      }
+      
+      if (!imports.has(resolvedPath)) {
+        imports.set(resolvedPath, []);
+      }
+      imports.get(resolvedPath)!.push(...exports);
+    }
+  });
+  
+  // Créer les stubs pour les fichiers manquants
+  imports.forEach((exports, path) => {
+    // Vérifier si le fichier existe déjà
+    const exists = files[path] || files[path.replace('.tsx', '.ts')] || files[path.replace('.tsx', '.jsx')] || files[path.replace('.tsx', '.js')];
+    if (exists) return;
+    
+    // Ignorer les fichiers CSS
+    if (path.endsWith('.css')) {
+      files[path] = { code: '/* Auto-generated stub */' };
+      return;
+    }
+    
+    // Créer un composant stub
+    const componentName = path.split('/').pop()?.replace(/\.(tsx?|jsx?)$/, '') || 'Component';
+    const hasDefaultExport = exports.some(e => e.startsWith('default:'));
+    const namedExports = exports.filter(e => !e.startsWith('default:'));
+    
+    let stubCode = `// Auto-generated stub for missing component\n`;
+    stubCode += `import React from 'react';\n\n`;
+    
+    // Export par défaut
+    if (hasDefaultExport) {
+      stubCode += `const ${componentName} = () => {\n`;
+      stubCode += `  return (\n`;
+      stubCode += `    <div className="p-4 border border-dashed border-gray-300 rounded-lg bg-gray-50">\n`;
+      stubCode += `      <p className="text-gray-500 text-sm text-center">${componentName}</p>\n`;
+      stubCode += `    </div>\n`;
+      stubCode += `  );\n`;
+      stubCode += `};\n\n`;
+      stubCode += `export default ${componentName};\n`;
+    }
+    
+    // Exports nommés
+    namedExports.forEach(exportName => {
+      if (exportName.match(/^[A-Z]/)) {
+        // C'est probablement un composant
+        stubCode += `\nexport const ${exportName} = () => {\n`;
+        stubCode += `  return <div className="p-2 text-gray-500">${exportName}</div>;\n`;
+        stubCode += `};\n`;
+      } else {
+        // C'est probablement une fonction ou une constante
+        stubCode += `\nexport const ${exportName} = () => {};\n`;
+      }
+    });
+    
+    files[path] = { code: stubCode };
+  });
+  
+  return files;
 }
 
 // Composant interne pour accéder au contexte Sandpack
@@ -55,7 +161,6 @@ const SandpackContent = forwardRef<
         
         if (event.data.type === 'inspector-loaded' || event.data.type === 'inspector-ready') {
           inspectorReadyRef.current = true;
-          // Si le mode inspection est activé, l'envoyer
           if (enableInspector) {
             setInspectMode(true);
           }
@@ -74,13 +179,17 @@ const SandpackContent = forwardRef<
     }
   }, [enableInspector, setInspectMode]);
   
-  // Trouver l'iframe Sandpack
+  // Trouver l'iframe Sandpack et la configurer
   useEffect(() => {
     const findIframe = () => {
       if (containerRef.current) {
         const iframe = containerRef.current.querySelector('iframe');
         if (iframe && iframe !== iframeRef.current) {
           iframeRef.current = iframe;
+          // Forcer le style pour prendre toute la place
+          iframe.style.width = '100%';
+          iframe.style.height = '100%';
+          iframe.style.border = 'none';
           onIframeReady?.(iframe);
         }
       }
@@ -104,19 +213,20 @@ const SandpackContent = forwardRef<
   }));
   
   return (
-    <div ref={containerRef} className="w-full h-full flex flex-col">
-      <div className="flex-1 relative">
-        <SandpackPreviewComponent
-          showOpenInCodeSandbox={false}
-          showRefreshButton={false}
-          style={{ height: '100%' }}
-        />
-      </div>
-      {showConsole && (
-        <div className="h-32 border-t border-border">
-          <SandpackConsole />
-        </div>
-      )}
+    <div ref={containerRef} className="w-full h-full sandpack-white-label">
+      <SandpackPreviewComponent
+        showOpenInCodeSandbox={false}
+        showRefreshButton={false}
+        showNavigator={false}
+        showRestartButton={false}
+        showSandpackErrorOverlay={false}
+        style={{ 
+          height: '100%', 
+          width: '100%',
+          border: 'none',
+          background: 'transparent'
+        }}
+      />
     </div>
   );
 });
@@ -135,7 +245,7 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
 
   // Convertir les fichiers au format Sandpack (préfixe /)
   const sandpackFiles = useMemo(() => {
-    const files: Record<string, { code: string; active?: boolean }> = {};
+    let files: Record<string, { code: string; active?: boolean }> = {};
     
     // Fichiers à ignorer (config Vite, etc.)
     const skipFiles = [
@@ -223,6 +333,9 @@ body {
       };
     }
 
+    // Créer des stubs pour les composants manquants
+    files = createMissingComponentStubs(files);
+
     // Marquer le fichier actif
     if (files['/src/App.tsx']) {
       files['/src/App.tsx'].active = true;
@@ -264,7 +377,7 @@ body {
 
   return (
     <div 
-      className={`w-full h-full ${previewMode === 'mobile' ? 'max-w-[375px] mx-auto border-x border-border' : ''}`}
+      className={`w-full h-full sandpack-container ${previewMode === 'mobile' ? 'max-w-[375px] mx-auto border-x border-border' : ''}`}
     >
       <SandpackProvider
         key={sandpackKey}
