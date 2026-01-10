@@ -1769,131 +1769,59 @@ export default function BuilderSession() {
         throw new Error('Session non valide, veuillez vous reconnecter');
       }
 
-      // Préparer tous les fichiers du projet pour le déploiement
-      let filesToDeploy: Record<string, string> = {
-        ...projectFiles
-      };
+      // Générer le nom du projet à partir du titre
+      const siteName = (websiteTitle || 'mon-projet')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .substring(0, 50);
 
-      // 🔧 EXTRACTION AUTOMATIQUE : Si index.html contient du CSS/JS inline, extraire dans des fichiers séparés
-      const indexHtml = filesToDeploy['index.html'];
-      if (indexHtml && (indexHtml.includes('<style') || indexHtml.includes('<script'))) {
-        console.warn('⚠️ Détection de CSS/JS inline dans index.html - Extraction automatique en cours...');
+      console.log('🚀 Publishing to Netlify with siteName:', siteName);
+      sonnerToast.info("🚀 Déploiement sur Netlify en cours...");
 
-        // Extraire CSS depuis les balises <style>
-        let extractedCss = '';
-        const styleMatches = indexHtml.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi);
-        for (const match of styleMatches) {
-          extractedCss += match[1] + '\n';
-        }
-
-        // Extraire JS depuis les balises <script> (sauf les modules externes)
-        let extractedJs = '';
-        const scriptMatches = indexHtml.matchAll(/<script(?![^>]*src=["'])(?![^>]*type=["']module["'])[^>]*>([\s\S]*?)<\/script>/gi);
-        for (const match of scriptMatches) {
-          extractedJs += match[1] + '\n';
-        }
-
-        // Nettoyer le HTML en supprimant les balises <style> et <script> inline
-        let cleanHtml = indexHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<script(?![^>]*src=["'])(?![^>]*type=["']module["'])[^>]*>[\s\S]*?<\/script>/gi, '');
-
-        // Ajouter les liens vers les fichiers séparés si pas déjà présents
-        if (!cleanHtml.includes('href="styles.css"')) {
-          cleanHtml = cleanHtml.replace('</head>', '  <link rel="stylesheet" href="styles.css">\n</head>');
-        }
-        if (!cleanHtml.includes('src="script.js"')) {
-          cleanHtml = cleanHtml.replace('</body>', '  <script src="script.js"></script>\n</body>');
-        }
-
-        // Remplacer dans les fichiers à déployer
-        filesToDeploy['index.html'] = cleanHtml;
-
-        // Créer ou fusionner styles.css
-        if (extractedCss.trim()) {
-          filesToDeploy['styles.css'] = (filesToDeploy['styles.css'] || '') + '\n' + extractedCss;
-          console.log('✅ CSS extrait dans styles.css');
-        }
-
-        // Créer ou fusionner script.js
-        if (extractedJs.trim()) {
-          filesToDeploy['script.js'] = (filesToDeploy['script.js'] || '') + '\n' + extractedJs;
-          console.log('✅ JavaScript extrait dans script.js');
-        }
-      }
-
-      // Transformer en format attendu par l'API
-      const files = Object.entries(filesToDeploy).map(([name, content]) => {
-        // Déterminer si le fichier est binaire (images, fonts, etc.)
-        const extension = name.split('.').pop()?.toLowerCase() || '';
-        const binaryExtensions = ['png', 'jpg', 'jpeg', 'gif', 'ico', 'svg', 'woff', 'woff2', 'ttf', 'eot', 'otf'];
-        const isBinary = binaryExtensions.includes(extension);
-        return {
-          name: name.startsWith('/') ? name : `/${name}`,
-          content,
-          type: isBinary ? 'binary' as const : 'text' as const
-        };
-      });
-
-      // 🔍 VALIDATION : Vérifier qu'on a bien des fichiers CSS et JS séparés pour les sites HTML
-      const hasHtml = files.some(f => f.name.endsWith('.html'));
-      const hasCss = files.some(f => f.name.endsWith('.css'));
-      const hasJs = files.some(f => f.name.endsWith('.js'));
-      if (hasHtml && (!hasCss || !hasJs)) {
-        sonnerToast.error("⚠️ Fichiers CSS et JS manquants. Le déploiement nécessite styles.css et script.js séparés pour Cloudflare Pages.");
-        console.error('❌ Validation échouée:', {
-          hasHtml,
-          hasCss,
-          hasJs,
-          files: files.map(f => f.name)
-        });
-        return;
-      }
-
-      // Générer le nom du projet à partir du titre (utiliser toujours le titre actuel)
-      const projectName = (websiteTitle || cloudflareProjectName || 'mon-projet').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-').substring(0, 50);
-      console.log('🔍 Publishing with projectName:', projectName, 'from websiteTitle:', websiteTitle);
-      sonnerToast.info("🚀 Déploiement en cours...");
-      const deployRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-worker`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      // Appel à publish-to-netlify
+      const { data: result, error: publishError } = await supabase.functions.invoke('publish-to-netlify', {
+        body: {
           sessionId,
-          projectFiles: files,
-          projectName
-        })
+          projectFiles,
+          siteName
+        }
       });
-      const result = await deployRes.json();
-      if (!deployRes.ok) {
-        throw new Error(result?.error || 'Erreur de publication');
+
+      if (publishError) {
+        throw new Error(publishError.message || 'Erreur de publication');
       }
+
       if (!result?.success) {
         throw new Error(result?.error || 'Erreur de publication');
       }
-      if (result.publicUrl) {
-        setDeployedUrl(result.publicUrl);
-        setCloudflareProjectName(projectName);
 
-        // Sauvegarder le projectName comme titre si le titre est vide ou générique
+      if (result.url) {
+        setDeployedUrl(result.url);
+
+        // Sauvegarder le titre si nécessaire
         if (!websiteTitle || websiteTitle === 'Nouveau projet' || websiteTitle.trim() === '') {
-          const formattedTitle = projectName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+          const formattedTitle = siteName.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
           setWebsiteTitle(formattedTitle);
-
-          // Sauvegarder dans la base de données
           await supabase.from('build_sessions').update({
             title: formattedTitle,
-            cloudflare_project_name: projectName
+            netlify_deployment_url: result.url,
+            public_url: result.url
           }).eq('id', sessionId);
         } else {
-          // Sauvegarder juste le cloudflare_project_name
           await supabase.from('build_sessions').update({
-            cloudflare_project_name: projectName
+            netlify_deployment_url: result.url,
+            public_url: result.url
           }).eq('id', sessionId);
         }
 
-        // Ouvrir la modale de succès au lieu du toast
+        // Ouvrir la modale de succès
         setShowPublishSuccess(true);
+        sonnerToast.success("✅ Site publié avec succès !");
       }
     } catch (error: any) {
       console.error('Error publishing:', error);
