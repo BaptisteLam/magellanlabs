@@ -74,3 +74,6 @@ verify_jwt = true
 
 [functions.check-vercel-deployment]
 verify_jwt = true
+
+[functions.publish-to-netlify]
+verify_jwt = true

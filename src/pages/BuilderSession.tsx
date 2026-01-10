@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
-import { InteractivePreview } from "@/components/InteractivePreview";
+import { InteractiveSandpackPreview } from "@/components/InteractiveSandpackPreview";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
 import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
@@ -37,9 +37,9 @@ import { useOptimizedBuilder } from '@/hooks/useOptimizedBuilder';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { PublishSuccessDialog } from '@/components/PublishSuccessDialog';
 import { useUnifiedModify } from '@/hooks/useUnifiedModify';
-import { useSyncPreview } from '@/hooks/useSyncPreview';
 import { useProjectVersions } from '@/hooks/useProjectVersions';
 import { VersionHistory } from '@/components/VersionHistory';
+import type { ElementInfo } from '@/components/InteractiveSandpackPreview';
 interface Message {
   role: 'user' | 'assistant';
   content: string | Array<{
@@ -145,14 +145,6 @@ export default function BuilderSession() {
 
   // Hook pour génération de nouveaux sites complets
   const generateSiteHook = useGenerateSite();
-
-  // Hook pour sync automatique vers Vercel (preview temps réel)
-  const { previewUrl, isSyncing, forceSync, syncError, deploymentStatus } = useSyncPreview({
-    sessionId: sessionId!,
-    projectFiles,
-    debounceMs: 2000,
-    enabled: Object.keys(projectFiles).length > 0,
-  });
 
   // Hook pour versioning R2
   const { versions, isLoading: isVersionsLoading, isRollingBack, fetchVersions, rollbackToVersion } = useProjectVersions(sessionId);
@@ -2171,7 +2163,12 @@ export default function BuilderSession() {
           }}>
                   {isInitialGeneration && Object.keys(projectFiles).length === 0 ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
-                      <InteractivePreview projectFiles={projectFiles} isDark={isDark} inspectMode={inspectMode} onInspectModeChange={setInspectMode} previewUrl={previewUrl} isSyncing={isSyncing} syncError={syncError} onRetrySync={forceSync} deploymentStatus={deploymentStatus} onElementModify={async (prompt, elementInfo) => {
+                      <InteractiveSandpackPreview 
+                        projectFiles={projectFiles} 
+                        previewMode="mobile"
+                        inspectMode={inspectMode} 
+                        onInspectModeChange={setInspectMode} 
+                        onElementModify={async (prompt, elementInfo) => {
                 const contextualPrompt = `Modifier l'élément suivant dans le code :
 
 Type: <${elementInfo.tagName.toLowerCase()}>
@@ -2193,7 +2190,12 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                 </div> : <>
                   {isInitialGeneration ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} />
-                      <InteractivePreview projectFiles={projectFiles} isDark={isDark} inspectMode={inspectMode} onInspectModeChange={setInspectMode} previewUrl={previewUrl} isSyncing={isSyncing} syncError={syncError} onRetrySync={forceSync} deploymentStatus={deploymentStatus} onElementModify={async (prompt, elementInfo) => {
+                      <InteractiveSandpackPreview 
+                        projectFiles={projectFiles} 
+                        previewMode="desktop"
+                        inspectMode={inspectMode} 
+                        onInspectModeChange={setInspectMode} 
+                        onElementModify={async (prompt, elementInfo) => {
                 const contextualPrompt = `Modifier l'élément suivant dans le code :
 
 Type: <${elementInfo.tagName.toLowerCase()}>
@@ -2211,28 +2213,6 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                   navigate('/auth');
                   return;
                 }
-                const selectRelevantFiles = (prompt: string, files: Record<string, string>) => {
-                  const keywords = prompt.toLowerCase().split(/\s+/);
-                  const scored = Object.entries(files).map(([path, content]) => {
-                    let score = 0;
-                    keywords.forEach(k => {
-                      if (path.toLowerCase().includes(k)) score += 50;
-                      if (content.toLowerCase().includes(k)) score += 10;
-                    });
-                    if (path.includes('index.html') || path.includes('App.tsx')) score += 100;
-                    return {
-                      path,
-                      content,
-                      score
-                    };
-                  });
-                  return scored.sort((a, b) => b.score - a.score).slice(0, 5);
-                };
-                const relevantFilesArray = selectRelevantFiles(contextualPrompt, projectFiles);
-                const chatHistory = messages.slice(-3).map(m => ({
-                  role: m.role,
-                  content: typeof m.content === 'string' ? m.content : '[message multimédia]'
-                }));
                 setAiEvents([]);
                 generationEventsRef.current = [];
                 try {
@@ -2327,9 +2307,9 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
         open={showVersionHistory}
         onOpenChange={setShowVersionHistory}
         onRollback={() => {
-          // Recharger la preview pour afficher la version restaurée
-          forceSync();
-          sonnerToast.success('Version restaurée - la preview va se recharger');
+          // Recharger les fichiers après rollback
+          loadSession();
+          sonnerToast.success('Version restaurée');
         }}
       />
     </div>;
