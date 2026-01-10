@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { SandpackPreview } from './SandpackPreview';
+import { SandpackPreview, SandpackPreviewHandle } from './SandpackPreview';
 import { FloatingEditBar } from './FloatingEditBar';
 
 export interface ElementInfo {
@@ -37,102 +37,85 @@ export function InteractiveSandpackPreview({
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [showEditBar, setShowEditBar] = useState(false);
   const [hoveredElement, setHoveredElement] = useState<ElementInfo | null>(null);
+  const [inspectorReady, setInspectorReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const sandpackRef = useRef<SandpackPreviewHandle>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
-  // Trouver l'iframe Sandpack dans le DOM
+  // Gérer les messages de l'inspector injecté dans Sandpack
+  const handleInspectorMessage = useCallback((data: any) => {
+    switch (data.type) {
+      case 'inspector-loaded':
+      case 'inspector-ready':
+        setInspectorReady(true);
+        break;
+        
+      case 'inspect-element-hover':
+        if (data.elementInfo) {
+          // Ajuster les coordonnées relative à l'iframe
+          const iframe = iframeRef.current;
+          if (iframe && data.elementInfo.boundingRect) {
+            const iframeRect = iframe.getBoundingClientRect();
+            setHoveredElement({
+              ...data.elementInfo,
+              boundingRect: {
+                ...data.elementInfo.boundingRect,
+                left: data.elementInfo.boundingRect.left + iframeRect.left,
+                top: data.elementInfo.boundingRect.top + iframeRect.top,
+                right: data.elementInfo.boundingRect.right + iframeRect.left,
+                bottom: data.elementInfo.boundingRect.bottom + iframeRect.top,
+              }
+            });
+          } else {
+            setHoveredElement(data.elementInfo);
+          }
+        }
+        break;
+        
+      case 'inspect-element-selected':
+        if (data.elementInfo) {
+          // Ajuster les coordonnées relative à l'iframe
+          const iframe = iframeRef.current;
+          if (iframe && data.elementInfo.boundingRect) {
+            const iframeRect = iframe.getBoundingClientRect();
+            const adjustedElement = {
+              ...data.elementInfo,
+              boundingRect: {
+                ...data.elementInfo.boundingRect,
+                left: data.elementInfo.boundingRect.left + iframeRect.left,
+                top: data.elementInfo.boundingRect.top + iframeRect.top,
+                right: data.elementInfo.boundingRect.right + iframeRect.left,
+                bottom: data.elementInfo.boundingRect.bottom + iframeRect.top,
+              }
+            };
+            setSelectedElement(adjustedElement);
+          } else {
+            setSelectedElement(data.elementInfo);
+          }
+          setShowEditBar(true);
+          setHoveredElement(null);
+          onInspectModeChange?.(false);
+        }
+        break;
+    }
+  }, [onInspectModeChange]);
+
+  // Envoyer le mode inspection quand il change
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (sandpackRef.current) {
+      sandpackRef.current.setInspectMode(inspectMode);
+    }
     
-    const findIframe = () => {
-      const iframe = containerRef.current?.querySelector('iframe');
-      if (iframe) {
-        iframeRef.current = iframe;
-      }
-    };
-
-    // Observer les changements DOM pour trouver l'iframe
-    const observer = new MutationObserver(findIframe);
-    observer.observe(containerRef.current, { childList: true, subtree: true });
-    findIframe();
-
-    return () => observer.disconnect();
-  }, []);
-
-  // Gérer le mode inspection avec overlay
-  const handleOverlayMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!inspectMode || !iframeRef.current) return;
-
-    try {
-      const iframe = iframeRef.current;
-      const iframeRect = iframe.getBoundingClientRect();
-      const x = e.clientX - iframeRect.left;
-      const y = e.clientY - iframeRect.top;
-
-      // Note: À cause des restrictions cross-origin de Sandpack,
-      // on ne peut pas accéder directement au DOM de l'iframe.
-      // On utilise postMessage pour communiquer avec le preview.
-      iframe.contentWindow?.postMessage({
-        type: 'inspect-hover',
-        x,
-        y
-      }, '*');
-    } catch (error) {
-      // Erreur cross-origin silencieuse
+    // Reset hover quand on désactive le mode
+    if (!inspectMode) {
+      setHoveredElement(null);
     }
   }, [inspectMode]);
 
-  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
-    if (!inspectMode || !iframeRef.current) return;
-
-    try {
-      const iframe = iframeRef.current;
-      const iframeRect = iframe.getBoundingClientRect();
-      const x = e.clientX - iframeRect.left;
-      const y = e.clientY - iframeRect.top;
-
-      // Simuler une sélection basique avec les coordonnées
-      const mockElement: ElementInfo = {
-        tagName: 'div',
-        textContent: '',
-        classList: [],
-        path: `element-at-${Math.round(x)}-${Math.round(y)}`,
-        innerHTML: '',
-        boundingRect: {
-          left: e.clientX - 50,
-          top: e.clientY - 20,
-          width: 100,
-          height: 40,
-          bottom: e.clientY + 20,
-          right: e.clientX + 50
-        }
-      };
-
-      setSelectedElement(mockElement);
-      setShowEditBar(true);
-      onInspectModeChange?.(false);
-    } catch (error) {
-      console.error('Error selecting element:', error);
-    }
-  }, [inspectMode, onInspectModeChange]);
-
-  // Écouter les messages de l'iframe Sandpack
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'inspect-element-selected') {
-        const elementInfo: ElementInfo = event.data.elementInfo;
-        setSelectedElement(elementInfo);
-        setShowEditBar(true);
-        onInspectModeChange?.(false);
-      }
-      if (event.data?.type === 'inspect-element-hovered') {
-        setHoveredElement(event.data.elementInfo);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [onInspectModeChange]);
+  // Callback quand l'iframe est prête
+  const handleIframeReady = useCallback((iframe: HTMLIFrameElement | null) => {
+    iframeRef.current = iframe;
+  }, []);
 
   const handleModify = useCallback((prompt: string) => {
     if (selectedElement && onElementModify) {
@@ -149,45 +132,63 @@ export function InteractiveSandpackPreview({
 
   return (
     <div ref={containerRef} className="relative w-full h-full">
-      {/* Preview Sandpack */}
-      <SandpackPreview 
+      {/* Preview Sandpack avec inspector activé */}
+      <SandpackPreview
+        ref={sandpackRef}
         projectFiles={projectFiles}
         previewMode={previewMode}
+        enableInspector={inspectMode}
+        onIframeReady={handleIframeReady}
+        onInspectorMessage={handleInspectorMessage}
       />
 
-      {/* Overlay pour le mode inspection */}
+      {/* Overlay pour afficher l'indicateur de mode inspection */}
       {inspectMode && (
-        <div
-          className="absolute inset-0 cursor-crosshair z-10"
-          style={{ backgroundColor: 'rgba(3, 165, 192, 0.05)' }}
-          onMouseMove={handleOverlayMouseMove}
-          onClick={handleOverlayClick}
-        >
-          {/* Indicateur de mode inspection */}
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full text-sm font-medium"
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+          <div 
+            className="px-4 py-2 rounded-full text-sm font-medium shadow-lg"
             style={{
-              backgroundColor: 'rgba(3, 165, 192, 0.1)',
+              backgroundColor: 'rgba(3, 165, 192, 0.15)',
               border: '1px solid #03A5C0',
-              color: '#03A5C0'
+              color: '#03A5C0',
+              backdropFilter: 'blur(8px)'
             }}
           >
-            Mode inspection actif - Cliquez sur un élément
+            {inspectorReady 
+              ? 'Mode inspection actif - Cliquez sur un élément'
+              : 'Chargement de l\'inspecteur...'
+            }
           </div>
+        </div>
+      )}
 
-          {/* Outline de l'élément survolé */}
-          {hoveredElement?.boundingRect && (
-            <div
-              className="absolute pointer-events-none border-2 border-dashed"
-              style={{
-                left: hoveredElement.boundingRect.left,
-                top: hoveredElement.boundingRect.top,
-                width: hoveredElement.boundingRect.width,
-                height: hoveredElement.boundingRect.height,
-                borderColor: '#03A5C0',
-                backgroundColor: 'rgba(3, 165, 192, 0.1)'
-              }}
-            />
-          )}
+      {/* Outline de l'élément survolé (affiché au-dessus de l'iframe) */}
+      {inspectMode && hoveredElement?.boundingRect && (
+        <div
+          className="fixed pointer-events-none z-10"
+          style={{
+            left: hoveredElement.boundingRect.left,
+            top: hoveredElement.boundingRect.top,
+            width: hoveredElement.boundingRect.width,
+            height: hoveredElement.boundingRect.height,
+            border: '2px dashed #03A5C0',
+            backgroundColor: 'rgba(3, 165, 192, 0.1)',
+            borderRadius: '4px'
+          }}
+        >
+          {/* Label de l'élément */}
+          <div 
+            className="absolute -top-6 left-0 px-2 py-0.5 text-xs font-mono rounded"
+            style={{
+              backgroundColor: '#03A5C0',
+              color: 'white'
+            }}
+          >
+            &lt;{hoveredElement.tagName}&gt;
+            {hoveredElement.classList.length > 0 && (
+              <span className="opacity-75">.{hoveredElement.classList[0]}</span>
+            )}
+          </div>
         </div>
       )}
 
