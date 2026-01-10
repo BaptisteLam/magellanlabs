@@ -460,17 +460,25 @@ body {
         customSetup={{
           dependencies,
           entry: '/src/main.tsx',
+          // 🔧 Configuration Babel pour forcer React JSX
+          environment: 'create-react-app',
         }}
         theme={isDark ? 'dark' : 'light'}
         options={{
           recompileMode: 'delayed',
-          recompileDelay: 200,
+          recompileDelay: 150,
           autorun: true,
           autoReload: true,
           bundlerURL: 'https://sandpack-bundler.codesandbox.io',
+          // Activer le mode React explicitement
+          activeFile: '/src/App.tsx',
+          visibleFiles: ['/src/App.tsx', '/src/main.tsx', '/src/index.css'],
           externalResources: [
             'https://cdn.tailwindcss.com',
           ],
+          // Configuration du compilateur
+          initMode: 'immediate',
+          initModeObserverOptions: { rootMargin: '1000px' },
         }}
       >
         <SandpackContent 
