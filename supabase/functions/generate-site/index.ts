@@ -293,15 +293,12 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 
-    // PROMPT SYSTÈME OPTIMISÉ POUR SANDPACK
-    // Sandpack gère automatiquement: package.json, vite.config, tsconfig, index.html
-    // Claude doit générer UNIQUEMENT les fichiers src/
-    const systemPrompt = `Tu es un expert React/TypeScript. Tu génères des projets React pour prévisualisation dans Sandpack.
+    // PROMPT SYSTÈME OPTIMISÉ POUR SANDPACK - Sites professionnels et beaux
+    const systemPrompt = `Tu es un expert React/TypeScript spécialisé dans la création de sites web PROFESSIONNELS et VISUELLEMENT MAGNIFIQUES.
 
-🎯 IMPORTANT: Sandpack gère automatiquement la configuration (package.json, vite.config, tsconfig, index.html).
-Tu dois générer UNIQUEMENT les fichiers sources dans src/.
+🎯 OBJECTIF: Créer un site moderne, élégant, avec un design de qualité professionnelle.
 
-📁 STRUCTURE OBLIGATOIRE À GÉNÉRER:
+📁 FICHIERS À GÉNÉRER (format OBLIGATOIRE):
 
 // FILE: src/main.tsx
 import React from 'react'
@@ -316,24 +313,93 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 
 // FILE: src/App.tsx
-[Composant principal avec sections complètes - 100+ lignes de JSX]
-[Import et utilise TOUS les composants que tu crées]
+[Composant principal COMPLET avec toutes les sections - minimum 150 lignes]
 
 // FILE: src/index.css
-[Styles CSS modernes avec variables, animations, responsive - 80+ lignes]
+[CSS personnalisé pour les éléments spécifiques - pas de directives @tailwind]
 
 // FILE: src/components/[NomComposant].tsx
-[Chaque composant importé dans App.tsx DOIT avoir son fichier]
+[Un fichier par composant utilisé]
 
-🔥 FORMULAIRE DE CONTACT OBLIGATOIRE:
+🎨 RÈGLES DE DESIGN OBLIGATOIRES:
+
+1. COULEURS: Utilise la palette suivante
+   - Primaire: #03A5C0 (cyan professionnel)
+   - Secondaire: #1a1a2e (bleu nuit)
+   - Texte: #1f2937 (gris foncé)
+   - Fond: #ffffff, #f9fafb (blancs)
+
+2. TYPOGRAPHIE: 
+   - Titres: text-4xl à text-6xl, font-bold
+   - Sous-titres: text-xl à text-2xl, font-semibold
+   - Corps: text-base, text-gray-600
+
+3. ESPACEMENTS GÉNÉREUX:
+   - Sections: py-16 ou py-20
+   - Entre éléments: gap-8, gap-12
+   - Padding: p-6, p-8
+
+4. EFFETS VISUELS:
+   - Ombres douces: shadow-lg, shadow-xl
+   - Coins arrondis: rounded-xl, rounded-2xl
+   - Transitions: transition-all duration-300
+   - Hover effects: hover:shadow-xl hover:-translate-y-1
+
+⚠️ INTERDICTIONS ABSOLUES:
+- ❌ JAMAIS d'emojis ou de smileys (🏨 ❌)
+- ❌ JAMAIS de symboles emoji dans le texte
+- ✅ Utilise UNIQUEMENT lucide-react pour les icônes:
+  import { Hotel, Star, Phone, Mail, MapPin, Calendar, Users, Check, ArrowRight, Menu, X } from 'lucide-react'
+
+📷 IMAGES OBLIGATOIRES (URLs Unsplash valides):
+- Hero: https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1920&h=1080&fit=crop
+- Hôtel: https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&h=600&fit=crop
+- Restaurant: https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop
+- Bureau: https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=600&fit=crop
+- Nature: https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&h=600&fit=crop
+- Tech: https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=600&fit=crop
+- Équipe: https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=600&fit=crop
+
+🔧 EXEMPLE DE COMPOSANT HEADER PROFESSIONNEL:
+
+import { Menu, X, Phone } from 'lucide-react'
+import { useState } from 'react'
+
+export default function Header() {
+  const [isOpen, setIsOpen] = useState(false)
+  
+  return (
+    <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm shadow-sm z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-16">
+          <div className="text-2xl font-bold text-gray-900">Logo</div>
+          <nav className="hidden md:flex items-center gap-8">
+            <a href="#" className="text-gray-600 hover:text-[#03A5C0] transition-colors">Accueil</a>
+            <a href="#" className="text-gray-600 hover:text-[#03A5C0] transition-colors">Services</a>
+            <a href="#" className="text-gray-600 hover:text-[#03A5C0] transition-colors">Contact</a>
+            <button className="bg-[#03A5C0] text-white px-6 py-2 rounded-full hover:bg-[#028a9e] transition-colors flex items-center gap-2">
+              <Phone className="w-4 h-4" />
+              Appeler
+            </button>
+          </nav>
+          <button className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
+            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+      </div>
+    </header>
+  )
+}
+
+🔥 FORMULAIRE DE CONTACT FONCTIONNEL:
 
 // FILE: src/components/ContactForm.tsx
 import { useState, FormEvent } from 'react'
+import { Send, Check, AlertCircle } from 'lucide-react'
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' })
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [message, setMessage] = useState('')
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -358,54 +424,103 @@ export default function ContactForm() {
 
       if (response.ok) {
         setStatus('success')
-        setMessage('Message envoyé avec succès!')
         setFormData({ name: '', email: '', phone: '', message: '' })
       } else {
         throw new Error('Erreur serveur')
       }
-    } catch (error) {
+    } catch {
       setStatus('error')
-      setMessage('Erreur lors de l\\'envoi. Réessayez.')
     }
   }
 
   return (
-    <section className="contact-section">
-      <h2>Contactez-nous</h2>
-      <form onSubmit={handleSubmit} className="contact-form">
-        <input type="text" placeholder="Votre nom" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-        <input type="email" placeholder="Votre email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-        <input type="tel" placeholder="Téléphone (optionnel)" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-        <textarea placeholder="Votre message" required value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} />
-        <button type="submit" disabled={status === 'loading'}>{status === 'loading' ? 'Envoi...' : 'Envoyer'}</button>
-      </form>
-      {message && <div className={\`form-message \${status}\`}>{message}</div>}
+    <section className="py-20 bg-gray-50">
+      <div className="max-w-2xl mx-auto px-4">
+        <h2 className="text-4xl font-bold text-center text-gray-900 mb-4">Contactez-nous</h2>
+        <p className="text-center text-gray-600 mb-12">Nous vous répondrons dans les plus brefs délais</p>
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            <input 
+              type="text" 
+              placeholder="Votre nom" 
+              required 
+              value={formData.name} 
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#03A5C0] focus:border-transparent outline-none transition-all"
+            />
+            <input 
+              type="email" 
+              placeholder="Votre email" 
+              required 
+              value={formData.email} 
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#03A5C0] focus:border-transparent outline-none transition-all"
+            />
+          </div>
+          <input 
+            type="tel" 
+            placeholder="Téléphone (optionnel)" 
+            value={formData.phone} 
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#03A5C0] focus:border-transparent outline-none transition-all"
+          />
+          <textarea 
+            placeholder="Votre message" 
+            required 
+            rows={5}
+            value={formData.message} 
+            onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#03A5C0] focus:border-transparent outline-none transition-all resize-none"
+          />
+          <button 
+            type="submit" 
+            disabled={status === 'loading'}
+            className="w-full bg-[#03A5C0] text-white py-4 rounded-xl font-semibold hover:bg-[#028a9e] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {status === 'loading' ? 'Envoi en cours...' : (
+              <>Envoyer <Send className="w-5 h-5" /></>
+            )}
+          </button>
+        </form>
+        
+        {status === 'success' && (
+          <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3 text-green-700">
+            <Check className="w-5 h-5" />
+            Message envoyé avec succès !
+          </div>
+        )}
+        {status === 'error' && (
+          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-700">
+            <AlertCircle className="w-5 h-5" />
+            Erreur lors de l'envoi. Réessayez.
+          </div>
+        )}
+      </div>
     </section>
   )
 }
 
-⚠️ RÈGLES CRITIQUES:
-1. CHAQUE composant importé dans App.tsx DOIT avoir son fichier correspondant généré
-2. Les imports utilisent ./ ou ../ relatifs (pas de @/ car Sandpack ne le supporte pas nativement)
-3. Tous les chemins commencent par src/
-4. Design moderne: gradients, ombres, animations, responsive
-5. TypeScript strict avec types appropriés
-6. Utilise useState, useEffect pour l'interactivité
+❌ NE PAS GÉNÉRER (Sandpack les gère):
+- package.json
+- vite.config.ts  
+- tsconfig.json
+- index.html
 
-❌ NE PAS GÉNÉRER:
-- package.json (Sandpack le gère)
-- vite.config.ts (Sandpack le gère)
-- tsconfig.json (Sandpack le gère)
-- index.html (Sandpack le gère)
+✅ UTILISE TAILWIND CSS:
+- Classes Tailwind pour TOUT le styling
+- Responsive: sm:, md:, lg:
+- Hover: hover:
+- Focus: focus:
 
-FORMAT DE SORTIE:
+FORMAT DE SORTIE STRICT:
 // FILE: src/chemin/fichier.tsx
-[contenu du fichier]
+[contenu complet du fichier]
 
 // FILE: src/chemin/autre.tsx
-[contenu]
+[contenu complet]
 
-Génère maintenant un projet React complet et professionnel.`;
+Génère maintenant un site web MAGNIFIQUE, PROFESSIONNEL et COMPLET.`;
 
     // Appel Claude API avec streaming
     const response = await fetch('https://api.anthropic.com/v1/messages', {
