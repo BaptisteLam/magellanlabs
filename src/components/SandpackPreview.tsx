@@ -120,6 +120,67 @@ function fixJSXSyntaxErrors(code: string, filePath: string): string {
   });
   fixed = cleanedLines.join('\n');
   
+  // 14. 🔧 CRITIQUE: Corriger les chaînes className tronquées (Unterminated string constant)
+  // Pattern: className="...hover:bg-[ (tronqué) → compléter avec valeur par défaut
+  fixed = fixed.replace(
+    /className="([^"]*(?:bg-\[|text-\[|border-\[|hover:bg-\[|hover:text-\[|focus:bg-\[|focus:text-\[)[^"\]]*)\n/g,
+    (match, content) => {
+      console.log(`🔧 [fixJSXSyntaxErrors] Fixing truncated className: ${content.substring(0, 50)}...`);
+      // Compter les [ non fermés et les fermer
+      const openBrackets = (content.match(/\[/g) || []).length;
+      const closeBrackets = (content.match(/\]/g) || []).length;
+      const missing = openBrackets - closeBrackets;
+      // Ajouter les ] manquants + fermer la chaîne
+      return `className="${content}${'#03A5C0]'.repeat(missing)}"\n`;
+    }
+  );
+  
+  // 15. 🔧 Corriger les chaînes non terminées génériques dans les attributs
+  // Pattern: attribut="valeur (sans guillemet fermant avant la fin de ligne)
+  fixed = fixed.replace(
+    /(className|style|href|src|alt|title|placeholder|value|id|name|type)="([^"\n]*)\n\s*([<>\/])/g,
+    (match, attr, value, next) => {
+      console.log(`🔧 [fixJSXSyntaxErrors] Fixing unterminated ${attr} attribute`);
+      return `${attr}="${value}"\n      ${next}`;
+    }
+  );
+  
+  // 16. 🔧 Supprimer les classes Tailwind incomplètes avec crochets non fermés
+  // hover:bg-[ sans valeur → supprimer cette classe
+  fixed = fixed.replace(
+    /\s*(hover:|focus:|active:|group-hover:)?(bg|text|border|ring|shadow)-\[\s*$/gm,
+    ''
+  );
+  
+  // 17. 🔧 Corriger les couleurs Tailwind tronquées: bg-[#03A5C → bg-[#03A5C0]
+  fixed = fixed.replace(
+    /(bg|text|border|ring|shadow)-\[#([0-9A-Fa-f]{3,5})\]/g,
+    (match, prefix, hex) => {
+      if (hex.length < 6) {
+        // Compléter le hex si tronqué
+        const completed = hex.padEnd(6, hex.charAt(hex.length - 1));
+        console.log(`🔧 [fixJSXSyntaxErrors] Completing truncated hex: #${hex} → #${completed}`);
+        return `${prefix}-[#${completed}]`;
+      }
+      return match;
+    }
+  );
+  
+  // 18. 🔧 Fermer les attributs className avec crochets non appairés
+  fixed = fixed.replace(
+    /className="([^"]*\[[^\]"]*)"(?!\s*[>\s\/])/g,
+    (match, content) => {
+      const openBrackets = (content.match(/\[/g) || []).length;
+      const closeBrackets = (content.match(/\]/g) || []).length;
+      if (openBrackets > closeBrackets) {
+        const closers = ']'.repeat(openBrackets - closeBrackets);
+        console.log(`🔧 [fixJSXSyntaxErrors] Closing ${openBrackets - closeBrackets} unclosed brackets in className`);
+        return `className="${content}${closers}"`;
+      }
+      return match;
+    }
+  );
+  
   // Log si des corrections ont été faites
   if (fixed !== original) {
     console.log(`🔧 [fixJSXSyntaxErrors] Fixed JSX syntax in ${filePath}`);
