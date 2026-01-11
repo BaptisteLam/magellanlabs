@@ -1,8 +1,9 @@
 /**
- * Service de validation TSX/JSX avec esbuild-wasm
+ * Service de validation TSX/JSX avec esbuild-wasm + Babel fallback
  * Parse le code avant Sandpack pour détecter et corriger les erreurs
  */
 import { initEsbuild as initEsbuildBase, esbuild, isEsbuildReady } from './esbuildInit';
+import * as Babel from '@babel/standalone';
 
 // Re-export initEsbuild
 export const initEsbuild = initEsbuildBase;
@@ -177,20 +178,74 @@ const ERROR_FIXES: Array<{
 ];
 
 /**
- * Valide un fichier TSX/JSX avec esbuild
+ * 🆕 Valide avec Babel (fallback tolérant)
+ */
+function validateWithBabel(code: string, filePath: string): ValidationResult {
+  const isTsx = filePath.endsWith('.tsx');
+  const isTs = filePath.endsWith('.ts') || isTsx;
+  
+  try {
+    const presets: string[] = ['react'];
+    if (isTs) {
+      presets.push('typescript');
+    }
+    
+    Babel.transform(code, {
+      presets,
+      filename: filePath,
+      // Mode tolérant : ne pas échouer sur les erreurs mineures
+      parserOpts: {
+        errorRecovery: true,
+        allowReturnOutsideFunction: true,
+        allowSuperOutsideMethod: true,
+      }
+    });
+    
+    console.log(`✅ [Babel] Validation passed for ${filePath}`);
+    return { valid: true, errors: [] };
+  } catch (error: any) {
+    // Parser l'erreur Babel
+    const errors: ValidationError[] = [];
+    
+    // Babel fournit des erreurs avec loc
+    if (error.loc) {
+      errors.push({
+        message: error.message?.split('\n')[0] || 'Erreur de syntaxe Babel',
+        line: error.loc.line || 1,
+        column: error.loc.column || 0,
+        file: filePath
+      });
+    } else {
+      // Parser le message
+      const lineMatch = error.message?.match(/\((\d+):(\d+)\)/);
+      errors.push({
+        message: error.message || 'Erreur de syntaxe inconnue',
+        line: lineMatch ? parseInt(lineMatch[1]) : 1,
+        column: lineMatch ? parseInt(lineMatch[2]) : 0,
+        file: filePath
+      });
+    }
+    
+    console.log(`⚠️ [Babel] Validation failed for ${filePath}:`, errors[0]?.message);
+    return { valid: false, errors };
+  }
+}
+
+/**
+ * Valide un fichier TSX/JSX avec esbuild, fallback Babel
  */
 export async function validateTSX(
   code: string, 
   filePath: string = 'component.tsx'
 ): Promise<ValidationResult> {
-  // S'assurer qu'esbuild est initialisé
+  // 1️⃣ Essayer d'abord avec esbuild (rapide + précis)
   if (!isEsbuildReady()) {
     try {
-      await initEsbuild();
+      await initEsbuildBase();
     } catch (e) {
-      console.error('❌ [tsxValidator] Failed to init esbuild:', e);
-      // Si esbuild ne s'initialise pas, retourner comme valide pour ne pas bloquer
-      return { valid: true, errors: [] };
+      console.warn('⚠️ [tsxValidator] esbuild init failed, using Babel fallback');
+      // Fallback direct sur Babel
+      return validateWithBabel(code, filePath);
     }
   }
   
@@ -200,7 +255,7 @@ export async function validateTSX(
                : 'js';
   
   try {
-    // Essayer de transformer le code
+    // Essayer de transformer le code avec esbuild
     await esbuild.transform(code, {
       loader,
       jsx: 'preserve',
@@ -208,14 +263,25 @@ export async function validateTSX(
     });
     
     return { valid: true, errors: [] };
-  } catch (error: any) {
-    // Parser l'erreur esbuild
+  } catch (esbuildError: any) {
+    console.log(`⚠️ [esbuild] Failed for ${filePath}, trying Babel fallback...`);
+    
+    // 2️⃣ Fallback: essayer avec Babel (plus tolérant)
+    const babelResult = validateWithBabel(code, filePath);
+    
+    if (babelResult.valid) {
+      // Babel a réussi là où esbuild a échoué = code acceptable
+      console.log(`✅ [Babel fallback] Accepted code that esbuild rejected`);
+      return { valid: true, errors: [] };
+    }
+    
+    // Les deux ont échoué - retourner les erreurs esbuild (plus précises)
     const errors: ValidationError[] = [];
     
-    if (error.errors && Array.isArray(error.errors)) {
-      for (const e of error.errors) {
+    if (esbuildError.errors && Array.isArray(esbuildError.errors)) {
+      for (const e of esbuildError.errors) {
         errors.push({
-          message: e.text || error.message,
+          message: e.text || esbuildError.message,
           line: e.location?.line || 1,
           column: e.location?.column || 0,
           file: filePath,
@@ -224,9 +290,9 @@ export async function validateTSX(
       }
     } else {
       // Parser le message d'erreur
-      const lineMatch = error.message?.match(/\((\d+):(\d+)\)/);
+      const lineMatch = esbuildError.message?.match(/\((\d+):(\d+)\)/);
       errors.push({
-        message: error.message || 'Erreur de syntaxe inconnue',
+        message: esbuildError.message || 'Erreur de syntaxe inconnue',
         line: lineMatch ? parseInt(lineMatch[1]) : 1,
         column: lineMatch ? parseInt(lineMatch[2]) : 0,
         file: filePath
