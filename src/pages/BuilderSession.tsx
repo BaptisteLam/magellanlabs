@@ -1720,11 +1720,11 @@ export default function BuilderSession() {
         .replace(/-+/g, '-')
         .substring(0, 50);
 
-      console.log('🚀 Publishing to Netlify with siteName:', siteName);
-      sonnerToast.info("🚀 Déploiement sur Netlify en cours...");
+      console.log('🚀 Publishing to Cloudflare Pages with siteName:', siteName);
+      sonnerToast.info("🚀 Déploiement sur Cloudflare Pages en cours...");
 
-      // Appel à publish-to-netlify
-      const { data: result, error: publishError } = await supabase.functions.invoke('publish-to-netlify', {
+      // Appel à publish-to-cloudflare
+      const { data: result, error: publishError } = await supabase.functions.invoke('publish-to-cloudflare', {
         body: {
           sessionId,
           projectFiles,
@@ -1749,12 +1749,12 @@ export default function BuilderSession() {
           setWebsiteTitle(formattedTitle);
           await supabase.from('build_sessions').update({
             title: formattedTitle,
-            netlify_deployment_url: result.url,
+            cloudflare_deployment_url: result.url,
             public_url: result.url
           }).eq('id', sessionId);
         } else {
           await supabase.from('build_sessions').update({
-            netlify_deployment_url: result.url,
+            cloudflare_deployment_url: result.url,
             public_url: result.url
           }).eq('id', sessionId);
         }
