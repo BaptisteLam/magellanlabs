@@ -2,11 +2,16 @@
  * Service de validation TSX/JSX avec Babel uniquement (tolérant)
  * Parse le code avant Sandpack pour détecter et corriger les erreurs
  */
-import * as Babel from '@babel/standalone';
 
-// Fonction vide pour compatibilité avec les imports existants
+// Import dynamique pour éviter les conflits avec React
+let Babel: typeof import('@babel/standalone') | null = null;
+
+// Fonction d'initialisation du validateur
 export const initEsbuild = async () => {
-  console.log('ℹ️ [tsxValidator] Using Babel only (no esbuild)');
+  if (!Babel) {
+    Babel = await import('@babel/standalone');
+    console.log('✅ [tsxValidator] Babel loaded dynamically');
+  }
 };
 
 export interface ValidationError {
@@ -161,6 +166,17 @@ export async function validateTSX(
   
   // Si ce n'est pas un fichier React, valider comme OK
   if (!isTsx && !isJsx && !isTs) {
+    return { valid: true, errors: [] };
+  }
+  
+  // S'assurer que Babel est chargé
+  if (!Babel) {
+    await initEsbuild();
+  }
+  
+  // Si Babel n'est toujours pas disponible, considérer le code comme valide
+  if (!Babel) {
+    console.warn('⚠️ [tsxValidator] Babel not available, skipping validation');
     return { valid: true, errors: [] };
   }
   
