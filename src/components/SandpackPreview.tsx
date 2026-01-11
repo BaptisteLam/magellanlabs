@@ -11,21 +11,40 @@ import { RefreshCw, FileWarning, Globe, Code } from 'lucide-react';
 // Types pour le projet
 type ProjectType = 'static' | 'react';
 
-// 🔧 Détecter le type de projet
+// 🔧 Détecter le type de projet de manière robuste
 function detectProjectType(files: Record<string, string>): ProjectType {
-  const hasIndexHtml = Object.keys(files).some(k => 
-    k.endsWith('index.html') && !k.includes('node_modules')
+  const filePaths = Object.keys(files);
+  
+  // Fichiers indicateurs de projet statique vanilla
+  const hasRouterJs = filePaths.some(k => 
+    (k.includes('router.js') || k.includes('router.mjs')) && !k.includes('node_modules')
   );
-  const hasRouterJs = Object.keys(files).some(k => 
-    k.endsWith('router.js') && !k.includes('node_modules')
+  const hasPagesJs = filePaths.some(k => 
+    k.includes('pages.js') && !k.includes('node_modules')
   );
-  const hasReactFiles = Object.keys(files).some(k => 
+  const hasAppJs = filePaths.some(k => 
+    (k.endsWith('/app.js') || k === 'app.js') && !k.includes('node_modules')
+  );
+  
+  // Fichiers indicateurs de projet React
+  const hasReactFiles = filePaths.some(k => 
     k.match(/\.(tsx|jsx)$/) && !k.includes('node_modules')
   );
   
-  // Si on a router.js ou index.html sans fichiers React, c'est du static
-  if ((hasRouterJs || hasIndexHtml) && !hasReactFiles) {
-    console.log('🔍 [detectProjectType] Detected STATIC project');
+  // Vérifier si index.html est un HTML statique (pas React)
+  const indexHtmlKey = filePaths.find(k => k.endsWith('index.html'));
+  const indexHtmlContent = indexHtmlKey ? files[indexHtmlKey] : '';
+  const isReactIndexHtml = indexHtmlContent.includes('id="root"') || indexHtmlContent.includes("id='root'");
+  
+  // Si on a les fichiers du SPA vanilla (router.js/pages.js) sans fichiers React, c'est static
+  if ((hasRouterJs || hasPagesJs || hasAppJs) && !hasReactFiles) {
+    console.log('🔍 [detectProjectType] Detected STATIC project (vanilla SPA with router.js)');
+    return 'static';
+  }
+  
+  // Si on a index.html sans React root et sans fichiers .tsx/.jsx
+  if (indexHtmlKey && !isReactIndexHtml && !hasReactFiles) {
+    console.log('🔍 [detectProjectType] Detected STATIC project (plain HTML without React root)');
     return 'static';
   }
   
@@ -883,7 +902,7 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
   // 🆕 Détecter le type de projet
   const projectType = useMemo(() => detectProjectType(projectFiles), [projectFiles]);
 
-  // 🔧 Convertir les fichiers au format Sandpack - APPROCHE TOLÉRANTE
+  // 🔧 Convertir les fichiers au format Sandpack - SÉPARATION STATIC vs REACT
   const { sandpackFiles, rawFiles } = useMemo(() => {
     let files: Record<string, { code: string; active?: boolean }> = {};
     let rawFilesMap: Record<string, string> = {};
@@ -892,18 +911,89 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
     console.log('🔍 [SandpackPreview] Received files:', {
       count: Object.keys(projectFiles).length,
       paths: Object.keys(projectFiles),
+      projectType,
     });
 
-    // Si aucun fichier, on ne retourne pas vide - on crée un fallback
+    // Si aucun fichier, créer un fallback approprié
     if (Object.keys(projectFiles).length === 0) {
       console.warn('⚠️ [SandpackPreview] No project files - creating fallback');
       return { sandpackFiles: createFallbackReactProject({}), rawFiles: {} };
     }
     
-    // 🔧 PHASE 1: Tenter de convertir un projet HTML en React
+    // ========== FLUX PROJET STATIC (HTML/CSS/JS) ==========
+    if (projectType === 'static') {
+      console.log('🔧 [SandpackPreview] Processing as STATIC project');
+      
+      // Fichiers à ignorer pour les projets statiques
+      const staticSkipFiles = ['package.json', 'package-lock.json', 'node_modules'];
+      
+      Object.entries(projectFiles).forEach(([path, content]) => {
+        const fileName = path.split('/').pop() || '';
+        if (staticSkipFiles.includes(fileName)) return;
+        if (path.includes('node_modules/') || path.includes('.git/')) return;
+        
+        // Pour static: garder les chemins tels quels (pas de /src/)
+        let sandpackPath = path.startsWith('/') ? path : '/' + path;
+        
+        // Nettoyer le contenu
+        let cleanContent = content;
+        if (typeof cleanContent === 'string') {
+          cleanContent = cleanContent.trim();
+          if (cleanContent.startsWith('```')) {
+            cleanContent = cleanContent.replace(/^```[\w]*\n/, '').replace(/\n```$/, '');
+          }
+        }
+        
+        files[sandpackPath] = { code: cleanContent };
+        rawFilesMap[sandpackPath] = cleanContent;
+      });
+      
+      // S'assurer que index.html existe et est marqué comme actif
+      if (files['/index.html']) {
+        files['/index.html'].active = true;
+      } else {
+        // Créer un index.html de fallback pour static
+        console.warn('⚠️ [SandpackPreview] No index.html found for static project - creating fallback');
+        files['/index.html'] = {
+          code: `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Site en construction</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <h1>Génération en cours...</h1>
+    <p>Votre site sera bientôt prêt.</p>
+  </div>
+  <script src="/router.js"></script>
+  <script src="/pages.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>`,
+          active: true
+        };
+      }
+      
+      // S'assurer qu'on a un styles.css
+      if (!files['/styles.css']) {
+        files['/styles.css'] = { code: BASE_CSS };
+      }
+      
+      console.log('🔍 [SandpackPreview] Static files ready:', Object.keys(files));
+      
+      return { sandpackFiles: files, rawFiles: rawFilesMap };
+    }
+    
+    // ========== FLUX PROJET REACT ==========
+    console.log('🔧 [SandpackPreview] Processing as REACT project');
+    
+    // Tenter de convertir un projet HTML en React
     const convertedFiles = detectAndConvertHTMLProject(projectFiles);
     
-    // Fichiers à ignorer (config Vite gérée par Sandpack)
+    // Fichiers à ignorer pour React (config Vite gérée par Sandpack)
     const skipFiles = [
       'package.json', 'package-lock.json', 'bun.lockb',
       'vite.config.ts', 'vite.config.js',
@@ -914,26 +1004,21 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
     ];
     
     Object.entries(convertedFiles).forEach(([path, content]) => {
-      // Ignorer les fichiers de config
       const fileName = path.split('/').pop() || '';
       if (skipFiles.includes(fileName)) return;
-      
-      // Ignorer les dossiers de config
       if (path.includes('node_modules/') || path.includes('.git/')) return;
       
-      // 🔧 PHASE 3: Normalisation INTELLIGENTE avec aliases
+      // Normalisation pour React (forcer dans /src/)
       let sandpackPath = normalizeFilePath(path);
       
-      // Nettoyer le contenu des marqueurs markdown résiduels
+      // Nettoyer le contenu
       let cleanContent = content;
       if (typeof cleanContent === 'string') {
         cleanContent = cleanContent.trim();
-        // Supprimer les code blocks markdown si présents
         if (cleanContent.startsWith('```')) {
           cleanContent = cleanContent.replace(/^```[\w]*\n/, '').replace(/\n```$/, '');
         }
-        
-        // 🔧 PHASE 4: Appliquer les corrections JSX automatiques (regex)
+        // Appliquer les corrections JSX automatiques
         cleanContent = fixJSXSyntaxErrors(cleanContent, sandpackPath);
       }
       
@@ -941,19 +1026,16 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
       rawFilesMap[sandpackPath] = cleanContent;
     });
 
-    console.log('🔍 [SandpackPreview] Normalized files:', Object.keys(files));
+    console.log('🔍 [SandpackPreview] Normalized React files:', Object.keys(files));
 
-    // 🔧 PHASE 2: Vérifier si on a les fichiers React essentiels, sinon créer un fallback
+    // Vérifier si on a les fichiers React essentiels
     const hasAppTsx = files['/src/App.tsx'] || files['/src/App.jsx'];
     const hasMainTsx = files['/src/main.tsx'] || files['/src/main.jsx'];
 
-    // Si pas de App.tsx valide, créer un fallback
     if (!hasAppTsx) {
       console.warn('⚠️ [SandpackPreview] No App.tsx found - creating fallback');
       files = createFallbackReactProject(files);
-    }
-    // Si on a App.tsx mais pas main.tsx, le créer
-    else if (!hasMainTsx) {
+    } else if (!hasMainTsx) {
       console.log('📝 [SandpackPreview] Creating missing main.tsx');
       files['/src/main.tsx'] = {
         code: `import React from 'react';
@@ -969,12 +1051,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       };
     }
 
-    // S'assurer qu'on a un fichier CSS de base COMPLET
+    // S'assurer qu'on a un fichier CSS de base
     if (!files['/src/index.css'] && !files['/index.css']) {
       files['/src/index.css'] = { code: BASE_CSS };
     }
     
-    // ✅ Toujours ajouter un index.html personnalisé avec Tailwind CDN
+    // Ajouter index.html avec Tailwind CDN pour React
     files['/index.html'] = {
       code: `<!DOCTYPE html>
 <html lang="fr">
@@ -1016,7 +1098,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       sandpackFiles: injectInspectorIntoFiles(files, enableInspector),
       rawFiles: rawFilesMap
     };
-  }, [projectFiles, enableInspector]);
+  }, [projectFiles, projectType, enableInspector]);
 
   // Clé stable basée sur le contenu réel pour éviter les re-renders inutiles
   const sandpackKey = useMemo(() => {
@@ -1037,6 +1119,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
   // 🆕 RENDU POUR PROJET STATIC (HTML/CSS/JS)
   if (projectType === 'static') {
+    // Collecter les fichiers visibles pour static
+    const staticVisibleFiles = Object.keys(sandpackFiles).filter(f => 
+      f.endsWith('.html') || f.endsWith('.css') || f.endsWith('.js')
+    );
+    
     return (
       <div className={`w-full h-full sandpack-container ${previewMode === 'mobile' ? 'max-w-[375px] mx-auto border-x border-border' : ''}`}>
         <SandpackProvider
@@ -1046,11 +1133,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           theme={isDark ? 'dark' : 'light'}
           options={{
             recompileMode: 'delayed',
-            recompileDelay: 100,
+            recompileDelay: 50,
             autorun: true,
             autoReload: true,
             activeFile: '/index.html',
-            visibleFiles: ['/index.html', '/styles.css', '/router.js', '/pages.js'],
+            visibleFiles: staticVisibleFiles,
             initMode: 'immediate',
           }}
         >
