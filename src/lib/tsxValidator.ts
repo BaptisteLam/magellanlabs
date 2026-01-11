@@ -1,12 +1,13 @@
 /**
- * Service de validation TSX/JSX avec esbuild-wasm + Babel fallback
+ * Service de validation TSX/JSX avec Babel uniquement (tolérant)
  * Parse le code avant Sandpack pour détecter et corriger les erreurs
  */
-import { initEsbuild as initEsbuildBase, esbuild, isEsbuildReady } from './esbuildInit';
 import * as Babel from '@babel/standalone';
 
-// Re-export initEsbuild
-export const initEsbuild = initEsbuildBase;
+// Fonction vide pour compatibilité avec les imports existants
+export const initEsbuild = async () => {
+  console.log('ℹ️ [tsxValidator] Using Babel only (no esbuild)');
+};
 
 export interface ValidationError {
   message: string;
@@ -48,18 +49,15 @@ const ERROR_FIXES: Array<{
         
         if (lastQuoteIndex >= 0) {
           const quoteChar = beforeCol[lastQuoteIndex];
-          // Tronquer la ligne au niveau de l'erreur et fermer la chaîne
           const fixedContent = line.substring(lastQuoteIndex + 1, error.column).trim();
           
           // Si c'est dans un className, compléter intelligemment
           if (beforeCol.includes('className=')) {
-            // Fermer les crochets ouverts
             const openBrackets = (fixedContent.match(/\[/g) || []).length;
             const closeBrackets = (fixedContent.match(/\]/g) || []).length;
             const missingBrackets = ']'.repeat(Math.max(0, openBrackets - closeBrackets));
             line = line.substring(0, error.column) + missingBrackets + quoteChar + line.substring(error.column);
           } else {
-            // Simplement fermer la chaîne
             line = line.substring(0, error.column) + quoteChar + line.substring(error.column);
           }
           
@@ -71,18 +69,16 @@ const ERROR_FIXES: Array<{
     }
   },
   {
-    // Unexpected end of file
-    pattern: /Unexpected end of file/i,
-    description: 'Fin de fichier inattendue',
+    // Unexpected end of file / Unexpected token
+    pattern: /Unexpected end of|Unexpected token/i,
+    description: 'Fin de fichier ou token inattendu',
     fix: (code, error) => {
-      // Ajouter les fermetures manquantes
       let fixed = code;
       
       // Compter les accolades, parenthèses, crochets
-      const opens = { '{': 0, '(': 0, '[': 0, '<': 0 };
-      const closes: Record<string, string> = { '{': '}', '(': ')', '[': ']', '<': '>' };
+      const opens = { '{': 0, '(': 0, '[': 0 };
+      const closes: Record<string, string> = { '{': '}', '(': ')', '[': ']' };
       
-      // Parser simplement (ignorer les chaînes)
       let inString = false;
       let stringChar = '';
       
@@ -122,20 +118,18 @@ const ERROR_FIXES: Array<{
     }
   },
   {
-    // Expected ">" but found (unclosed JSX element)
-    pattern: /Expected ">" but found|Expected "\/>" but found/i,
+    // JSX element not closed
+    pattern: /Expected.*>|JSX/i,
     description: 'Élément JSX non fermé',
     fix: (code, error) => {
       const lines = code.split('\n');
       if (error.line > 0 && error.line <= lines.length) {
         let line = lines[error.line - 1];
         
-        // Chercher le tag ouvert avant l'erreur
         const beforeError = line.substring(0, error.column);
         const tagMatch = beforeError.match(/<(\w+)[^>]*$/);
         
         if (tagMatch) {
-          // Fermer le tag
           const selfClosingTags = ['img', 'br', 'hr', 'input', 'meta', 'link', 'area', 'base', 'col', 'embed', 'param', 'source', 'track', 'wbr'];
           const tagName = tagMatch[1].toLowerCase();
           
@@ -151,38 +145,24 @@ const ERROR_FIXES: Array<{
       }
       return null;
     }
-  },
-  {
-    // Unexpected token
-    pattern: /Unexpected "([^"]+)"/i,
-    description: 'Token inattendu',
-    fix: (code, error) => {
-      const lines = code.split('\n');
-      if (error.line > 0 && error.line <= lines.length) {
-        // Essayer de supprimer le caractère problématique
-        let line = lines[error.line - 1];
-        
-        // Si c'est une accolade/parenthèse en trop, la supprimer
-        if (error.column > 0 && error.column <= line.length) {
-          const char = line[error.column - 1];
-          if (['}', ')', ']', '>'].includes(char)) {
-            line = line.substring(0, error.column - 1) + line.substring(error.column);
-            lines[error.line - 1] = line;
-            return lines.join('\n');
-          }
-        }
-      }
-      return null;
-    }
   }
 ];
 
 /**
- * 🆕 Valide avec Babel (fallback tolérant)
+ * Valide un fichier TSX/JSX avec Babel (tolérant)
  */
-function validateWithBabel(code: string, filePath: string): ValidationResult {
+export async function validateTSX(
+  code: string, 
+  filePath: string = 'component.tsx'
+): Promise<ValidationResult> {
   const isTsx = filePath.endsWith('.tsx');
+  const isJsx = filePath.endsWith('.jsx');
   const isTs = filePath.endsWith('.ts') || isTsx;
+  
+  // Si ce n'est pas un fichier React, valider comme OK
+  if (!isTsx && !isJsx && !isTs) {
+    return { valid: true, errors: [] };
+  }
   
   try {
     const presets: string[] = ['react'];
@@ -198,25 +178,25 @@ function validateWithBabel(code: string, filePath: string): ValidationResult {
         errorRecovery: true,
         allowReturnOutsideFunction: true,
         allowSuperOutsideMethod: true,
+        allowAwaitOutsideFunction: true,
+        allowImportExportEverywhere: true,
       }
     });
     
     console.log(`✅ [Babel] Validation passed for ${filePath}`);
     return { valid: true, errors: [] };
   } catch (error: any) {
-    // Parser l'erreur Babel
     const errors: ValidationError[] = [];
     
     // Babel fournit des erreurs avec loc
     if (error.loc) {
       errors.push({
-        message: error.message?.split('\n')[0] || 'Erreur de syntaxe Babel',
+        message: error.message?.split('\n')[0] || 'Erreur de syntaxe',
         line: error.loc.line || 1,
         column: error.loc.column || 0,
         file: filePath
       });
     } else {
-      // Parser le message
       const lineMatch = error.message?.match(/\((\d+):(\d+)\)/);
       errors.push({
         message: error.message || 'Erreur de syntaxe inconnue',
@@ -227,78 +207,6 @@ function validateWithBabel(code: string, filePath: string): ValidationResult {
     }
     
     console.log(`⚠️ [Babel] Validation failed for ${filePath}:`, errors[0]?.message);
-    return { valid: false, errors };
-  }
-}
-
-/**
- * Valide un fichier TSX/JSX avec esbuild, fallback Babel
- */
-export async function validateTSX(
-  code: string, 
-  filePath: string = 'component.tsx'
-): Promise<ValidationResult> {
-  // 1️⃣ Essayer d'abord avec esbuild (rapide + précis)
-  if (!isEsbuildReady()) {
-    try {
-      await initEsbuildBase();
-    } catch (e) {
-      console.warn('⚠️ [tsxValidator] esbuild init failed, using Babel fallback');
-      // Fallback direct sur Babel
-      return validateWithBabel(code, filePath);
-    }
-  }
-  
-  const loader = filePath.endsWith('.tsx') ? 'tsx' 
-               : filePath.endsWith('.jsx') ? 'jsx'
-               : filePath.endsWith('.ts') ? 'ts'
-               : 'js';
-  
-  try {
-    // Essayer de transformer le code avec esbuild
-    await esbuild.transform(code, {
-      loader,
-      jsx: 'preserve',
-      logLevel: 'silent'
-    });
-    
-    return { valid: true, errors: [] };
-  } catch (esbuildError: any) {
-    console.log(`⚠️ [esbuild] Failed for ${filePath}, trying Babel fallback...`);
-    
-    // 2️⃣ Fallback: essayer avec Babel (plus tolérant)
-    const babelResult = validateWithBabel(code, filePath);
-    
-    if (babelResult.valid) {
-      // Babel a réussi là où esbuild a échoué = code acceptable
-      console.log(`✅ [Babel fallback] Accepted code that esbuild rejected`);
-      return { valid: true, errors: [] };
-    }
-    
-    // Les deux ont échoué - retourner les erreurs esbuild (plus précises)
-    const errors: ValidationError[] = [];
-    
-    if (esbuildError.errors && Array.isArray(esbuildError.errors)) {
-      for (const e of esbuildError.errors) {
-        errors.push({
-          message: e.text || esbuildError.message,
-          line: e.location?.line || 1,
-          column: e.location?.column || 0,
-          file: filePath,
-          suggestion: e.notes?.[0]?.text
-        });
-      }
-    } else {
-      // Parser le message d'erreur
-      const lineMatch = esbuildError.message?.match(/\((\d+):(\d+)\)/);
-      errors.push({
-        message: esbuildError.message || 'Erreur de syntaxe inconnue',
-        line: lineMatch ? parseInt(lineMatch[1]) : 1,
-        column: lineMatch ? parseInt(lineMatch[2]) : 0,
-        file: filePath
-      });
-    }
-    
     return { valid: false, errors };
   }
 }
@@ -333,7 +241,7 @@ export async function validateAndFixTSX(
         if (fixer.pattern.test(error.message)) {
           const fixedCode = fixer.fix(currentCode, error);
           if (fixedCode && fixedCode !== currentCode) {
-            console.log(`🔧 [tsxValidator] Applied fix: ${fixer.description} at line ${error.line}`);
+            console.log(`🔧 [Babel] Applied fix: ${fixer.description} at line ${error.line}`);
             currentCode = fixedCode;
             fixed = true;
             break;
@@ -344,7 +252,6 @@ export async function validateAndFixTSX(
     }
     
     if (!fixed) {
-      // Aucune correction possible
       return {
         valid: false,
         errors: result.errors,
@@ -356,7 +263,6 @@ export async function validateAndFixTSX(
     attempts++;
   }
   
-  // Dernière validation
   const finalResult = await validateTSX(currentCode, filePath);
   return {
     valid: finalResult.valid,
@@ -383,14 +289,6 @@ export async function validateProject(
   const tsxFiles = Object.entries(files).filter(([path]) => 
     path.match(/\.(tsx|jsx)$/)
   );
-  
-  // Initialiser esbuild une fois avant de valider
-  try {
-    await initEsbuild();
-  } catch (e) {
-    console.error('❌ [tsxValidator] Failed to init esbuild for project validation');
-    return { valid: true, fileErrors, fixedFiles };
-  }
   
   for (const [path, code] of tsxFiles) {
     const result = await validateAndFixTSX(code, path);
