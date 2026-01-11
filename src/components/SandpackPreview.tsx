@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useMemo, useEffect, useRef, forwardRef, useImperativeHandle, useCallback, useState } from 'react';
 import {
   SandpackProvider,
   SandpackPreview as SandpackPreviewComponent,
@@ -6,6 +6,89 @@ import {
 } from '@codesandbox/sandpack-react';
 import { useThemeStore } from '@/stores/themeStore';
 import { injectInspectorIntoFiles } from '@/lib/sandpackInspector';
+import { validateAndFixTSX, initEsbuild, type ValidationError } from '@/lib/tsxValidator';
+import { AlertCircle, RefreshCw, Code, FileWarning } from 'lucide-react';
+
+// 🔧 Composant de fallback visuel pour les erreurs de syntaxe
+interface ErrorFallbackProps {
+  errors: Array<{ file: string; errors: ValidationError[] }>;
+  onRetry?: () => void;
+  onIgnore?: () => void;
+}
+
+function ErrorFallback({ errors, onRetry, onIgnore }: ErrorFallbackProps) {
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
+      <div className="max-w-2xl w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-red-200 dark:border-red-800 overflow-hidden">
+        {/* Header */}
+        <div className="bg-red-50 dark:bg-red-900/30 border-b border-red-200 dark:border-red-800 px-6 py-4 flex items-center gap-3">
+          <div className="p-2 bg-red-100 dark:bg-red-900/50 rounded-lg">
+            <FileWarning className="w-6 h-6 text-red-600 dark:text-red-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-red-800 dark:text-red-300">
+              Erreurs de syntaxe détectées
+            </h3>
+            <p className="text-sm text-red-600 dark:text-red-400">
+              Le code généré contient des erreurs qui empêchent l'affichage
+            </p>
+          </div>
+        </div>
+        
+        {/* Errors list */}
+        <div className="p-6 max-h-[400px] overflow-y-auto">
+          {errors.map(({ file, errors: fileErrors }, idx) => (
+            <div key={idx} className="mb-4 last:mb-0">
+              <div className="flex items-center gap-2 mb-2">
+                <Code className="w-4 h-4 text-gray-500" />
+                <span className="font-mono text-sm text-gray-700 dark:text-gray-300">{file}</span>
+              </div>
+              {fileErrors.map((error, errIdx) => (
+                <div 
+                  key={errIdx}
+                  className="ml-6 mb-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-800"
+                >
+                  <p className="font-mono text-sm text-red-700 dark:text-red-300 mb-1">
+                    Ligne {error.line}, colonne {error.column}
+                  </p>
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    {error.message}
+                  </p>
+                  {error.suggestion && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      💡 {error.suggestion}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        
+        {/* Actions */}
+        <div className="bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex gap-3">
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#03A5C0] text-white rounded-full hover:bg-[#028a9e] transition-colors text-sm font-medium"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Tenter une correction
+            </button>
+          )}
+          {onIgnore && (
+            <button
+              onClick={onIgnore}
+              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm"
+            >
+              Afficher quand même
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // 🔧 Liste exhaustive des icônes lucide-react pour corrections JSX
 const LUCIDE_ICONS = [
@@ -818,10 +901,24 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
   onInspectorMessage
 }, ref) => {
   const { isDark } = useThemeStore();
+  
+  // 🆕 État pour la validation esbuild
+  const [validationState, setValidationState] = useState<{
+    isValidating: boolean;
+    errors: Array<{ file: string; errors: ValidationError[] }>;
+    fixedFiles: Map<string, string>;
+    ignoreErrors: boolean;
+  }>({
+    isValidating: false,
+    errors: [],
+    fixedFiles: new Map(),
+    ignoreErrors: false
+  });
 
   // 🔧 Convertir les fichiers au format Sandpack - APPROCHE TOLÉRANTE
-  const sandpackFiles = useMemo(() => {
+  const { sandpackFiles, rawFiles } = useMemo(() => {
     let files: Record<string, { code: string; active?: boolean }> = {};
+    let rawFilesMap: Record<string, string> = {};
     
     // 🔍 DEBUG: Log des fichiers reçus
     console.log('🔍 [SandpackPreview] Received files:', {
@@ -832,7 +929,7 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
     // Si aucun fichier, on ne retourne pas vide - on crée un fallback
     if (Object.keys(projectFiles).length === 0) {
       console.warn('⚠️ [SandpackPreview] No project files - creating fallback');
-      return createFallbackReactProject({});
+      return { sandpackFiles: createFallbackReactProject({}), rawFiles: {} };
     }
     
     // 🔧 PHASE 1: Tenter de convertir un projet HTML en React
@@ -868,11 +965,12 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
           cleanContent = cleanContent.replace(/^```[\w]*\n/, '').replace(/\n```$/, '');
         }
         
-        // 🔧 PHASE 4: Appliquer les corrections JSX automatiques
+        // 🔧 PHASE 4: Appliquer les corrections JSX automatiques (regex)
         cleanContent = fixJSXSyntaxErrors(cleanContent, sandpackPath);
       }
       
       files[sandpackPath] = { code: cleanContent };
+      rawFilesMap[sandpackPath] = cleanContent;
     });
 
     console.log('🔍 [SandpackPreview] Normalized files:', Object.keys(files));
@@ -946,8 +1044,89 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     }
 
     // Injecter le script d'inspection si activé
-    return injectInspectorIntoFiles(files, enableInspector);
+    return { 
+      sandpackFiles: injectInspectorIntoFiles(files, enableInspector),
+      rawFiles: rawFilesMap
+    };
   }, [projectFiles, enableInspector]);
+
+  // 🆕 PHASE 5: Validation asynchrone avec esbuild
+  useEffect(() => {
+    let cancelled = false;
+    
+    const validateFiles = async () => {
+      // Si on ignore les erreurs, skip
+      if (validationState.ignoreErrors) return;
+      
+      // Filtrer les fichiers TSX/JSX pour validation
+      const tsxFiles = Object.entries(rawFiles).filter(([path]) => 
+        path.match(/\.(tsx|jsx)$/)
+      );
+      
+      if (tsxFiles.length === 0) return;
+      
+      setValidationState(prev => ({ ...prev, isValidating: true }));
+      
+      try {
+        // Initialiser esbuild
+        await initEsbuild();
+        
+        const errors: Array<{ file: string; errors: ValidationError[] }> = [];
+        const fixedFiles = new Map<string, string>();
+        
+        for (const [path, code] of tsxFiles) {
+          if (cancelled) return;
+          
+          const result = await validateAndFixTSX(code, path);
+          
+          if (!result.valid) {
+            errors.push({ file: path, errors: result.errors });
+          }
+          
+          if (result.fixedCode) {
+            fixedFiles.set(path, result.fixedCode);
+            console.log(`🔧 [esbuild] Auto-fixed: ${path}`);
+          }
+        }
+        
+        if (!cancelled) {
+          setValidationState(prev => ({
+            ...prev,
+            isValidating: false,
+            errors,
+            fixedFiles
+          }));
+        }
+      } catch (error) {
+        console.error('❌ [SandpackPreview] Validation failed:', error);
+        if (!cancelled) {
+          setValidationState(prev => ({ ...prev, isValidating: false }));
+        }
+      }
+    };
+    
+    validateFiles();
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [rawFiles, validationState.ignoreErrors]);
+
+  // Appliquer les fichiers corrigés
+  const finalSandpackFiles = useMemo(() => {
+    if (validationState.fixedFiles.size === 0) {
+      return sandpackFiles;
+    }
+    
+    const updated = { ...sandpackFiles };
+    validationState.fixedFiles.forEach((fixedCode, path) => {
+      if (updated[path]) {
+        updated[path] = { ...updated[path], code: fixedCode };
+      }
+    });
+    
+    return updated;
+  }, [sandpackFiles, validationState.fixedFiles]);
 
   // 🔧 Dépendances pour React avec toutes les librairies courantes
   const dependencies = useMemo(() => ({
@@ -965,25 +1144,48 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
   // Clé stable basée sur le contenu réel pour éviter les re-renders inutiles
   const sandpackKey = useMemo(() => {
-    const fileCount = Object.keys(sandpackFiles).length;
-    const hasApp = sandpackFiles['/src/App.tsx'] ? 'yes' : 'no';
+    const fileCount = Object.keys(finalSandpackFiles).length;
+    const hasApp = finalSandpackFiles['/src/App.tsx'] ? 'yes' : 'no';
     // Hash simple basé sur la longueur du contenu
-    const contentHash = Object.values(sandpackFiles)
+    const contentHash = Object.values(finalSandpackFiles)
       .map(f => f.code.length)
       .reduce((a, b) => a + b, 0);
     return `sandpack-${fileCount}-${hasApp}-${contentHash}`;
-  }, [sandpackFiles]);
-
-  // 🔧 PHASE 5: PLUS DE VALIDATION STRICTE - Sandpack gère toujours le rendu
-  // Le fallback est déjà créé dans sandpackFiles si nécessaire
+  }, [finalSandpackFiles]);
   
   // 🎯 Log final pour debug
   console.log('🚀 [SandpackPreview] Rendering Sandpack with:', {
-    fileCount: Object.keys(sandpackFiles).length,
-    files: Object.keys(sandpackFiles),
-    hasApp: !!sandpackFiles['/src/App.tsx'],
-    hasMain: !!sandpackFiles['/src/main.tsx'],
+    fileCount: Object.keys(finalSandpackFiles).length,
+    files: Object.keys(finalSandpackFiles),
+    hasApp: !!finalSandpackFiles['/src/App.tsx'],
+    hasMain: !!finalSandpackFiles['/src/main.tsx'],
+    validationErrors: validationState.errors.length,
+    fixedFiles: validationState.fixedFiles.size,
   });
+
+  // 🆕 Afficher le fallback d'erreur si des erreurs non corrigeables existent
+  if (validationState.errors.length > 0 && !validationState.ignoreErrors) {
+    return (
+      <ErrorFallback 
+        errors={validationState.errors}
+        onRetry={() => {
+          // Forcer une re-validation
+          setValidationState(prev => ({
+            ...prev,
+            errors: [],
+            fixedFiles: new Map()
+          }));
+        }}
+        onIgnore={() => {
+          // Ignorer les erreurs et afficher quand même
+          setValidationState(prev => ({
+            ...prev,
+            ignoreErrors: true
+          }));
+        }}
+      />
+    );
+  }
 
   return (
     <div 
@@ -992,7 +1194,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <SandpackProvider
         key={sandpackKey}
         template="vite-react-ts"
-        files={sandpackFiles}
+        files={finalSandpackFiles}
         customSetup={{
           dependencies,
           entry: '/src/main.tsx',
