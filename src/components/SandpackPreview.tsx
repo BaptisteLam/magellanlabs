@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useMemo, useEffect, useRef, forwardRef, useImperativeHandle, useCallback, useState } from 'react';
 import {
   SandpackProvider,
   SandpackPreview as SandpackPreviewComponent,
@@ -6,6 +6,7 @@ import {
 } from '@codesandbox/sandpack-react';
 import { useThemeStore } from '@/stores/themeStore';
 import { RefreshCw, FileWarning } from 'lucide-react';
+import { ROUTER_JS_TEMPLATE } from '@/lib/routerTemplate';
 
 // 🔧 Composant de fallback visuel pour les erreurs
 interface ErrorFallbackProps {
@@ -181,12 +182,17 @@ interface SandpackPreviewProps {
   enableInspector?: boolean;
   onIframeReady?: (iframe: HTMLIFrameElement | null) => void;
   onInspectorMessage?: (message: any) => void;
+  onRouteChange?: (route: string) => void;
 }
 
 export interface SandpackPreviewHandle {
   getIframe: () => HTMLIFrameElement | null;
   sendMessage: (message: any) => void;
   setInspectMode: (enabled: boolean) => void;
+  navigate: (path: string) => void;
+  navigateBack: () => void;
+  navigateForward: () => void;
+  reload: () => void;
 }
 
 // Composant interne pour accéder au contexte Sandpack
@@ -268,7 +274,19 @@ const SandpackContent = forwardRef<
     sendMessage: (message: any) => {
       iframeRef.current?.contentWindow?.postMessage(message, '*');
     },
-    setInspectMode
+    setInspectMode,
+    navigate: (path: string) => {
+      iframeRef.current?.contentWindow?.postMessage({ type: 'NAVIGATE', path }, '*');
+    },
+    navigateBack: () => {
+      iframeRef.current?.contentWindow?.postMessage({ type: 'NAVIGATE_BACK' }, '*');
+    },
+    navigateForward: () => {
+      iframeRef.current?.contentWindow?.postMessage({ type: 'NAVIGATE_FORWARD' }, '*');
+    },
+    reload: () => {
+      iframeRef.current?.contentWindow?.postMessage({ type: 'RELOAD' }, '*');
+    }
   }));
   
   return (
@@ -298,9 +316,25 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
   showConsole = false,
   enableInspector = false,
   onIframeReady,
-  onInspectorMessage
+  onInspectorMessage,
+  onRouteChange
 }, ref) => {
   const { isDark } = useThemeStore();
+  const [currentRoute, setCurrentRoute] = useState('/');
+  
+  // Écouter les changements de route depuis l'iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'ROUTE_CHANGE') {
+        const newRoute = event.data.path || '/';
+        setCurrentRoute(newRoute);
+        onRouteChange?.(newRoute);
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [onRouteChange]);
 
   // 🔧 Convertir les fichiers au format Sandpack pour STATIC uniquement
   const sandpackFiles = useMemo(() => {
@@ -402,6 +436,24 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
     if (!files['/app.js']) {
       console.log('📝 [SandpackPreview] Adding fallback app.js');
       files['/app.js'] = { code: BASE_JS };
+    }
+    
+    // Injecter le router.js si le projet a des routes (liens avec hash)
+    const hasHashRoutes = Object.values(files).some(f => 
+      f.code.includes('href="#/') || f.code.includes('data-route=')
+    );
+    
+    if (hasHashRoutes && !files['/router.js']) {
+      console.log('📝 [SandpackPreview] Injecting router.js for hash navigation');
+      files['/router.js'] = { code: ROUTER_JS_TEMPLATE };
+      
+      // Ajouter le script router.js au HTML si pas déjà présent
+      if (files['/index.html'] && !files['/index.html'].code.includes('router.js')) {
+        files['/index.html'].code = files['/index.html'].code.replace(
+          '</body>',
+          '  <script src="router.js"></script>\n</body>'
+        );
+      }
     }
     
     console.log('✅ [SandpackPreview] Final static files:', Object.keys(files).join(', '));

@@ -12,9 +12,23 @@ interface FakeUrlBarProps {
   currentFavicon?: string;
   onFaviconChange?: (faviconUrl: string) => void;
   cloudflareProjectName?: string;
+  currentRoute?: string;
+  onNavigate?: (path: string) => void;
+  iframeRef?: React.RefObject<HTMLIFrameElement>;
 }
 
-export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleChange, currentFavicon, onFaviconChange, cloudflareProjectName }: FakeUrlBarProps) {
+export function FakeUrlBar({ 
+  projectTitle, 
+  isDark = false, 
+  sessionId, 
+  onTitleChange, 
+  currentFavicon, 
+  onFaviconChange, 
+  cloudflareProjectName,
+  currentRoute = '/',
+  onNavigate,
+  iframeRef
+}: FakeUrlBarProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(projectTitle);
   const [copied, setCopied] = useState(false);
@@ -22,15 +36,34 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
   const [showCustomDomain, setShowCustomDomain] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
+  const [displayRoute, setDisplayRoute] = useState(currentRoute);
+  const [isEditingUrl, setIsEditingUrl] = useState(false);
   const faviconInputRef = useRef<HTMLInputElement | null>(null);
   
   useEffect(() => {
     setEditedTitle(projectTitle);
   }, [projectTitle]);
 
+  // Synchroniser la route affichée avec la prop
+  useEffect(() => {
+    if (!isEditingUrl) {
+      setDisplayRoute(currentRoute);
+    }
+  }, [currentRoute, isEditingUrl]);
+
+  // Écouter les messages de l'iframe pour l'état de navigation
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === 'navigation-state') {
+      // Message depuis l'iframe (router.js)
+      if (event.data?.type === 'ROUTE_CHANGE') {
+        setCanGoBack(event.data.canGoBack ?? false);
+        setCanGoForward(event.data.canGoForward ?? false);
+        if (!isEditingUrl) {
+          setDisplayRoute(event.data.path || '/');
+        }
+      }
+      // Ancien format pour compatibilité
+      if (event.data?.type === 'navigation-state') {
         setCanGoBack(event.data.canGoBack);
         setCanGoForward(event.data.canGoForward);
       }
@@ -38,24 +71,57 @@ export function FakeUrlBar({ projectTitle, isDark = false, sessionId, onTitleCha
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [isEditingUrl]);
+
+  // Envoyer un message de navigation à l'iframe via postMessage
+  const sendNavigationMessage = (type: string, path?: string) => {
+    if (iframeRef?.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type, path }, '*');
+    } else {
+      // Fallback: envoyer via window pour que SandpackPreview le capte
+      window.postMessage({ type: type.toLowerCase().replace('_', '-'), path }, '*');
+    }
+  };
 
   const handleNavigateBack = () => {
-    console.log('⬅️ FakeUrlBar: Demande de navigation arrière');
-    // Envoyer un message à la fenêtre parente pour que CustomIframePreview le capte
-    window.postMessage({ type: 'navigate-back' }, '*');
+    console.log('⬅️ FakeUrlBar: Navigation arrière');
+    sendNavigationMessage('NAVIGATE_BACK');
   };
 
   const handleNavigateForward = () => {
-    console.log('➡️ FakeUrlBar: Demande de navigation avant');
-    // Envoyer un message à la fenêtre parente pour que CustomIframePreview le capte
-    window.postMessage({ type: 'navigate-forward' }, '*');
+    console.log('➡️ FakeUrlBar: Navigation avant');
+    sendNavigationMessage('NAVIGATE_FORWARD');
   };
 
   const handleReload = () => {
-    console.log('🔄 FakeUrlBar: Demande de rechargement');
-    // Envoyer un message à la fenêtre parente pour que CustomIframePreview le capte
-    window.postMessage({ type: 'reload' }, '*');
+    console.log('🔄 FakeUrlBar: Rechargement');
+    sendNavigationMessage('RELOAD');
+  };
+
+  const handleUrlSubmit = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      let path = displayRoute.trim();
+      
+      // Normaliser le chemin
+      if (!path.startsWith('/')) {
+        path = '/' + path;
+      }
+      
+      console.log('🔗 FakeUrlBar: Navigation vers', path);
+      
+      // Appeler le callback ou envoyer le message
+      if (onNavigate) {
+        onNavigate(path);
+      } else {
+        sendNavigationMessage('NAVIGATE', path);
+      }
+      
+      setIsEditingUrl(false);
+    } else if (e.key === 'Escape') {
+      setDisplayRoute(currentRoute);
+      setIsEditingUrl(false);
+    }
   };
 
   // Convertir le titre en nom de domaine
