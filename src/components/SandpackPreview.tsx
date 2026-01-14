@@ -269,26 +269,39 @@ function fixJSXSyntaxErrors(code: string, filePath: string): string {
   return fixed;
 }
 
-// 🔧 Normalisation des chemins pour le template "react" (structure plate, pas de /src/)
-function normalizeFilePathForReactTemplate(path: string): string {
+// 🔧 PHASE 3: Normalisation INTELLIGENTE des chemins avec aliases
+function normalizeFilePath(path: string): string {
   let normalized = path.startsWith('/') ? path : '/' + path;
   
-  // Pour le template "react", on garde une structure plate (pas de /src/)
-  // Transformer les chemins /src/... en /...
-  if (normalized.startsWith('/src/')) {
-    normalized = normalized.replace('/src/', '/');
-    console.log(`📁 [normalizeFilePathForReactTemplate] Removed /src/ prefix: ${path} → ${normalized}`);
+  // Aliases courants pour mapper vers la structure /src/
+  const aliases: Record<string, string> = {
+    '/App.tsx': '/src/App.tsx',
+    '/App.jsx': '/src/App.jsx',
+    '/app.tsx': '/src/App.tsx',
+    '/app.jsx': '/src/App.jsx',
+    '/main.tsx': '/src/main.tsx',
+    '/index.tsx': '/src/main.tsx', // Alias index → main
+    '/index.jsx': '/src/main.jsx',
+    '/index.css': '/src/index.css',
+    '/styles.css': '/src/index.css',
+    '/style.css': '/src/index.css',
+  };
+  
+  // Appliquer l'alias si existe
+  if (aliases[normalized]) {
+    console.log(`📁 [normalizeFilePath] Alias applied: ${normalized} → ${aliases[normalized]}`);
+    return aliases[normalized];
   }
   
-  // Transformer .tsx/.jsx en .js pour le template react
-  if (normalized.endsWith('.tsx') || normalized.endsWith('.jsx')) {
-    normalized = normalized.replace(/\.(tsx|jsx)$/, '.js');
-    console.log(`📁 [normalizeFilePathForReactTemplate] Changed extension to .js: ${path} → ${normalized}`);
-  }
-  
-  // S'assurer que App.js est correctement nommé
-  if (normalized.toLowerCase() === '/app.js') {
-    normalized = '/App.js';
+  // Forcer les fichiers source dans /src/ sauf exceptions
+  if (normalized.match(/\.(tsx|jsx|ts|js|css)$/) && !normalized.startsWith('/src/') && !normalized.startsWith('/public/')) {
+    const cleanPath = normalized.replace(/^\/+/, '');
+    // Si déjà préfixé src/, ne pas doubler
+    if (!cleanPath.startsWith('src/')) {
+      const newPath = '/src/' + cleanPath;
+      console.log(`📁 [normalizeFilePath] Forced to /src/: ${normalized} → ${newPath}`);
+      return newPath;
+    }
   }
   
   return normalized;
@@ -362,9 +375,9 @@ function createFallbackReactProject(existingFiles: Record<string, { code: string
   const existingPaths = Object.keys(existingFiles).join(', ');
   console.log(`🔧 [createFallbackReactProject] Creating fallback from existing files: ${existingPaths}`);
   
-  // Créer un App.js de fallback pour le template "react"
+  // Créer un App.tsx de fallback
   const fallbackApp = `import React from 'react';
-import './styles.css';
+import './index.css';
 
 export default function App() {
   return (
@@ -383,10 +396,21 @@ export default function App() {
   );
 }`;
 
-  // Pour le template "react", on utilise /App.js (pas /src/App.tsx)
+  const fallbackMain = `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);`;
+
   return {
     ...existingFiles,
-    '/App.js': { code: fallbackApp, active: true },
+    '/src/App.tsx': { code: fallbackApp, active: true },
+    '/src/main.tsx': { code: fallbackMain },
   };
 }
 
@@ -963,13 +987,13 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
       return { sandpackFiles: files, rawFiles: rawFilesMap };
     }
     
-    // ========== FLUX PROJET REACT (template "react" avec structure plate) ==========
-    console.log('🔧 [SandpackPreview] Processing as REACT project with flat structure');
+    // ========== FLUX PROJET REACT ==========
+    console.log('🔧 [SandpackPreview] Processing as REACT project');
     
     // Tenter de convertir un projet HTML en React
     const convertedFiles = detectAndConvertHTMLProject(projectFiles);
     
-    // Fichiers à ignorer pour React
+    // Fichiers à ignorer pour React (config Vite gérée par Sandpack)
     const skipFiles = [
       'package.json', 'package-lock.json', 'bun.lockb',
       'vite.config.ts', 'vite.config.js',
@@ -984,8 +1008,8 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
       if (skipFiles.includes(fileName)) return;
       if (path.includes('node_modules/') || path.includes('.git/')) return;
       
-      // Normalisation pour le template "react" (structure plate, pas de /src/)
-      let sandpackPath = normalizeFilePathForReactTemplate(path);
+      // Normalisation pour React (forcer dans /src/)
+      let sandpackPath = normalizeFilePath(path);
       
       // Nettoyer le contenu
       let cleanContent = content;
@@ -1004,25 +1028,69 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
 
     console.log('🔍 [SandpackPreview] Normalized React files:', Object.keys(files));
 
-    // Vérifier si on a le fichier App.js pour le template "react"
-    const hasAppJs = files['/App.js'] || files['/app.js'];
+    // Vérifier si on a les fichiers React essentiels
+    const hasAppTsx = files['/src/App.tsx'] || files['/src/App.jsx'];
+    const hasMainTsx = files['/src/main.tsx'] || files['/src/main.jsx'];
 
-    if (!hasAppJs) {
-      console.warn('⚠️ [SandpackPreview] No App.js found - creating fallback');
+    if (!hasAppTsx) {
+      console.warn('⚠️ [SandpackPreview] No App.tsx found - creating fallback');
       files = createFallbackReactProject(files);
+    } else if (!hasMainTsx) {
+      console.log('📝 [SandpackPreview] Creating missing main.tsx');
+      files['/src/main.tsx'] = {
+        code: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);`
+      };
     }
 
     // S'assurer qu'on a un fichier CSS de base
-    if (!files['/styles.css'] && !files['/index.css']) {
-      files['/styles.css'] = { code: BASE_CSS };
+    if (!files['/src/index.css'] && !files['/index.css']) {
+      files['/src/index.css'] = { code: BASE_CSS };
     }
+    
+    // Ajouter index.html avec Tailwind CDN pour React
+    files['/index.html'] = {
+      code: `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#03A5C0',
+            'primary-dark': '#028a9e',
+            secondary: '#1a1a2e',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="antialiased">
+  <div id="root"></div>
+</body>
+</html>`
+    };
 
     // Créer des stubs pour les composants manquants
     files = createMissingComponentStubs(files);
 
     // Marquer le fichier actif
-    if (files['/App.js']) {
-      files['/App.js'].active = true;
+    if (files['/src/App.tsx']) {
+      files['/src/App.tsx'].active = true;
     }
 
     // Injecter le script d'inspection si activé
@@ -1085,40 +1153,48 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
     );
   }
 
-  // 🔧 Dépendances pour le template React
+  // 🔧 Dépendances pour React (si on est en mode React)
   const dependencies = {
-    "lucide-react": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "lucide-react": "^0.462.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.6.0",
+    "class-variance-authority": "^0.7.1",
+    "framer-motion": "^12.0.0",
+    "@emotion/is-prop-valid": "^1.2.2",
   };
 
-  // Collecter les fichiers visibles pour React
-  const reactVisibleFiles = Object.keys(sandpackFiles).filter(f => 
-    f.endsWith('.js') || f.endsWith('.css')
-  );
-
-  // RENDU POUR PROJET REACT avec template "react" (démarrage instantané)
+  // RENDU POUR PROJET REACT
   return (
     <div 
       className={`w-full h-full sandpack-container ${previewMode === 'mobile' ? 'max-w-[375px] mx-auto border-x border-border' : ''}`}
     >
       <SandpackProvider
         key={sandpackKey}
-        template="react"
+        template="vite-react-ts"
         files={sandpackFiles}
         customSetup={{
           dependencies,
+          entry: '/src/main.tsx',
+          environment: 'create-react-app',
         }}
         theme={isDark ? 'dark' : 'light'}
         options={{
           recompileMode: 'delayed',
-          recompileDelay: 100,
+          recompileDelay: 150,
           autorun: true,
           autoReload: true,
-          activeFile: '/App.js',
-          visibleFiles: reactVisibleFiles.length > 0 ? reactVisibleFiles : ['/App.js'],
+          bundlerURL: 'https://sandpack-bundler.codesandbox.io',
+          activeFile: '/src/App.tsx',
+          visibleFiles: ['/src/App.tsx', '/src/main.tsx', '/src/index.css'],
           externalResources: [
             'https://cdn.tailwindcss.com',
           ],
           initMode: 'immediate',
+          initModeObserverOptions: { rootMargin: '1000px' },
         }}
       >
         <SandpackContent 
