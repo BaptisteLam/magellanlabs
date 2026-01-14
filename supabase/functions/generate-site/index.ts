@@ -183,7 +183,14 @@ serve(async (req) => {
 
 🎯 OBJECTIF: Créer un site web moderne, professionnel, 100% statique avec un SYSTÈME DE ROUTING SPA en JavaScript vanilla.
 
-📁 FICHIERS À GÉNÉRER OBLIGATOIREMENT (format STRICT):
+⚠️ RÈGLE CRITIQUE - CODE COMPLET OBLIGATOIRE:
+- Le CSS doit faire MINIMUM 300 lignes avec tous les styles pour chaque élément
+- Le JavaScript doit être FONCTIONNEL et COMPLET
+- Chaque page doit avoir du contenu HTML riche et détaillé
+- NE JAMAIS utiliser de commentaires comme "..." ou "/* reste du code */" - TOUT le code doit être présent
+- NE JAMAIS tronquer le code ou utiliser des ellipses
+
+📁 STRUCTURE OBLIGATOIRE DES FICHIERS:
 
 // FILE: /index.html
 <!DOCTYPE html>
@@ -192,19 +199,54 @@ serve(async (req) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>[Titre du site]</title>
+  <meta name="description" content="[Description SEO]">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Navigation fixe -->
-  <nav id="main-nav">...</nav>
+  <nav id="main-nav" class="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-logo">[Logo/Nom]</a>
+      <button class="nav-toggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-menu">
+        <li><a href="/" class="nav-link">Accueil</a></li>
+        <li><a href="/services" class="nav-link">Services</a></li>
+        <li><a href="/about" class="nav-link">À propos</a></li>
+        <li><a href="/contact" class="nav-link">Contact</a></li>
+      </ul>
+    </div>
+  </nav>
   
-  <!-- Conteneur principal pour les pages -->
   <main id="app"></main>
   
-  <!-- Footer -->
-  <footer>...</footer>
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4>À propos</h4>
+          <p>[Description courte]</p>
+        </div>
+        <div class="footer-col">
+          <h4>Liens rapides</h4>
+          <ul>
+            <li><a href="/">Accueil</a></li>
+            <li><a href="/services">Services</a></li>
+            <li><a href="/contact">Contact</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Contact</h4>
+          <p>Email: contact@example.com</p>
+          <p>Tél: +33 1 23 45 67 89</p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2025 [Nom]. Tous droits réservés.</p>
+      </div>
+    </div>
+  </footer>
   
-  <!-- Scripts -->
   <script src="router.js"></script>
   <script src="pages.js"></script>
   <script src="app.js"></script>
@@ -212,32 +254,721 @@ serve(async (req) => {
 </html>
 
 // FILE: /styles.css
-[CSS complet avec variables, responsive, animations - MINIMUM 200 lignes]
+/* === VARIABLES CSS === */
+:root {
+  --primary: #03A5C0;
+  --primary-dark: #028a9e;
+  --primary-light: rgba(3, 165, 192, 0.1);
+  --secondary: #1a1a2e;
+  --text: #1f2937;
+  --text-light: #6b7280;
+  --text-muted: #9ca3af;
+  --background: #ffffff;
+  --background-alt: #f9fafb;
+  --background-dark: #111827;
+  --border: #e5e7eb;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 40px rgba(0,0,0,0.1);
+  --shadow-xl: 0 25px 50px -12px rgba(0,0,0,0.25);
+  --radius: 8px;
+  --radius-lg: 16px;
+  --transition: all 0.3s ease;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* === RESET & BASE === */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--background);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: var(--transition);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+/* === UTILITAIRES === */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.section {
+  padding: 80px 0;
+}
+
+.section-alt {
+  background: var(--background-alt);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-primary {
+  color: var(--primary);
+}
+
+/* === TYPOGRAPHIE === */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--secondary);
+}
+
+h1 { font-size: clamp(2.5rem, 5vw, 4rem); }
+h2 { font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 1rem; }
+h3 { font-size: clamp(1.5rem, 3vw, 2rem); }
+h4 { font-size: 1.25rem; }
+
+p {
+  margin-bottom: 1rem;
+  color: var(--text-light);
+}
+
+.lead {
+  font-size: 1.25rem;
+  color: var(--text-light);
+}
+
+/* === BOUTONS === */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 50px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn-outline:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-white {
+  background: white;
+  color: var(--primary);
+  border-color: white;
+}
+
+.btn-white:hover {
+  background: var(--background-alt);
+}
+
+/* === NAVBAR === */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  transition: var(--transition);
+}
+
+.navbar.scrolled {
+  box-shadow: var(--shadow);
+}
+
+.nav-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 24px;
+}
+
+.nav-logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.nav-menu {
+  display: flex;
+  gap: 32px;
+}
+
+.nav-link {
+  font-weight: 500;
+  color: var(--text);
+  position: relative;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--primary);
+  transition: var(--transition);
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+  width: 100%;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--primary);
+}
+
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.nav-toggle span {
+  width: 25px;
+  height: 2px;
+  background: var(--text);
+  transition: var(--transition);
+}
+
+/* === HERO === */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--secondary) 0%, #16213e 100%);
+  color: white;
+  text-align: center;
+  padding: 120px 24px 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&h=1080&fit=crop') center/cover;
+  opacity: 0.2;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 800px;
+}
+
+.hero h1 {
+  color: white;
+  margin-bottom: 24px;
+  animation: fadeInUp 0.8s ease;
+}
+
+.hero p {
+  font-size: 1.25rem;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: 32px;
+  animation: fadeInUp 0.8s ease 0.2s both;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  animation: fadeInUp 0.8s ease 0.4s both;
+}
+
+/* === CARDS === */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 32px;
+}
+
+.card {
+  background: white;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+
+.card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-xl);
+}
+
+.card-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.card-content {
+  padding: 24px;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  margin-bottom: 12px;
+}
+
+.card-text {
+  color: var(--text-light);
+  margin-bottom: 16px;
+}
+
+/* === SERVICES === */
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 32px;
+}
+
+.service-card {
+  background: white;
+  padding: 40px 32px;
+  border-radius: var(--radius-lg);
+  text-align: center;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+  border: 1px solid var(--border);
+}
+
+.service-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--primary);
+}
+
+.service-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  background: var(--primary-light);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: var(--primary);
+}
+
+.service-card h3 {
+  margin-bottom: 16px;
+}
+
+/* === ABOUT === */
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+
+.about-image {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+}
+
+.about-content h2 {
+  margin-bottom: 24px;
+}
+
+.about-content p {
+  margin-bottom: 24px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 32px;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.stat-label {
+  color: var(--text-light);
+  font-size: 0.875rem;
+}
+
+/* === CONTACT === */
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+}
+
+.contact-info h2 {
+  margin-bottom: 24px;
+}
+
+.contact-item {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.contact-icon {
+  width: 50px;
+  height: 50px;
+  background: var(--primary-light);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.contact-form {
+  background: white;
+  padding: 40px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-family: inherit;
+  transition: var(--transition);
+  background: var(--background);
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.success-message {
+  background: #10b981;
+  color: white;
+  padding: 20px;
+  border-radius: var(--radius);
+  text-align: center;
+  font-weight: 500;
+}
+
+/* === FOOTER === */
+.footer {
+  background: var(--secondary);
+  color: white;
+  padding: 60px 0 30px;
+  margin-top: auto;
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 40px;
+  margin-bottom: 40px;
+}
+
+.footer-col h4 {
+  color: white;
+  margin-bottom: 20px;
+  font-size: 1.125rem;
+}
+
+.footer-col p,
+.footer-col a {
+  color: rgba(255,255,255,0.7);
+  font-size: 0.9rem;
+  line-height: 2;
+}
+
+.footer-col a:hover {
+  color: var(--primary);
+}
+
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 30px;
+  text-align: center;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.875rem;
+}
+
+/* === PAGE HEADER === */
+.page-header {
+  background: linear-gradient(135deg, var(--secondary) 0%, #16213e 100%);
+  color: white;
+  padding: 160px 24px 80px;
+  text-align: center;
+}
+
+.page-header h1 {
+  color: white;
+  margin-bottom: 16px;
+}
+
+.page-header p {
+  color: rgba(255,255,255,0.8);
+  font-size: 1.25rem;
+}
+
+/* === ANIMATIONS === */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease;
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .nav-menu {
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    background: white;
+    flex-direction: column;
+    padding: 24px;
+    gap: 16px;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-100%);
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--transition);
+  }
+  
+  .nav-menu.active {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  .nav-toggle {
+    display: flex;
+  }
+  
+  .nav-toggle.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+  }
+  
+  .nav-toggle.active span:nth-child(2) {
+    opacity: 0;
+  }
+  
+  .nav-toggle.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(5px, -5px);
+  }
+  
+  .hero {
+    padding: 100px 24px 60px;
+    min-height: auto;
+  }
+  
+  .hero-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .about-grid,
+  .contact-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  
+  .section {
+    padding: 60px 0;
+  }
+}
+
+/* === ERROR PAGE === */
+.error-page {
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 120px 24px;
+}
+
+.error-page h1 {
+  font-size: 8rem;
+  color: var(--primary);
+  margin-bottom: 16px;
+}
+
+.error-page p {
+  font-size: 1.5rem;
+  margin-bottom: 32px;
+}
 
 // FILE: /router.js
-// Système de routing SPA vanilla JS
 (function() {
+  'use strict';
+  
   window.Router = {
     routes: {},
     currentPath: '/',
     
     init: function() {
-      // Intercepter les clics sur les liens
-      document.addEventListener('click', (e) => {
-        const link = e.target.closest('a[href^="/"]');
-        if (link) {
+      var self = this;
+      
+      // Intercepter les clics sur les liens internes
+      document.addEventListener('click', function(e) {
+        var link = e.target.closest('a[href^="/"]');
+        if (link && !link.hasAttribute('target')) {
           e.preventDefault();
-          const path = link.getAttribute('href');
-          this.navigate(path);
+          var path = link.getAttribute('href');
+          self.navigate(path);
         }
       });
       
-      // Gérer le bouton retour du navigateur
-      window.addEventListener('popstate', () => {
-        this.render(window.location.pathname);
+      // Gérer le bouton retour/avant du navigateur
+      window.addEventListener('popstate', function() {
+        self.render(window.location.pathname);
       });
       
-      // Notifier l'iframe parent de l'état de navigation
+      // Menu mobile toggle
+      var navToggle = document.querySelector('.nav-toggle');
+      var navMenu = document.querySelector('.nav-menu');
+      if (navToggle && navMenu) {
+        navToggle.addEventListener('click', function() {
+          navToggle.classList.toggle('active');
+          navMenu.classList.toggle('active');
+        });
+      }
+      
+      // Navbar scroll effect
+      window.addEventListener('scroll', function() {
+        var navbar = document.querySelector('.navbar');
+        if (navbar) {
+          if (window.scrollY > 50) {
+            navbar.classList.add('scrolled');
+          } else {
+            navbar.classList.remove('scrolled');
+          }
+        }
+      });
+      
+      // Notifier l'iframe parent
       this.notifyParent();
       
       // Render initial
@@ -250,6 +981,15 @@ serve(async (req) => {
     
     navigate: function(path) {
       if (path === this.currentPath) return;
+      
+      // Fermer le menu mobile si ouvert
+      var navToggle = document.querySelector('.nav-toggle');
+      var navMenu = document.querySelector('.nav-menu');
+      if (navToggle && navMenu) {
+        navToggle.classList.remove('active');
+        navMenu.classList.remove('active');
+      }
+      
       window.history.pushState({}, '', path);
       this.render(path);
       this.notifyParent();
@@ -257,44 +997,57 @@ serve(async (req) => {
     
     render: function(path) {
       this.currentPath = path;
-      const app = document.getElementById('app');
-      const renderFn = this.routes[path] || this.routes['/404'] || this.routes['/'];
+      var app = document.getElementById('app');
+      var renderFn = this.routes[path] || this.routes['/404'] || this.routes['/'];
       
-      if (renderFn) {
+      if (renderFn && app) {
         app.innerHTML = renderFn();
-        // Scroll to top on navigation
-        window.scrollTo(0, 0);
+        app.classList.add('fade-in');
+        
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
         // Réinitialiser les event listeners
         this.bindEvents();
       }
       
       // Mettre à jour la nav active
-      document.querySelectorAll('#main-nav a').forEach(link => {
-        link.classList.toggle('active', link.getAttribute('href') === path);
+      var navLinks = document.querySelectorAll('.nav-link');
+      navLinks.forEach(function(link) {
+        var href = link.getAttribute('href');
+        if (href === path || (path === '/' && href === '/')) {
+          link.classList.add('active');
+        } else {
+          link.classList.remove('active');
+        }
       });
     },
     
     bindEvents: function() {
+      var self = this;
+      
       // Formulaire de contact
-      const form = document.getElementById('contact-form');
+      var form = document.getElementById('contact-form');
       if (form) {
-        form.addEventListener('submit', this.handleContactSubmit.bind(this));
+        form.addEventListener('submit', function(e) {
+          self.handleContactSubmit(e);
+        });
       }
     },
     
     handleContactSubmit: async function(e) {
       e.preventDefault();
-      const form = e.target;
-      const formData = new FormData(form);
-      const data = Object.fromEntries(formData);
+      var form = e.target;
+      var formData = new FormData(form);
+      var data = Object.fromEntries(formData);
       
-      const btn = form.querySelector('button[type="submit"]');
-      const originalText = btn.textContent;
+      var btn = form.querySelector('button[type="submit"]');
+      var originalText = btn.textContent;
       btn.textContent = 'Envoi en cours...';
       btn.disabled = true;
       
       try {
-        const response = await fetch('${SUPABASE_URL}/rest/v1/project_contacts', {
+        var response = await fetch('${SUPABASE_URL}/rest/v1/project_contacts', {
           method: 'POST',
           headers: {
             'apikey': '${SUPABASE_ANON_KEY}',
@@ -311,161 +1064,305 @@ serve(async (req) => {
         });
         
         if (response.ok) {
-          form.innerHTML = '<div class="success-message">Message envoyé avec succès !</div>';
+          form.innerHTML = '<div class="success-message">Message envoye avec succes ! Nous vous repondrons rapidement.</div>';
         } else {
           throw new Error('Erreur serveur');
         }
       } catch (error) {
         btn.textContent = originalText;
         btn.disabled = false;
-        alert('Erreur lors de l\\'envoi. Veuillez réessayer.');
+        alert('Erreur lors de l\\'envoi. Veuillez reessayer.');
       }
     },
     
     notifyParent: function() {
-      // Communiquer avec la FakeUrlBar de Magellan
-      window.parent.postMessage({
-        type: 'spa-navigation',
-        path: this.currentPath,
-        canGoBack: window.history.length > 1,
-        canGoForward: false
-      }, '*');
+      try {
+        window.parent.postMessage({
+          type: 'spa-navigation',
+          path: this.currentPath,
+          canGoBack: window.history.length > 1,
+          canGoForward: false
+        }, '*');
+      } catch (e) {}
     }
   };
 })();
 
 // FILE: /pages.js
-// Contenu des pages - chaque fonction retourne le HTML de la page
-[Toutes les fonctions qui retournent le HTML de chaque page]
-
-// FILE: /app.js
-// Initialisation de l'application
-document.addEventListener('DOMContentLoaded', function() {
-  Router.init();
-});
-
-🎨 RÈGLES DE DESIGN OBLIGATOIRES:
-
-1. COULEURS (définies en CSS variables):
-   --primary: #03A5C0;
-   --primary-dark: #028a9e;
-   --secondary: #1a1a2e;
-   --text: #1f2937;
-   --text-light: #6b7280;
-   --background: #ffffff;
-   --background-alt: #f9fafb;
-   --shadow: 0 10px 40px rgba(0,0,0,0.1);
-
-2. NAVIGATION: Header fixe avec liens qui utilisent href="/" format (interceptés par le router)
-
-3. ANIMATIONS CSS: Transitions smooth, hover effects, fade-in au scroll
-
-4. RESPONSIVE: Mobile-first avec media queries (@media min-width: 768px, 1024px)
-
-⚠️ INTERDICTIONS ABSOLUES:
-- ❌ JAMAIS de React, Vue, Angular ou autre framework
-- ❌ JAMAIS d'emojis ou smileys dans le contenu
-- ❌ JAMAIS de CDN externe sauf images Unsplash
-- ✅ JavaScript vanilla UNIQUEMENT
-- ✅ CSS pur (pas de Tailwind, Bootstrap)
-
-📷 IMAGES (URLs Unsplash valides):
-- Hero: https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1920&h=1080&fit=crop
-- Hôtel: https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&h=600&fit=crop
-- Restaurant: https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop
-- Bureau: https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=600&fit=crop
-- Nature: https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&h=600&fit=crop
-- Tech: https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=600&fit=crop
-- Équipe: https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=600&fit=crop
-
-🔧 EXEMPLE DE pages.js COMPLET:
+// ========================================
+// CONTENU DES PAGES - GENERE DYNAMIQUEMENT
+// ========================================
 
 // Page d'accueil
 Router.register('/', function() {
-  return \`
-    <section class="hero">
-      <div class="hero-content">
-        <h1>Bienvenue sur notre site</h1>
-        <p>Description du service</p>
-        <a href="/contact" class="btn btn-primary">Nous contacter</a>
-      </div>
-    </section>
-    
-    <section class="services">
-      <div class="container">
-        <h2>Nos Services</h2>
-        <div class="services-grid">
-          <div class="service-card">
-            <h3>Service 1</h3>
-            <p>Description</p>
-          </div>
-        </div>
-      </div>
-    </section>
-  \`;
+  return '<section class="hero">' +
+    '<div class="hero-content">' +
+      '<h1>Bienvenue sur notre site</h1>' +
+      '<p class="lead">Une description engageante de votre entreprise et de vos services. Nous sommes la pour vous accompagner dans tous vos projets.</p>' +
+      '<div class="hero-buttons">' +
+        '<a href="/services" class="btn btn-primary">Nos services</a>' +
+        '<a href="/contact" class="btn btn-outline btn-white">Nous contacter</a>' +
+      '</div>' +
+    '</div>' +
+  '</section>' +
+  
+  '<section class="section">' +
+    '<div class="container">' +
+      '<h2 class="text-center">Nos Services</h2>' +
+      '<p class="text-center lead" style="max-width: 600px; margin: 0 auto 48px;">Decouvrez notre gamme complete de services professionnels adaptes a vos besoins.</p>' +
+      '<div class="services-grid">' +
+        '<div class="service-card">' +
+          '<div class="service-icon">1</div>' +
+          '<h3>Service Premium</h3>' +
+          '<p>Une description detaillee de ce premier service et de ses avantages pour vos clients.</p>' +
+        '</div>' +
+        '<div class="service-card">' +
+          '<div class="service-icon">2</div>' +
+          '<h3>Expertise Metier</h3>' +
+          '<p>Une description detaillee de ce deuxieme service et de la valeur ajoutee proposee.</p>' +
+        '</div>' +
+        '<div class="service-card">' +
+          '<div class="service-icon">3</div>' +
+          '<h3>Accompagnement</h3>' +
+          '<p>Une description detaillee de ce troisieme service et de son impact positif.</p>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</section>' +
+  
+  '<section class="section section-alt">' +
+    '<div class="container">' +
+      '<div class="about-grid">' +
+        '<img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&h=400&fit=crop" alt="Notre equipe" class="about-image">' +
+        '<div class="about-content">' +
+          '<h2>Pourquoi nous choisir ?</h2>' +
+          '<p>Avec plus de 10 ans d\\'experience dans notre domaine, nous avons developpe une expertise unique qui nous permet d\\'offrir des solutions sur mesure a nos clients.</p>' +
+          '<p>Notre equipe passionnee s\\'engage a vous fournir un service d\\'excellence, avec une attention particuliere portee a chaque detail de votre projet.</p>' +
+          '<a href="/about" class="btn btn-primary">En savoir plus</a>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</section>';
 });
 
-// Page À propos
+// Page Services
+Router.register('/services', function() {
+  return '<section class="page-header">' +
+    '<h1>Nos Services</h1>' +
+    '<p>Des solutions adaptees a tous vos besoins</p>' +
+  '</section>' +
+  
+  '<section class="section">' +
+    '<div class="container">' +
+      '<div class="services-grid">' +
+        '<div class="service-card">' +
+          '<div class="service-icon">1</div>' +
+          '<h3>Service Premium</h3>' +
+          '<p>Description complete du service premium avec tous ses avantages et fonctionnalites detaillees.</p>' +
+        '</div>' +
+        '<div class="service-card">' +
+          '<div class="service-icon">2</div>' +
+          '<h3>Expertise Metier</h3>' +
+          '<p>Description complete de notre expertise metier et comment elle peut beneficier a votre activite.</p>' +
+        '</div>' +
+        '<div class="service-card">' +
+          '<div class="service-icon">3</div>' +
+          '<h3>Accompagnement</h3>' +
+          '<p>Description complete de notre service d\\'accompagnement personnalise pour votre reussite.</p>' +
+        '</div>' +
+        '<div class="service-card">' +
+          '<div class="service-icon">4</div>' +
+          '<h3>Innovation</h3>' +
+          '<p>Description complete de nos solutions innovantes pour vous demarquer de la concurrence.</p>' +
+        '</div>' +
+        '<div class="service-card">' +
+          '<div class="service-icon">5</div>' +
+          '<h3>Support 24/7</h3>' +
+          '<p>Description complete de notre support technique disponible a tout moment pour vous aider.</p>' +
+        '</div>' +
+        '<div class="service-card">' +
+          '<div class="service-icon">6</div>' +
+          '<h3>Formation</h3>' +
+          '<p>Description complete de nos programmes de formation pour developper vos competences.</p>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</section>';
+});
+
+// Page A propos
 Router.register('/about', function() {
-  return \`
-    <section class="page-header">
-      <h1>À propos</h1>
-    </section>
-    <section class="about-content">
-      <div class="container">
-        <p>Notre histoire...</p>
-      </div>
-    </section>
-  \`;
+  return '<section class="page-header">' +
+    '<h1>A propos de nous</h1>' +
+    '<p>Decouvrez notre histoire et nos valeurs</p>' +
+  '</section>' +
+  
+  '<section class="section">' +
+    '<div class="container">' +
+      '<div class="about-grid">' +
+        '<div class="about-content">' +
+          '<h2>Notre Histoire</h2>' +
+          '<p>Fondee en 2015, notre entreprise est nee d\\'une vision simple : offrir des services de qualite exceptionnelle tout en maintenant une relation de proximite avec nos clients.</p>' +
+          '<p>Au fil des annees, nous avons su evoluer et nous adapter aux besoins changeants du marche, tout en restant fideles a nos valeurs fondatrices d\\'excellence, d\\'integrite et d\\'innovation.</p>' +
+          '<div class="stats-grid">' +
+            '<div class="stat-item">' +
+              '<div class="stat-number">10+</div>' +
+              '<div class="stat-label">Annees d\\'experience</div>' +
+            '</div>' +
+            '<div class="stat-item">' +
+              '<div class="stat-number">500+</div>' +
+              '<div class="stat-label">Clients satisfaits</div>' +
+            '</div>' +
+            '<div class="stat-item">' +
+              '<div class="stat-number">50+</div>' +
+              '<div class="stat-label">Experts dedies</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<img src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&h=400&fit=crop" alt="Notre bureau" class="about-image">' +
+      '</div>' +
+    '</div>' +
+  '</section>';
 });
 
-// Page Contact avec formulaire
+// Page Contact
 Router.register('/contact', function() {
-  return \`
-    <section class="page-header">
-      <h1>Contact</h1>
-    </section>
-    <section class="contact-section">
-      <div class="container">
-        <form id="contact-form" class="contact-form">
-          <div class="form-group">
-            <input type="text" name="name" placeholder="Votre nom" required>
-          </div>
-          <div class="form-group">
-            <input type="email" name="email" placeholder="Votre email" required>
-          </div>
-          <div class="form-group">
-            <input type="tel" name="phone" placeholder="Téléphone (optionnel)">
-          </div>
-          <div class="form-group">
-            <textarea name="message" placeholder="Votre message" rows="5" required></textarea>
-          </div>
-          <button type="submit" class="btn btn-primary">Envoyer</button>
-        </form>
-      </div>
-    </section>
-  \`;
+  return '<section class="page-header">' +
+    '<h1>Contactez-nous</h1>' +
+    '<p>Nous sommes a votre ecoute</p>' +
+  '</section>' +
+  
+  '<section class="section">' +
+    '<div class="container">' +
+      '<div class="contact-grid">' +
+        '<div class="contact-info">' +
+          '<h2>Restons en contact</h2>' +
+          '<p>N\\'hesitez pas a nous contacter pour toute question ou demande d\\'information. Notre equipe vous repondra dans les plus brefs delais.</p>' +
+          '<div class="contact-item">' +
+            '<div class="contact-icon">@</div>' +
+            '<div>' +
+              '<h4>Email</h4>' +
+              '<p>contact@example.com</p>' +
+            '</div>' +
+          '</div>' +
+          '<div class="contact-item">' +
+            '<div class="contact-icon">T</div>' +
+            '<div>' +
+              '<h4>Telephone</h4>' +
+              '<p>+33 1 23 45 67 89</p>' +
+            '</div>' +
+          '</div>' +
+          '<div class="contact-item">' +
+            '<div class="contact-icon">A</div>' +
+            '<div>' +
+              '<h4>Adresse</h4>' +
+              '<p>123 Rue de l\\'Innovation<br>75001 Paris, France</p>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<form id="contact-form" class="contact-form">' +
+          '<div class="form-group">' +
+            '<label for="name">Nom complet</label>' +
+            '<input type="text" id="name" name="name" required placeholder="Votre nom">' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label for="email">Email</label>' +
+            '<input type="email" id="email" name="email" required placeholder="votre@email.com">' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label for="phone">Telephone (optionnel)</label>' +
+            '<input type="tel" id="phone" name="phone" placeholder="+33 6 00 00 00 00">' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label for="message">Message</label>' +
+            '<textarea id="message" name="message" required placeholder="Comment pouvons-nous vous aider ?"></textarea>' +
+          '</div>' +
+          '<button type="submit" class="btn btn-primary" style="width: 100%;">Envoyer le message</button>' +
+        '</form>' +
+      '</div>' +
+    '</div>' +
+  '</section>';
 });
 
 // Page 404
 Router.register('/404', function() {
-  return \`
-    <section class="error-page">
-      <h1>404</h1>
-      <p>Page non trouvée</p>
-      <a href="/" class="btn btn-primary">Retour à l'accueil</a>
-    </section>
-  \`;
+  return '<section class="error-page">' +
+    '<h1>404</h1>' +
+    '<p>Oops ! La page que vous recherchez n\\'existe pas.</p>' +
+    '<a href="/" class="btn btn-primary">Retour a l\\'accueil</a>' +
+  '</section>';
 });
 
-FORMAT DE SORTIE STRICT:
+// FILE: /app.js
+// ========================================
+// INITIALISATION DE L'APPLICATION
+// ========================================
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialiser le router
+  Router.init();
+  
+  // Animation au scroll (Intersection Observer)
+  var observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+  };
+  
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('fade-in');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, observerOptions);
+  
+  // Observer les elements a animer
+  function observeElements() {
+    var elements = document.querySelectorAll('.service-card, .card, .about-content, .contact-form');
+    elements.forEach(function(el) {
+      observer.observe(el);
+    });
+  }
+  
+  observeElements();
+  
+  // Re-observer apres chaque navigation
+  var originalRender = Router.render.bind(Router);
+  Router.render = function(path) {
+    originalRender(path);
+    setTimeout(observeElements, 100);
+  };
+  
+  console.log('Application initialisee avec succes !');
+});
+
+⚠️ INSTRUCTIONS CRITIQUES POUR LA GENERATION:
+
+1. ADAPTER LE CONTENU au prompt de l'utilisateur (textes, images, couleurs si demandé)
+2. Le CSS ci-dessus est un MINIMUM - ajouter plus de styles selon le design demandé
+3. Personnaliser pages.js avec le contenu réel demandé
+4. GARDER la structure des fichiers exactement comme indiquée
+5. NE JAMAIS raccourcir le code avec "..." ou commentaires
+
+📷 IMAGES UNSPLASH DISPONIBLES:
+- Hero/Bureau: https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&h=1080&fit=crop
+- Equipe: https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=600&fit=crop
+- Hotel: https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop
+- Restaurant: https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop
+- Nature: https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&h=600&fit=crop
+- Tech: https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=600&fit=crop
+- Immobilier: https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop
+- Spa: https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&h=600&fit=crop
+
+FORMAT DE SORTIE STRICT - UTILISE EXACTEMENT CE FORMAT:
 // FILE: /chemin/fichier.ext
-[contenu complet du fichier]
+[contenu COMPLET du fichier - JAMAIS de "..." ou raccourcis]
 
 // FILE: /autre/fichier.ext
-[contenu complet]
+[contenu COMPLET]
 
-Génère maintenant un site web STATIQUE MAGNIFIQUE, PROFESSIONNEL et COMPLET avec routing SPA.`;
+Génère maintenant un site web STATIQUE MAGNIFIQUE, PROFESSIONNEL et COMPLET avec routing SPA, en ADAPTANT le contenu au prompt de l'utilisateur.`;
 
     // Appel Claude API avec streaming
     const response = await fetch('https://api.anthropic.com/v1/messages', {
