@@ -21,15 +21,21 @@ serve(async (req) => {
       );
     }
 
-    const expectedTarget = 'proxy.builtbymagellan.com';
+    const expectedCnameTarget = 'proxy.builtbymagellan.com';
+    const expectedARecordIP = '185.158.133.1';
 
-    // Vérifier CNAME apex (@)
-    const apexRecords = await queryCNAME(domain);
-    const apexConfigured = isValidTarget(apexRecords, expectedTarget);
+    // Vérifier A record sur apex (@) - C'est la méthode correcte pour un domaine racine
+    const apexARecords = await queryARecord(domain);
+    const apexCnameRecords = await queryCNAME(domain);
+    
+    // Apex est configuré si A record pointe vers notre IP OU si CNAME flattening est utilisé
+    const apexConfigured = 
+      apexARecords.includes(expectedARecordIP) || 
+      isValidTarget(apexCnameRecords, expectedCnameTarget);
 
     // Vérifier CNAME www
     const wwwRecords = await queryCNAME(`www.${domain}`);
-    const wwwConfigured = isValidTarget(wwwRecords, expectedTarget);
+    const wwwConfigured = isValidTarget(wwwRecords, expectedCnameTarget);
 
     const configured = apexConfigured && wwwConfigured;
     let status: 'pending' | 'partial' | 'complete' | 'error' = 'pending';
@@ -47,13 +53,16 @@ serve(async (req) => {
       wwwConfigured,
       status,
       records: {
-        apex: apexRecords,
+        apexA: apexARecords,
+        apexCname: apexCnameRecords,
         www: wwwRecords
       },
       message: configured
         ? 'DNS correctement configuré'
-        : apexConfigured || wwwConfigured
-        ? 'Configuration partielle détectée'
+        : apexConfigured && !wwwConfigured
+        ? 'Domaine racine OK, ajoutez le CNAME www'
+        : !apexConfigured && wwwConfigured
+        ? 'www OK, ajoutez le A record pour le domaine racine'
         : 'Aucune configuration DNS détectée'
     };
 
@@ -150,6 +159,31 @@ serve(async (req) => {
   }
 });
 
+async function queryARecord(hostname: string): Promise<string[]> {
+  try {
+    const url = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=A`;
+
+    const response = await fetch(url, {
+      headers: { 'Accept': 'application/dns-json' }
+    });
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+
+    if (data.Answer && data.Answer.length > 0) {
+      return data.Answer
+        .filter((answer: any) => answer.type === 1) // Type 1 = A record
+        .map((answer: any) => answer.data);
+    }
+
+    return [];
+  } catch (error) {
+    console.error('[Verification] A record query error:', error);
+    return [];
+  }
+}
+
 async function queryCNAME(hostname: string): Promise<string[]> {
   try {
     const url = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=CNAME`;
@@ -163,7 +197,9 @@ async function queryCNAME(hostname: string): Promise<string[]> {
     const data = await response.json();
 
     if (data.Answer && data.Answer.length > 0) {
-      return data.Answer.map((answer: any) => answer.data.replace(/\.$/, ''));
+      return data.Answer
+        .filter((answer: any) => answer.type === 5) // Type 5 = CNAME
+        .map((answer: any) => answer.data.replace(/\.$/, ''));
     }
 
     return [];

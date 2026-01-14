@@ -38,7 +38,9 @@ interface DiscoveryResult {
       name: string;
       value: string;
       ttl: string;
+      description?: string;
     }>;
+    notes?: string[];
   };
 }
 
@@ -438,17 +440,30 @@ export function DomainConnectDialog({
                 </div>
               ))}
 
-              <div className="space-y-2 mt-6">
+              <div className="space-y-3 mt-6">
                 <p className="text-sm font-semibold text-foreground">
                   Enregistrements DNS à ajouter:
                 </p>
 
                 {discoveryResult.instructions.records.map((record, index) => (
                   <div key={index} className="bg-[#181818] p-4 rounded-lg border border-[#3a3a3b]">
+                    {record.description && (
+                      <p className="text-xs text-muted-foreground mb-3 italic">
+                        {record.description}
+                      </p>
+                    )}
                     <div className="grid grid-cols-3 gap-3 text-xs mb-3">
                       <div>
                         <span className="text-muted-foreground block mb-1">Type:</span>
-                        <div className="text-foreground font-mono font-bold">{record.type}</div>
+                        <div 
+                          className="font-mono font-bold px-2 py-1 rounded inline-block"
+                          style={{ 
+                            backgroundColor: record.type === 'A' ? 'rgba(34,197,94,0.2)' : 'rgba(3,165,192,0.2)',
+                            color: record.type === 'A' ? 'rgb(34,197,94)' : 'rgb(3,165,192)'
+                          }}
+                        >
+                          {record.type}
+                        </div>
                       </div>
                       <div>
                         <span className="text-muted-foreground block mb-1">Nom:</span>
@@ -478,6 +493,18 @@ export function DomainConnectDialog({
                     </div>
                   </div>
                 ))}
+
+                {/* Notes explicatives */}
+                {discoveryResult.instructions.notes && discoveryResult.instructions.notes.length > 0 && (
+                  <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <p className="text-xs font-medium text-blue-300 mb-2">💡 Notes importantes:</p>
+                    <ul className="text-xs text-blue-200/80 space-y-1">
+                      {discoveryResult.instructions.notes.map((note, idx) => (
+                        <li key={idx}>• {note}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
 
