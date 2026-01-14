@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type SettingsSection = 'siteweb' | 'analytiques' | 'contact' | 'blog' | 'facture' | 'finance' | 'marketing' | 'parametres';
+export type SettingsSection = 'siteweb' | 'analytiques' | 'contact' | 'parametres';
 
 interface SettingsStore {
   isOpen: boolean;

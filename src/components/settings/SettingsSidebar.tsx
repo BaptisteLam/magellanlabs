@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Globe, BarChart3, Mail, FileText, Receipt, Wallet, Megaphone, Settings, ChevronDown, FileCode, Smartphone, Plus, FolderOpen, Upload, Building2 } from 'lucide-react';
+import { Globe, BarChart3, Mail, Settings, ChevronDown, FileCode, Smartphone, Plus, FolderOpen, Upload, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-type SettingsSection = 'siteweb' | 'analytiques' | 'contact' | 'blog' | 'facture' | 'finance' | 'marketing' | 'parametres';
+export type SettingsSection = 'siteweb' | 'analytiques' | 'contact' | 'parametres';
 
 interface Project {
   id: string;
@@ -35,24 +35,8 @@ const menuItems: {
   icon: BarChart3
 }, {
   id: 'contact',
-  label: 'Contact',
+  label: 'Leads',
   icon: Mail
-}, {
-  id: 'blog',
-  label: 'Blog',
-  icon: FileText
-}, {
-  id: 'facture',
-  label: 'Facture',
-  icon: Receipt
-}, {
-  id: 'finance',
-  label: 'Finance',
-  icon: Wallet
-}, {
-  id: 'marketing',
-  label: 'Marketing',
-  icon: Megaphone
 }];
 
 interface SettingsSidebarProps {
@@ -196,8 +180,6 @@ export function SettingsSidebar({
         return Globe;
     }
   };
-
-  const DefaultIcon = currentProject ? getProjectIcon(currentProject.project_type) : Building2;
 
   return (
     <div className="h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl flex flex-col shadow-lg">
@@ -357,5 +339,3 @@ export function SettingsSidebar({
     </div>
   );
 }
-
-export type { SettingsSection };
