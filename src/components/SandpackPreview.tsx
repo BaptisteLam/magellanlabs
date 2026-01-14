@@ -43,103 +43,135 @@ function ErrorFallback({ message, onRetry }: ErrorFallbackProps) {
 }
 
 // CSS de base complet pour les projets statiques générés
-const BASE_CSS = `/* Reset et styles de base */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { 
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.6;
-  color: #1a1a2e;
-  background: #ffffff;
-  -webkit-font-smoothing: antialiased;
-}
-img { max-width: 100%; height: auto; display: block; }
-a { text-decoration: none; color: inherit; transition: color 0.2s; }
-button { cursor: pointer; font-family: inherit; border: none; }
-input, textarea { font-family: inherit; }
-
-/* Variables CSS */
-:root {
+const BASE_CSS = `:root {
   --primary: #03A5C0;
   --primary-dark: #028a9e;
+  --primary-light: rgba(3, 165, 192, 0.1);
   --secondary: #1a1a2e;
-  --accent: #03A5C0;
-  --white: #ffffff;
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-400: #9ca3af;
-  --gray-500: #6b7280;
-  --gray-600: #4b5563;
-  --gray-700: #374151;
-  --gray-800: #1f2937;
-  --gray-900: #111827;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --text: #1f2937;
+  --text-light: #6b7280;
+  --background: #ffffff;
+  --background-alt: #f9fafb;
+  --border: #e5e7eb;
   --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-  --shadow-lg: 0 10px 25px -5px rgba(0,0,0,0.15);
+  --shadow-lg: 0 10px 40px rgba(0,0,0,0.1);
   --radius: 0.5rem;
+  --transition: all 0.3s ease;
 }
 
-/* Classes utilitaires essentielles */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--background);
+  -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; height: auto; display: block; }
+a { text-decoration: none; color: inherit; transition: color 0.2s; }
+button { cursor: pointer; font-family: inherit; border: none; background: none; }
+
 .container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
-.section { padding: 4rem 0; }
-.text-center { text-align: center; }
+.section { padding: 5rem 0; }
 
-/* Buttons */
-.btn { 
-  display: inline-flex; 
-  align-items: center; 
+.nav-link {
+  color: var(--text-light);
+  transition: var(--transition);
+}
+.nav-link:hover { color: var(--primary); }
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  padding: 0.75rem 1.5rem; 
-  border-radius: var(--radius);
+  padding: 0.875rem 2rem;
+  background: var(--primary);
+  color: white;
   font-weight: 500;
-  transition: all 0.2s;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: var(--transition);
 }
-.btn-primary { 
-  background: var(--primary); 
-  color: white; 
-}
-.btn-primary:hover { 
-  background: var(--primary-dark); 
-  transform: translateY(-1px);
+.btn-primary:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
   box-shadow: var(--shadow);
 }
 
-/* Form Elements */
-input, textarea {
+.form-input {
   width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--gray-300);
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   font-size: 1rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: var(--transition);
 }
-input:focus, textarea:focus {
+.form-input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(3, 165, 192, 0.1);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
-/* Cards */
 .card {
   background: white;
   border-radius: 1rem;
-  padding: 1.5rem;
+  padding: 2rem;
   box-shadow: var(--shadow);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: var(--transition);
 }
 .card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
 }
 
-/* Animations */
-@keyframes fadeIn {
+@keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
+.animate-fade-in-up { animation: fadeInUp 0.6s ease forwards; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 .animate-fade-in { animation: fadeIn 0.6s ease forwards; }
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  z-index: 1000;
+}
+.toast-success { background: #10b981; color: white; }
+.toast-error { background: #ef4444; color: white; }
+`;
+
+// JS de base pour fallback
+const BASE_JS = `document.addEventListener('DOMContentLoaded', function() {
+  console.log('Site loaded');
+  
+  // Mobile menu
+  const menuBtn = document.getElementById('mobile-menu-btn');
+  const mobileMenu = document.getElementById('mobile-menu');
+  if (menuBtn && mobileMenu) {
+    menuBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+  }
+  
+  // Smooth scroll
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+      e.preventDefault();
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+});
 `;
 
 interface SandpackPreviewProps {
@@ -362,10 +394,17 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
     
     // S'assurer qu'on a un styles.css
     if (!files['/styles.css']) {
+      console.log('📝 [SandpackPreview] Adding fallback styles.css');
       files['/styles.css'] = { code: BASE_CSS };
     }
     
-    console.log('🔍 [SandpackPreview] Static files ready:', Object.keys(files));
+    // S'assurer qu'on a un app.js
+    if (!files['/app.js']) {
+      console.log('📝 [SandpackPreview] Adding fallback app.js');
+      files['/app.js'] = { code: BASE_JS };
+    }
+    
+    console.log('✅ [SandpackPreview] Final static files:', Object.keys(files).join(', '));
     
     return files;
   }, [projectFiles]);
