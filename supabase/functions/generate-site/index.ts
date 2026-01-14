@@ -22,32 +22,32 @@ function cleanFileContent(content: string): string {
   return cleaned.trim();
 }
 
-// Normalise les chemins de fichiers pour Sandpack static
-function normalizePath(path: string): string {
-  let normalized = path.trim();
-  
-  if (!normalized.startsWith('/')) {
-    normalized = '/' + normalized;
-  }
-  
-  // Pour les projets statiques, pas de /src/ nécessaire
-  // On garde les fichiers à la racine
-  return normalized;
+function getFileType(extension: string): string {
+  const typeMap: Record<string, string> = {
+    'html': 'html',
+    'htm': 'html',
+    'css': 'stylesheet',
+    'js': 'javascript',
+    'json': 'json',
+    'svg': 'image',
+  };
+  return typeMap[extension.toLowerCase()] || 'text';
 }
 
-// Parser pour extraire les fichiers - supporte plusieurs formats de sortie Claude
-function parseGeneratedCode(code: string): ProjectFile[] {
+// Parser pour extraire les fichiers du format // FILE: path
+function parseGeneratedCode(code: string): { files: ProjectFile[] } {
   const files: ProjectFile[] = [];
   
   console.log('[parseGeneratedCode] Input length:', code.length);
-  console.log('[parseGeneratedCode] First 300 chars:', code.substring(0, 300));
   
   let cleanedCode = code.trim();
+  
+  // Nettoyer les marqueurs markdown globaux
   if (cleanedCode.startsWith('```')) {
-    cleanedCode = cleanedCode.replace(/^```[\w]*\n/, '').replace(/\n```$/, '');
+    cleanedCode = cleanedCode.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '');
   }
   
-  // Format 1: // FILE: path suivi du contenu (format préféré)
+  // Parser le format // FILE: path
   const fileRegex = /\/\/\s*FILE:\s*(.+?)(?:\n|$)/g;
   const matches = [...cleanedCode.matchAll(fileRegex)];
   
@@ -63,6 +63,7 @@ function parseGeneratedCode(code: string): ProjectFile[] {
       const endIndex = nextMatch ? nextMatch.index! : cleanedCode.length;
       let rawContent = cleanedCode.slice(startIndex, endIndex).trim();
       
+      // Nettoyer les blocs de code markdown
       const codeBlockMatch = rawContent.match(/^```[\w]*\n([\s\S]*?)```$/);
       if (codeBlockMatch) {
         rawContent = codeBlockMatch[1].trim();
@@ -70,38 +71,14 @@ function parseGeneratedCode(code: string): ProjectFile[] {
         rawContent = cleanFileContent(rawContent);
       }
       
-      filePath = normalizePath(filePath);
+      // Normaliser le chemin
+      if (!filePath.startsWith('/')) {
+        filePath = '/' + filePath;
+      }
       const extension = filePath.split('.').pop() || '';
       
-      files.push({
-        path: filePath,
-        content: rawContent,
-        type: getFileType(extension)
-      });
-    }
-  }
-  
-  // Format 2: --- FILE: path ---
-  if (files.length === 0) {
-    const altRegex = /---\s*FILE:\s*(.+?)\s*---/g;
-    const altMatches = [...cleanedCode.matchAll(altRegex)];
-    
-    if (altMatches.length > 0) {
-      console.log(`[parseGeneratedCode] Found ${altMatches.length} files with --- FILE: --- format`);
-      
-      for (let i = 0; i < altMatches.length; i++) {
-        const match = altMatches[i];
-        let filePath = match[1].trim();
-        const startIndex = match.index! + match[0].length;
-        
-        const nextMatch = altMatches[i + 1];
-        const endIndex = nextMatch ? nextMatch.index! : cleanedCode.length;
-        let rawContent = cleanedCode.slice(startIndex, endIndex).trim();
-        
-        rawContent = cleanFileContent(rawContent);
-        filePath = normalizePath(filePath);
-        const extension = filePath.split('.').pop() || '';
-        
+      // Vérification: le chemin doit avoir une extension valide
+      if (extension && ['html', 'css', 'js', 'svg', 'json'].includes(extension)) {
         files.push({
           path: filePath,
           content: rawContent,
@@ -111,24 +88,12 @@ function parseGeneratedCode(code: string): ProjectFile[] {
     }
   }
   
-  console.log(`[parseGeneratedCode] Parsed ${files.length} files total:`);
+  console.log(`[parseGeneratedCode] Parsed ${files.length} files:`);
   for (const file of files) {
     console.log(`  - ${file.path}: ${file.content.length} chars`);
   }
   
-  return files;
-}
-
-function getFileType(extension: string): string {
-  const typeMap: Record<string, string> = {
-    'html': 'html',
-    'htm': 'html',
-    'css': 'stylesheet',
-    'js': 'javascript',
-    'json': 'json',
-    'svg': 'image',
-  };
-  return typeMap[extension.toLowerCase()] || 'text';
+  return { files };
 }
 
 serve(async (req) => {
@@ -178,21 +143,49 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 
-    // 🆕 PROMPT SYSTÈME POUR GÉNÉRATION HTML/CSS/JS STATIQUE AVEC ROUTER VANILLA
-    const systemPrompt = `Tu es un expert en développement web STATIQUE. Tu génères des sites HTML/CSS/JS purs, SANS React, SANS frameworks.
+    // 🆕 PROMPT SYSTÈME POUR SITES STATIQUES HTML/CSS/JS UNIQUEMENT
+    const systemPrompt = `Tu es un expert en développement web vanilla. Tu génères des sites web statiques professionnels en HTML/CSS/JavaScript pur.
 
-🎯 OBJECTIF: Créer un site web moderne, professionnel, 100% statique avec un SYSTÈME DE ROUTING SPA en JavaScript vanilla.
+<stack>
+- HTML5 sémantique
+- CSS3 moderne avec variables CSS et Flexbox/Grid
+- JavaScript ES6+ vanilla (pas de framework)
+- Tailwind CSS via CDN dans index.html
+</stack>
 
-⚠️ RÈGLE CRITIQUE - CODE COMPLET OBLIGATOIRE:
-- Le CSS doit faire MINIMUM 300 lignes avec tous les styles pour chaque élément
-- Le JavaScript doit être FONCTIONNEL et COMPLET
-- Chaque page doit avoir du contenu HTML riche et détaillé
-- NE JAMAIS utiliser de commentaires comme "..." ou "/* reste du code */" - TOUT le code doit être présent
-- NE JAMAIS tronquer le code ou utiliser des ellipses
+<regles_strictes>
+1. UNIQUEMENT du HTML, CSS et JavaScript vanilla - AUCUN FRAMEWORK (pas de React, Vue, Angular, etc.)
+2. JAMAIS de JSX, JAMAIS d'import/export de modules (sauf type="module" si besoin)
+3. JAMAIS de syntaxe React comme useState, useEffect, props, composants fonctionnels
+4. Le JavaScript doit être du DOM manipulation classique (querySelector, addEventListener, etc.)
+5. Générer du code COMPLET sans "// TODO" ou "// à compléter"
+6. NE PAS utiliser d'émojis - uniquement des icônes SVG inline ou Lucide via CDN
+7. Images: utiliser des URLs Unsplash (https://images.unsplash.com/photo-ID?w=WIDTH&h=HEIGHT&fit=crop)
+</regles_strictes>
 
-📁 STRUCTURE OBLIGATOIRE DES FICHIERS:
+<format_sortie>
+Générer les fichiers avec le format suivant - UN FICHIER PAR BLOC:
 
 // FILE: /index.html
+<!DOCTYPE html>
+<html>...</html>
+
+// FILE: /styles.css
+/* styles CSS */
+
+// FILE: /app.js
+// JavaScript vanilla
+
+// FILE: /router.js
+// SPA Router vanilla (si multi-pages)
+
+// FILE: /pages.js
+// Définition des pages (si multi-pages)
+</format_sortie>
+
+<structure_index_html>
+Le fichier /index.html DOIT suivre ce modèle:
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -200,61 +193,60 @@ serve(async (req) => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>[Titre du site]</title>
   <meta name="description" content="[Description SEO]">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="styles.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#03A5C0',
+            'primary-dark': '#028a9e',
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body>
-  <nav id="main-nav" class="navbar">
-    <div class="nav-container">
-      <a href="/" class="nav-logo">[Logo/Nom]</a>
-      <button class="nav-toggle" aria-label="Menu">
-        <span></span><span></span><span></span>
-      </button>
-      <ul class="nav-menu">
-        <li><a href="/" class="nav-link">Accueil</a></li>
-        <li><a href="/services" class="nav-link">Services</a></li>
-        <li><a href="/about" class="nav-link">À propos</a></li>
-        <li><a href="/contact" class="nav-link">Contact</a></li>
-      </ul>
+<body class="min-h-screen bg-white">
+  <!-- Navigation -->
+  <nav id="main-nav" class="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-sm shadow-sm z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <a href="/" class="text-xl font-bold text-gray-900">[Logo/Nom]</a>
+        <button id="mobile-menu-btn" class="md:hidden p-2">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+        <ul class="hidden md:flex space-x-8">
+          <li><a href="#accueil" class="text-gray-600 hover:text-primary transition-colors">Accueil</a></li>
+          <li><a href="#services" class="text-gray-600 hover:text-primary transition-colors">Services</a></li>
+          <li><a href="#about" class="text-gray-600 hover:text-primary transition-colors">À propos</a></li>
+          <li><a href="#contact" class="text-gray-600 hover:text-primary transition-colors">Contact</a></li>
+        </ul>
+      </div>
     </div>
   </nav>
-  
-  <main id="app"></main>
-  
-  <footer class="footer">
-    <div class="footer-container">
-      <div class="footer-grid">
-        <div class="footer-col">
-          <h4>À propos</h4>
-          <p>[Description courte]</p>
-        </div>
-        <div class="footer-col">
-          <h4>Liens rapides</h4>
-          <ul>
-            <li><a href="/">Accueil</a></li>
-            <li><a href="/services">Services</a></li>
-            <li><a href="/contact">Contact</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>Contact</h4>
-          <p>Email: contact@example.com</p>
-          <p>Tél: +33 1 23 45 67 89</p>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <p>&copy; 2025 [Nom]. Tous droits réservés.</p>
-      </div>
+
+  <main id="app" class="pt-16">
+    <!-- Sections du site -->
+  </main>
+
+  <footer class="bg-gray-900 text-white py-12">
+    <div class="max-w-7xl mx-auto px-4">
+      <p class="text-center text-gray-400">© 2024 [Nom]. Tous droits réservés.</p>
     </div>
   </footer>
-  
-  <script src="router.js"></script>
-  <script src="pages.js"></script>
+
   <script src="app.js"></script>
 </body>
 </html>
+</structure_index_html>
 
-// FILE: /styles.css
-/* === VARIABLES CSS === */
+<structure_styles_css>
+Le fichier /styles.css doit contenir AU MINIMUM 300 lignes de CSS personnalisé:
+
 :root {
   --primary: #03A5C0;
   --primary-dark: #028a9e;
@@ -262,1107 +254,197 @@ serve(async (req) => {
   --secondary: #1a1a2e;
   --text: #1f2937;
   --text-light: #6b7280;
-  --text-muted: #9ca3af;
   --background: #ffffff;
   --background-alt: #f9fafb;
-  --background-dark: #111827;
   --border: #e5e7eb;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
   --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
   --shadow-lg: 0 10px 40px rgba(0,0,0,0.1);
-  --shadow-xl: 0 25px 50px -12px rgba(0,0,0,0.25);
   --radius: 8px;
-  --radius-lg: 16px;
   --transition: all 0.3s ease;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* === RESET & BASE === */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
+/* Reset et base */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 body {
-  font-family: var(--font-sans);
-  font-size: 16px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.6;
   color: var(--text);
-  background: var(--background);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
 
-a {
-  text-decoration: none;
-  color: inherit;
-  transition: var(--transition);
-}
-
-img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-}
-
-ul, ol {
-  list-style: none;
-}
-
-/* === UTILITAIRES === */
-.container {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
-}
-
-.section {
-  padding: 80px 0;
-}
-
-.section-alt {
-  background: var(--background-alt);
-}
-
-.text-center {
-  text-align: center;
-}
-
-.text-primary {
-  color: var(--primary);
-}
-
-/* === TYPOGRAPHIE === */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--secondary);
-}
-
-h1 { font-size: clamp(2.5rem, 5vw, 4rem); }
-h2 { font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 1rem; }
-h3 { font-size: clamp(1.5rem, 3vw, 2rem); }
-h4 { font-size: 1.25rem; }
-
-p {
-  margin-bottom: 1rem;
-  color: var(--text-light);
-}
-
-.lead {
-  font-size: 1.25rem;
-  color: var(--text-light);
-}
-
-/* === BOUTONS === */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 28px;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: 50px;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: var(--transition);
-  white-space: nowrap;
-}
-
+/* Composants personnalisés */
 .btn-primary {
   background: var(--primary);
   color: white;
-  border-color: var(--primary);
-}
-
-.btn-primary:hover {
-  background: var(--primary-dark);
-  border-color: var(--primary-dark);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-}
-
-.btn-outline {
-  background: transparent;
-  color: var(--primary);
-  border-color: var(--primary);
-}
-
-.btn-outline:hover {
-  background: var(--primary);
-  color: white;
-}
-
-.btn-white {
-  background: white;
-  color: var(--primary);
-  border-color: white;
-}
-
-.btn-white:hover {
-  background: var(--background-alt);
-}
-
-/* === NAVBAR === */
-.navbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  background: rgba(255,255,255,0.95);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border);
-  transition: var(--transition);
-}
-
-.navbar.scrolled {
-  box-shadow: var(--shadow);
-}
-
-.nav-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 16px 24px;
-}
-
-.nav-logo {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--primary);
-}
-
-.nav-menu {
-  display: flex;
-  gap: 32px;
-}
-
-.nav-link {
-  font-weight: 500;
-  color: var(--text);
-  position: relative;
-}
-
-.nav-link::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--primary);
-  transition: var(--transition);
-}
-
-.nav-link:hover::after,
-.nav-link.active::after {
-  width: 100%;
-}
-
-.nav-link:hover,
-.nav-link.active {
-  color: var(--primary);
-}
-
-.nav-toggle {
-  display: none;
-  flex-direction: column;
-  gap: 5px;
-  background: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius);
   border: none;
   cursor: pointer;
-  padding: 5px;
-}
-
-.nav-toggle span {
-  width: 25px;
-  height: 2px;
-  background: var(--text);
-  transition: var(--transition);
-}
-
-/* === HERO === */
-.hero {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--secondary) 0%, #16213e 100%);
-  color: white;
-  text-align: center;
-  padding: 120px 24px 80px;
-  position: relative;
-  overflow: hidden;
-}
-
-.hero::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url('https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&h=1080&fit=crop') center/cover;
-  opacity: 0.2;
-}
-
-.hero-content {
-  position: relative;
-  z-index: 1;
-  max-width: 800px;
-}
-
-.hero h1 {
-  color: white;
-  margin-bottom: 24px;
-  animation: fadeInUp 0.8s ease;
-}
-
-.hero p {
-  font-size: 1.25rem;
-  color: rgba(255,255,255,0.9);
-  margin-bottom: 32px;
-  animation: fadeInUp 0.8s ease 0.2s both;
-}
-
-.hero-buttons {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  flex-wrap: wrap;
-  animation: fadeInUp 0.8s ease 0.4s both;
-}
-
-/* === CARDS === */
-.cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 32px;
-}
-
-.card {
-  background: white;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow);
-  transition: var(--transition);
-}
-
-.card:hover {
-  transform: translateY(-8px);
-  box-shadow: var(--shadow-xl);
-}
-
-.card-image {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-}
-
-.card-content {
-  padding: 24px;
-}
-
-.card-title {
-  font-size: 1.25rem;
-  margin-bottom: 12px;
-}
-
-.card-text {
-  color: var(--text-light);
-  margin-bottom: 16px;
-}
-
-/* === SERVICES === */
-.services-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 32px;
-}
-
-.service-card {
-  background: white;
-  padding: 40px 32px;
-  border-radius: var(--radius-lg);
-  text-align: center;
-  box-shadow: var(--shadow);
-  transition: var(--transition);
-  border: 1px solid var(--border);
-}
-
-.service-card:hover {
-  transform: translateY(-8px);
-  box-shadow: var(--shadow-xl);
-  border-color: var(--primary);
-}
-
-.service-icon {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 24px;
-  background: var(--primary-light);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  color: var(--primary);
-}
-
-.service-card h3 {
-  margin-bottom: 16px;
-}
-
-/* === ABOUT === */
-.about-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 60px;
-  align-items: center;
-}
-
-.about-image {
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl);
-}
-
-.about-content h2 {
-  margin-bottom: 24px;
-}
-
-.about-content p {
-  margin-bottom: 24px;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  margin-top: 32px;
-}
-
-.stat-item {
-  text-align: center;
-}
-
-.stat-number {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: var(--primary);
-}
-
-.stat-label {
-  color: var(--text-light);
-  font-size: 0.875rem;
-}
-
-/* === CONTACT === */
-.contact-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 60px;
-}
-
-.contact-info h2 {
-  margin-bottom: 24px;
-}
-
-.contact-item {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.contact-icon {
-  width: 50px;
-  height: 50px;
-  background: var(--primary-light);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--primary);
-  flex-shrink: 0;
-}
-
-.contact-form {
-  background: white;
-  padding: 40px;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
   font-weight: 500;
-  color: var(--text);
-}
-
-.form-group input,
-.form-group textarea {
-  width: 100%;
-  padding: 14px 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 1rem;
-  font-family: inherit;
   transition: var(--transition);
-  background: var(--background);
+}
+.btn-primary:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
 }
 
-.form-group input:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-light);
-}
+/* ... autres styles détaillés ... */
+</structure_styles_css>
 
-.form-group textarea {
-  resize: vertical;
-  min-height: 120px;
-}
+<structure_app_js>
+Le fichier /app.js doit contenir le JavaScript vanilla:
 
-.success-message {
-  background: #10b981;
-  color: white;
-  padding: 20px;
-  border-radius: var(--radius);
-  text-align: center;
-  font-weight: 500;
-}
-
-/* === FOOTER === */
-.footer {
-  background: var(--secondary);
-  color: white;
-  padding: 60px 0 30px;
-  margin-top: auto;
-}
-
-.footer-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
-}
-
-.footer-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 40px;
-  margin-bottom: 40px;
-}
-
-.footer-col h4 {
-  color: white;
-  margin-bottom: 20px;
-  font-size: 1.125rem;
-}
-
-.footer-col p,
-.footer-col a {
-  color: rgba(255,255,255,0.7);
-  font-size: 0.9rem;
-  line-height: 2;
-}
-
-.footer-col a:hover {
-  color: var(--primary);
-}
-
-.footer-bottom {
-  border-top: 1px solid rgba(255,255,255,0.1);
-  padding-top: 30px;
-  text-align: center;
-  color: rgba(255,255,255,0.5);
-  font-size: 0.875rem;
-}
-
-/* === PAGE HEADER === */
-.page-header {
-  background: linear-gradient(135deg, var(--secondary) 0%, #16213e 100%);
-  color: white;
-  padding: 160px 24px 80px;
-  text-align: center;
-}
-
-.page-header h1 {
-  color: white;
-  margin-bottom: 16px;
-}
-
-.page-header p {
-  color: rgba(255,255,255,0.8);
-  font-size: 1.25rem;
-}
-
-/* === ANIMATIONS === */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.fade-in {
-  animation: fadeIn 0.6s ease;
-}
-
-/* === RESPONSIVE === */
-@media (max-width: 768px) {
-  .nav-menu {
-    position: fixed;
-    top: 70px;
-    left: 0;
-    right: 0;
-    background: white;
-    flex-direction: column;
-    padding: 24px;
-    gap: 16px;
-    box-shadow: var(--shadow-lg);
-    transform: translateY(-100%);
-    opacity: 0;
-    visibility: hidden;
-    transition: var(--transition);
+document.addEventListener('DOMContentLoaded', function() {
+  // Mobile menu toggle
+  const menuBtn = document.getElementById('mobile-menu-btn');
+  const mobileMenu = document.getElementById('mobile-menu');
+  
+  if (menuBtn && mobileMenu) {
+    menuBtn.addEventListener('click', function() {
+      mobileMenu.classList.toggle('hidden');
+    });
   }
   
-  .nav-menu.active {
-    transform: translateY(0);
-    opacity: 1;
-    visibility: visible;
-  }
-  
-  .nav-toggle {
-    display: flex;
-  }
-  
-  .nav-toggle.active span:nth-child(1) {
-    transform: rotate(45deg) translate(5px, 5px);
-  }
-  
-  .nav-toggle.active span:nth-child(2) {
-    opacity: 0;
-  }
-  
-  .nav-toggle.active span:nth-child(3) {
-    transform: rotate(-45deg) translate(5px, -5px);
-  }
-  
-  .hero {
-    padding: 100px 24px 60px;
-    min-height: auto;
-  }
-  
-  .hero-buttons {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .about-grid,
-  .contact-grid {
-    grid-template-columns: 1fr;
-    gap: 40px;
-  }
-  
-  .stats-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-  }
-  
-  .section {
-    padding: 60px 0;
-  }
-}
-
-/* === ERROR PAGE === */
-.error-page {
-  min-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 120px 24px;
-}
-
-.error-page h1 {
-  font-size: 8rem;
-  color: var(--primary);
-  margin-bottom: 16px;
-}
-
-.error-page p {
-  font-size: 1.5rem;
-  margin-bottom: 32px;
-}
-
-// FILE: /router.js
-(function() {
-  'use strict';
-  
-  window.Router = {
-    routes: {},
-    currentPath: '/',
-    
-    init: function() {
-      var self = this;
-      
-      // Intercepter les clics sur les liens internes
-      document.addEventListener('click', function(e) {
-        var link = e.target.closest('a[href^="/"]');
-        if (link && !link.hasAttribute('target')) {
-          e.preventDefault();
-          var path = link.getAttribute('href');
-          self.navigate(path);
-        }
-      });
-      
-      // Gérer le bouton retour/avant du navigateur
-      window.addEventListener('popstate', function() {
-        self.render(window.location.pathname);
-      });
-      
-      // Menu mobile toggle
-      var navToggle = document.querySelector('.nav-toggle');
-      var navMenu = document.querySelector('.nav-menu');
-      if (navToggle && navMenu) {
-        navToggle.addEventListener('click', function() {
-          navToggle.classList.toggle('active');
-          navMenu.classList.toggle('active');
-        });
-      }
-      
-      // Navbar scroll effect
-      window.addEventListener('scroll', function() {
-        var navbar = document.querySelector('.navbar');
-        if (navbar) {
-          if (window.scrollY > 50) {
-            navbar.classList.add('scrolled');
-          } else {
-            navbar.classList.remove('scrolled');
-          }
-        }
-      });
-      
-      // Notifier l'iframe parent
-      this.notifyParent();
-      
-      // Render initial
-      this.render(window.location.pathname);
-    },
-    
-    register: function(path, renderFn) {
-      this.routes[path] = renderFn;
-    },
-    
-    navigate: function(path) {
-      if (path === this.currentPath) return;
-      
-      // Fermer le menu mobile si ouvert
-      var navToggle = document.querySelector('.nav-toggle');
-      var navMenu = document.querySelector('.nav-menu');
-      if (navToggle && navMenu) {
-        navToggle.classList.remove('active');
-        navMenu.classList.remove('active');
-      }
-      
-      window.history.pushState({}, '', path);
-      this.render(path);
-      this.notifyParent();
-    },
-    
-    render: function(path) {
-      this.currentPath = path;
-      var app = document.getElementById('app');
-      var renderFn = this.routes[path] || this.routes['/404'] || this.routes['/'];
-      
-      if (renderFn && app) {
-        app.innerHTML = renderFn();
-        app.classList.add('fade-in');
-        
-        // Scroll to top
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        // Réinitialiser les event listeners
-        this.bindEvents();
-      }
-      
-      // Mettre à jour la nav active
-      var navLinks = document.querySelectorAll('.nav-link');
-      navLinks.forEach(function(link) {
-        var href = link.getAttribute('href');
-        if (href === path || (path === '/' && href === '/')) {
-          link.classList.add('active');
-        } else {
-          link.classList.remove('active');
-        }
-      });
-    },
-    
-    bindEvents: function() {
-      var self = this;
-      
-      // Formulaire de contact
-      var form = document.getElementById('contact-form');
-      if (form) {
-        form.addEventListener('submit', function(e) {
-          self.handleContactSubmit(e);
-        });
-      }
-    },
-    
-    handleContactSubmit: async function(e) {
+  // Smooth scroll for anchor links
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
       e.preventDefault();
-      var form = e.target;
-      var formData = new FormData(form);
-      var data = Object.fromEntries(formData);
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+  
+  // Contact form handling
+  const contactForm = document.getElementById('contact-form');
+  if (contactForm) {
+    contactForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
       
-      var btn = form.querySelector('button[type="submit"]');
-      var originalText = btn.textContent;
-      btn.textContent = 'Envoi en cours...';
-      btn.disabled = true;
+      const formData = new FormData(this);
+      const data = {
+        project_id: '${sessionId}',
+        name: formData.get('name'),
+        email: formData.get('email'),
+        message: formData.get('message')
+      };
       
       try {
-        var response = await fetch('${SUPABASE_URL}/rest/v1/project_contacts', {
+        const response = await fetch('${SUPABASE_URL}/rest/v1/project_contacts', {
           method: 'POST',
           headers: {
             'apikey': '${SUPABASE_ANON_KEY}',
             'Content-Type': 'application/json',
             'Prefer': 'return=minimal'
           },
-          body: JSON.stringify({
-            project_id: '${sessionId}',
-            name: data.name,
-            email: data.email,
-            phone: data.phone || null,
-            message: data.message
-          })
+          body: JSON.stringify(data)
         });
         
         if (response.ok) {
-          form.innerHTML = '<div class="success-message">Message envoye avec succes ! Nous vous repondrons rapidement.</div>';
+          showMessage('Message envoyé avec succès !', 'success');
+          this.reset();
         } else {
-          throw new Error('Erreur serveur');
+          showMessage('Erreur lors de l\\'envoi', 'error');
         }
       } catch (error) {
-        btn.textContent = originalText;
-        btn.disabled = false;
-        alert('Erreur lors de l\\'envoi. Veuillez reessayer.');
+        showMessage('Erreur de connexion', 'error');
       }
-    },
-    
-    notifyParent: function() {
-      try {
-        window.parent.postMessage({
-          type: 'spa-navigation',
-          path: this.currentPath,
-          canGoBack: window.history.length > 1,
-          canGoForward: false
-        }, '*');
-      } catch (e) {}
-    }
-  };
-})();
-
-// FILE: /pages.js
-// ========================================
-// CONTENU DES PAGES - GENERE DYNAMIQUEMENT
-// ========================================
-
-// Page d'accueil
-Router.register('/', function() {
-  return '<section class="hero">' +
-    '<div class="hero-content">' +
-      '<h1>Bienvenue sur notre site</h1>' +
-      '<p class="lead">Une description engageante de votre entreprise et de vos services. Nous sommes la pour vous accompagner dans tous vos projets.</p>' +
-      '<div class="hero-buttons">' +
-        '<a href="/services" class="btn btn-primary">Nos services</a>' +
-        '<a href="/contact" class="btn btn-outline btn-white">Nous contacter</a>' +
-      '</div>' +
-    '</div>' +
-  '</section>' +
-  
-  '<section class="section">' +
-    '<div class="container">' +
-      '<h2 class="text-center">Nos Services</h2>' +
-      '<p class="text-center lead" style="max-width: 600px; margin: 0 auto 48px;">Decouvrez notre gamme complete de services professionnels adaptes a vos besoins.</p>' +
-      '<div class="services-grid">' +
-        '<div class="service-card">' +
-          '<div class="service-icon">1</div>' +
-          '<h3>Service Premium</h3>' +
-          '<p>Une description detaillee de ce premier service et de ses avantages pour vos clients.</p>' +
-        '</div>' +
-        '<div class="service-card">' +
-          '<div class="service-icon">2</div>' +
-          '<h3>Expertise Metier</h3>' +
-          '<p>Une description detaillee de ce deuxieme service et de la valeur ajoutee proposee.</p>' +
-        '</div>' +
-        '<div class="service-card">' +
-          '<div class="service-icon">3</div>' +
-          '<h3>Accompagnement</h3>' +
-          '<p>Une description detaillee de ce troisieme service et de son impact positif.</p>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-  '</section>' +
-  
-  '<section class="section section-alt">' +
-    '<div class="container">' +
-      '<div class="about-grid">' +
-        '<img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&h=400&fit=crop" alt="Notre equipe" class="about-image">' +
-        '<div class="about-content">' +
-          '<h2>Pourquoi nous choisir ?</h2>' +
-          '<p>Avec plus de 10 ans d\\'experience dans notre domaine, nous avons developpe une expertise unique qui nous permet d\\'offrir des solutions sur mesure a nos clients.</p>' +
-          '<p>Notre equipe passionnee s\\'engage a vous fournir un service d\\'excellence, avec une attention particuliere portee a chaque detail de votre projet.</p>' +
-          '<a href="/about" class="btn btn-primary">En savoir plus</a>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-  '</section>';
-});
-
-// Page Services
-Router.register('/services', function() {
-  return '<section class="page-header">' +
-    '<h1>Nos Services</h1>' +
-    '<p>Des solutions adaptees a tous vos besoins</p>' +
-  '</section>' +
-  
-  '<section class="section">' +
-    '<div class="container">' +
-      '<div class="services-grid">' +
-        '<div class="service-card">' +
-          '<div class="service-icon">1</div>' +
-          '<h3>Service Premium</h3>' +
-          '<p>Description complete du service premium avec tous ses avantages et fonctionnalites detaillees.</p>' +
-        '</div>' +
-        '<div class="service-card">' +
-          '<div class="service-icon">2</div>' +
-          '<h3>Expertise Metier</h3>' +
-          '<p>Description complete de notre expertise metier et comment elle peut beneficier a votre activite.</p>' +
-        '</div>' +
-        '<div class="service-card">' +
-          '<div class="service-icon">3</div>' +
-          '<h3>Accompagnement</h3>' +
-          '<p>Description complete de notre service d\\'accompagnement personnalise pour votre reussite.</p>' +
-        '</div>' +
-        '<div class="service-card">' +
-          '<div class="service-icon">4</div>' +
-          '<h3>Innovation</h3>' +
-          '<p>Description complete de nos solutions innovantes pour vous demarquer de la concurrence.</p>' +
-        '</div>' +
-        '<div class="service-card">' +
-          '<div class="service-icon">5</div>' +
-          '<h3>Support 24/7</h3>' +
-          '<p>Description complete de notre support technique disponible a tout moment pour vous aider.</p>' +
-        '</div>' +
-        '<div class="service-card">' +
-          '<div class="service-icon">6</div>' +
-          '<h3>Formation</h3>' +
-          '<p>Description complete de nos programmes de formation pour developper vos competences.</p>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-  '</section>';
-});
-
-// Page A propos
-Router.register('/about', function() {
-  return '<section class="page-header">' +
-    '<h1>A propos de nous</h1>' +
-    '<p>Decouvrez notre histoire et nos valeurs</p>' +
-  '</section>' +
-  
-  '<section class="section">' +
-    '<div class="container">' +
-      '<div class="about-grid">' +
-        '<div class="about-content">' +
-          '<h2>Notre Histoire</h2>' +
-          '<p>Fondee en 2015, notre entreprise est nee d\\'une vision simple : offrir des services de qualite exceptionnelle tout en maintenant une relation de proximite avec nos clients.</p>' +
-          '<p>Au fil des annees, nous avons su evoluer et nous adapter aux besoins changeants du marche, tout en restant fideles a nos valeurs fondatrices d\\'excellence, d\\'integrite et d\\'innovation.</p>' +
-          '<div class="stats-grid">' +
-            '<div class="stat-item">' +
-              '<div class="stat-number">10+</div>' +
-              '<div class="stat-label">Annees d\\'experience</div>' +
-            '</div>' +
-            '<div class="stat-item">' +
-              '<div class="stat-number">500+</div>' +
-              '<div class="stat-label">Clients satisfaits</div>' +
-            '</div>' +
-            '<div class="stat-item">' +
-              '<div class="stat-number">50+</div>' +
-              '<div class="stat-label">Experts dedies</div>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<img src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&h=400&fit=crop" alt="Notre bureau" class="about-image">' +
-      '</div>' +
-    '</div>' +
-  '</section>';
-});
-
-// Page Contact
-Router.register('/contact', function() {
-  return '<section class="page-header">' +
-    '<h1>Contactez-nous</h1>' +
-    '<p>Nous sommes a votre ecoute</p>' +
-  '</section>' +
-  
-  '<section class="section">' +
-    '<div class="container">' +
-      '<div class="contact-grid">' +
-        '<div class="contact-info">' +
-          '<h2>Restons en contact</h2>' +
-          '<p>N\\'hesitez pas a nous contacter pour toute question ou demande d\\'information. Notre equipe vous repondra dans les plus brefs delais.</p>' +
-          '<div class="contact-item">' +
-            '<div class="contact-icon">@</div>' +
-            '<div>' +
-              '<h4>Email</h4>' +
-              '<p>contact@example.com</p>' +
-            '</div>' +
-          '</div>' +
-          '<div class="contact-item">' +
-            '<div class="contact-icon">T</div>' +
-            '<div>' +
-              '<h4>Telephone</h4>' +
-              '<p>+33 1 23 45 67 89</p>' +
-            '</div>' +
-          '</div>' +
-          '<div class="contact-item">' +
-            '<div class="contact-icon">A</div>' +
-            '<div>' +
-              '<h4>Adresse</h4>' +
-              '<p>123 Rue de l\\'Innovation<br>75001 Paris, France</p>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<form id="contact-form" class="contact-form">' +
-          '<div class="form-group">' +
-            '<label for="name">Nom complet</label>' +
-            '<input type="text" id="name" name="name" required placeholder="Votre nom">' +
-          '</div>' +
-          '<div class="form-group">' +
-            '<label for="email">Email</label>' +
-            '<input type="email" id="email" name="email" required placeholder="votre@email.com">' +
-          '</div>' +
-          '<div class="form-group">' +
-            '<label for="phone">Telephone (optionnel)</label>' +
-            '<input type="tel" id="phone" name="phone" placeholder="+33 6 00 00 00 00">' +
-          '</div>' +
-          '<div class="form-group">' +
-            '<label for="message">Message</label>' +
-            '<textarea id="message" name="message" required placeholder="Comment pouvons-nous vous aider ?"></textarea>' +
-          '</div>' +
-          '<button type="submit" class="btn btn-primary" style="width: 100%;">Envoyer le message</button>' +
-        '</form>' +
-      '</div>' +
-    '</div>' +
-  '</section>';
-});
-
-// Page 404
-Router.register('/404', function() {
-  return '<section class="error-page">' +
-    '<h1>404</h1>' +
-    '<p>Oops ! La page que vous recherchez n\\'existe pas.</p>' +
-    '<a href="/" class="btn btn-primary">Retour a l\\'accueil</a>' +
-  '</section>';
-});
-
-// FILE: /app.js
-// ========================================
-// INITIALISATION DE L'APPLICATION
-// ========================================
-
-document.addEventListener('DOMContentLoaded', function() {
-  // Initialiser le router
-  Router.init();
-  
-  // Animation au scroll (Intersection Observer)
-  var observerOptions = {
-    threshold: 0.1,
-    rootMargin: '0px 0px -50px 0px'
-  };
-  
-  var observer = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('fade-in');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, observerOptions);
-  
-  // Observer les elements a animer
-  function observeElements() {
-    var elements = document.querySelectorAll('.service-card, .card, .about-content, .contact-form');
-    elements.forEach(function(el) {
-      observer.observe(el);
     });
   }
   
-  observeElements();
-  
-  // Re-observer apres chaque navigation
-  var originalRender = Router.render.bind(Router);
-  Router.render = function(path) {
-    originalRender(path);
-    setTimeout(observeElements, 100);
-  };
-  
-  console.log('Application initialisee avec succes !');
+  function showMessage(text, type) {
+    const msg = document.createElement('div');
+    msg.className = 'fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ' + 
+      (type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white');
+    msg.textContent = text;
+    document.body.appendChild(msg);
+    setTimeout(() => msg.remove(), 3000);
+  }
 });
+</structure_app_js>
 
-⚠️ INSTRUCTIONS CRITIQUES POUR LA GENERATION:
-
-1. ADAPTER LE CONTENU au prompt de l'utilisateur (textes, images, couleurs si demandé)
-2. Le CSS ci-dessus est un MINIMUM - ajouter plus de styles selon le design demandé
-3. Personnaliser pages.js avec le contenu réel demandé
-4. GARDER la structure des fichiers exactement comme indiquée
-5. NE JAMAIS raccourcir le code avec "..." ou commentaires
-
-📷 IMAGES UNSPLASH DISPONIBLES:
+<images_unsplash>
+Utilise ces images Unsplash de haute qualité:
 - Hero/Bureau: https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&h=1080&fit=crop
-- Equipe: https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=600&fit=crop
-- Hotel: https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop
+- Équipe: https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=600&fit=crop
+- Hôtel: https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop
 - Restaurant: https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop
 - Nature: https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&h=600&fit=crop
 - Tech: https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=600&fit=crop
 - Immobilier: https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop
-- Spa: https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&h=600&fit=crop
+- Spa/Bien-être: https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&h=600&fit=crop
+</images_unsplash>
 
-FORMAT DE SORTIE STRICT - UTILISE EXACTEMENT CE FORMAT:
-// FILE: /chemin/fichier.ext
-[contenu COMPLET du fichier - JAMAIS de "..." ou raccourcis]
+<icones_svg>
+Pour les icônes, utilise des SVG inline. Exemples:
 
-// FILE: /autre/fichier.ext
-[contenu COMPLET]
+<!-- Icône téléphone -->
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+</svg>
 
-Génère maintenant un site web STATIQUE MAGNIFIQUE, PROFESSIONNEL et COMPLET avec routing SPA, en ADAPTANT le contenu au prompt de l'utilisateur.`;
+<!-- Icône email -->
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+</svg>
+
+<!-- Icône localisation -->
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+</svg>
+
+<!-- Icône check -->
+<svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+</svg>
+
+<!-- Icône flèche droite -->
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+</svg>
+</icones_svg>
+
+<contact_form>
+Le formulaire de contact DOIT être structuré ainsi:
+
+<section id="contact" class="py-20 bg-gray-50">
+  <div class="max-w-4xl mx-auto px-4">
+    <h2 class="text-3xl font-bold text-center mb-4">Contactez-nous</h2>
+    <p class="text-gray-600 text-center mb-12">Nous sommes là pour répondre à vos questions</p>
+    
+    <form id="contact-form" class="bg-white rounded-2xl shadow-lg p-8 space-y-6">
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Nom complet</label>
+          <input type="text" id="name" name="name" required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+            placeholder="Votre nom">
+        </div>
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+          <input type="email" id="email" name="email" required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+            placeholder="votre@email.com">
+        </div>
+      </div>
+      <div>
+        <label for="message" class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+        <textarea id="message" name="message" rows="5" required
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
+          placeholder="Votre message..."></textarea>
+      </div>
+      <button type="submit" class="w-full bg-primary hover:bg-primary-dark text-white font-medium py-3 px-6 rounded-lg transition-all transform hover:-translate-y-1 hover:shadow-lg">
+        Envoyer le message
+      </button>
+    </form>
+  </div>
+</section>
+</contact_form>
+
+IMPORTANT: Génère maintenant un site web STATIQUE COMPLET en HTML/CSS/JavaScript vanilla, professionnel et fonctionnel, adapté au prompt de l'utilisateur. PAS DE REACT, PAS DE JSX.`;
 
     // Appel Claude API avec streaming
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1374,7 +456,7 @@ Génère maintenant un site web STATIQUE MAGNIFIQUE, PROFESSIONNEL et COMPLET av
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 8000,
+        max_tokens: 16000,
         stream: true,
         system: systemPrompt,
         messages: [
@@ -1387,15 +469,8 @@ Génère maintenant un site web STATIQUE MAGNIFIQUE, PROFESSIONNEL et COMPLET av
       const errorText = await response.text();
       console.error('[generate-site] Claude API error:', response.status, errorText);
       
-      const statusMessages: Record<number, string> = {
-        400: 'Invalid request. Please check your input.',
-        401: 'Authentication failed. Please try again.',
-        429: 'Rate limit exceeded. Please try again in a few moments.',
-        500: 'An unexpected error occurred. Please try again later.'
-      };
-      
       return new Response(
-        JSON.stringify({ error: statusMessages[response.status] || 'Request failed. Please try again later.' }),
+        JSON.stringify({ error: 'Generation failed. Please try again.' }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -1448,197 +523,142 @@ Génère maintenant un site web STATIQUE MAGNIFIQUE, PROFESSIONNEL et COMPLET av
         let outputTokens = 0;
 
         timeout = setTimeout(() => {
-          console.error('[generate-site] Timeout après 120s');
+          console.error('[generate-site] Timeout après 180s');
           safeEnqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'error',
-            data: { message: 'Timeout: La génération a pris trop de temps.' }
+            data: { message: 'Timeout - la génération a pris trop de temps' }
           })}\n\n`));
           closeStream();
-        }, 120000);
+        }, 180000);
 
         try {
-          while (!streamClosed) {
+          while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
             const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n').filter(Boolean);
+            const lines = chunk.split('\n');
 
             for (const line of lines) {
-              if (streamClosed) break;
-              if (!line.trim() || line.startsWith(':') || line === '') continue;
-              if (line.startsWith('event:')) continue;
-              if (!line.startsWith('data:')) continue;
-              
-              const dataStr = line.replace('data:', '').trim();
-              
-              try {
-                const parsed = JSON.parse(dataStr);
-                
-                if (parsed.type === 'message_start' && parsed.message?.usage) {
-                  inputTokens = parsed.message.usage.input_tokens || 0;
-                  console.log(`[generate-site] Input tokens: ${inputTokens}`);
-
-                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'generation_event',
-                    data: { type: 'complete', message: 'Analyse terminée', status: 'completed', phase: 'analyzing' }
-                  })}\n\n`));
-
-                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'generation_event',
-                    data: { type: 'plan', message: 'Génération du code HTML/CSS/JS', status: 'in-progress', phase: 'generation' }
-                  })}\n\n`));
-                }
-                
-                if (parsed.type === 'message_delta' && parsed.usage) {
-                  outputTokens = parsed.usage.output_tokens || 0;
-                }
-              } catch (e) {}
-              
-              if (dataStr === '[DONE]' || dataStr.includes('"type":"message_stop"')) {
-                if (timeout) clearTimeout(timeout);
-                
-                console.log(`[generate-site] Final content: ${accumulated.length} characters`);
-                
-                if (!accumulated || accumulated.trim().length === 0) {
-                  console.error("[generate-site] ERROR: Empty content");
-                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'error',
-                    data: { message: 'Contenu généré vide' }
-                  })}\n\n`));
-                  closeStream();
-                  return;
-                }
-
-                const finalFiles = parseGeneratedCode(accumulated);
-                console.log(`[generate-site] Parsed ${finalFiles.length} files`);
-                
-                // Validation: au moins index.html
-                const hasIndex = finalFiles.some(f => f.path.includes('index.html'));
-                
-                if (!hasIndex) {
-                  console.error("[generate-site] ERROR: Missing index.html");
-                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'error',
-                    data: { message: 'Fichier index.html manquant' }
-                  })}\n\n`));
-                  closeStream();
-                  return;
-                }
-                
-                const totalTokens = inputTokens + outputTokens;
-                console.log(`[generate-site] Tokens: Input=${inputTokens}, Output=${outputTokens}, Total=${totalTokens}`);
-
-                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'generation_event',
-                  data: { type: 'complete', message: 'Génération terminée', status: 'completed', phase: 'generation' }
-                })}\n\n`));
-
-                const filesRecord: Record<string, string> = {};
-                for (const file of finalFiles) {
-                  filesRecord[file.path] = file.content;
-                }
-                console.log(`[generate-site] Sending ${Object.keys(filesRecord).length} files`);
-
-                if (sessionId) {
-                  await supabaseClient
-                    .from('build_sessions')
-                    .update({
-                      project_files: filesRecord,
-                      project_type: 'static',
-                      updated_at: new Date().toISOString()
-                    })
-                    .eq('id', sessionId);
-                }
-
-                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'files',
-                  data: { files: filesRecord }
-                })}\n\n`));
-
-                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'complete',
-                  data: {
-                    files: filesRecord,
-                    totalFiles: finalFiles.length,
-                    projectType: 'static',
-                    tokens: { input: inputTokens, output: outputTokens, total: totalTokens }
-                  }
-                })}\n\n`));
-                
-                closeStream();
-                return;
-              }
+              if (!line.startsWith('data: ')) continue;
+              const jsonStr = line.slice(6).trim();
+              if (!jsonStr || jsonStr === '[DONE]') continue;
 
               try {
-                const json = JSON.parse(dataStr);
-                const delta = json?.delta?.text || json?.choices?.[0]?.delta?.content || '';
-                if (!delta) continue;
-
-                accumulated += delta;
+                const event = JSON.parse(jsonStr);
                 
-                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'chunk',
-                  data: { content: delta }
-                })}\n\n`));
+                // Comptage des tokens
+                if (event.type === 'message_start' && event.message?.usage) {
+                  inputTokens = event.message.usage.input_tokens || 0;
+                }
+                if (event.type === 'message_delta' && event.usage) {
+                  outputTokens = event.usage.output_tokens || 0;
+                }
 
-                if (accumulated.length % 500 < delta.length) {
-                  const currentFiles = parseGeneratedCode(accumulated);
+                if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+                  const text = event.delta.text || '';
+                  accumulated += text;
 
-                  if (currentFiles.length > lastParsedFiles.length) {
-                    const newFiles = currentFiles.slice(lastParsedFiles.length);
-
-                    for (const file of newFiles) {
-                      let message = '';
-                      const fileName = file.path.split('/').pop()?.replace(/\.\w+$/, '');
-
-                      if (file.path.includes('index.html')) {
-                        message = 'Création de la page principale';
-                      } else if (file.path.includes('styles.css')) {
-                        message = 'Mise en place des styles CSS';
-                      } else if (file.path.includes('router.js')) {
-                        message = 'Système de navigation SPA';
-                      } else if (file.path.includes('pages.js')) {
-                        message = 'Création des pages';
-                      } else if (file.path.includes('app.js')) {
-                        message = 'Initialisation de l\'application';
-                      } else {
-                        message = `Création de ${fileName}`;
-                      }
-
-                      safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                        type: 'file_detected',
-                        data: { path: file.path, type: file.type }
-                      })}\n\n`));
-
-                      safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                        type: 'generation_event',
-                        data: { type: 'write', message: message, status: 'completed', phase: 'generation', file: file.path }
-                      })}\n\n`));
-                    }
+                  // Envoyer le stream au client
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'stream',
+                    data: { text, phase: 'generating' }
+                  })}\n\n`));
+                  
+                  // Parser progressivement
+                  const parsed = parseGeneratedCode(accumulated);
+                  if (parsed.files.length > lastParsedFiles.length) {
+                    lastParsedFiles = parsed.files;
                     
-                    lastParsedFiles = currentFiles;
+                    // Envoyer les fichiers au client
+                    const filesRecord: Record<string, string> = {};
+                    parsed.files.forEach(f => {
+                      filesRecord[f.path] = f.content;
+                    });
+                    
+                    safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                      type: 'files',
+                      data: { 
+                        files: filesRecord, 
+                        phase: 'generating' 
+                      }
+                    })}\n\n`));
                   }
+                }
+
+                if (event.type === 'message_stop') {
+                  console.log('[generate-site] Message complete');
                 }
               } catch (e) {
-                console.error('[generate-site] Parse error:', e);
+                // Ignorer les erreurs de parsing JSON
               }
             }
           }
-          
-          if (!streamClosed) {
-            if (timeout) clearTimeout(timeout);
-            closeStream();
+
+          // Parsing final
+          const finalParsed = parseGeneratedCode(accumulated);
+          lastParsedFiles = finalParsed.files;
+
+          console.log('[generate-site] Final files:', lastParsedFiles.map(f => f.path));
+
+          // Sauvegarder en base
+          if (sessionId && lastParsedFiles.length > 0) {
+            const filesRecord: Record<string, string> = {};
+            lastParsedFiles.forEach(f => {
+              filesRecord[f.path] = f.content;
+            });
+
+            const { error: updateError } = await supabaseClient
+              .from('build_sessions')
+              .update({ 
+                project_files: filesRecord,
+                project_type: 'website',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', sessionId);
+
+            if (updateError) {
+              console.error('[generate-site] Error saving to DB:', updateError);
+            } else {
+              console.log('[generate-site] Files saved to DB');
+            }
           }
-        } catch (error) {
-          if (timeout) clearTimeout(timeout);
-          console.error('[generate-site] Stream error:', error);
-          
+
+          // Envoi final
+          const finalFilesRecord: Record<string, string> = {};
+          lastParsedFiles.forEach(f => {
+            finalFilesRecord[f.path] = f.content;
+          });
+
+          safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'files',
+            data: { 
+              files: finalFilesRecord, 
+              phase: 'complete' 
+            }
+          })}\n\n`));
+
+          safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'tokens',
+            data: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens }
+          })}\n\n`));
+
+          safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'complete',
+            data: { 
+              success: true, 
+              fileCount: lastParsedFiles.length
+            }
+          })}\n\n`));
+
+        } catch (e) {
+          console.error('[generate-site] Stream error:', e);
           safeEnqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'error',
-            data: { message: error instanceof Error ? error.message : 'Erreur inconnue' }
+            data: { message: e instanceof Error ? e.message : 'Unknown error' }
           })}\n\n`));
-          
+        } finally {
+          if (timeout) clearTimeout(timeout);
           closeStream();
         }
       }
@@ -1656,7 +676,7 @@ Génère maintenant un site web STATIQUE MAGNIFIQUE, PROFESSIONNEL et COMPLET av
   } catch (error) {
     console.error('[generate-site] Error:', error);
     return new Response(
-      JSON.stringify({ error: 'Request failed. Please try again later.' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
