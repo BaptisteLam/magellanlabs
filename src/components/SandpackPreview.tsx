@@ -1,56 +1,11 @@
-import { useMemo, useEffect, useRef, forwardRef, useImperativeHandle, useCallback, useState } from 'react';
+import { useMemo, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import {
   SandpackProvider,
   SandpackPreview as SandpackPreviewComponent,
   useSandpack,
 } from '@codesandbox/sandpack-react';
 import { useThemeStore } from '@/stores/themeStore';
-import { injectInspectorIntoFiles } from '@/lib/sandpackInspector';
-import { RefreshCw, FileWarning, Globe, Code } from 'lucide-react';
-
-// Types pour le projet
-type ProjectType = 'static' | 'react';
-
-// 🔧 Détecter le type de projet de manière robuste
-function detectProjectType(files: Record<string, string>): ProjectType {
-  const filePaths = Object.keys(files);
-  
-  // Fichiers indicateurs de projet statique vanilla
-  const hasRouterJs = filePaths.some(k => 
-    (k.includes('router.js') || k.includes('router.mjs')) && !k.includes('node_modules')
-  );
-  const hasPagesJs = filePaths.some(k => 
-    k.includes('pages.js') && !k.includes('node_modules')
-  );
-  const hasAppJs = filePaths.some(k => 
-    (k.endsWith('/app.js') || k === 'app.js') && !k.includes('node_modules')
-  );
-  
-  // Fichiers indicateurs de projet React
-  const hasReactFiles = filePaths.some(k => 
-    k.match(/\.(tsx|jsx)$/) && !k.includes('node_modules')
-  );
-  
-  // Vérifier si index.html est un HTML statique (pas React)
-  const indexHtmlKey = filePaths.find(k => k.endsWith('index.html'));
-  const indexHtmlContent = indexHtmlKey ? files[indexHtmlKey] : '';
-  const isReactIndexHtml = indexHtmlContent.includes('id="root"') || indexHtmlContent.includes("id='root'");
-  
-  // Si on a les fichiers du SPA vanilla (router.js/pages.js) sans fichiers React, c'est static
-  if ((hasRouterJs || hasPagesJs || hasAppJs) && !hasReactFiles) {
-    console.log('🔍 [detectProjectType] Detected STATIC project (vanilla SPA with router.js)');
-    return 'static';
-  }
-  
-  // Si on a index.html sans React root et sans fichiers .tsx/.jsx
-  if (indexHtmlKey && !isReactIndexHtml && !hasReactFiles) {
-    console.log('🔍 [detectProjectType] Detected STATIC project (plain HTML without React root)');
-    return 'static';
-  }
-  
-  console.log('🔍 [detectProjectType] Detected REACT project');
-  return 'react';
-}
+import { RefreshCw, FileWarning } from 'lucide-react';
 
 // 🔧 Composant de fallback visuel pour les erreurs
 interface ErrorFallbackProps {
@@ -87,332 +42,105 @@ function ErrorFallback({ message, onRetry }: ErrorFallbackProps) {
   );
 }
 
-// 🔧 Liste exhaustive des icônes lucide-react pour corrections JSX
-const LUCIDE_ICONS = [
-  'Mail', 'Phone', 'MapPin', 'Star', 'Hotel', 'Palmtree', 'Check', 'X', 'Menu',
-  'ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'ChevronDown', 'ChevronUp',
-  'ChevronRight', 'ChevronLeft', 'Home', 'User', 'Settings', 'Search', 'Heart',
-  'Clock', 'Calendar', 'Send', 'Loader', 'Loader2', 'AlertCircle', 'Info',
-  'CheckCircle', 'XCircle', 'Plus', 'Minus', 'Edit', 'Trash', 'Trash2',
-  'Download', 'Upload', 'Share', 'Link', 'ExternalLink', 'Copy', 'Eye', 'EyeOff',
-  'Lock', 'Unlock', 'Key', 'Bell', 'BellOff', 'Bookmark', 'Flag', 'Filter',
-  'Grid', 'List', 'MoreHorizontal', 'MoreVertical', 'RefreshCw', 'RotateCw',
-  'Save', 'Scissors', 'Shield', 'Shuffle', 'Sidebar', 'Skip', 'Sliders',
-  'Smartphone', 'Speaker', 'Square', 'Sun', 'Moon', 'Sunrise', 'Sunset',
-  'Table', 'Tag', 'Target', 'Terminal', 'ThumbsUp', 'ThumbsDown',
-  'TrendingUp', 'TrendingDown', 'Triangle', 'Tv', 'Twitter', 'Type',
-  'Umbrella', 'Underline', 'Undo', 'UploadCloud', 'UserCheck', 'UserMinus',
-  'UserPlus', 'Users', 'Video', 'VideoOff', 'Voicemail', 'Volume', 'Volume1',
-  'Volume2', 'VolumeX', 'Watch', 'Wifi', 'WifiOff', 'Wind', 'Zap', 'ZoomIn',
-  'ZoomOut', 'Facebook', 'Instagram', 'Linkedin', 'Youtube', 'Github', 'Globe',
-  'Award', 'Briefcase', 'Building', 'Car', 'Coffee', 'Compass', 'CreditCard',
-  'DollarSign', 'Euro', 'Gift', 'Headphones', 'Image', 'Layers', 'Layout',
-  'LifeBuoy', 'Map', 'MessageCircle', 'MessageSquare', 'Mic', 'MicOff',
-  'Monitor', 'Package', 'PaperClip', 'Pause', 'Percent', 'PhoneCall',
-  'PhoneForwarded', 'PhoneIncoming', 'PhoneMissed', 'PhoneOff', 'PhoneOutgoing',
-  'PieChart', 'Play', 'PlayCircle', 'PlusCircle', 'Pocket', 'Power', 'Printer',
-  'Radio', 'Repeat', 'Rewind', 'ShoppingBag', 'ShoppingCart', 'Sparkles', 'Waves',
-  'Utensils', 'Bed', 'Bath', 'Wifi', 'Parking', 'AirVent', 'Dumbbell', 'Pool',
-  'Plane', 'Train', 'Bus', 'Bicycle', 'Ship', 'Mountain', 'Trees', 'Flower',
-  'Leaf', 'Droplet', 'Flame', 'Snowflake', 'Cloud', 'CloudRain', 'CloudSnow'
-].join('|');
+// CSS de base complet pour les projets statiques générés
+const BASE_CSS = `/* Reset et styles de base */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { 
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+  color: #1a1a2e;
+  background: #ffffff;
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; height: auto; display: block; }
+a { text-decoration: none; color: inherit; transition: color 0.2s; }
+button { cursor: pointer; font-family: inherit; border: none; }
+input, textarea { font-family: inherit; }
 
-// 🔧 PHASE 4: Fonction AMÉLIORÉE pour corriger les erreurs JSX courantes
-function fixJSXSyntaxErrors(code: string, filePath: string): string {
-  if (!filePath.match(/\.(tsx|jsx)$/)) return code;
-  
-  let fixed = code;
-  const original = code;
-  
-  // 0. Nettoyer les retours à la ligne Windows
-  fixed = fixed.replace(/\r\n/g, '\n');
-  
-  // 1. Pattern AGRESSIF: icône suivie de newline puis attribut (cas <Mail\n  className)
-  const iconNewlinePattern = new RegExp(
-    `<(${LUCIDE_ICONS})\\s*\\n\\s*(className|size|strokeWidth|color|onClick|aria-label|style)`,
-    'g'
-  );
-  fixed = fixed.replace(iconNewlinePattern, '<$1 $2');
-  
-  // 2. Icônes avec attributs mais terminées par > au lieu de />
-  const iconWithAttrsNoClose = new RegExp(
-    `<(${LUCIDE_ICONS})(\\s+[^>]*[^/])>(?!\\s*</)`,
-    'g'
-  );
-  fixed = fixed.replace(iconWithAttrsNoClose, '<$1$2 />');
-  
-  // 3. Icônes vides non auto-fermées: <Icon> -> <Icon />
-  const iconEmptyNoClose = new RegExp(`<(${LUCIDE_ICONS})>`, 'g');
-  fixed = fixed.replace(iconEmptyNoClose, '<$1 />');
-  
-  // 4. Supprimer les balises fermantes des icônes: </Icon> -> (rien)
-  const iconClosingTag = new RegExp(`</(${LUCIDE_ICONS})>`, 'g');
-  fixed = fixed.replace(iconClosingTag, '');
-  
-  // 5. Corriger les doubles />
-  fixed = fixed.replace(/\s*\/>\s*\/>/g, ' />');
-  
-  // 6. Corriger className coupé en milieu de ligne
-  fixed = fixed.replace(/className="\s*\n\s*/g, 'className="');
-  
-  // 7. Corriger les attributs coupés: size={\n  24} -> size={24}
-  fixed = fixed.replace(/(size|strokeWidth|width|height)=\{\s*\n\s*(\d+)\s*\}/g, '$1={$2}');
-  
-  // 8. Corriger les icônes tronquées: <Mail (sans suite) -> <Mail />
-  const truncatedIcon = new RegExp(`<(${LUCIDE_ICONS})\\s*$`, 'gm');
-  fixed = fixed.replace(truncatedIcon, '<$1 />');
-  
-  // 9. Corriger les icônes avec seulement des espaces: <Mail   > -> <Mail />
-  const iconOnlySpaces = new RegExp(`<(${LUCIDE_ICONS})\\s+>`, 'g');
-  fixed = fixed.replace(iconOnlySpaces, '<$1 />');
-  
-  // 10. NOUVEAU: Corriger les balises HTML self-closing oubliées (img, br, hr, input, etc.)
-  const selfClosingTags = ['img', 'br', 'hr', 'input', 'meta', 'link', 'area', 'base', 'col', 'embed', 'param', 'source', 'track', 'wbr'];
-  selfClosingTags.forEach(tag => {
-    // Pattern: <img src="..." > → <img src="..." />
-    const pattern = new RegExp(`<${tag}(\\s+[^>]*[^/])>`, 'gi');
-    fixed = fixed.replace(pattern, `<${tag}$1 />`);
-    // Pattern: <img> → <img />
-    const emptyPattern = new RegExp(`<${tag}>`, 'gi');
-    fixed = fixed.replace(emptyPattern, `<${tag} />`);
-  });
-  
-  // 11. NOUVEAU: Corriger les fragments mal formés
-  fixed = fixed.replace(/<>(\s*\n\s*)+$/gm, '<></>');
-  fixed = fixed.replace(/<\/>\s*<\/>/g, '</>');
-  
-  // 12. NOUVEAU: Corriger les accolades JSX non fermées dans les attributs simples
-  fixed = fixed.replace(/=\{([^{}]*[^}])\n(\s*[a-zA-Z]+=)/g, '={$1}\n$2');
-  
-  // 13. NOUVEAU: Supprimer les imports dupliqués de React (cause d'erreur)
-  const importLines = fixed.split('\n');
-  const seenImports = new Set<string>();
-  const cleanedLines = importLines.filter(line => {
-    const importMatch = line.match(/^import\s+.*\s+from\s+['"]([^'"]+)['"]/);
-    if (importMatch) {
-      const key = importMatch[0];
-      if (seenImports.has(key)) {
-        return false; // Supprimer l'import dupliqué
-      }
-      seenImports.add(key);
-    }
-    return true;
-  });
-  fixed = cleanedLines.join('\n');
-  
-  // 14. 🔧 CRITIQUE: Corriger les chaînes className tronquées (Unterminated string constant)
-  // Pattern: className="...hover:bg-[ (tronqué) → compléter avec valeur par défaut
-  fixed = fixed.replace(
-    /className="([^"]*(?:bg-\[|text-\[|border-\[|hover:bg-\[|hover:text-\[|focus:bg-\[|focus:text-\[)[^"\]]*)\n/g,
-    (match, content) => {
-      console.log(`🔧 [fixJSXSyntaxErrors] Fixing truncated className: ${content.substring(0, 50)}...`);
-      // Compter les [ non fermés et les fermer
-      const openBrackets = (content.match(/\[/g) || []).length;
-      const closeBrackets = (content.match(/\]/g) || []).length;
-      const missing = openBrackets - closeBrackets;
-      // Ajouter les ] manquants + fermer la chaîne
-      return `className="${content}${'#03A5C0]'.repeat(missing)}"\n`;
-    }
-  );
-  
-  // 15. 🔧 Corriger les chaînes non terminées génériques dans les attributs
-  // Pattern: attribut="valeur (sans guillemet fermant avant la fin de ligne)
-  fixed = fixed.replace(
-    /(className|style|href|src|alt|title|placeholder|value|id|name|type)="([^"\n]*)\n\s*([<>\/])/g,
-    (match, attr, value, next) => {
-      console.log(`🔧 [fixJSXSyntaxErrors] Fixing unterminated ${attr} attribute`);
-      return `${attr}="${value}"\n      ${next}`;
-    }
-  );
-  
-  // 16. 🔧 Supprimer les classes Tailwind incomplètes avec crochets non fermés
-  // hover:bg-[ sans valeur → supprimer cette classe
-  fixed = fixed.replace(
-    /\s*(hover:|focus:|active:|group-hover:)?(bg|text|border|ring|shadow)-\[\s*$/gm,
-    ''
-  );
-  
-  // 17. 🔧 Corriger les couleurs Tailwind tronquées: bg-[#03A5C → bg-[#03A5C0]
-  fixed = fixed.replace(
-    /(bg|text|border|ring|shadow)-\[#([0-9A-Fa-f]{3,5})\]/g,
-    (match, prefix, hex) => {
-      if (hex.length < 6) {
-        // Compléter le hex si tronqué
-        const completed = hex.padEnd(6, hex.charAt(hex.length - 1));
-        console.log(`🔧 [fixJSXSyntaxErrors] Completing truncated hex: #${hex} → #${completed}`);
-        return `${prefix}-[#${completed}]`;
-      }
-      return match;
-    }
-  );
-  
-  // 18. 🔧 Fermer les attributs className avec crochets non appairés
-  fixed = fixed.replace(
-    /className="([^"]*\[[^\]"]*)"(?!\s*[>\s\/])/g,
-    (match, content) => {
-      const openBrackets = (content.match(/\[/g) || []).length;
-      const closeBrackets = (content.match(/\]/g) || []).length;
-      if (openBrackets > closeBrackets) {
-        const closers = ']'.repeat(openBrackets - closeBrackets);
-        console.log(`🔧 [fixJSXSyntaxErrors] Closing ${openBrackets - closeBrackets} unclosed brackets in className`);
-        return `className="${content}${closers}"`;
-      }
-      return match;
-    }
-  );
-  
-  // Log si des corrections ont été faites
-  if (fixed !== original) {
-    console.log(`🔧 [fixJSXSyntaxErrors] Fixed JSX syntax in ${filePath}`);
-  }
-  
-  return fixed;
+/* Variables CSS */
+:root {
+  --primary: #03A5C0;
+  --primary-dark: #028a9e;
+  --secondary: #1a1a2e;
+  --accent: #03A5C0;
+  --white: #ffffff;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 25px -5px rgba(0,0,0,0.15);
+  --radius: 0.5rem;
 }
 
-// 🔧 PHASE 3: Normalisation INTELLIGENTE des chemins avec aliases
-function normalizeFilePath(path: string): string {
-  let normalized = path.startsWith('/') ? path : '/' + path;
-  
-  // Aliases courants pour mapper vers la structure /src/
-  const aliases: Record<string, string> = {
-    '/App.tsx': '/src/App.tsx',
-    '/App.jsx': '/src/App.jsx',
-    '/app.tsx': '/src/App.tsx',
-    '/app.jsx': '/src/App.jsx',
-    '/main.tsx': '/src/main.tsx',
-    '/index.tsx': '/src/main.tsx', // Alias index → main
-    '/index.jsx': '/src/main.jsx',
-    '/index.css': '/src/index.css',
-    '/styles.css': '/src/index.css',
-    '/style.css': '/src/index.css',
-  };
-  
-  // Appliquer l'alias si existe
-  if (aliases[normalized]) {
-    console.log(`📁 [normalizeFilePath] Alias applied: ${normalized} → ${aliases[normalized]}`);
-    return aliases[normalized];
-  }
-  
-  // Forcer les fichiers source dans /src/ sauf exceptions
-  if (normalized.match(/\.(tsx|jsx|ts|js|css)$/) && !normalized.startsWith('/src/') && !normalized.startsWith('/public/')) {
-    const cleanPath = normalized.replace(/^\/+/, '');
-    // Si déjà préfixé src/, ne pas doubler
-    if (!cleanPath.startsWith('src/')) {
-      const newPath = '/src/' + cleanPath;
-      console.log(`📁 [normalizeFilePath] Forced to /src/: ${normalized} → ${newPath}`);
-      return newPath;
-    }
-  }
-  
-  return normalized;
+/* Classes utilitaires essentielles */
+.container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+.section { padding: 4rem 0; }
+.text-center { text-align: center; }
+
+/* Buttons */
+.btn { 
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center;
+  padding: 0.75rem 1.5rem; 
+  border-radius: var(--radius);
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.btn-primary { 
+  background: var(--primary); 
+  color: white; 
+}
+.btn-primary:hover { 
+  background: var(--primary-dark); 
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
 }
 
-// 🔧 PHASE 1: Détecter si c'est un projet HTML pur et le convertir en React
-function detectAndConvertHTMLProject(files: Record<string, string>): Record<string, string> {
-  const hasReactFiles = Object.keys(files).some(k => 
-    k.match(/\.(tsx|jsx)$/) && !k.includes('node_modules')
-  );
-  
-  // Si on a déjà des fichiers React, ne pas convertir
-  if (hasReactFiles) {
-    console.log('🔍 [detectAndConvertHTMLProject] React files found, skipping conversion');
-    return files;
-  }
-  
-  // Chercher un index.html
-  const htmlFile = Object.entries(files).find(([k]) => 
-    k.endsWith('.html') || k.endsWith('.htm')
-  );
-  
-  // Chercher un fichier CSS
-  const cssFile = Object.entries(files).find(([k]) => k.endsWith('.css'));
-  
-  if (htmlFile) {
-    const [htmlPath, htmlContent] = htmlFile;
-    console.log(`🔄 [detectAndConvertHTMLProject] Converting HTML project from ${htmlPath}`);
-    
-    // Extraire le body du HTML
-    const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-    const bodyContent = bodyMatch ? bodyMatch[1].trim() : htmlContent;
-    
-    // Échapper les backticks pour le template literal
-    const escapedBody = bodyContent.replace(/`/g, '\\`').replace(/\$/g, '\\$');
-    
-    // Créer un projet React à partir du HTML
-    const convertedFiles = {
-      ...files,
-      '/src/App.tsx': `import React from 'react';
-import './index.css';
-
-export default function App() {
-  return (
-    <div dangerouslySetInnerHTML={{ __html: \`${escapedBody}\` }} />
-  );
-}`,
-      '/src/main.tsx': `import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-import './index.css';
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);`,
-      '/src/index.css': cssFile ? cssFile[1] : '/* Converted from HTML project */'
-    };
-    
-    console.log('✅ [detectAndConvertHTMLProject] HTML project converted to React');
-    return convertedFiles;
-  }
-  
-  return files;
+/* Form Elements */
+input, textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(3, 165, 192, 0.1);
 }
 
-// 🔧 PHASE 2: Créer un fallback React si aucun fichier valide n'est trouvé
-function createFallbackReactProject(existingFiles: Record<string, { code: string; active?: boolean }>): Record<string, { code: string; active?: boolean }> {
-  // Lister les fichiers existants pour debug
-  const existingPaths = Object.keys(existingFiles).join(', ');
-  console.log(`🔧 [createFallbackReactProject] Creating fallback from existing files: ${existingPaths}`);
-  
-  // Créer un App.tsx de fallback
-  const fallbackApp = `import React from 'react';
-import './index.css';
-
-export default function App() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-8">
-      <div className="text-center max-w-md">
-        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#03A5C0]/10 flex items-center justify-center">
-          <svg className="w-8 h-8 text-[#03A5C0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-        </div>
-        <h1 className="text-2xl font-bold text-gray-800 mb-3">Génération en cours...</h1>
-        <p className="text-gray-600 mb-4">Votre site est en train d'être créé.</p>
-        <p className="text-sm text-gray-500">Le contenu apparaîtra dès qu'il sera prêt.</p>
-      </div>
-    </div>
-  );
-}`;
-
-  const fallbackMain = `import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-import './index.css';
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);`;
-
-  return {
-    ...existingFiles,
-    '/src/App.tsx': { code: fallbackApp, active: true },
-    '/src/main.tsx': { code: fallbackMain },
-  };
+/* Cards */
+.card {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s, box-shadow 0.2s;
 }
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.6s ease forwards; }
+`;
 
 interface SandpackPreviewProps {
   projectFiles: Record<string, string>;
@@ -427,114 +155,6 @@ export interface SandpackPreviewHandle {
   getIframe: () => HTMLIFrameElement | null;
   sendMessage: (message: any) => void;
   setInspectMode: (enabled: boolean) => void;
-}
-
-// Détecter les imports manquants et créer des stubs
-function createMissingComponentStubs(files: Record<string, { code: string; active?: boolean }>) {
-  const imports: Map<string, string[]> = new Map();
-  
-  // Scanner tous les fichiers pour les imports
-  Object.entries(files).forEach(([filePath, { code }]) => {
-    if (!filePath.endsWith('.tsx') && !filePath.endsWith('.jsx') && !filePath.endsWith('.ts') && !filePath.endsWith('.js')) return;
-    
-    // Regex pour détecter les imports de composants locaux
-    const importRegex = /import\s+(?:(\w+)|{\s*([^}]+)\s*})\s+from\s+['"](\.[^'"]+)['"]/g;
-    let match;
-    
-    while ((match = importRegex.exec(code)) !== null) {
-      const defaultImport = match[1];
-      const namedImports = match[2];
-      const importPath = match[3];
-      
-      // Résoudre le chemin relatif
-      const basePath = filePath.split('/').slice(0, -1).join('/');
-      let resolvedPath = importPath;
-      
-      if (importPath.startsWith('./')) {
-        resolvedPath = `${basePath}/${importPath.slice(2)}`;
-      } else if (importPath.startsWith('../')) {
-        const parts = basePath.split('/');
-        parts.pop();
-        resolvedPath = `${parts.join('/')}/${importPath.slice(3)}`;
-      }
-      
-      // Ajouter extension si manquante
-      if (!resolvedPath.match(/\.(tsx?|jsx?|css)$/)) {
-        resolvedPath += '.tsx';
-      }
-      
-      // Normaliser le chemin
-      if (!resolvedPath.startsWith('/')) {
-        resolvedPath = '/' + resolvedPath;
-      }
-      
-      // Collecter les exports nécessaires
-      const exports: string[] = [];
-      if (defaultImport) exports.push(`default:${defaultImport}`);
-      if (namedImports) {
-        namedImports.split(',').forEach(imp => {
-          const name = imp.trim().split(' as ')[0].trim();
-          if (name) exports.push(name);
-        });
-      }
-      
-      if (!imports.has(resolvedPath)) {
-        imports.set(resolvedPath, []);
-      }
-      imports.get(resolvedPath)!.push(...exports);
-    }
-  });
-  
-  // Créer les stubs pour les fichiers manquants
-  imports.forEach((exports, path) => {
-    // Vérifier si le fichier existe déjà
-    const exists = files[path] || files[path.replace('.tsx', '.ts')] || files[path.replace('.tsx', '.jsx')] || files[path.replace('.tsx', '.js')];
-    if (exists) return;
-    
-    // Ignorer les fichiers CSS
-    if (path.endsWith('.css')) {
-      files[path] = { code: '/* Auto-generated stub */' };
-      return;
-    }
-    
-    // Créer un composant stub
-    const componentName = path.split('/').pop()?.replace(/\.(tsx?|jsx?)$/, '') || 'Component';
-    const hasDefaultExport = exports.some(e => e.startsWith('default:'));
-    const namedExports = exports.filter(e => !e.startsWith('default:'));
-    
-    let stubCode = `// Auto-generated stub for missing component\n`;
-    stubCode += `import React from 'react';\n\n`;
-    
-    // Export par défaut
-    if (hasDefaultExport) {
-      stubCode += `const ${componentName} = () => {\n`;
-      stubCode += `  return (\n`;
-      stubCode += `    <div className="p-4 border border-dashed border-gray-300 rounded-lg bg-gray-50">\n`;
-      stubCode += `      <p className="text-gray-500 text-sm text-center">${componentName}</p>\n`;
-      stubCode += `    </div>\n`;
-      stubCode += `  );\n`;
-      stubCode += `};\n\n`;
-      stubCode += `export default ${componentName};\n`;
-    }
-    
-    // Exports nommés
-    namedExports.forEach(exportName => {
-      if (exportName.match(/^[A-Z]/)) {
-        // C'est probablement un composant
-        stubCode += `\nexport const ${exportName} = () => {\n`;
-        stubCode += `  return <div className="p-2 text-gray-500">${exportName}</div>;\n`;
-        stubCode += `};\n`;
-      } else {
-        // C'est probablement une fonction ou une constante
-        stubCode += `\nexport const ${exportName} = () => {};\n`;
-      }
-    });
-    
-    files[path] = { code: stubCode };
-    console.log(`📦 [createMissingComponentStubs] Created stub for ${path}`);
-  });
-  
-  return files;
 }
 
 // Composant interne pour accéder au contexte Sandpack
@@ -594,7 +214,6 @@ const SandpackContent = forwardRef<
         const iframe = containerRef.current.querySelector('iframe');
         if (iframe && iframe !== iframeRef.current) {
           iframeRef.current = iframe;
-          // Forcer le style pour prendre toute la place
           iframe.style.width = '100%';
           iframe.style.height = '100%';
           iframe.style.border = 'none';
@@ -641,254 +260,6 @@ const SandpackContent = forwardRef<
 
 SandpackContent.displayName = 'SandpackContent';
 
-// CSS de base complet pour les projets générés
-const BASE_CSS = `/* Reset et styles de base */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { 
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.6;
-  color: #1a1a2e;
-  background: #ffffff;
-  -webkit-font-smoothing: antialiased;
-}
-img { max-width: 100%; height: auto; display: block; }
-a { text-decoration: none; color: inherit; transition: color 0.2s; }
-button { cursor: pointer; font-family: inherit; border: none; }
-input, textarea { font-family: inherit; }
-
-/* Variables CSS */
-:root {
-  --primary: #03A5C0;
-  --primary-dark: #028a9e;
-  --secondary: #1a1a2e;
-  --accent: #03A5C0;
-  --white: #ffffff;
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-400: #9ca3af;
-  --gray-500: #6b7280;
-  --gray-600: #4b5563;
-  --gray-700: #374151;
-  --gray-800: #1f2937;
-  --gray-900: #111827;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-  --shadow-lg: 0 10px 25px -5px rgba(0,0,0,0.15);
-  --radius: 0.5rem;
-}
-
-/* Classes utilitaires essentielles */
-.container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
-.section { padding: 4rem 0; }
-.text-center { text-align: center; }
-.text-left { text-align: left; }
-.text-right { text-align: right; }
-
-/* Flexbox */
-.flex { display: flex; }
-.flex-col { flex-direction: column; }
-.flex-row { flex-direction: row; }
-.flex-wrap { flex-wrap: wrap; }
-.items-center { align-items: center; }
-.items-start { align-items: flex-start; }
-.items-end { align-items: flex-end; }
-.justify-center { justify-content: center; }
-.justify-between { justify-content: space-between; }
-.justify-around { justify-content: space-around; }
-
-/* Grid */
-.grid { display: grid; }
-.grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
-.grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
-.grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
-.grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
-
-/* Spacing */
-.gap-2 { gap: 0.5rem; }
-.gap-4 { gap: 1rem; }
-.gap-6 { gap: 1.5rem; }
-.gap-8 { gap: 2rem; }
-.p-2 { padding: 0.5rem; }
-.p-4 { padding: 1rem; }
-.p-6 { padding: 1.5rem; }
-.p-8 { padding: 2rem; }
-.px-4 { padding-left: 1rem; padding-right: 1rem; }
-.px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
-.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-.py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-.py-8 { padding-top: 2rem; padding-bottom: 2rem; }
-.py-16 { padding-top: 4rem; padding-bottom: 4rem; }
-.m-auto { margin: auto; }
-.mx-auto { margin-left: auto; margin-right: auto; }
-.mt-4 { margin-top: 1rem; }
-.mt-8 { margin-top: 2rem; }
-.mb-4 { margin-bottom: 1rem; }
-.mb-8 { margin-bottom: 2rem; }
-
-/* Sizing */
-.w-full { width: 100%; }
-.h-full { height: 100%; }
-.min-h-screen { min-height: 100vh; }
-.max-w-md { max-width: 28rem; }
-.max-w-lg { max-width: 32rem; }
-.max-w-xl { max-width: 36rem; }
-.max-w-2xl { max-width: 42rem; }
-.max-w-4xl { max-width: 56rem; }
-
-/* Colors */
-.bg-white { background-color: white; }
-.bg-gray-50 { background-color: var(--gray-50); }
-.bg-gray-100 { background-color: var(--gray-100); }
-.bg-primary { background-color: var(--primary); }
-.bg-secondary { background-color: var(--secondary); }
-.text-white { color: white; }
-.text-gray-500 { color: var(--gray-500); }
-.text-gray-600 { color: var(--gray-600); }
-.text-gray-700 { color: var(--gray-700); }
-.text-gray-900 { color: var(--gray-900); }
-.text-primary { color: var(--primary); }
-
-/* Typography */
-.text-xs { font-size: 0.75rem; }
-.text-sm { font-size: 0.875rem; }
-.text-base { font-size: 1rem; }
-.text-lg { font-size: 1.125rem; }
-.text-xl { font-size: 1.25rem; }
-.text-2xl { font-size: 1.5rem; }
-.text-3xl { font-size: 1.875rem; }
-.text-4xl { font-size: 2.25rem; }
-.text-5xl { font-size: 3rem; }
-.font-normal { font-weight: 400; }
-.font-medium { font-weight: 500; }
-.font-semibold { font-weight: 600; }
-.font-bold { font-weight: 700; }
-.leading-tight { line-height: 1.25; }
-.leading-relaxed { line-height: 1.625; }
-
-/* Borders & Radius */
-.border { border: 1px solid var(--gray-200); }
-.border-t { border-top: 1px solid var(--gray-200); }
-.border-b { border-bottom: 1px solid var(--gray-200); }
-.rounded { border-radius: var(--radius); }
-.rounded-lg { border-radius: 0.75rem; }
-.rounded-xl { border-radius: 1rem; }
-.rounded-2xl { border-radius: 1.5rem; }
-.rounded-full { border-radius: 9999px; }
-
-/* Shadows */
-.shadow-sm { box-shadow: var(--shadow-sm); }
-.shadow { box-shadow: var(--shadow); }
-.shadow-lg { box-shadow: var(--shadow-lg); }
-
-/* Transitions */
-.transition { transition: all 0.2s ease; }
-.transition-colors { transition: color 0.2s, background-color 0.2s; }
-.hover\\:opacity-80:hover { opacity: 0.8; }
-.hover\\:shadow-lg:hover { box-shadow: var(--shadow-lg); }
-.hover\\:scale-105:hover { transform: scale(1.05); }
-
-/* Buttons */
-.btn { 
-  display: inline-flex; 
-  align-items: center; 
-  justify-content: center;
-  padding: 0.75rem 1.5rem; 
-  border-radius: var(--radius);
-  font-weight: 500;
-  transition: all 0.2s;
-}
-.btn-primary { 
-  background: var(--primary); 
-  color: white; 
-}
-.btn-primary:hover { 
-  background: var(--primary-dark); 
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
-}
-.btn-outline {
-  background: transparent;
-  border: 2px solid var(--primary);
-  color: var(--primary);
-}
-.btn-outline:hover {
-  background: var(--primary);
-  color: white;
-}
-
-/* Form Elements */
-input, textarea {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--gray-300);
-  border-radius: var(--radius);
-  font-size: 1rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-input:focus, textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(3, 165, 192, 0.1);
-}
-
-/* Cards */
-.card {
-  background: white;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: var(--shadow);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .md\\:flex-row { flex-direction: column; }
-  .md\\:grid-cols-2 { grid-template-columns: 1fr; }
-  .md\\:grid-cols-3 { grid-template-columns: 1fr; }
-  .text-4xl { font-size: 2rem; }
-  .text-5xl { font-size: 2.5rem; }
-  .section { padding: 3rem 0; }
-}
-
-@media (min-width: 768px) {
-  .md\\:flex-row { flex-direction: row; }
-  .md\\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
-  .md\\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-fade-in { animation: fadeIn 0.6s ease forwards; }
-
-/* Contact Form Styles */
-.contact-section { padding: 4rem 0; background: var(--gray-50); }
-.contact-form { 
-  max-width: 600px; 
-  margin: 2rem auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.form-message { 
-  padding: 1rem; 
-  border-radius: var(--radius);
-  text-align: center;
-  margin-top: 1rem;
-}
-.form-message.success { background: #d1fae5; color: #065f46; }
-.form-message.error { background: #fee2e2; color: #991b1b; }
-`;
-
 export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreviewProps>(({ 
   projectFiles, 
   previewMode = 'desktop',
@@ -898,118 +269,57 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
   onInspectorMessage
 }, ref) => {
   const { isDark } = useThemeStore();
-  
-  // 🆕 Détecter le type de projet
-  const projectType = useMemo(() => detectProjectType(projectFiles), [projectFiles]);
 
-  // 🔧 Convertir les fichiers au format Sandpack - SÉPARATION STATIC vs REACT
-  const { sandpackFiles, rawFiles } = useMemo(() => {
+  // 🔧 Convertir les fichiers au format Sandpack pour STATIC uniquement
+  const sandpackFiles = useMemo(() => {
     let files: Record<string, { code: string; active?: boolean }> = {};
-    let rawFilesMap: Record<string, string> = {};
     
-    // 🔍 DEBUG: Log des fichiers reçus
     console.log('🔍 [SandpackPreview] Received files:', {
       count: Object.keys(projectFiles).length,
       paths: Object.keys(projectFiles),
-      projectType,
     });
 
-    // Si aucun fichier, créer un fallback approprié
+    // Si aucun fichier, créer un fallback
     if (Object.keys(projectFiles).length === 0) {
       console.warn('⚠️ [SandpackPreview] No project files - creating fallback');
-      return { sandpackFiles: createFallbackReactProject({}), rawFiles: {} };
-    }
-    
-    // ========== FLUX PROJET STATIC (HTML/CSS/JS) ==========
-    if (projectType === 'static') {
-      console.log('🔧 [SandpackPreview] Processing as STATIC project');
-      
-      // Fichiers à ignorer pour les projets statiques
-      const staticSkipFiles = ['package.json', 'package-lock.json', 'node_modules'];
-      
-      Object.entries(projectFiles).forEach(([path, content]) => {
-        const fileName = path.split('/').pop() || '';
-        if (staticSkipFiles.includes(fileName)) return;
-        if (path.includes('node_modules/') || path.includes('.git/')) return;
-        
-        // Pour static: garder les chemins tels quels (pas de /src/)
-        let sandpackPath = path.startsWith('/') ? path : '/' + path;
-        
-        // Nettoyer le contenu
-        let cleanContent = content;
-        if (typeof cleanContent === 'string') {
-          cleanContent = cleanContent.trim();
-          if (cleanContent.startsWith('```')) {
-            cleanContent = cleanContent.replace(/^```[\w]*\n/, '').replace(/\n```$/, '');
-          }
-        }
-        
-        files[sandpackPath] = { code: cleanContent };
-        rawFilesMap[sandpackPath] = cleanContent;
-      });
-      
-      // S'assurer que index.html existe et est marqué comme actif
-      if (files['/index.html']) {
-        files['/index.html'].active = true;
-      } else {
-        // Créer un index.html de fallback pour static
-        console.warn('⚠️ [SandpackPreview] No index.html found for static project - creating fallback');
-        files['/index.html'] = {
+      return {
+        '/index.html': {
           code: `<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Site en construction</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
-  <div id="app">
-    <h1>Génération en cours...</h1>
-    <p>Votre site sera bientôt prêt.</p>
+<body class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+  <div class="text-center p-8">
+    <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-[#03A5C0]/10 flex items-center justify-center">
+      <svg class="w-8 h-8 text-[#03A5C0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+      </svg>
+    </div>
+    <h1 class="text-2xl font-bold text-gray-800 mb-3">Génération en cours...</h1>
+    <p class="text-gray-600">Votre site sera bientôt prêt.</p>
   </div>
-  <script src="/router.js"></script>
-  <script src="/pages.js"></script>
-  <script src="/app.js"></script>
 </body>
 </html>`,
           active: true
-        };
-      }
-      
-      // S'assurer qu'on a un styles.css
-      if (!files['/styles.css']) {
-        files['/styles.css'] = { code: BASE_CSS };
-      }
-      
-      console.log('🔍 [SandpackPreview] Static files ready:', Object.keys(files));
-      
-      return { sandpackFiles: files, rawFiles: rawFilesMap };
+        },
+        '/styles.css': { code: BASE_CSS }
+      };
     }
     
-    // ========== FLUX PROJET REACT ==========
-    console.log('🔧 [SandpackPreview] Processing as REACT project');
+    // Fichiers à ignorer
+    const skipFiles = ['package.json', 'package-lock.json', 'node_modules', '.git'];
     
-    // Tenter de convertir un projet HTML en React
-    const convertedFiles = detectAndConvertHTMLProject(projectFiles);
-    
-    // Fichiers à ignorer pour React (config Vite gérée par Sandpack)
-    const skipFiles = [
-      'package.json', 'package-lock.json', 'bun.lockb',
-      'vite.config.ts', 'vite.config.js',
-      'tsconfig.json', 'tsconfig.node.json', 'tsconfig.app.json',
-      'postcss.config.js', 'tailwind.config.ts', 'tailwind.config.js',
-      '.gitignore', 'README.md', '.env', '.env.local',
-      'eslint.config.js', 'components.json', 'index.html'
-    ];
-    
-    Object.entries(convertedFiles).forEach(([path, content]) => {
+    Object.entries(projectFiles).forEach(([path, content]) => {
       const fileName = path.split('/').pop() || '';
-      if (skipFiles.includes(fileName)) return;
-      if (path.includes('node_modules/') || path.includes('.git/')) return;
+      if (skipFiles.some(skip => path.includes(skip))) return;
       
-      // Normalisation pour React (forcer dans /src/)
-      let sandpackPath = normalizeFilePath(path);
+      // Normaliser le chemin pour Sandpack static
+      let sandpackPath = path.startsWith('/') ? path : '/' + path;
       
       // Nettoyer le contenu
       let cleanContent = content;
@@ -1018,183 +328,82 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
         if (cleanContent.startsWith('```')) {
           cleanContent = cleanContent.replace(/^```[\w]*\n/, '').replace(/\n```$/, '');
         }
-        // Appliquer les corrections JSX automatiques
-        cleanContent = fixJSXSyntaxErrors(cleanContent, sandpackPath);
       }
       
       files[sandpackPath] = { code: cleanContent };
-      rawFilesMap[sandpackPath] = cleanContent;
     });
-
-    console.log('🔍 [SandpackPreview] Normalized React files:', Object.keys(files));
-
-    // Vérifier si on a les fichiers React essentiels
-    const hasAppTsx = files['/src/App.tsx'] || files['/src/App.jsx'];
-    const hasMainTsx = files['/src/main.tsx'] || files['/src/main.jsx'];
-
-    if (!hasAppTsx) {
-      console.warn('⚠️ [SandpackPreview] No App.tsx found - creating fallback');
-      files = createFallbackReactProject(files);
-    } else if (!hasMainTsx) {
-      console.log('📝 [SandpackPreview] Creating missing main.tsx');
-      files['/src/main.tsx'] = {
-        code: `import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-import './index.css';
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);`
-      };
-    }
-
-    // S'assurer qu'on a un fichier CSS de base
-    if (!files['/src/index.css'] && !files['/index.css']) {
-      files['/src/index.css'] = { code: BASE_CSS };
-    }
     
-    // Ajouter index.html avec Tailwind CDN pour React
-    files['/index.html'] = {
-      code: `<!DOCTYPE html>
+    // S'assurer que index.html existe et est marqué comme actif
+    if (files['/index.html']) {
+      files['/index.html'].active = true;
+    } else {
+      // Créer un index.html de fallback
+      console.warn('⚠️ [SandpackPreview] No index.html found - creating fallback');
+      files['/index.html'] = {
+        code: `<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Preview</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#03A5C0',
-            'primary-dark': '#028a9e',
-            secondary: '#1a1a2e',
-          }
-        }
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="/styles.css">
 </head>
-<body class="antialiased">
-  <div id="root"></div>
+<body>
+  <div id="app">
+    <h1>Contenu en cours de génération...</h1>
+  </div>
+  <script src="/app.js"></script>
 </body>
-</html>`
-    };
-
-    // Créer des stubs pour les composants manquants
-    files = createMissingComponentStubs(files);
-
-    // Marquer le fichier actif
-    if (files['/src/App.tsx']) {
-      files['/src/App.tsx'].active = true;
+</html>`,
+        active: true
+      };
     }
+    
+    // S'assurer qu'on a un styles.css
+    if (!files['/styles.css']) {
+      files['/styles.css'] = { code: BASE_CSS };
+    }
+    
+    console.log('🔍 [SandpackPreview] Static files ready:', Object.keys(files));
+    
+    return files;
+  }, [projectFiles]);
 
-    // Injecter le script d'inspection si activé
-    return { 
-      sandpackFiles: injectInspectorIntoFiles(files, enableInspector),
-      rawFiles: rawFilesMap
-    };
-  }, [projectFiles, projectType, enableInspector]);
-
-  // Clé stable basée sur le contenu réel pour éviter les re-renders inutiles
+  // Clé stable basée sur le contenu réel
   const sandpackKey = useMemo(() => {
     const fileCount = Object.keys(sandpackFiles).length;
-    const hasIndex = sandpackFiles['/index.html'] ? 'html' : 'react';
     const contentHash = Object.values(sandpackFiles)
       .map(f => f.code.length)
       .reduce((a, b) => a + b, 0);
-    return `sandpack-${projectType}-${fileCount}-${hasIndex}-${contentHash}`;
-  }, [sandpackFiles, projectType]);
+    return `sandpack-static-${fileCount}-${contentHash}`;
+  }, [sandpackFiles]);
   
-  // 🎯 Log final pour debug
-  console.log('🚀 [SandpackPreview] Rendering Sandpack with:', {
-    projectType,
+  console.log('🚀 [SandpackPreview] Rendering static Sandpack with:', {
     fileCount: Object.keys(sandpackFiles).length,
     files: Object.keys(sandpackFiles),
   });
 
-  // 🆕 RENDU POUR PROJET STATIC (HTML/CSS/JS)
-  if (projectType === 'static') {
-    // Collecter les fichiers visibles pour static
-    const staticVisibleFiles = Object.keys(sandpackFiles).filter(f => 
-      f.endsWith('.html') || f.endsWith('.css') || f.endsWith('.js')
-    );
-    
-    return (
-      <div className={`w-full h-full sandpack-container ${previewMode === 'mobile' ? 'max-w-[375px] mx-auto border-x border-border' : ''}`}>
-        <SandpackProvider
-          key={sandpackKey}
-          template="static"
-          files={sandpackFiles}
-          theme={isDark ? 'dark' : 'light'}
-          options={{
-            recompileMode: 'delayed',
-            recompileDelay: 50,
-            autorun: true,
-            autoReload: true,
-            activeFile: '/index.html',
-            visibleFiles: staticVisibleFiles,
-            initMode: 'immediate',
-          }}
-        >
-          <SandpackContent 
-            ref={ref}
-            showConsole={showConsole}
-            enableInspector={enableInspector}
-            onIframeReady={onIframeReady}
-            onInspectorMessage={onInspectorMessage}
-          />
-        </SandpackProvider>
-      </div>
-    );
-  }
-
-  // 🔧 Dépendances pour React (si on est en mode React)
-  const dependencies = {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "lucide-react": "^0.462.0",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.6.0",
-    "class-variance-authority": "^0.7.1",
-    "framer-motion": "^12.0.0",
-    "@emotion/is-prop-valid": "^1.2.2",
-  };
-
-  // RENDU POUR PROJET REACT
+  // Collecter les fichiers visibles
+  const visibleFiles = Object.keys(sandpackFiles).filter(f => 
+    f.endsWith('.html') || f.endsWith('.css') || f.endsWith('.js')
+  );
+  
   return (
-    <div 
-      className={`w-full h-full sandpack-container ${previewMode === 'mobile' ? 'max-w-[375px] mx-auto border-x border-border' : ''}`}
-    >
+    <div className={`w-full h-full sandpack-container ${previewMode === 'mobile' ? 'max-w-[375px] mx-auto border-x border-border' : ''}`}>
       <SandpackProvider
         key={sandpackKey}
-        template="vite-react-ts"
+        template="static"
         files={sandpackFiles}
-        customSetup={{
-          dependencies,
-          entry: '/src/main.tsx',
-          environment: 'create-react-app',
-        }}
         theme={isDark ? 'dark' : 'light'}
         options={{
           recompileMode: 'delayed',
-          recompileDelay: 150,
+          recompileDelay: 50,
           autorun: true,
           autoReload: true,
-          bundlerURL: 'https://sandpack-bundler.codesandbox.io',
-          activeFile: '/src/App.tsx',
-          visibleFiles: ['/src/App.tsx', '/src/main.tsx', '/src/index.css'],
-          externalResources: [
-            'https://cdn.tailwindcss.com',
-          ],
+          activeFile: '/index.html',
+          visibleFiles: visibleFiles,
           initMode: 'immediate',
-          initModeObserverOptions: { rootMargin: '1000px' },
         }}
       >
         <SandpackContent 
