@@ -272,35 +272,55 @@ async function detectProviderFromNameservers(domain: string): Promise<string | n
 }
 
 function createManualInstructions(domain: string, cnameTarget: string, providerName?: string | null) {
+  // IP du proxy Lovable (même que l'infrastructure Lovable)
+  const PROXY_IP = '185.158.133.1';
+  
   return {
     provider: providerName || 'Votre hébergeur DNS',
     steps: [
       {
         title: 'Connectez-vous à votre hébergeur DNS',
-        description: `Rendez-vous sur ${providerName || 'le site de votre hébergeur DNS'}`
+        description: providerName 
+          ? `Rendez-vous sur ${providerName} et connectez-vous à votre compte`
+          : 'Rendez-vous sur le site de votre hébergeur DNS (là où vous avez acheté votre domaine)'
       },
       {
         title: 'Accédez à la gestion DNS',
-        description: 'Trouvez la section "DNS" ou "Zone DNS" ou "Gestion DNS"'
+        description: 'Trouvez la section "DNS", "Zone DNS", "Gestion DNS" ou "DNS Records"'
       },
       {
-        title: 'Ajoutez ces enregistrements CNAME',
-        description: 'Créez deux enregistrements CNAME comme indiqué ci-dessous'
+        title: 'Supprimez les anciens enregistrements A/CNAME (si existants)',
+        description: 'Supprimez tout enregistrement A ou CNAME existant pour @ et www'
+      },
+      {
+        title: 'Ajoutez les nouveaux enregistrements',
+        description: 'Créez les enregistrements suivants exactement comme indiqué ci-dessous'
+      },
+      {
+        title: 'Sauvegardez et patientez',
+        description: 'La propagation DNS peut prendre de 5 minutes à 24 heures'
       }
     ],
     records: [
       {
-        type: 'CNAME',
+        type: 'A',
         name: '@',
-        value: cnameTarget,
-        ttl: '3600'
+        value: PROXY_IP,
+        ttl: '3600',
+        description: `Enregistrement A pour le domaine racine (${domain})`
       },
       {
         type: 'CNAME',
         name: 'www',
         value: cnameTarget,
-        ttl: '3600'
+        ttl: '3600',
+        description: `Enregistrement CNAME pour www.${domain}`
       }
+    ],
+    notes: [
+      'Le symbole @ représente votre domaine racine (exemple.com)',
+      'TTL 3600 = 1 heure (valeur standard)',
+      'La propagation peut prendre jusqu\'à 24h dans certains cas'
     ]
   };
 }
