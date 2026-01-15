@@ -1,4 +1,4 @@
-// Phase 2: Construction du contexte intelligent et graphe de dépendances
+// Phase 2: Construction du contexte intelligent et graphe de dépendances avec patterns sémantiques
 
 export interface FileNode {
   path: string;
@@ -24,6 +24,46 @@ export interface OptimizedContext {
 
 // Fichiers critiques qui ont un bonus de score
 const CRITICAL_FILES = ['index', 'main', 'app', 'root', 'layout', 'page'];
+
+// 🆕 Patterns sémantiques pour mapper les mots-clés aux fichiers probables
+const SEMANTIC_PATTERNS: Record<string, string[]> = {
+  // Éléments UI
+  'bouton|button|btn|cta': ['styles.css', 'index.css', 'Button.tsx', 'components/Button.tsx', 'App.tsx'],
+  'titre|title|header|heading|h1|h2|h3': ['index.html', 'styles.css', 'index.css', 'App.tsx', 'Header.tsx'],
+  'navigation|menu|nav|navbar': ['Header.tsx', 'Navbar.tsx', 'Navigation.tsx', 'index.html', 'App.tsx', 'styles.css'],
+  'footer|pied|bas': ['Footer.tsx', 'index.html', 'App.tsx', 'styles.css'],
+  'hero|banner|bannière': ['Hero.tsx', 'HeroSection.tsx', 'index.html', 'App.tsx', 'styles.css'],
+  
+  // Styles
+  'couleur|color|background|fond|bg': ['styles.css', 'index.css', 'tailwind.config.ts', 'App.tsx'],
+  'police|font|typography|texte|text': ['styles.css', 'index.css', 'tailwind.config.ts'],
+  'taille|size|width|height|largeur|hauteur': ['styles.css', 'index.css'],
+  'margin|marge|padding|espacement|spacing': ['styles.css', 'index.css'],
+  'border|bordure|rounded|arrondi': ['styles.css', 'index.css'],
+  'shadow|ombre': ['styles.css', 'index.css'],
+  
+  // Fonctionnalités
+  'formulaire|form|contact|email': ['Contact.tsx', 'ContactForm.tsx', 'Form.tsx', 'index.html', 'App.tsx'],
+  'image|photo|logo|icon|icône': ['index.html', 'App.tsx', 'styles.css', 'public/'],
+  'carte|card|item|élément': ['Card.tsx', 'styles.css', 'index.css', 'App.tsx'],
+  'liste|list|ul|ol': ['index.html', 'App.tsx', 'styles.css'],
+  'modal|popup|dialog|dialogue': ['Modal.tsx', 'Dialog.tsx', 'App.tsx'],
+  'slider|carousel|carrousel': ['Slider.tsx', 'Carousel.tsx', 'App.tsx'],
+  
+  // Sections
+  'section|bloc|block': ['index.html', 'App.tsx', 'styles.css'],
+  'about|apropos|qui': ['About.tsx', 'index.html', 'App.tsx'],
+  'services|service': ['Services.tsx', 'index.html', 'App.tsx'],
+  'portfolio|projets|works': ['Portfolio.tsx', 'Projects.tsx', 'index.html'],
+  'testimonial|témoignage|avis': ['Testimonials.tsx', 'Reviews.tsx', 'index.html'],
+  'pricing|tarif|prix': ['Pricing.tsx', 'index.html', 'App.tsx'],
+  
+  // Actions
+  'ajouter|add|créer|create|nouveau|new': ['App.tsx', 'index.html'],
+  'supprimer|delete|remove|enlever': ['App.tsx', 'index.html'],
+  'modifier|change|update|changer|edit': ['styles.css', 'index.css', 'App.tsx', 'index.html'],
+  'animation|animate|transition|mouvement': ['styles.css', 'index.css', 'App.tsx'],
+};
 
 export class DependencyGraph {
   private nodes: Map<string, FileNode> = new Map();
@@ -249,6 +289,7 @@ export function optimizeContext(
   };
 }
 
+// 🆕 Extraction de fichiers avec patterns sémantiques améliorés
 export function extractExplicitFiles(
   prompt: string,
   projectFiles: Record<string, string>
@@ -256,25 +297,62 @@ export function extractExplicitFiles(
   const fileNames = Object.keys(projectFiles);
   const promptLower = prompt.toLowerCase();
   const words = promptLower.split(/\s+/);
+  const foundFiles = new Set<string>();
 
-  const explicitFiles = fileNames.filter(filePath => {
+  // 1. Chercher les fichiers mentionnés explicitement
+  for (const filePath of fileNames) {
     const fileName = filePath.split('/').pop()?.toLowerCase() || '';
     const fileNameWithoutExt = fileName.replace(/\.[^.]+$/, '');
     
     // Vérifier si le nom du fichier est mentionné dans le prompt
-    return words.some(word => 
+    if (words.some(word => 
       word.includes(fileNameWithoutExt) || 
       fileNameWithoutExt.includes(word) ||
       promptLower.includes(fileName)
-    );
-  });
+    )) {
+      foundFiles.add(filePath);
+    }
+  }
 
-  // Si aucun fichier n'est mentionné, retourner les 5 premiers fichiers
-  if (explicitFiles.length === 0) {
+  // 2. Utiliser les patterns sémantiques pour trouver des fichiers pertinents
+  for (const [patternStr, targetFiles] of Object.entries(SEMANTIC_PATTERNS)) {
+    const patterns = patternStr.split('|');
+    const matchesPattern = patterns.some(pattern => promptLower.includes(pattern));
+    
+    if (matchesPattern) {
+      // Chercher les fichiers correspondants dans le projet
+      for (const targetFile of targetFiles) {
+        for (const projectFile of fileNames) {
+          const projectFileName = projectFile.split('/').pop()?.toLowerCase() || '';
+          const targetFileName = targetFile.toLowerCase();
+          
+          if (
+            projectFile.toLowerCase().includes(targetFileName) ||
+            projectFileName === targetFileName ||
+            projectFileName.includes(targetFileName.replace(/\.[^.]+$/, ''))
+          ) {
+            foundFiles.add(projectFile);
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Toujours inclure les fichiers critiques s'ils existent
+  for (const criticalFile of ['App.tsx', 'index.html', 'styles.css', 'index.css', 'main.tsx']) {
+    const found = fileNames.find(f => f.toLowerCase().endsWith(criticalFile.toLowerCase()));
+    if (found) {
+      foundFiles.add(found);
+    }
+  }
+
+  // 4. Si aucun fichier n'est trouvé, retourner les 5 premiers fichiers
+  if (foundFiles.size === 0) {
     return fileNames.slice(0, 5);
   }
 
-  return explicitFiles;
+  // Limiter à 10 fichiers maximum pour les patterns sémantiques
+  return Array.from(foundFiles).slice(0, 10);
 }
 
 export function buildContextWithMemory(
@@ -282,23 +360,31 @@ export function buildContextWithMemory(
   projectFiles: Record<string, string>,
   memory?: {
     architecture?: Record<string, unknown>;
-    recent_changes?: Array<{ file: string; change: string }>;
+    recent_changes?: Array<{ file: string; change: string; timestamp?: string }>;
     known_issues?: Array<{ issue: string; solution: string }>;
+    user_preferences?: Record<string, unknown>;
   }
 ): string {
-  let contextParts: string[] = [];
+  const contextParts: string[] = [];
 
   // Ajouter le contexte mémoire si disponible
   if (memory) {
     if (memory.architecture) {
       contextParts.push(`Architecture du projet: ${JSON.stringify(memory.architecture)}`);
     }
+    
     if (memory.recent_changes && memory.recent_changes.length > 0) {
-      const recentChanges = memory.recent_changes.slice(-5);
+      // Inclure les 10 derniers changements pour meilleur contexte
+      const recentChanges = memory.recent_changes.slice(-10);
       contextParts.push(`Changements récents:\n${recentChanges.map(c => `- ${c.file}: ${c.change}`).join('\n')}`);
     }
+    
     if (memory.known_issues && memory.known_issues.length > 0) {
-      contextParts.push(`Problèmes connus:\n${memory.known_issues.map(i => `- ${i.issue}: ${i.solution}`).join('\n')}`);
+      contextParts.push(`Problèmes connus et solutions:\n${memory.known_issues.map(i => `- ${i.issue}: ${i.solution}`).join('\n')}`);
+    }
+    
+    if (memory.user_preferences) {
+      contextParts.push(`Préférences utilisateur: ${JSON.stringify(memory.user_preferences)}`);
     }
   }
 
