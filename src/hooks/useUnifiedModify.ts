@@ -14,13 +14,22 @@ export interface ASTModification {
   changes?: Record<string, string>;
 }
 
+export interface FileAffected {
+  path: string;
+  description: string;
+  changeType: 'modified' | 'created' | 'deleted';
+}
+
 // Backend SSE event format (before mapping to GenerationEvent)
 interface SSEGenerationEvent {
-  type: 'phase' | 'stream';
+  type: 'phase' | 'stream' | 'file_identified' | 'file_modified';
   phase?: 'analyze' | 'context' | 'generation' | 'validation';
   status?: 'starting' | 'complete';
   message?: string;
   chunk?: string;
+  file?: string;
+  description?: string;
+  changeType?: string;
   data?: any;
 }
 
@@ -42,6 +51,8 @@ export interface CompleteResult {
   modifications: ASTModification[];
   updatedFiles: Record<string, string>;
   message: string;
+  intentMessage?: string;
+  filesAffected?: FileAffected[];
   tokens: TokensData;
   duration: number;
   analysis: AnalysisData;
@@ -50,6 +61,7 @@ export interface CompleteResult {
 export interface UseUnifiedModifyOptions {
   onIntentMessage?: (message: string) => void;
   onGenerationEvent?: (event: SSEGenerationEvent) => void;
+  onFileModified?: (file: string, description: string) => void;
   onASTModifications?: (modifications: ASTModification[], updatedFiles: Record<string, string>) => Promise<void>;
   onTokens?: (tokens: TokensData) => void;
   onError?: (error: string) => void;
@@ -91,6 +103,7 @@ export function useUnifiedModify() {
     const { 
       onIntentMessage, 
       onGenerationEvent, 
+      onFileModified,
       onASTModifications, 
       onTokens, 
       onError,
@@ -206,11 +219,22 @@ export function useUnifiedModify() {
               case 'generation_event':
                 console.log('[useUnifiedModify] Generation event:', data);
                 onGenerationEvent?.(data as SSEGenerationEvent);
+                
+                // 🆕 Gérer les événements de fichiers modifiés
+                if (data.type === 'file_modified' && data.file) {
+                  onFileModified?.(data.file, data.description || '');
+                }
                 break;
 
               case 'message':
-                console.log('[useUnifiedModify] Message:', data.content);
-                onIntentMessage?.(data.content || data.message);
+                console.log('[useUnifiedModify] Message:', data.type, data.content);
+                // 🆕 Gérer les différents types de messages
+                if (data.type === 'intent' || data.type === 'intent_detailed') {
+                  onIntentMessage?.(data.content || data.message);
+                } else if (data.type === 'completion') {
+                  // Le message de conclusion sera dans le résultat final
+                  console.log('[useUnifiedModify] Completion message:', data.content);
+                }
                 break;
 
               case 'tokens':
@@ -223,6 +247,9 @@ export function useUnifiedModify() {
                   success: data.success,
                   modifications: data.modifications?.length,
                   duration: data.duration,
+                  message: data.message,
+                  intentMessage: data.intentMessage,
+                  filesAffected: data.filesAffected?.length,
                 });
                 finalResult = data as CompleteResult;
                 

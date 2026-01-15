@@ -136,7 +136,7 @@ serve(async (req) => {
             type: 'phase',
             phase: 'analyze',
             status: 'starting',
-            message: 'Analyzing request complexity...'
+            message: '🔍 Analyse de votre demande...'
           });
 
           const analysis = analyzeIntent(message, projectFiles);
@@ -145,12 +145,15 @@ serve(async (req) => {
             type: 'phase',
             phase: 'analyze',
             status: 'complete',
+            message: `✅ Demande analysée (${analysis.complexity})`,
             data: analysis
           });
 
+          // 🆕 Envoyer un message d'intention basé sur l'analyse
+          const intentPreview = generateIntentPreview(message, analysis);
           sendEvent('message', {
             type: 'intent',
-            content: `Complexity detected: ${analysis.complexity} (${analysis.intentType})`
+            content: intentPreview
           });
 
           console.log('[unified-modify] Analysis result:', analysis);
@@ -161,7 +164,7 @@ serve(async (req) => {
             type: 'phase',
             phase: 'context',
             status: 'starting',
-            message: 'Building intelligent context...'
+            message: '📂 Identification des fichiers concernés...'
           });
 
           const graph = new DependencyGraph(projectFiles);
@@ -190,10 +193,12 @@ serve(async (req) => {
 
           const optimizedContext = optimizeContext(relevantProjectFiles, analysis.complexity);
 
+          // 🆕 Envoyer les détails des fichiers identifiés
           sendEvent('generation_event', {
             type: 'phase',
             phase: 'context',
             status: 'complete',
+            message: `✅ ${Object.keys(optimizedContext.files).length} fichiers identifiés`,
             data: {
               explicitFiles,
               relevantFiles,
@@ -202,10 +207,14 @@ serve(async (req) => {
             }
           });
 
-          sendEvent('message', {
-            type: 'context',
-            content: `Context built with ${Object.keys(optimizedContext.files).length} files`
-          });
+          // Envoyer les fichiers qui seront modifiés
+          for (const filePath of relevantFiles.slice(0, 5)) {
+            sendEvent('generation_event', {
+              type: 'file_identified',
+              file: filePath,
+              message: `📄 ${filePath}`
+            });
+          }
 
           console.log('[unified-modify] Context built:', {
             explicitFiles: explicitFiles.length,
@@ -219,7 +228,7 @@ serve(async (req) => {
             type: 'phase',
             phase: 'generation',
             status: 'starting',
-            message: 'Generating AST modifications...'
+            message: '✨ Génération des modifications...'
           });
 
           const modelConfig = selectModel(analysis.complexity);
@@ -242,10 +251,8 @@ serve(async (req) => {
             systemPrompt,
             message,
             (chunk) => {
-              sendEvent('generation_event', {
-                type: 'stream',
-                chunk
-              });
+              // Ne pas envoyer les chunks de streaming pour éviter le spam
+              // sendEvent('generation_event', { type: 'stream', chunk });
             }
           );
 
@@ -255,14 +262,22 @@ serve(async (req) => {
             total: generationResult.inputTokens + generationResult.outputTokens
           });
 
+          const parsed = parseASTFromResponse(generationResult.fullResponse);
+
+          // 🆕 Envoyer le message d'intention contextuel de Claude
+          if (parsed.intentMessage) {
+            sendEvent('message', {
+              type: 'intent_detailed',
+              content: parsed.intentMessage
+            });
+          }
+
           sendEvent('generation_event', {
             type: 'phase',
             phase: 'generation',
             status: 'complete',
-            message: 'AST modifications generated'
+            message: `✅ ${parsed.modifications.length} modifications générées`
           });
-
-          const parsed = parseASTFromResponse(generationResult.fullResponse);
 
           if (!parsed.modifications || parsed.modifications.length === 0) {
             sendEvent('error', {
@@ -273,10 +288,16 @@ serve(async (req) => {
             return;
           }
 
-          sendEvent('message', {
-            type: 'generation',
-            content: parsed.message
-          });
+          // 🆕 Envoyer les détails des fichiers affectés
+          for (const fileAffected of parsed.filesAffected || []) {
+            sendEvent('generation_event', {
+              type: 'file_modified',
+              file: fileAffected.path,
+              description: fileAffected.description,
+              changeType: fileAffected.changeType,
+              message: `✏️ ${fileAffected.path}: ${fileAffected.description}`
+            });
+          }
 
           console.log('[unified-modify] Generated modifications:', parsed.modifications.length);
 
@@ -286,7 +307,7 @@ serve(async (req) => {
             type: 'phase',
             phase: 'validation',
             status: 'starting',
-            message: 'Validating and applying modifications...'
+            message: '🔍 Validation des modifications...'
           });
 
           let modifications = parsed.modifications;
@@ -296,7 +317,7 @@ serve(async (req) => {
             console.warn('[unified-modify] Validation failed, attempting auto-fix...');
             sendEvent('message', {
               type: 'autofix',
-              content: 'Auto-fixing validation issues...'
+              content: '🔧 Correction automatique en cours...'
             });
 
             modifications = autoFixIssues(modifications, projectFiles);
@@ -327,12 +348,14 @@ serve(async (req) => {
             type: 'phase',
             phase: 'validation',
             status: 'complete',
-            message: 'Modifications validated and applied'
+            message: '✅ Modifications validées et appliquées'
           });
 
           // ========== COMPLETION ==========
           const duration = Date.now() - startTime;
-          const completionMessage = markAsCompleted(modifications.length, duration);
+
+          // 🆕 Utiliser le message contextuel de Claude au lieu d'un message générique
+          const completionMessage = parsed.message || markAsCompleted(modifications.length, duration);
 
           sendEvent('message', {
             type: 'completion',
@@ -343,7 +366,9 @@ serve(async (req) => {
             success: true,
             modifications,
             updatedFiles: applyResult.updatedFiles,
-            message: parsed.message,
+            message: completionMessage,
+            intentMessage: parsed.intentMessage,
+            filesAffected: parsed.filesAffected,
             tokens: {
               input: generationResult.inputTokens,
               output: generationResult.outputTokens,
@@ -401,3 +426,73 @@ serve(async (req) => {
     );
   }
 });
+
+// 🆕 Génère un aperçu de l'intention basé sur l'analyse
+function generateIntentPreview(message: string, analysis: any): string {
+  const msgLower = message.toLowerCase();
+  
+  // Détecter la langue (simple heuristique)
+  const isFrench = /\b(le|la|les|un|une|des|du|de|en|et|pour|avec|dans|sur|au|aux|ce|cette|ces|je|tu|il|elle|nous|vous|ils|elles|mon|ton|son|notre|votre|leur|qui|que|quoi|dont|où|changer|modifier|ajouter|supprimer|créer|mettre|faire)\b/i.test(message);
+  
+  if (isFrench) {
+    // Messages contextuels en français
+    if (msgLower.includes('couleur') || msgLower.includes('color')) {
+      return `Je vais modifier les couleurs selon votre demande...`;
+    }
+    if (msgLower.includes('bouton') || msgLower.includes('button')) {
+      return `Je vais modifier le(s) bouton(s) comme demandé...`;
+    }
+    if (msgLower.includes('titre') || msgLower.includes('header') || msgLower.includes('heading')) {
+      return `Je vais modifier le titre/header selon vos instructions...`;
+    }
+    if (msgLower.includes('texte') || msgLower.includes('text')) {
+      return `Je vais modifier le texte comme indiqué...`;
+    }
+    if (msgLower.includes('image') || msgLower.includes('photo') || msgLower.includes('logo')) {
+      return `Je vais ajuster l'image/le logo selon votre demande...`;
+    }
+    if (msgLower.includes('taille') || msgLower.includes('size') || msgLower.includes('grand') || msgLower.includes('petit')) {
+      return `Je vais ajuster les dimensions comme demandé...`;
+    }
+    if (msgLower.includes('police') || msgLower.includes('font')) {
+      return `Je vais modifier la police/typographie...`;
+    }
+    if (msgLower.includes('ajouter') || msgLower.includes('créer') || msgLower.includes('add')) {
+      return `Je vais ajouter le nouvel élément demandé...`;
+    }
+    if (msgLower.includes('supprimer') || msgLower.includes('enlever') || msgLower.includes('remove')) {
+      return `Je vais supprimer l'élément indiqué...`;
+    }
+    return `Je vais traiter votre demande...`;
+  } else {
+    // Messages contextuels en anglais
+    if (msgLower.includes('color') || msgLower.includes('colour')) {
+      return `I'll modify the colors as requested...`;
+    }
+    if (msgLower.includes('button')) {
+      return `I'll modify the button(s) as requested...`;
+    }
+    if (msgLower.includes('title') || msgLower.includes('header') || msgLower.includes('heading')) {
+      return `I'll modify the title/header as instructed...`;
+    }
+    if (msgLower.includes('text')) {
+      return `I'll modify the text as indicated...`;
+    }
+    if (msgLower.includes('image') || msgLower.includes('photo') || msgLower.includes('logo')) {
+      return `I'll adjust the image/logo as requested...`;
+    }
+    if (msgLower.includes('size') || msgLower.includes('bigger') || msgLower.includes('smaller')) {
+      return `I'll adjust the dimensions as requested...`;
+    }
+    if (msgLower.includes('font')) {
+      return `I'll modify the font/typography...`;
+    }
+    if (msgLower.includes('add') || msgLower.includes('create')) {
+      return `I'll add the new element as requested...`;
+    }
+    if (msgLower.includes('remove') || msgLower.includes('delete')) {
+      return `I'll remove the indicated element...`;
+    }
+    return `I'll process your request...`;
+  }
+}

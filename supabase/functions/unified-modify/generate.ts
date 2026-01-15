@@ -1,4 +1,4 @@
-// Phase 3: Génération adaptative avec sélection de modèle
+// Phase 3: Génération adaptative avec sélection de modèle et messages contextuels
 
 import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.39.0";
 import { AnalysisResult } from "./analyze.ts";
@@ -19,9 +19,17 @@ export interface ASTModification {
   changes?: Record<string, string>;
 }
 
+export interface FileAffected {
+  path: string;
+  description: string;
+  changeType: 'modified' | 'created' | 'deleted';
+}
+
 export interface GenerationResult {
+  intentMessage: string;
   message: string;
   modifications: ASTModification[];
+  filesAffected: FileAffected[];
 }
 
 export interface StreamingResult {
@@ -66,7 +74,7 @@ export function selectModel(complexity: AnalysisResult['complexity']): ModelConf
   }
 }
 
-// Construction du prompt système
+// Construction du prompt système enrichi pour messages contextuels
 export function buildSystemPrompt(
   complexity: AnalysisResult['complexity'],
   projectFiles: Record<string, string>,
@@ -83,7 +91,7 @@ export function buildSystemPrompt(
     ? `\n## Project Memory\n${projectMemory}\n` 
     : '';
   
-  return `You are an expert web developer. You must generate code modifications in AST JSON format.
+  return `You are an expert web developer. You must generate code modifications in AST JSON format with contextual messages.
 
 ## Detected Complexity: ${complexity.toUpperCase()}
 
@@ -95,11 +103,26 @@ ${filesContext}
 ## Response Format
 You must respond with ONLY valid JSON (no markdown code blocks). The format is:
 {
-  "message": "Brief explanation of what will be done",
+  "intentMessage": "A clear, user-friendly message in the same language as the user request describing what you WILL do (e.g., 'Je vais modifier la couleur du bouton principal en bleu et ajuster le padding')",
+  "message": "A clear, user-friendly conclusion message in the same language as the user request describing what you DID and the key changes made (e.g., 'J'ai changé la couleur du bouton de #333 à #03A5C0 et augmenté le padding de 10px à 16px pour une meilleure lisibilité.')",
+  "filesAffected": [
+    {
+      "path": "styles.css",
+      "description": "Couleur du bouton modifiée de #333 à #03A5C0",
+      "changeType": "modified"
+    }
+  ],
   "modifications": [
     // Array of AST modifications
   ]
 }
+
+## CRITICAL RULES FOR MESSAGES:
+1. **intentMessage**: Write in the SAME LANGUAGE as the user's request. Be specific about WHAT you will change and WHERE.
+2. **message**: Write in the SAME LANGUAGE as the user's request. Summarize the ACTUAL changes made with specific values (colors, sizes, etc.)
+3. **filesAffected**: List EVERY file you modified with a clear description of the change
+4. Never use generic messages like "Modifications applied" or "Changes made"
+5. Always mention specific values, properties, or elements that were changed
 
 ## Modification Types
 
@@ -143,13 +166,13 @@ IMPORTANT: Respond with ONLY valid JSON. No markdown, no code blocks, just raw J
 function getComplexityInstructions(complexity: AnalysisResult['complexity']): string {
   switch (complexity) {
     case 'trivial':
-      return 'Keep it simple. Generate 1-3 modifications maximum. Focus on the exact change requested.';
+      return 'Keep it simple. Generate 1-3 modifications maximum. Focus on the exact change requested. Provide a concise intentMessage and message.';
     case 'simple':
-      return 'Generate 3-8 modifications. Cover the main request and immediate dependencies.';
+      return 'Generate 3-8 modifications. Cover the main request and immediate dependencies. Provide a clear intentMessage and detailed message.';
     case 'moderate':
-      return 'Generate 8-15 modifications. Consider related files and ensure consistency.';
+      return 'Generate 8-15 modifications. Consider related files and ensure consistency. Provide a comprehensive intentMessage and message with all changes listed.';
     case 'complex':
-      return 'Generate 15+ modifications if needed. Thoroughly address all aspects of the request.';
+      return 'Generate 15+ modifications if needed. Thoroughly address all aspects of the request. Provide a detailed intentMessage and message explaining all major changes.';
     default:
       return 'Generate appropriate modifications based on the request complexity.';
   }
@@ -205,7 +228,7 @@ export async function generateWithStreaming(
   };
 }
 
-// Parse le JSON AST depuis la réponse Claude
+// Parse le JSON AST depuis la réponse Claude avec support des nouveaux champs
 export function parseASTFromResponse(response: string): GenerationResult {
   // Regex tolérante pour extraire JSON avec ou sans markdown
   const jsonMatch = response.match(/\{[\s\S]*"modifications"[\s\S]*\}/);
@@ -213,8 +236,10 @@ export function parseASTFromResponse(response: string): GenerationResult {
   if (!jsonMatch) {
     console.error('No JSON found in response:', response.substring(0, 200));
     return {
+      intentMessage: '',
       message: 'Error: No valid JSON found in response',
       modifications: [],
+      filesAffected: [],
     };
   }
   
@@ -224,20 +249,26 @@ export function parseASTFromResponse(response: string): GenerationResult {
     if (!Array.isArray(parsed.modifications)) {
       console.error('Invalid modifications structure:', parsed);
       return {
+        intentMessage: '',
         message: 'Error: Invalid modifications structure',
         modifications: [],
+        filesAffected: [],
       };
     }
     
     return {
+      intentMessage: parsed.intentMessage || '',
       message: parsed.message || 'Modifications generated',
       modifications: parsed.modifications,
+      filesAffected: parsed.filesAffected || [],
     };
   } catch (error) {
     console.error('JSON parse error:', error, 'Response:', response.substring(0, 500));
     return {
+      intentMessage: '',
       message: 'Parse error',
       modifications: [],
+      filesAffected: [],
     };
   }
 }
@@ -270,6 +301,8 @@ export async function generate(
   const result = parseASTFromResponse(streamingResult.fullResponse);
   
   console.log(`[generate] Generated ${result.modifications.length} modifications`);
+  console.log(`[generate] Intent: ${result.intentMessage}`);
+  console.log(`[generate] Message: ${result.message}`);
   
   return {
     result,
