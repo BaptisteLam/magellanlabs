@@ -345,9 +345,9 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
       paths: Object.keys(projectFiles),
     });
 
-    // Si aucun fichier, créer un fallback
+    // Si aucun fichier, retourner un fichier vide minimal (le PreviewPanel affiche GeneratingPreview)
     if (Object.keys(projectFiles).length === 0) {
-      console.warn('⚠️ [SandpackPreview] No project files - creating fallback');
+      console.warn('⚠️ [SandpackPreview] No project files - using minimal placeholder');
       return {
         '/index.html': {
           code: `<!DOCTYPE html>
@@ -355,25 +355,15 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Site en construction</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="/styles.css">
+  <title>Chargement...</title>
+  <style>
+    body { margin: 0; padding: 0; background: transparent; }
+  </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-  <div class="text-center p-8">
-    <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-[#03A5C0]/10 flex items-center justify-center">
-      <svg class="w-8 h-8 text-[#03A5C0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-      </svg>
-    </div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-3">Génération en cours...</h1>
-    <p class="text-gray-600">Votre site sera bientôt prêt.</p>
-  </div>
-</body>
+<body></body>
 </html>`,
           active: true
-        },
-        '/styles.css': { code: BASE_CSS }
+        }
       };
     }
     
