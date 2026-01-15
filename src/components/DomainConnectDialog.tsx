@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Check, Copy, ExternalLink, AlertCircle, Sparkles, Lock, Globe, Clock, Mail } from 'lucide-react';
+import { Loader2, Check, Copy, ExternalLink, AlertCircle, Sparkles, Lock, Globe, Clock, Mail, Zap, Info } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { DOMAIN_CONNECT_PROVIDERS, NON_DOMAIN_CONNECT_PROVIDERS } from '@/lib/domain-connect/discovery.service';
 
 interface DomainConnectDialogProps {
   open: boolean;
@@ -27,6 +27,8 @@ interface DiscoveryResult {
   };
   connectUrl?: string;
   providerName?: string;
+  isDomainConnectProvider?: boolean;
+  templateNotYetSupported?: boolean;
   instructions?: {
     provider: string;
     steps: Array<{
@@ -43,6 +45,14 @@ interface DiscoveryResult {
     notes?: string[];
   };
 }
+
+// Logos des providers Domain Connect supportés
+const PROVIDER_LOGOS: Record<string, string> = {
+  'GoDaddy': 'https://img1.wsimg.com/cdn/Image/All/Logos/1/en-US/8f087ce7-2ff0-4e3f-9199-4d42afd4bc78/GoDaddy-Mascot-Full-Color-Dark-Bkgnd-RGB.png',
+  '1&1 IONOS': 'https://www.ionos.com/favicon.ico',
+  'Plesk': 'https://www.plesk.com/wp-content/uploads/2019/01/plesk-logo.png',
+  'United Domains': 'https://www.united-domains.de/favicon.ico',
+};
 
 export function DomainConnectDialog({
   open,
