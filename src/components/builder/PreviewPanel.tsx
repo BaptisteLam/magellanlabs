@@ -23,22 +23,9 @@ export function PreviewPanel({
   onInspectModeChange = () => {},
   onElementModify,
 }: PreviewPanelProps) {
-  // Afficher GeneratingPreview pendant la génération
-  if (isGenerating) {
+  // Afficher GeneratingPreview pendant la génération OU si aucun fichier n'est disponible
+  if (isGenerating || Object.keys(projectFiles).length === 0) {
     return <GeneratingPreview />;
-  }
-
-  // Si aucun fichier n'est encore disponible, afficher un état de chargement.
-  // (Sinon, on laisse Sandpack tenter le rendu + gérer les erreurs)
-  if (Object.keys(projectFiles).length === 0) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-background">
-        <div className="text-center">
-          <Loader className="animate-spin h-8 w-8 mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Chargement du projet...</p>
-        </div>
-      </div>
-    );
   }
 
   // Preview via Sandpack
