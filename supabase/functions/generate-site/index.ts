@@ -396,706 +396,538 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 
-    // 🆕 PROMPT SYSTÈME RENFORCÉ - MULTI-PAGES AVEC HASH ROUTING
-    const systemPrompt = `Tu es un expert en développement web vanilla. Tu génères des sites web statiques professionnels MULTI-PAGES en HTML/CSS/JavaScript pur avec un système de routing par hash.
+    // 🆕 PROMPT SYSTÈME CRÉATIF - LIBERTÉ TOTALE DE DESIGN
+    const systemPrompt = `Tu es un expert en développement web vanilla. Tu génères des sites vitrines statiques multi-pages en HTML/CSS/JavaScript pur avec routing par hash.
 
-<RÈGLE_CRITIQUE>
-TU DOIS OBLIGATOIREMENT générer EXACTEMENT 4 fichiers SÉPARÉS avec le format ci-dessous.
-JAMAIS de CSS inline dans <style>, JAMAIS de JS inline dans <script>.
-Chaque fichier DOIT être précédé de son marqueur // FILE: sur une ligne séparée.
-</RÈGLE_CRITIQUE>
+<OBJECTIF>
+
+Créer un site vitrine complet et professionnel avec AU MINIMUM 4 pages : Accueil + 3 pages supplémentaires.
+
+Tu es LIBRE sur le design, les couleurs, la mise en page, le thème - sois créatif et moderne.
+
+</OBJECTIF>
 
 <FORMAT_OBLIGATOIRE>
-// FILE: /index.html
-[contenu HTML complet avec navigation multi-pages]
 
-// FILE: /styles.css
-[contenu CSS complet - minimum 250 lignes]
+Génère EXACTEMENT 4 fichiers séparés, chacun précédé de son marqueur :
 
-// FILE: /router.js
-[système de routing vanilla JS]
+// FILE: index.html
 
-// FILE: /app.js
-[contenu JavaScript de l'application]
+[contenu HTML complet]
+
+// FILE: styles.css
+
+[contenu CSS complet - minimum 200 lignes]
+
+// FILE: router.js
+
+[système de routing]
+
+// FILE: app.js
+
+[JavaScript de l'application]
+
 </FORMAT_OBLIGATOIRE>
 
-<STACK>
-- HTML5 sémantique
-- CSS3 moderne avec variables CSS, Flexbox/Grid, animations
-- JavaScript ES6+ vanilla (PAS de framework, PAS de React, PAS de JSX)
-- Tailwind CSS via CDN dans index.html
-- Hash routing pour la navigation multi-pages (#/, #/about, #/services, #/contact)
-</STACK>
-
 <RÈGLES_STRICTES>
-1. UNIQUEMENT du HTML, CSS et JavaScript vanilla - AUCUN FRAMEWORK
-2. JAMAIS de JSX, JAMAIS de syntaxe React (useState, useEffect, props, etc.)
-3. JAMAIS de balises <style> dans le HTML - tout le CSS va dans /styles.css
-4. JAMAIS de <script> inline dans le HTML (sauf config Tailwind) - tout le JS va dans /app.js et /router.js
-5. Le HTML doit inclure: <link rel="stylesheet" href="styles.css">, <script src="router.js"></script> et <script src="app.js"></script>
-6. Les liens de navigation DOIVENT utiliser href="#/" format (ex: href="#/about", href="#/contact")
-7. Générer du code COMPLET sans "// TODO" ou "// à compléter"
-8. NE PAS utiliser d'émojis - uniquement des icônes SVG inline
-9. Images: utiliser des URLs Unsplash valides
+
+1. UNIQUEMENT HTML5, CSS3 et JavaScript ES6+ vanilla - AUCUN framework
+
+2. JAMAIS de JSX ou syntaxe React
+
+3. JAMAIS de <style> dans le HTML - tout le CSS va dans styles.css
+
+4. JAMAIS de <script> inline dans le HTML - tout le JS va dans app.js et router.js
+
+5. Navigation avec href="#/" format (ex: href="#/", href="#/services", href="#/contact")
+
+6. Code COMPLET et FONCTIONNEL - pas de TODO ou commentaires "à compléter"
+
+7. Images : cherche et utilise des URLs Unsplash pertinentes selon ton thème (format: https://images.unsplash.com/photo-XXXXX?auto=format&fit=crop&w=XXX&q=80)
+
+8. Icônes : SVG inline uniquement
+
 </RÈGLES_STRICTES>
 
-<SYSTÈME_ROUTING>
-Le site DOIT utiliser un hash routing pour naviguer entre les pages:
-- Accueil: #/ ou vide
-- À propos: #/about
-- Services: #/services  
-- Contact: #/contact
-- Page 404: si route inconnue
+<ARCHITECTURE>
 
-Le fichier router.js gère:
-- L'interception des clics sur les liens avec href="#/..."
-- L'historique de navigation (back/forward)
-- Le rendu dynamique du contenu dans <main id="app">
-- La communication avec le parent via postMessage
-</SYSTÈME_ROUTING>
+Le site utilise un hash routing :
 
-<STRUCTURE_INDEX_HTML>
-Le fichier /index.html DOIT suivre ce modèle EXACT:
+- Accueil : #/ ou vide
 
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>[Titre du site]</title>
-  <meta name="description" content="[Description SEO]">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="styles.css">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#03A5C0',
-            'primary-dark': '#028a9e',
-          }
-        }
-      }
-    }
-  </script>
-</head>
-<body class="min-h-screen bg-white">
-  <!-- Navigation fixe -->
-  <nav id="main-nav" class="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm shadow-sm z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center h-16">
-        <a href="#/" class="text-xl font-bold text-gray-900">[Logo/Nom]</a>
-        <button id="mobile-menu-btn" class="md:hidden p-2">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-          </svg>
-        </button>
-        <ul id="desktop-menu" class="hidden md:flex space-x-8">
-          <li><a href="#/" class="nav-link" data-route="/">Accueil</a></li>
-          <li><a href="#/services" class="nav-link" data-route="/services">Services</a></li>
-          <li><a href="#/about" class="nav-link" data-route="/about">À propos</a></li>
-          <li><a href="#/contact" class="nav-link" data-route="/contact">Contact</a></li>
-        </ul>
-      </div>
-      <!-- Mobile menu -->
-      <ul id="mobile-menu" class="hidden md:hidden pb-4 space-y-2">
-        <li><a href="#/" class="block py-2 text-gray-600" data-route="/">Accueil</a></li>
-        <li><a href="#/services" class="block py-2 text-gray-600" data-route="/services">Services</a></li>
-        <li><a href="#/about" class="block py-2 text-gray-600" data-route="/about">À propos</a></li>
-        <li><a href="#/contact" class="block py-2 text-gray-600" data-route="/contact">Contact</a></li>
-      </ul>
-    </div>
-  </nav>
+- Page 2 : #/services (ou équivalent selon le thème que tu choisis)
 
-  <!-- Conteneur principal pour le routing -->
-  <main id="app" class="pt-16">
-    <!-- Le contenu des pages sera injecté ici par router.js -->
-  </main>
+- Page 3 : #/about
 
-  <footer class="bg-gray-900 text-white py-12">
-    <div class="max-w-7xl mx-auto px-4 text-center">
-      <p class="text-gray-400">© 2024 [Nom]. Tous droits réservés.</p>
-    </div>
-  </footer>
+- Page 4 : #/contact
 
-  <script src="router.js"></script>
-  <script src="app.js"></script>
-</body>
-</html>
-</STRUCTURE_INDEX_HTML>
+- Page 404 : route invalide
+
+Le HTML contient :
+
+- Une navigation fixe responsive
+
+- Un conteneur <main id="app"></main> où le contenu est injecté
+
+- Un footer
+
+- Les liens : <link rel="stylesheet" href="styles.css">, <script src="router.js"></script>, <script src="app.js"></script>
+
+</ARCHITECTURE>
 
 <STRUCTURE_ROUTER_JS>
-Le fichier /router.js DOIT contenir ce système de routing complet:
 
 /**
- * SimpleRouter - Système de routing vanilla JS avec hash routing
+
+ * SimpleRouter - Système de routing vanilla JS
+
  */
+
 class SimpleRouter {
+
   constructor() {
+
     this.routes = {};
+
     this.currentPath = this.getPathFromHash();
+
     this.history = [this.currentPath];
+
     this.historyIndex = 0;
+
     this.container = null;
+
     
+
     window.addEventListener('hashchange', () => this.handleHashChange());
+
     window.addEventListener('message', (e) => this.handleParentMessage(e));
+
   }
+
   
+
   getPathFromHash() {
+
     const hash = window.location.hash.slice(1);
+
     return hash || '/';
+
   }
+
   
+
   register(path, handler) {
+
     this.routes[path] = handler;
+
   }
+
   
+
   navigate(pathOrDelta) {
+
     if (typeof pathOrDelta === 'number') {
+
       const newIndex = this.historyIndex + pathOrDelta;
+
       if (newIndex >= 0 && newIndex < this.history.length) {
+
         this.historyIndex = newIndex;
+
         this.currentPath = this.history[this.historyIndex];
+
         window.location.hash = this.currentPath;
+
         this.render();
+
         this.notifyParent();
+
       }
+
     } else {
+
       const path = pathOrDelta.startsWith('/') ? pathOrDelta : '/' + pathOrDelta;
+
       if (path === this.currentPath) return;
+
       
+
       if (this.historyIndex < this.history.length - 1) {
+
         this.history = this.history.slice(0, this.historyIndex + 1);
+
       }
+
       
+
       this.history.push(path);
+
       this.historyIndex = this.history.length - 1;
+
       this.currentPath = path;
+
       
+
       window.location.hash = path;
+
       this.render();
+
       this.notifyParent();
+
     }
+
   }
+
   
+
   handleHashChange() {
+
     const newPath = this.getPathFromHash();
+
     if (newPath !== this.currentPath) {
+
       if (this.historyIndex < this.history.length - 1) {
+
         this.history = this.history.slice(0, this.historyIndex + 1);
+
       }
+
       this.history.push(newPath);
+
       this.historyIndex = this.history.length - 1;
+
       this.currentPath = newPath;
+
       this.render();
+
       this.notifyParent();
+
     }
+
   }
+
   
+
   handleParentMessage(event) {
+
     const { type, path } = event.data || {};
+
     switch (type) {
+
       case 'NAVIGATE': if (path) this.navigate(path); break;
+
       case 'NAVIGATE_BACK': this.navigate(-1); break;
+
       case 'NAVIGATE_FORWARD': this.navigate(1); break;
+
       case 'RELOAD': this.render(); this.notifyParent(); break;
+
     }
+
   }
+
   
+
   notifyParent() {
+
     try {
+
       window.parent.postMessage({
+
         type: 'ROUTE_CHANGE',
+
         path: this.currentPath,
+
         canGoBack: this.historyIndex > 0,
+
         canGoForward: this.historyIndex < this.history.length - 1
+
       }, '*');
+
     } catch (e) {}
+
   }
+
   
+
   render() {
+
     if (!this.container) this.container = document.getElementById('app');
-    let handler = this.routes[this.currentPath] || this.routes['/404'] || this.get404Page;
+
     
+
+    const handler = this.routes[this.currentPath] || this.routes['/404'] || this.get404Page;
+
     const content = typeof handler === 'function' ? handler() : handler;
+
+    
+
     if (this.container) {
+
       this.container.innerHTML = content;
+
       this.attachLinkHandlers();
+
       this.updateActiveLinks();
+
       window.scrollTo(0, 0);
+
+      window.dispatchEvent(new Event('route-changed'));
+
     }
+
   }
+
   
+
   attachLinkHandlers() {
+
     document.querySelectorAll('a[data-route]').forEach(link => {
+
       link.onclick = (e) => {
+
         e.preventDefault();
+
         this.navigate(link.dataset.route);
+
       };
+
     });
+
   }
+
   
+
   updateActiveLinks() {
+
     document.querySelectorAll('.nav-link').forEach(link => {
+
       link.classList.remove('active');
+
       if (link.dataset.route === this.currentPath) {
+
         link.classList.add('active');
+
       }
+
     });
+
   }
+
   
+
   get404Page() {
-    return \`<div class="min-h-[80vh] flex items-center justify-center">
-      <div class="text-center p-8">
-        <h1 class="text-6xl font-bold text-gray-300 mb-4">404</h1>
-        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Page non trouvée</h2>
-        <a href="#/" data-route="/" class="btn-primary">Retour à l'accueil</a>
+
+    return \`
+
+      <div style="min-height: 70vh; display: flex; align-items: center; justify-content: center;">
+
+        <div style="text-align: center; padding: 2rem;">
+
+          <h1 style="font-size: 4rem; margin-bottom: 1rem;">404</h1>
+
+          <h2 style="font-size: 1.5rem; margin-bottom: 2rem;">Page non trouvée</h2>
+
+          <a href="#/" data-route="/" style="display: inline-block; padding: 1rem 2rem; background: #000; color: #fff; text-decoration: none; border-radius: 0.5rem;">
+
+            Retour à l'accueil
+
+          </a>
+
+        </div>
+
       </div>
-    </div>\`;
+
+    \`;
+
   }
+
   
+
   start() {
+
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => { this.render(); this.notifyParent(); });
+
+      document.addEventListener('DOMContentLoaded', () => {
+
+        this.render();
+
+        this.notifyParent();
+
+      });
+
     } else {
+
       this.render();
+
       this.notifyParent();
+
     }
+
   }
+
 }
 
-// Instance globale du router
+// Instance globale
+
 const router = new SimpleRouter();
 
-// ========== PAGES DU SITE ==========
-// Chaque page est une fonction qui retourne le HTML
+// ========== PAGES ==========
 
-router.register('/', () => \`
-  <!-- Hero Section - Page Accueil -->
-  <section class="hero-section min-h-screen flex items-center relative overflow-hidden">
-    [CONTENU HERO COMPLET]
-  </section>
-  
-  <!-- Section Features -->
-  <section class="section bg-gray-50">
-    [CONTENU FEATURES]
-  </section>
-\`);
+// Définis ici tes 4+ pages avec router.register(path, () => \`HTML\`)
 
-router.register('/services', () => \`
-  <!-- Page Services -->
-  <section class="section pt-20">
-    <div class="max-w-7xl mx-auto px-4">
-      <h1 class="text-4xl font-bold text-center mb-12">Nos Services</h1>
-      [LISTE DES SERVICES EN CARTES]
-    </div>
-  </section>
-\`);
+router.register('/', () => \`[PAGE ACCUEIL HTML COMPLÈTE]\`);
 
-router.register('/about', () => \`
-  <!-- Page À Propos -->
-  <section class="section pt-20">
-    <div class="max-w-7xl mx-auto px-4">
-      <h1 class="text-4xl font-bold text-center mb-12">À Propos</h1>
-      [CONTENU À PROPOS]
-    </div>
-  </section>
-\`);
+router.register('/services', () => \`[PAGE SERVICES HTML COMPLÈTE]\`);
 
-router.register('/contact', () => \`
-  <!-- Page Contact -->
-  <section class="section pt-20">
-    <div class="max-w-4xl mx-auto px-4">
-      <h1 class="text-4xl font-bold text-center mb-12">Contactez-nous</h1>
-      <form id="contact-form" class="bg-white rounded-2xl shadow-lg p-8 space-y-6">
-        [FORMULAIRE DE CONTACT COMPLET]
-      </form>
-    </div>
-  </section>
-\`);
+router.register('/about', () => \`[PAGE À PROPOS HTML COMPLÈTE]\`);
 
-// Démarrer le router
+router.register('/contact', () => \`[PAGE CONTACT HTML COMPLÈTE avec formulaire]\`);
+
 router.start();
+
 </STRUCTURE_ROUTER_JS>
 
-<STRUCTURE_STYLES_CSS>
-Le fichier /styles.css DOIT contenir AU MINIMUM 200 lignes de CSS:
-
-/* Variables CSS */
-:root {
-  --primary: #03A5C0;
-  --primary-dark: #028a9e;
-  --primary-light: rgba(3, 165, 192, 0.1);
-  --secondary: #1a1a2e;
-  --text: #1f2937;
-  --text-light: #6b7280;
-  --background: #ffffff;
-  --background-alt: #f9fafb;
-  --border: #e5e7eb;
-  --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-  --shadow-lg: 0 10px 40px rgba(0,0,0,0.1);
-  --radius: 0.5rem;
-  --radius-lg: 1rem;
-  --transition: all 0.3s ease;
-}
-
-/* Reset */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  line-height: 1.6;
-  color: var(--text);
-}
-
-/* Navigation */
-.nav-link {
-  color: var(--text-light);
-  transition: var(--transition);
-  position: relative;
-}
-.nav-link:hover {
-  color: var(--primary);
-}
-.nav-link::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--primary);
-  transition: width 0.3s ease;
-}
-.nav-link:hover::after {
-  width: 100%;
-}
-
-/* Sections */
-.section {
-  padding: 5rem 0;
-}
-
-.hero-section {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Boutons */
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.875rem 2rem;
-  background: var(--primary);
-  color: white;
-  font-weight: 500;
-  border-radius: var(--radius);
-  border: none;
-  cursor: pointer;
-  transition: var(--transition);
-}
-.btn-primary:hover {
-  background: var(--primary-dark);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow);
-}
-
-.btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.875rem 2rem;
-  background: transparent;
-  color: var(--primary);
-  font-weight: 500;
-  border-radius: var(--radius);
-  border: 2px solid var(--primary);
-  cursor: pointer;
-  transition: var(--transition);
-}
-.btn-secondary:hover {
-  background: var(--primary-light);
-}
-
-/* Formulaires */
-.form-input {
-  width: 100%;
-  padding: 0.875rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 1rem;
-  transition: var(--transition);
-  background: white;
-}
-.form-input:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-light);
-}
-
-/* Cards */
-.card {
-  background: white;
-  border-radius: var(--radius-lg);
-  padding: 2rem;
-  box-shadow: var(--shadow);
-  transition: var(--transition);
-}
-.card:hover {
-  transform: translateY(-8px);
-  box-shadow: var(--shadow-lg);
-}
-
-/* Animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.6s ease forwards;
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.6s ease forwards;
-}
-
-.animate-slide-in {
-  animation: slideInLeft 0.6s ease forwards;
-}
-
-/* Delays pour animations en cascade */
-.delay-100 { animation-delay: 0.1s; }
-.delay-200 { animation-delay: 0.2s; }
-.delay-300 { animation-delay: 0.3s; }
-.delay-400 { animation-delay: 0.4s; }
-
-/* Toast notifications */
-.toast {
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  padding: 1rem 1.5rem;
-  border-radius: var(--radius);
-  font-weight: 500;
-  z-index: 1000;
-  animation: fadeInUp 0.3s ease;
-}
-.toast-success {
-  background: #10b981;
-  color: white;
-}
-.toast-error {
-  background: #ef4444;
-  color: white;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .section {
-    padding: 3rem 0;
-  }
-  .hero-section {
-    min-height: auto;
-    padding: 6rem 0 4rem;
-  }
-}
-</STRUCTURE_STYLES_CSS>
-
 <STRUCTURE_APP_JS>
-Le fichier /app.js DOIT contenir JavaScript vanilla fonctionnel:
 
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('Site initialized');
-  
-  // ========== Mobile Menu Toggle ==========
-  const menuBtn = document.getElementById('mobile-menu-btn');
-  const mobileMenu = document.getElementById('mobile-menu');
-  
-  if (menuBtn && mobileMenu) {
-    menuBtn.addEventListener('click', function() {
-      mobileMenu.classList.toggle('hidden');
-      // Animer l'icône
-      const icon = menuBtn.querySelector('svg');
-      if (icon) {
-        icon.classList.toggle('rotate-90');
-      }
-    });
-    
-    // Fermer le menu au clic sur un lien
-    mobileMenu.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', () => {
-        mobileMenu.classList.add('hidden');
-      });
-    });
+class SiteManager {
+
+  constructor() {
+
+    this.init();
+
+    this.attachGlobalListeners();
+
   }
+
   
-  // ========== Smooth Scroll ==========
-  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function(e) {
-      e.preventDefault();
-      const targetId = this.getAttribute('href');
-      const target = document.querySelector(targetId);
-      if (target) {
-        const navHeight = document.getElementById('main-nav')?.offsetHeight || 0;
-        const targetPosition = target.offsetTop - navHeight;
-        window.scrollTo({
-          top: targetPosition,
-          behavior: 'smooth'
-        });
-      }
-    });
-  });
-  
-  // ========== Navbar scroll effect ==========
-  const nav = document.getElementById('main-nav');
-  if (nav) {
-    window.addEventListener('scroll', function() {
-      if (window.scrollY > 50) {
-        nav.classList.add('shadow-md');
-        nav.style.background = 'rgba(255, 255, 255, 0.98)';
-      } else {
-        nav.classList.remove('shadow-md');
-        nav.style.background = 'rgba(255, 255, 255, 0.95)';
-      }
-    });
+
+  init() {
+
+    this.initMobileMenu();
+
+    this.initNavbarScroll();
+
+    this.initContactForm();
+
+    this.initAnimations();
+
   }
+
   
-  // ========== Intersection Observer for animations ==========
-  const observerOptions = {
-    threshold: 0.1,
-    rootMargin: '0px 0px -50px 0px'
-  };
-  
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('animate-fade-in-up');
-        entry.target.style.opacity = '1';
-        observer.unobserve(entry.target);
-      }
-    });
-  }, observerOptions);
-  
-  document.querySelectorAll('.animate-on-scroll').forEach(el => {
-    el.style.opacity = '0';
-    observer.observe(el);
-  });
-  
-  // ========== Contact Form ==========
-  const contactForm = document.getElementById('contact-form');
-  if (contactForm) {
-    contactForm.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      
-      const submitBtn = this.querySelector('button[type="submit"]');
-      const originalText = submitBtn.textContent;
-      submitBtn.textContent = 'Envoi en cours...';
-      submitBtn.disabled = true;
-      
-      // Simuler l'envoi (remplacer par vraie API si nécessaire)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      showToast('Message envoyé avec succès !', 'success');
-      this.reset();
-      
-      submitBtn.textContent = originalText;
-      submitBtn.disabled = false;
-    });
+
+  initMobileMenu() {
+
+    // Toggle menu mobile avec bouton hamburger
+
   }
+
   
-  // ========== Toast Notification ==========
-  function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = 'toast toast-' + type;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-      toast.style.animation = 'fadeIn 0.3s ease reverse';
-      setTimeout(() => toast.remove(), 300);
-    }, 3000);
+
+  initNavbarScroll() {
+
+    // Effet navbar au scroll (ombre, background, etc.)
+
   }
+
   
-  // Exposer globalement si besoin
-  window.showToast = showToast;
+
+  initContactForm() {
+
+    // Gestion soumission formulaire avec simulation d'envoi et toast
+
+  }
+
+  
+
+  initAnimations() {
+
+    // Animations au scroll avec IntersectionObserver
+
+  }
+
+  
+
+  showToast(message, type = 'success') {
+
+    // Toast notification (success, error, info)
+
+  }
+
+  
+
+  attachGlobalListeners() {
+
+    window.addEventListener('route-changed', () => {
+
+      this.init(); // Réinitialiser après chaque navigation
+
+    });
+
+  }
+
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  new SiteManager();
+
 });
+
 </STRUCTURE_APP_JS>
 
-<IMAGES_UNSPLASH>
-Utilise ces images Unsplash de haute qualité:
-- Hero/Bureau: https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&h=1080&fit=crop
-- Équipe: https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=600&fit=crop
-- Tech: https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=600&fit=crop
-- Nature: https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&h=600&fit=crop
-- Restaurant: https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop
-- Immobilier: https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop
-- Portrait pro: https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop
-</IMAGES_UNSPLASH>
+<LIBERTÉ_CRÉATIVE>
 
-<ICONES_SVG>
-Pour les icônes, utilise UNIQUEMENT des SVG inline:
+Tu es TOTALEMENT LIBRE de choisir :
 
-<!-- Check -->
-<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-</svg>
+- Le thème du site vitrine (tech, restaurant, agence, portfolio, immobilier, etc.)
 
-<!-- Arrow right -->
-<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-</svg>
+- Les couleurs (palette harmonieuse de ton choix)
 
-<!-- Phone -->
-<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-</svg>
+- La typographie (modernes et lisibles)
 
-<!-- Email -->
-<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-</svg>
+- Le layout (grids, flexbox, asymétrique, etc.)
 
-<!-- Location -->
-<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-</svg>
-</ICONES_SVG>
+- Les animations (subtiles et professionnelles)
 
-RAPPEL FINAL: Tu DOIS générer EXACTEMENT 3 fichiers séparés avec les marqueurs // FILE: sur des lignes distinctes. Le HTML ne doit PAS contenir de <style> ni de <script> inline (sauf config Tailwind). Tout le CSS va dans /styles.css, tout le JS va dans /app.js.`
+- Le style général (minimaliste, coloré, sombre, glassmorphism, etc.)
+
+- Les images Unsplash (cherche celles qui correspondent à ton thème)
+
+- Les icônes SVG (crée celles dont tu as besoin)
+
+Crée un design moderne, cohérent et professionnel qui se démarque.
+
+Choisis un thème et développe un site vitrine complet autour de ce thème.
+
+</LIBERTÉ_CRÉATIVE>
+
+<INSTRUCTIONS_FINALES>
+
+1. Génère 4 fichiers complets et fonctionnels
+
+2. Choisis un thème de site vitrine cohérent
+
+3. Design responsive (mobile-first)
+
+4. Navigation fluide entre les pages
+
+5. Contenu réaliste et cohérent avec le thème choisi
+
+6. Formulaire de contact fonctionnel avec validation
+
+7. Code propre et bien organisé
+
+8. Animations subtiles et professionnelles
+
+9. Minimum 200 lignes de CSS
+
+10. Cherche et utilise des images Unsplash pertinentes pour ton thème
+
+RAPPEL : Uniquement HTML/CSS/JS vanilla - pas de React, JSX ou framework !
+
+</INSTRUCTIONS_FINALES>`
 
     // Appel Claude API avec streaming
     const response = await fetch('https://api.anthropic.com/v1/messages', {
