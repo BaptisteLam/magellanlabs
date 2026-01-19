@@ -1,6 +1,5 @@
-import { InteractiveSandpackPreview } from '@/components/InteractiveSandpackPreview';
+import { E2BPreview } from '@/components/E2BPreview';
 import { GeneratingPreview } from '@/components/GeneratingPreview';
-import type { ElementInfo } from '@/components/InteractiveSandpackPreview';
 
 interface PreviewPanelProps {
   projectFiles: Record<string, string>;
@@ -9,31 +8,24 @@ interface PreviewPanelProps {
   inspectMode?: boolean;
   previewMode?: 'desktop' | 'mobile';
   onInspectModeChange?: (mode: boolean) => void;
-  onElementModify?: (prompt: string, elementInfo: ElementInfo) => void;
+  onElementModify?: (prompt: string, elementInfo: any) => void;
 }
 
 export function PreviewPanel({
   projectFiles,
   isGenerating,
-  isDark,
-  inspectMode = false,
   previewMode = 'desktop',
-  onInspectModeChange = () => {},
-  onElementModify,
 }: PreviewPanelProps) {
   // Afficher GeneratingPreview pendant la génération OU si aucun fichier n'est disponible
   if (isGenerating || Object.keys(projectFiles).length === 0) {
     return <GeneratingPreview />;
   }
 
-  // Preview via Sandpack
+  // Preview via E2B
   return (
-    <InteractiveSandpackPreview
+    <E2BPreview
       projectFiles={projectFiles}
       previewMode={previewMode}
-      inspectMode={inspectMode}
-      onInspectModeChange={onInspectModeChange}
-      onElementModify={onElementModify}
     />
   );
 }

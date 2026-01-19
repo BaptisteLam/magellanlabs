@@ -50,3 +50,12 @@ verify_jwt = true
 
 [functions.publish-to-netlify]
 verify_jwt = true
+
+[functions.preview-sandbox]
+verify_jwt = true
+
+[functions.close-sandbox]
+verify_jwt = true
+
+[functions.update-sandbox]
+verify_jwt = true
