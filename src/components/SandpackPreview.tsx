@@ -347,21 +347,10 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
 
     // Si aucun fichier, retourner un fichier vide minimal (le PreviewPanel affiche GeneratingPreview)
     if (Object.keys(projectFiles).length === 0) {
-      console.warn('⚠️ [SandpackPreview] No project files - using minimal placeholder');
+      console.warn('⚠️ [SandpackPreview] No project files - returning empty (GeneratingPreview handles this)');
       return {
         '/index.html': {
-          code: `<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chargement...</title>
-  <style>
-    body { margin: 0; padding: 0; background: transparent; }
-  </style>
-</head>
-<body></body>
-</html>`,
+          code: `<!DOCTYPE html><html><head><style>body{margin:0;background:transparent;}</style></head><body></body></html>`,
           active: true
         }
       };
@@ -393,25 +382,10 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
     if (files['/index.html']) {
       files['/index.html'].active = true;
     } else {
-      // Créer un index.html de fallback
-      console.warn('⚠️ [SandpackPreview] No index.html found - creating fallback');
+      // Créer un index.html vide - le PreviewPanel affiche GeneratingPreview si pas de fichiers valides
+      console.warn('⚠️ [SandpackPreview] No index.html found - creating empty fallback');
       files['/index.html'] = {
-        code: `<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Site</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
-  <div id="app">
-    <h1>Contenu en cours de génération...</h1>
-  </div>
-  <script src="/app.js"></script>
-</body>
-</html>`,
+        code: `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Génération...</title><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="/styles.css"></head><body style="margin:0;background:transparent;"><div id="app"></div><script src="/app.js"></script></body></html>`,
         active: true
       };
     }
