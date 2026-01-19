@@ -34,6 +34,7 @@ export interface UseGenerateSiteOptions {
   onError?: (error: string) => void;
   onComplete?: (result: GenerateSiteResult) => void;
   onGenerationEvent?: (event: GenerationEvent) => void;
+  onProjectName?: (name: string) => void;
 }
 
 // ============= Hook =============
@@ -61,7 +62,7 @@ export function useGenerateSite() {
     options: UseGenerateSiteOptions = {}
   ): Promise<GenerateSiteResult | null> => {
     const { prompt, sessionId } = params;
-    const { onProgress, onFiles, onTokens, onError, onComplete, onGenerationEvent } = options;
+    const { onProgress, onFiles, onTokens, onError, onComplete, onGenerationEvent, onProjectName } = options;
 
     setIsGenerating(true);
     setProgress('Starting generation...');
@@ -273,6 +274,14 @@ export function useGenerateSite() {
                   console.log('[useGenerateSite] Generation event:', data.data);
                   if (data.data) {
                     onGenerationEvent?.(data.data);
+                  }
+                  break;
+
+                case 'project_name':
+                  // Nom du projet généré par Claude
+                  console.log('[useGenerateSite] Project name received:', data.data?.name);
+                  if (data.data?.name) {
+                    onProjectName?.(data.data.name);
                   }
                   break;
 

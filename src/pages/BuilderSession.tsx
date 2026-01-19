@@ -836,6 +836,10 @@ export default function BuilderSession() {
             return prev;
           });
         },
+        onProjectName: (name) => {
+          console.log('📛 [BuilderSession] Project name received:', name);
+          setWebsiteTitle(name);
+        },
         onProgress: (content) => {
           console.log('📝 Progress:', content.length, 'characters');
         },

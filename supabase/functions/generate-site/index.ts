@@ -617,6 +617,65 @@ RAPPEL :
           data: { sessionId, phase: 'analyzing' }
         })}\n\n`));
 
+        // Générer le nom du projet en parallèle
+        let projectName: string | null = null;
+        const generateProjectName = async () => {
+          try {
+            console.log('[generate-site] Generating project name...');
+            const nameResponse = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: {
+                'x-api-key': ANTHROPIC_API_KEY,
+                'anthropic-version': '2023-06-01',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'claude-3-5-haiku-latest',
+                max_tokens: 50,
+                messages: [{ 
+                  role: 'user', 
+                  content: `Génère un nom de projet court (2-4 mots max, format slug avec tirets). Pas de guillemets, pas de ponctuation.
+Exemples: mon-cabinet-avocat, sportcoach-app, luxestate-immo
+Pour: "${prompt.substring(0, 200)}"`
+                }],
+              }),
+            });
+            
+            if (nameResponse.ok) {
+              const data = await nameResponse.json();
+              const rawName = data.content[0]?.text?.trim() || '';
+              // Nettoyer et formater en slug
+              projectName = rawName
+                .toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .substring(0, 30);
+              
+              console.log('[generate-site] Generated project name:', projectName);
+              
+              // Sauvegarder immédiatement dans la DB
+              if (sessionId && projectName) {
+                await supabaseClient
+                  .from('build_sessions')
+                  .update({ title: projectName })
+                  .eq('id', sessionId);
+                
+                // Envoyer au frontend
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'project_name',
+                  data: { name: projectName }
+                })}\n\n`));
+              }
+            }
+          } catch (e) {
+            console.error('[generate-site] Error generating project name:', e);
+          }
+        };
+        
+        // Lancer la génération du nom en parallèle (non-bloquant)
+        generateProjectName();
+
         safeEnqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'generation_event',
           data: { type: 'analyze', message: 'Analyse de votre demande', status: 'in-progress', phase: 'analyzing' }
