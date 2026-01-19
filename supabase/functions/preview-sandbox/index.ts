@@ -138,6 +138,52 @@ function processHTMLFile(htmlContent: string, cssContent: string, jsContent: str
   return html;
 }
 
+// Fonction pour écrire un fichier via l'API E2B
+async function writeFileToSandbox(
+  sandboxId: string, 
+  filePath: string, 
+  content: string, 
+  apiKey: string
+): Promise<boolean> {
+  // Encoder le contenu en base64
+  const encoder = new TextEncoder();
+  const data = encoder.encode(content);
+  const base64Content = btoa(String.fromCharCode(...data));
+  
+  const response = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/filesystem`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': apiKey,
+    },
+    body: JSON.stringify({
+      files: [{
+        path: filePath,
+        data: base64Content
+      }]
+    }),
+  });
+
+  if (!response.ok) {
+    // Essayer l'ancienne API comme fallback
+    const fallbackResponse = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/files?path=${encodeURIComponent(filePath)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'X-API-Key': apiKey,
+      },
+      body: content,
+    });
+    
+    if (!fallbackResponse.ok) {
+      console.error(`[preview-sandbox] Failed to write ${filePath}:`, await fallbackResponse.text());
+      return false;
+    }
+  }
+  
+  return true;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -203,27 +249,6 @@ serve(async (req) => {
     // Traiter et écrire chaque fichier HTML
     const writtenPages: string[] = [];
     
-    for (const htmlFile of htmlFiles) {
-      const processedHTML = processHTMLFile(htmlFile.content, cssContent, jsContent);
-      const filePath = htmlFile.path.startsWith('/') ? htmlFile.path : `/${htmlFile.path}`;
-      
-      const writeResponse = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/files?path=/home/user${filePath}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          'X-API-Key': E2B_API_KEY,
-        },
-        body: processedHTML,
-      });
-
-      if (writeResponse.ok) {
-        writtenPages.push(filePath);
-        console.log('[preview-sandbox] Written:', filePath);
-      } else {
-        console.error('[preview-sandbox] Failed to write:', filePath);
-      }
-    }
-
     // Si aucun fichier HTML, créer un index.html par défaut
     if (htmlFiles.length === 0) {
       const defaultHTML = processHTMLFile(`<!DOCTYPE html>
@@ -241,62 +266,62 @@ serve(async (req) => {
 </body>
 </html>`, cssContent, jsContent);
 
-      await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/files?path=/home/user/index.html`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          'X-API-Key': E2B_API_KEY,
-        },
-        body: defaultHTML,
-      });
-      writtenPages.push('/index.html');
+      const success = await writeFileToSandbox(sandboxId, '/home/user/index.html', defaultHTML, E2B_API_KEY);
+      if (success) writtenPages.push('/index.html');
+    } else {
+      for (const htmlFile of htmlFiles) {
+        const processedHTML = processHTMLFile(htmlFile.content, cssContent, jsContent);
+        const fileName = htmlFile.path.replace(/^\//, '');
+        const filePath = `/home/user/${fileName}`;
+        
+        const success = await writeFileToSandbox(sandboxId, filePath, processedHTML, E2B_API_KEY);
+        if (success) {
+          writtenPages.push(`/${fileName}`);
+          console.log('[preview-sandbox] Written:', fileName);
+        } else {
+          console.error('[preview-sandbox] Failed to write:', fileName);
+        }
+      }
     }
 
     // Écrire les autres fichiers (CSS, JS séparés, images, etc.)
     for (const file of otherFiles) {
-      const filePath = file.path.startsWith('/') ? file.path : `/${file.path}`;
-      await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/files?path=/home/user${filePath}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          'X-API-Key': E2B_API_KEY,
-        },
-        body: file.content,
-      });
+      const fileName = file.path.replace(/^\//, '');
+      await writeFileToSandbox(sandboxId, `/home/user/${fileName}`, file.content, E2B_API_KEY);
     }
 
-    // Démarrer un serveur HTTP
-    const startServerResponse = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/commands`, {
+    // Démarrer un serveur HTTP en background
+    const startServerResponse = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/process`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-API-Key': E2B_API_KEY,
       },
       body: JSON.stringify({
-        cmd: 'cd /home/user && python3 -m http.server 3000 &',
-        timeout: 10,
+        cmd: 'python3 -m http.server 3000',
+        cwd: '/home/user',
         background: true,
       }),
     });
 
     if (!startServerResponse.ok) {
       console.log('[preview-sandbox] Python server failed, trying npx serve...');
-      await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/commands`, {
+      await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/process`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': E2B_API_KEY,
         },
         body: JSON.stringify({
-          cmd: 'cd /home/user && npx -y serve -p 3000 &',
-          timeout: 30,
+          cmd: 'npx -y serve -p 3000',
+          cwd: '/home/user',
           background: true,
         }),
       });
     }
 
     // Attendre que le serveur démarre
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     const previewUrl = `https://${sandboxId}-3000.e2b.dev`;
     
