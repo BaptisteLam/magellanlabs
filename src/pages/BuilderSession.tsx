@@ -104,6 +104,11 @@ export default function BuilderSession() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [showPublishSuccess, setShowPublishSuccess] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [lastPublishResult, setLastPublishResult] = useState<{
+    publicUrl: string;
+    cloudflareUrl?: string;
+    subdomain?: string;
+  } | null>(null);
 
   // Hook optimisé pour la gestion des fichiers avec cache et sync
   const {
@@ -1755,20 +1760,35 @@ export default function BuilderSession() {
       }
 
       if (result.url) {
+        // Stocker les résultats de publication
+        setLastPublishResult({
+          publicUrl: result.url,
+          cloudflareUrl: result.cloudflareUrl,
+          subdomain: result.subdomain
+        });
         setDeployedUrl(result.url);
 
         // Sauvegarder le titre si nécessaire
         if (!websiteTitle || websiteTitle === 'Nouveau projet' || websiteTitle.trim() === '') {
+          const siteName = (websiteTitle || 'mon-projet')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9\s-]/g, '')
+            .trim()
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .substring(0, 50);
           const formattedTitle = siteName.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
           setWebsiteTitle(formattedTitle);
           await supabase.from('build_sessions').update({
             title: formattedTitle,
-            cloudflare_deployment_url: result.url,
+            cloudflare_deployment_url: result.cloudflareUrl || result.url,
             public_url: result.url
           }).eq('id', sessionId);
         } else {
           await supabase.from('build_sessions').update({
-            cloudflare_deployment_url: result.url,
+            cloudflare_deployment_url: result.cloudflareUrl || result.url,
             public_url: result.url
           }).eq('id', sessionId);
         }
@@ -2181,7 +2201,15 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
       </Dialog>
 
       {/* Dialog de succès de publication */}
-      <PublishSuccessDialog open={showPublishSuccess} onOpenChange={setShowPublishSuccess} publicUrl={deployedUrl || ''} projectName={cloudflareProjectName || websiteTitle} sessionId={sessionId} cloudflareProjectName={cloudflareProjectName || undefined} />
+      <PublishSuccessDialog 
+        open={showPublishSuccess} 
+        onOpenChange={setShowPublishSuccess} 
+        publicUrl={lastPublishResult?.publicUrl || deployedUrl || ''} 
+        cloudflareUrl={lastPublishResult?.cloudflareUrl}
+        projectName={cloudflareProjectName || websiteTitle} 
+        sessionId={sessionId} 
+        cloudflareProjectName={cloudflareProjectName || undefined} 
+      />
 
       {/* Dialog historique des versions */}
       <VersionHistory
