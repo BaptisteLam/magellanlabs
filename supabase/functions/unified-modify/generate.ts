@@ -78,7 +78,8 @@ export function selectModel(complexity: AnalysisResult['complexity']): ModelConf
 export function buildSystemPrompt(
   complexity: AnalysisResult['complexity'],
   projectFiles: Record<string, string>,
-  projectMemory?: string
+  projectMemory?: string,
+  conversationHistory?: Array<{ role: string; content: string }>
 ): string {
   const complexityInstructions = getComplexityInstructions(complexity);
   
@@ -91,11 +92,22 @@ export function buildSystemPrompt(
     ? `\n## Project Memory\n${projectMemory}\n` 
     : '';
   
+  // P0: Ajouter l'historique de conversation au contexte
+  let conversationSection = '';
+  if (conversationHistory && conversationHistory.length > 0) {
+    const formattedHistory = conversationHistory
+      .slice(-5) // Limiter aux 5 derniers messages
+      .map(msg => `[${msg.role.toUpperCase()}]: ${msg.content}`)
+      .join('\n');
+    conversationSection = `\n## Recent Conversation History\nUse this context to understand the user's intent and maintain consistency with previous requests:\n${formattedHistory}\n`;
+  }
+  
   return `You are an expert web developer. You must generate code modifications in AST JSON format with contextual messages.
 
 ## Detected Complexity: ${complexity.toUpperCase()}
 
 ${memorySection}
+${conversationSection}
 
 ## Project Files
 ${filesContext}

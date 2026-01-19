@@ -1172,11 +1172,21 @@ export default function BuilderSession() {
       total: 0
     };
     try {
+      // P0: Construire l'historique de conversation pour le contexte Claude
+      const conversationHistory = messages
+        .filter(m => typeof m.content === 'string' && m.content.trim())
+        .slice(-5) // Limiter aux 5 derniers messages
+        .map(m => ({
+          role: m.role,
+          content: typeof m.content === 'string' ? m.content : ''
+        }));
+
       const result = await unifiedModify.unifiedModify({
         message: userPrompt,
         projectFiles,
         sessionId: sessionId!,
-        memory
+        memory,
+        conversationHistory // P0: Passer l'historique de conversation
       }, {
         onIntentMessage: message => {
           console.log('💬 Intent:', message);

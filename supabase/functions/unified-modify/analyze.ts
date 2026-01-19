@@ -9,7 +9,7 @@ export interface AnalysisResult {
   detectedPatterns: string[];
 }
 
-// Patterns simples (+15 points chacun)
+// Patterns simples (+15 points chacun) - P1: Enrichi avec plus de patterns FR/EN
 const SIMPLE_PATTERNS = [
   /chang(e|er|é)?\s*(la|le|les)?\s*couleur/i,
   /modifi(e|er|é)?\s*(le|la|les)?\s*texte/i,
@@ -26,6 +26,18 @@ const SIMPLE_PATTERNS = [
   /font.*size/i,
   /margin|padding/i,
   /border.*radius/i,
+  // P1: Nouveaux patterns
+  /responsive|mobile|tablet/i,
+  /hover|survol|effet/i,
+  /gradient|dégradé/i,
+  /dark.*mode|mode.*sombre/i,
+  /espacement|spacing/i,
+  /arrondi|rounded/i,
+  /ombre|shadow/i,
+  /centrer|center/i,
+  /alignement|align/i,
+  /largeur|width/i,
+  /hauteur|height/i,
 ];
 
 // Patterns complexes (-20 points chacun)
