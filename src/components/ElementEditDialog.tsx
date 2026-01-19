@@ -4,7 +4,18 @@ import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Code2, Tag, FileText } from 'lucide-react';
-import type { ElementInfo } from './InteractiveSandpackPreview';
+
+// ElementInfo type définition locale (anciennement dans InteractiveSandpackPreview)
+export interface ElementInfo {
+  tagName: string;
+  textContent: string;
+  classList: string[];
+  path: string;
+  innerHTML: string;
+  id?: string;
+  elementType?: string;
+  isInteractive?: boolean;
+}
 
 interface ElementEditDialogProps {
   isOpen: boolean;

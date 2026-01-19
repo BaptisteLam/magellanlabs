@@ -27,39 +27,113 @@ function normalizeFiles(files: ProjectFile[] | Record<string, string>): ProjectF
   }));
 }
 
-// Générer le HTML complet avec CSS et JS injectés
-function generateCompleteHTML(files: ProjectFile[]): string {
-  let html = files.find(f => f.path === 'index.html' || f.path === '/index.html')?.content || '';
-  const css = files.find(f => f.path === 'styles.css' || f.path === '/styles.css')?.content || '';
-  const js = files.find(f => f.path === 'app.js' || f.path === '/app.js')?.content || '';
-  
-  if (!html) {
-    // HTML par défaut si manquant
-    html = `<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Preview</title>
-</head>
-<body>
-  <div id="app">
-    <h1>Aucun contenu</h1>
-    <p>Le fichier index.html n'a pas été généré.</p>
-  </div>
-</body>
-</html>`;
+// Script de navigation à injecter dans chaque page HTML
+const NAVIGATION_SCRIPT = `
+<script>
+(function() {
+  // Notifier le parent du chargement de la page
+  function notifyParent() {
+    try {
+      window.parent.postMessage({
+        type: 'PAGE_LOADED',
+        path: window.location.pathname.replace('/home/user', '') || '/',
+        title: document.title || 'Preview'
+      }, '*');
+    } catch (e) {
+      console.error('[E2B Nav] Error notifying parent:', e);
+    }
   }
 
+  // Écouter les messages de navigation du parent
+  window.addEventListener('message', function(e) {
+    if (!e.data || !e.data.type) return;
+    
+    switch (e.data.type) {
+      case 'NAVIGATE':
+        if (e.data.path) {
+          let targetPath = e.data.path;
+          if (!targetPath.endsWith('.html') && targetPath !== '/') {
+            targetPath = targetPath + '.html';
+          }
+          if (targetPath === '/') targetPath = '/index.html';
+          window.location.href = targetPath;
+        }
+        break;
+      case 'RELOAD':
+        window.location.reload();
+        break;
+    }
+  });
+
+  // Intercepter les clics sur les liens internes pour navigation fluide
+  document.addEventListener('click', function(e) {
+    const link = e.target.closest('a');
+    if (link && link.href) {
+      const url = new URL(link.href);
+      // Lien interne
+      if (url.origin === window.location.origin) {
+        e.preventDefault();
+        const path = url.pathname;
+        window.parent.postMessage({
+          type: 'INTERNAL_NAVIGATION',
+          path: path
+        }, '*');
+        window.location.href = path;
+      }
+    }
+  });
+
+  // Notifier au chargement
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', notifyParent);
+  } else {
+    notifyParent();
+  }
+  
+  // Aussi notifier après le load complet
+  window.addEventListener('load', notifyParent);
+})();
+</script>
+`;
+
+// Injecter le script de navigation dans le HTML
+function injectNavigationScript(html: string): string {
+  // Injecter avant </body>
+  if (html.includes('</body>')) {
+    return html.replace('</body>', NAVIGATION_SCRIPT + '</body>');
+  }
+  // Sinon ajouter à la fin
+  return html + NAVIGATION_SCRIPT;
+}
+
+// Générer le HTML complet avec CSS et JS injectés
+function processHTMLFile(htmlContent: string, cssContent: string, jsContent: string): string {
+  let html = htmlContent;
+  
   // Injecter le CSS dans le head si pas déjà présent
-  if (css && !html.includes('<style>') && !html.includes('styles.css')) {
-    html = html.replace('</head>', `<style>\n${css}\n</style>\n</head>`);
+  if (cssContent && !html.includes('styles.css') && !html.includes('<link rel="stylesheet"')) {
+    const styleTag = `<style>\n${cssContent}\n</style>`;
+    if (html.includes('</head>')) {
+      html = html.replace('</head>', styleTag + '\n</head>');
+    } else if (html.includes('<body')) {
+      html = html.replace(/<body([^>]*)>/, `<head>${styleTag}</head><body$1>`);
+    } else {
+      html = styleTag + '\n' + html;
+    }
   }
 
   // Injecter le JS avant </body> si pas déjà présent
-  if (js && !html.includes('<script>') && !html.includes('app.js')) {
-    html = html.replace('</body>', `<script>\n${js}\n</script>\n</body>`);
+  if (jsContent && !html.includes('app.js') && !html.includes('<script src=')) {
+    const scriptTag = `<script>\n${jsContent}\n</script>`;
+    if (html.includes('</body>')) {
+      html = html.replace('</body>', scriptTag + '\n</body>');
+    } else {
+      html = html + '\n' + scriptTag;
+    }
   }
+
+  // Injecter le script de navigation
+  html = injectNavigationScript(html);
 
   return html;
 }
@@ -86,12 +160,20 @@ serve(async (req) => {
     const normalizedFiles = normalizeFiles(files);
     console.log('[preview-sandbox] Processing', normalizedFiles.length, 'files');
 
-    // Générer le HTML complet avec CSS/JS injectés
-    const completeHTML = generateCompleteHTML(normalizedFiles);
-    
-    console.log('[preview-sandbox] Generated HTML length:', completeHTML.length);
+    // Séparer les fichiers par type
+    const htmlFiles = normalizedFiles.filter(f => f.path.endsWith('.html'));
+    const cssFile = normalizedFiles.find(f => f.path === 'styles.css' || f.path === 'style.css');
+    const jsFile = normalizedFiles.find(f => f.path === 'app.js' || f.path === 'main.js' || f.path === 'script.js');
+    const otherFiles = normalizedFiles.filter(f => 
+      !f.path.endsWith('.html') && 
+      f.path !== 'styles.css' && f.path !== 'style.css' &&
+      f.path !== 'app.js' && f.path !== 'main.js' && f.path !== 'script.js'
+    );
 
-    // Créer une sandbox E2B avec le template de base
+    const cssContent = cssFile?.content || '';
+    const jsContent = jsFile?.content || '';
+
+    // Créer une sandbox E2B
     const createResponse = await fetch('https://api.e2b.dev/sandboxes', {
       method: 'POST',
       headers: {
@@ -99,7 +181,7 @@ serve(async (req) => {
         'X-API-Key': E2B_API_KEY,
       },
       body: JSON.stringify({
-        templateID: 'base', // Template de base avec Node.js
+        templateID: 'base',
         timeout: 300, // 5 minutes
         metadata: {
           sessionId: sessionId || 'unknown'
@@ -118,36 +200,72 @@ serve(async (req) => {
     
     console.log('[preview-sandbox] Created sandbox:', sandboxId);
 
-    // Écrire le fichier HTML principal
-    const writeResponse = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/files?path=/home/user/index.html`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'X-API-Key': E2B_API_KEY,
-      },
-      body: completeHTML,
-    });
+    // Traiter et écrire chaque fichier HTML
+    const writtenPages: string[] = [];
+    
+    for (const htmlFile of htmlFiles) {
+      const processedHTML = processHTMLFile(htmlFile.content, cssContent, jsContent);
+      const filePath = htmlFile.path.startsWith('/') ? htmlFile.path : `/${htmlFile.path}`;
+      
+      const writeResponse = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/files?path=/home/user${filePath}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-API-Key': E2B_API_KEY,
+        },
+        body: processedHTML,
+      });
 
-    if (!writeResponse.ok) {
-      console.error('[preview-sandbox] Write file error:', await writeResponse.text());
-    }
-
-    // Écrire les autres fichiers (CSS, JS séparés si nécessaire)
-    for (const file of normalizedFiles) {
-      if (file.path !== 'index.html' && file.path !== '/index.html') {
-        const filePath = file.path.startsWith('/') ? file.path : `/${file.path}`;
-        await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/files?path=/home/user${filePath}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/octet-stream',
-            'X-API-Key': E2B_API_KEY,
-          },
-          body: file.content,
-        });
+      if (writeResponse.ok) {
+        writtenPages.push(filePath);
+        console.log('[preview-sandbox] Written:', filePath);
+      } else {
+        console.error('[preview-sandbox] Failed to write:', filePath);
       }
     }
 
-    // Démarrer un serveur HTTP simple avec Python (plus léger que Node)
+    // Si aucun fichier HTML, créer un index.html par défaut
+    if (htmlFiles.length === 0) {
+      const defaultHTML = processHTMLFile(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview</title>
+</head>
+<body>
+  <div id="app">
+    <h1>Preview</h1>
+    <p>Aucun fichier HTML généré.</p>
+  </div>
+</body>
+</html>`, cssContent, jsContent);
+
+      await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/files?path=/home/user/index.html`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-API-Key': E2B_API_KEY,
+        },
+        body: defaultHTML,
+      });
+      writtenPages.push('/index.html');
+    }
+
+    // Écrire les autres fichiers (CSS, JS séparés, images, etc.)
+    for (const file of otherFiles) {
+      const filePath = file.path.startsWith('/') ? file.path : `/${file.path}`;
+      await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/files?path=/home/user${filePath}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-API-Key': E2B_API_KEY,
+        },
+        body: file.content,
+      });
+    }
+
+    // Démarrer un serveur HTTP
     const startServerResponse = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/commands`, {
       method: 'POST',
       headers: {
@@ -162,7 +280,6 @@ serve(async (req) => {
     });
 
     if (!startServerResponse.ok) {
-      // Si Python échoue, essayer avec npx serve
       console.log('[preview-sandbox] Python server failed, trying npx serve...');
       await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/commands`, {
         method: 'POST',
@@ -181,10 +298,9 @@ serve(async (req) => {
     // Attendre que le serveur démarre
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Construire l'URL de preview
     const previewUrl = `https://${sandboxId}-3000.e2b.dev`;
     
-    console.log('[preview-sandbox] Preview URL:', previewUrl);
+    console.log('[preview-sandbox] Preview URL:', previewUrl, 'Pages:', writtenPages);
 
     return new Response(
       JSON.stringify({
@@ -192,6 +308,7 @@ serve(async (req) => {
         sandboxId,
         previewUrl,
         filesCount: normalizedFiles.length,
+        pages: writtenPages,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
