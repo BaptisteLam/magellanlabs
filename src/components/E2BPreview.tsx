@@ -12,6 +12,10 @@ interface E2BPreviewProps {
 export interface E2BPreviewHandle {
   reload: () => void;
   getPreviewUrl: () => string | null;
+  getIframe: () => HTMLIFrameElement | null;
+  navigate: (path: string) => void;
+  goBack: () => void;
+  goForward: () => void;
 }
 
 type SandboxState = 'idle' | 'creating' | 'ready' | 'updating' | 'error';
@@ -31,6 +35,11 @@ export const E2BPreview = forwardRef<E2BPreviewHandle, E2BPreviewProps>(({
   const filesHashRef = useRef<string>('');
   const createTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const updateDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  
+  // Historique de navigation interne
+  const historyRef = useRef<string[]>(['/']);
+  const historyIndexRef = useRef(0);
 
   // Hash simple des fichiers pour détecter les changements
   const getFilesHash = useCallback((files: Record<string, string>) => {
@@ -40,6 +49,46 @@ export const E2BPreview = forwardRef<E2BPreviewHandle, E2BPreviewProps>(({
       .join('|');
     return content;
   }, []);
+
+  // Envoyer un message à l'iframe
+  const sendMessage = useCallback((message: any) => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(message, '*');
+    }
+  }, []);
+
+  // Navigation vers un chemin
+  const navigate = useCallback((path: string) => {
+    console.log('[E2BPreview] Navigate to:', path);
+    sendMessage({ type: 'NAVIGATE', path });
+    
+    // Ajouter à l'historique
+    if (historyIndexRef.current < historyRef.current.length - 1) {
+      historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+    }
+    historyRef.current.push(path);
+    historyIndexRef.current = historyRef.current.length - 1;
+  }, [sendMessage]);
+
+  // Navigation arrière
+  const goBack = useCallback(() => {
+    if (historyIndexRef.current > 0) {
+      historyIndexRef.current--;
+      const path = historyRef.current[historyIndexRef.current];
+      console.log('[E2BPreview] Go back to:', path);
+      sendMessage({ type: 'NAVIGATE', path });
+    }
+  }, [sendMessage]);
+
+  // Navigation avant
+  const goForward = useCallback(() => {
+    if (historyIndexRef.current < historyRef.current.length - 1) {
+      historyIndexRef.current++;
+      const path = historyRef.current[historyIndexRef.current];
+      console.log('[E2BPreview] Go forward to:', path);
+      sendMessage({ type: 'NAVIGATE', path });
+    }
+  }, [sendMessage]);
 
   // Créer une nouvelle sandbox
   const createSandbox = useCallback(async () => {
@@ -79,6 +128,10 @@ export const E2BPreview = forwardRef<E2BPreviewHandle, E2BPreviewProps>(({
       setPreviewUrl(data.previewUrl);
       setSandboxState('ready');
       filesHashRef.current = getFilesHash(projectFiles);
+      
+      // Reset history
+      historyRef.current = ['/'];
+      historyIndexRef.current = 0;
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -156,14 +209,44 @@ export const E2BPreview = forwardRef<E2BPreviewHandle, E2BPreviewProps>(({
 
   // Recharger la preview
   const reload = useCallback(() => {
+    console.log('[E2BPreview] Reload');
+    sendMessage({ type: 'RELOAD' });
     setIframeKey(prev => prev + 1);
+  }, [sendMessage]);
+
+  // Écouter les messages de l'iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data?.type) return;
+      
+      // Traiter les messages de navigation depuis l'iframe
+      if (event.data.type === 'PAGE_LOADED' || event.data.type === 'INTERNAL_NAVIGATION') {
+        const path = event.data.path || '/';
+        console.log('[E2BPreview] Page loaded:', path);
+        
+        // Notifier le parent pour mettre à jour la FakeUrlBar
+        window.postMessage({
+          type: 'ROUTE_CHANGE',
+          path: path,
+          canGoBack: historyIndexRef.current > 0,
+          canGoForward: historyIndexRef.current < historyRef.current.length - 1
+        }, '*');
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   // Exposer les méthodes via ref
   useImperativeHandle(ref, () => ({
     reload,
-    getPreviewUrl: () => previewUrl
-  }), [reload, previewUrl]);
+    getPreviewUrl: () => previewUrl,
+    getIframe: () => iframeRef.current,
+    navigate,
+    goBack,
+    goForward
+  }), [reload, previewUrl, navigate, goBack, goForward]);
 
   // Créer la sandbox au montage ou quand les fichiers changent significativement
   useEffect(() => {
@@ -304,6 +387,7 @@ export const E2BPreview = forwardRef<E2BPreviewHandle, E2BPreviewProps>(({
       {/* iframe de preview */}
       {previewUrl && (
         <iframe
+          ref={iframeRef}
           key={iframeKey}
           src={previewUrl}
           className="w-full h-full border-0 bg-white"
