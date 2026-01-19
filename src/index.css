@@ -2,43 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Sandpack White Label - Hide all branding */
-.sandpack-container,
-.sandpack-white-label {
+/* E2B Preview Container */
+.e2b-preview-container {
   width: 100% !important;
   height: 100% !important;
 }
 
-.sandpack-container .sp-wrapper,
-.sandpack-container .sp-layout,
-.sandpack-container .sp-stack,
-.sandpack-container .sp-preview-container,
-.sandpack-container .sp-preview,
-.sandpack-container .sp-preview-iframe {
+.e2b-preview-container iframe {
   width: 100% !important;
   height: 100% !important;
   border: none !important;
-  border-radius: 0 !important;
-}
-
-/* Hide Sandpack controls and branding */
-.sandpack-container .sp-preview-actions,
-.sandpack-container .sp-navigator,
-.sandpack-container [class*="sp-button"],
-.sandpack-container .sp-loading,
-.sandpack-container button[title="Open in CodeSandbox"] {
-  display: none !important;
-}
-
-/* Style error overlay */
-.sandpack-container .sp-overlay {
-  background: hsl(var(--background)) !important;
-  color: hsl(var(--foreground)) !important;
-}
-
-.sandpack-container .sp-error-message {
-  font-family: inherit !important;
-  padding: 1rem !important;
 }
 
 /* Trinity Studio Design System - Professional & Innovative
