@@ -43,47 +43,61 @@ function normalizeFiles(files: ProjectFile[] | Record<string, string>): ProjectF
 
 // Fonction pour écrire un fichier via l'API E2B
 async function writeFileToSandbox(
-  sandboxId: string, 
-  filePath: string, 
-  content: string, 
+  sandboxId: string,
+  filePath: string,
+  content: string,
   apiKey: string
 ): Promise<boolean> {
-  // Encoder le contenu en base64
-  const encoder = new TextEncoder();
-  const data = encoder.encode(content);
+  const data = new TextEncoder().encode(content);
   const base64Content = btoa(String.fromCharCode(...data));
-  
-  const response = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/filesystem`, {
-    method: 'PUT',
+
+  const url = `https://api.e2b.dev/sandboxes/${sandboxId}/filesystem`;
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-API-Key': apiKey,
+  };
+
+  const attempts: Array<{ name: string; method: string; body: unknown }> = [
+    { name: 'put_files_array', method: 'PUT', body: { files: [{ path: filePath, data: base64Content }] } },
+    { name: 'post_files_array', method: 'POST', body: { files: [{ path: filePath, data: base64Content }] } },
+    { name: 'put_single', method: 'PUT', body: { path: filePath, data: base64Content } },
+    { name: 'post_single', method: 'POST', body: { path: filePath, data: base64Content } },
+  ];
+
+  for (const attempt of attempts) {
+    const res = await fetch(url, {
+      method: attempt.method,
+      headers,
+      body: JSON.stringify(attempt.body),
+    });
+
+    if (res.ok) return true;
+
+    const errText = await res.text().catch(() => '(no body)');
+    console.error(
+      `[update-sandbox] write ${filePath} failed via ${attempt.name} (${res.status}): ${errText}`,
+    );
+  }
+
+  // Fallback legacy endpoint
+  const legacyUrl = `https://api.e2b.dev/sandboxes/${sandboxId}/files?path=${encodeURIComponent(filePath)}`;
+  const legacyRes = await fetch(legacyUrl, {
+    method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/octet-stream',
       'X-API-Key': apiKey,
     },
-    body: JSON.stringify({
-      files: [{
-        path: filePath,
-        data: base64Content
-      }]
-    }),
+    body: content,
   });
 
-  if (!response.ok) {
-    // Essayer l'ancienne API comme fallback
-    const fallbackResponse = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/files?path=${encodeURIComponent(filePath)}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'X-API-Key': apiKey,
-      },
-      body: content,
-    });
-    
-    if (!fallbackResponse.ok) {
-      console.error(`[update-sandbox] Failed to write ${filePath}:`, await fallbackResponse.text());
-      return false;
-    }
+  if (!legacyRes.ok) {
+    const legacyText = await legacyRes.text().catch(() => '(no body)');
+    console.error(
+      `[update-sandbox] write ${filePath} failed via legacy (${legacyRes.status}): ${legacyText}`,
+    );
+    return false;
   }
-  
+
   return true;
 }
 
@@ -107,11 +121,31 @@ serve(async (req) => {
     const normalizedFiles = normalizeFiles(files);
     console.log('[update-sandbox] Updating', normalizedFiles.length, 'files in sandbox:', sandboxId);
 
+    const PUBLIC_DIR = '/home/user/public';
+
+    // S'assurer que le dossier public existe
+    const mkdirRes = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/process`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': E2B_API_KEY,
+      },
+      body: JSON.stringify({
+        cmd: `mkdir -p ${PUBLIC_DIR}`,
+        cwd: '/home/user',
+        background: false,
+      }),
+    });
+    if (!mkdirRes.ok) {
+      const t = await mkdirRes.text().catch(() => '(no body)');
+      console.warn('[update-sandbox] mkdir -p failed:', mkdirRes.status, t);
+    }
+
     // Générer le HTML complet avec CSS/JS injectés
     const completeHTML = generateCompleteHTML(normalizedFiles);
 
     // Mettre à jour le fichier HTML principal
-    const success = await writeFileToSandbox(sandboxId, '/home/user/index.html', completeHTML, E2B_API_KEY);
+    const success = await writeFileToSandbox(sandboxId, `${PUBLIC_DIR}/index.html`, completeHTML, E2B_API_KEY);
 
     if (!success) {
       throw new Error('Failed to update main HTML file');
@@ -121,7 +155,7 @@ serve(async (req) => {
     for (const file of normalizedFiles) {
       if (file.path !== 'index.html' && file.path !== '/index.html') {
         const fileName = file.path.replace(/^\//, '');
-        await writeFileToSandbox(sandboxId, `/home/user/${fileName}`, file.content, E2B_API_KEY);
+        await writeFileToSandbox(sandboxId, `${PUBLIC_DIR}/${fileName}`, file.content, E2B_API_KEY);
       }
     }
 
