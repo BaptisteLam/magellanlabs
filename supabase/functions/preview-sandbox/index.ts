@@ -140,47 +140,85 @@ function processHTMLFile(htmlContent: string, cssContent: string, jsContent: str
 
 // Fonction pour écrire un fichier via l'API E2B
 async function writeFileToSandbox(
-  sandboxId: string, 
-  filePath: string, 
-  content: string, 
+  sandboxId: string,
+  filePath: string,
+  content: string,
   apiKey: string
 ): Promise<boolean> {
-  // Encoder le contenu en base64
-  const encoder = new TextEncoder();
-  const data = encoder.encode(content);
+  // Encoder le contenu en base64 (UTF-8)
+  const data = new TextEncoder().encode(content);
   const base64Content = btoa(String.fromCharCode(...data));
-  
-  const response = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/filesystem`, {
-    method: 'PUT',
+
+  const url = `https://api.e2b.dev/sandboxes/${sandboxId}/filesystem`;
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-API-Key': apiKey,
+  };
+
+  // L’API E2B a eu plusieurs variantes (PUT/POST + payload "files" vs payload single).
+  // On tente plusieurs formats pour maximiser la compatibilité et on loggue chaque échec.
+  const attempts: Array<{ name: string; method: string; body: unknown }> = [
+    {
+      name: 'put_files_array',
+      method: 'PUT',
+      body: { files: [{ path: filePath, data: base64Content }] },
+    },
+    {
+      name: 'post_files_array',
+      method: 'POST',
+      body: { files: [{ path: filePath, data: base64Content }] },
+    },
+    {
+      name: 'put_single',
+      method: 'PUT',
+      body: { path: filePath, data: base64Content },
+    },
+    {
+      name: 'post_single',
+      method: 'POST',
+      body: { path: filePath, data: base64Content },
+    },
+  ];
+
+  for (const attempt of attempts) {
+    const res = await fetch(url, {
+      method: attempt.method,
+      headers,
+      body: JSON.stringify(attempt.body),
+    });
+
+    if (res.ok) return true;
+
+    let errText = '';
+    try {
+      errText = await res.text();
+    } catch {
+      errText = '(no body)';
+    }
+    console.error(
+      `[preview-sandbox] write ${filePath} failed via ${attempt.name} (${res.status}): ${errText}`,
+    );
+  }
+
+  // Fallback legacy endpoint
+  const legacyUrl = `https://api.e2b.dev/sandboxes/${sandboxId}/files?path=${encodeURIComponent(filePath)}`;
+  const legacyRes = await fetch(legacyUrl, {
+    method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/octet-stream',
       'X-API-Key': apiKey,
     },
-    body: JSON.stringify({
-      files: [{
-        path: filePath,
-        data: base64Content
-      }]
-    }),
+    body: content,
   });
 
-  if (!response.ok) {
-    // Essayer l'ancienne API comme fallback
-    const fallbackResponse = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/files?path=${encodeURIComponent(filePath)}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'X-API-Key': apiKey,
-      },
-      body: content,
-    });
-    
-    if (!fallbackResponse.ok) {
-      console.error(`[preview-sandbox] Failed to write ${filePath}:`, await fallbackResponse.text());
-      return false;
-    }
+  if (!legacyRes.ok) {
+    const legacyText = await legacyRes.text().catch(() => '(no body)');
+    console.error(
+      `[preview-sandbox] write ${filePath} failed via legacy (${legacyRes.status}): ${legacyText}`,
+    );
+    return false;
   }
-  
+
   return true;
 }
 
@@ -219,6 +257,9 @@ serve(async (req) => {
     const cssContent = cssFile?.content || '';
     const jsContent = jsFile?.content || '';
 
+    const PORT = 8000;
+    const PUBLIC_DIR = '/home/user/public';
+
     // Créer une sandbox E2B
     const createResponse = await fetch('https://api.e2b.dev/sandboxes', {
       method: 'POST',
@@ -230,8 +271,8 @@ serve(async (req) => {
         templateID: 'base',
         timeout: 300, // 5 minutes
         metadata: {
-          sessionId: sessionId || 'unknown'
-        }
+          sessionId: sessionId || 'unknown',
+        },
       }),
     });
 
@@ -243,12 +284,30 @@ serve(async (req) => {
 
     const sandbox = await createResponse.json();
     const sandboxId = sandbox.sandboxID;
-    
+
     console.log('[preview-sandbox] Created sandbox:', sandboxId);
+
+    // S'assurer que le dossier public existe
+    const mkdirRes = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/process`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': E2B_API_KEY,
+      },
+      body: JSON.stringify({
+        cmd: `mkdir -p ${PUBLIC_DIR}`,
+        cwd: '/home/user',
+        background: false,
+      }),
+    });
+    if (!mkdirRes.ok) {
+      const t = await mkdirRes.text().catch(() => '(no body)');
+      console.warn('[preview-sandbox] mkdir -p failed:', mkdirRes.status, t);
+    }
 
     // Traiter et écrire chaque fichier HTML
     const writtenPages: string[] = [];
-    
+
     // Si aucun fichier HTML, créer un index.html par défaut
     if (htmlFiles.length === 0) {
       const defaultHTML = processHTMLFile(`<!DOCTYPE html>
@@ -266,14 +325,14 @@ serve(async (req) => {
 </body>
 </html>`, cssContent, jsContent);
 
-      const success = await writeFileToSandbox(sandboxId, '/home/user/index.html', defaultHTML, E2B_API_KEY);
+      const success = await writeFileToSandbox(sandboxId, `${PUBLIC_DIR}/index.html`, defaultHTML, E2B_API_KEY);
       if (success) writtenPages.push('/index.html');
     } else {
       for (const htmlFile of htmlFiles) {
         const processedHTML = processHTMLFile(htmlFile.content, cssContent, jsContent);
         const fileName = htmlFile.path.replace(/^\//, '');
-        const filePath = `/home/user/${fileName}`;
-        
+        const filePath = `${PUBLIC_DIR}/${fileName}`;
+
         const success = await writeFileToSandbox(sandboxId, filePath, processedHTML, E2B_API_KEY);
         if (success) {
           writtenPages.push(`/${fileName}`);
@@ -284,13 +343,16 @@ serve(async (req) => {
       }
     }
 
-    // Écrire les autres fichiers (CSS, JS séparés, images, etc.)
+    // Écrire les autres fichiers (images, etc.) dans /public
     for (const file of otherFiles) {
       const fileName = file.path.replace(/^\//, '');
-      await writeFileToSandbox(sandboxId, `/home/user/${fileName}`, file.content, E2B_API_KEY);
+      await writeFileToSandbox(sandboxId, `${PUBLIC_DIR}/${fileName}`, file.content, E2B_API_KEY);
     }
 
-    // Démarrer un serveur HTTP en background
+    // Démarrer un serveur HTTP (bind 0.0.0.0) sur PORT=8000.
+    // On le lance dans un thread daemon et on garde le process vivant.
+    const pythonCmd = `python3 -u -c "import os, threading, time, http.server, socketserver; PORT=${PORT}; os.chdir('${PUBLIC_DIR}'); Handler=http.server.SimpleHTTPRequestHandler; class S(socketserver.ThreadingTCPServer): pass; S.allow_reuse_address=True; httpd=S(('0.0.0.0', PORT), Handler); t=threading.Thread(target=httpd.serve_forever, daemon=True); t.start(); print('HTTP server started', PORT, flush=True); time.sleep(10**9)"`;
+
     const startServerResponse = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/process`, {
       method: 'POST',
       headers: {
@@ -298,33 +360,23 @@ serve(async (req) => {
         'X-API-Key': E2B_API_KEY,
       },
       body: JSON.stringify({
-        cmd: 'python3 -m http.server 3000',
+        cmd: pythonCmd,
         cwd: '/home/user',
         background: true,
       }),
     });
 
     if (!startServerResponse.ok) {
-      console.log('[preview-sandbox] Python server failed, trying npx serve...');
-      await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/process`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': E2B_API_KEY,
-        },
-        body: JSON.stringify({
-          cmd: 'npx -y serve -p 3000',
-          cwd: '/home/user',
-          background: true,
-        }),
-      });
+      const t = await startServerResponse.text().catch(() => '(no body)');
+      console.error('[preview-sandbox] Failed to start python server:', startServerResponse.status, t);
+      throw new Error('Failed to start preview server');
     }
 
     // Attendre que le serveur démarre
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    const previewUrl = `https://${sandboxId}-3000.e2b.dev`;
-    
+    const previewUrl = `https://${sandboxId}-${PORT}.e2b.dev`;
+
     console.log('[preview-sandbox] Preview URL:', previewUrl, 'Pages:', writtenPages);
 
     return new Response(
@@ -337,7 +389,7 @@ serve(async (req) => {
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      },
     );
 
   } catch (error: unknown) {
