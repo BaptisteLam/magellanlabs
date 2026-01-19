@@ -181,7 +181,7 @@ export default function BuilderSession() {
   const [initialPromptProcessed, setInitialPromptProcessed] = useState(false);
 
   // E2B Preview reference
-  const e2bPreviewRef = useRef<{ reload: () => void; getPreviewUrl: () => string | null }>(null);
+  const e2bPreviewRef = useRef<{ reload: () => void; getPreviewUrl: () => string | null; getIframe: () => HTMLIFrameElement | null; navigate: (path: string) => void; goBack: () => void; goForward: () => void }>(null);
 
   // Mode Chat pour discuter avec Claude sans générer de code
   const [chatMode, setChatMode] = useState(false);
@@ -2065,7 +2065,17 @@ export default function BuilderSession() {
             borderColor: isDark ? 'hsl(var(--border))' : 'hsl(var(--border))'
           }}>
                   {(generateSiteHook.isGenerating || Object.keys(projectFiles).length === 0) ? <GeneratingPreview /> : <>
-                      <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
+                      <FakeUrlBar 
+                        projectTitle={websiteTitle || 'Mon Projet'} 
+                        isDark={isDark} 
+                        sessionId={sessionId} 
+                        onTitleChange={setWebsiteTitle} 
+                        cloudflareProjectName={cloudflareProjectName || undefined}
+                        onReload={() => e2bPreviewRef.current?.reload()}
+                        onGoBack={() => e2bPreviewRef.current?.goBack()}
+                        onGoForward={() => e2bPreviewRef.current?.goForward()}
+                        onNavigate={(path) => e2bPreviewRef.current?.navigate(path)}
+                      />
                       <E2BPreview 
                         ref={e2bPreviewRef}
                         projectFiles={projectFiles} 
@@ -2074,7 +2084,19 @@ export default function BuilderSession() {
                     </>}
                 </div> : <>
                   {(generateSiteHook.isGenerating || Object.keys(projectFiles).length === 0) ? <GeneratingPreview /> : <>
-                      <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} />
+                      <FakeUrlBar 
+                        projectTitle={websiteTitle || 'Mon Projet'} 
+                        isDark={isDark} 
+                        sessionId={sessionId} 
+                        onTitleChange={setWebsiteTitle} 
+                        currentFavicon={currentFavicon} 
+                        onFaviconChange={setCurrentFavicon} 
+                        cloudflareProjectName={cloudflareProjectName || undefined}
+                        onReload={() => e2bPreviewRef.current?.reload()}
+                        onGoBack={() => e2bPreviewRef.current?.goBack()}
+                        onGoForward={() => e2bPreviewRef.current?.goForward()}
+                        onNavigate={(path) => e2bPreviewRef.current?.navigate(path)}
+                      />
                       <E2BPreview 
                         ref={e2bPreviewRef}
                         projectFiles={projectFiles} 

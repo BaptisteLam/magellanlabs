@@ -14,6 +14,9 @@ interface FakeUrlBarProps {
   cloudflareProjectName?: string;
   currentRoute?: string;
   onNavigate?: (path: string) => void;
+  onReload?: () => void;
+  onGoBack?: () => void;
+  onGoForward?: () => void;
   iframeRef?: React.RefObject<HTMLIFrameElement>;
 }
 
@@ -27,6 +30,9 @@ export function FakeUrlBar({
   cloudflareProjectName,
   currentRoute = '/',
   onNavigate,
+  onReload,
+  onGoBack,
+  onGoForward,
   iframeRef
 }: FakeUrlBarProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -96,17 +102,29 @@ export function FakeUrlBar({
 
   const handleNavigateBack = () => {
     console.log('⬅️ FakeUrlBar: Navigation arrière');
-    sendNavigationMessage('NAVIGATE_BACK');
+    if (onGoBack) {
+      onGoBack();
+    } else {
+      sendNavigationMessage('NAVIGATE_BACK');
+    }
   };
 
   const handleNavigateForward = () => {
     console.log('➡️ FakeUrlBar: Navigation avant');
-    sendNavigationMessage('NAVIGATE_FORWARD');
+    if (onGoForward) {
+      onGoForward();
+    } else {
+      sendNavigationMessage('NAVIGATE_FORWARD');
+    }
   };
 
   const handleReload = () => {
     console.log('🔄 FakeUrlBar: Rechargement');
-    sendNavigationMessage('RELOAD');
+    if (onReload) {
+      onReload();
+    } else {
+      sendNavigationMessage('RELOAD');
+    }
   };
 
   const handleUrlSubmit = (e: React.KeyboardEvent) => {
