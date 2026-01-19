@@ -44,11 +44,12 @@ function ErrorFallback({ message, onRetry }: ErrorFallbackProps) {
 }
 
 // CSS de base complet pour les projets statiques générés
+// IMPORTANT: Couleurs NEUTRES génériques - PAS de couleur Magellan #03A5C0
 const BASE_CSS = `:root {
-  --primary: #03A5C0;
-  --primary-dark: #028a9e;
-  --primary-light: rgba(3, 165, 192, 0.1);
-  --secondary: #1a1a2e;
+  --primary: #6366f1;
+  --primary-dark: #4f46e5;
+  --primary-light: rgba(99, 102, 241, 0.1);
+  --secondary: #1e293b;
   --text: #1f2937;
   --text-light: #6b7280;
   --background: #ffffff;
