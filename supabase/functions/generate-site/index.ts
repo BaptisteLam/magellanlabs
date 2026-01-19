@@ -35,17 +35,20 @@ function getFileType(extension: string): string {
 }
 
 // CSS COMPLET DE FALLBACK - Utilisé si le CSS généré est trop court
+// IMPORTANT: Couleurs NEUTRES génériques - PAS de couleur Magellan
 const COMPLETE_FALLBACK_CSS = `/* ============================================
    FALLBACK CSS - Site Vitrine Moderne
+   Couleurs neutres - sera personnalisé par Claude
    ============================================ */
 
 /* === VARIABLES CSS === */
 :root {
-  --primary: #03A5C0;
-  --primary-dark: #028a9e;
-  --primary-light: rgba(3, 165, 192, 0.1);
-  --secondary: #1a1a2e;
-  --accent: #ff6b6b;
+  /* Couleurs NEUTRES génériques - Claude personnalisera selon le secteur */
+  --primary: #6366f1;
+  --primary-dark: #4f46e5;
+  --primary-light: rgba(99, 102, 241, 0.1);
+  --secondary: #1e293b;
+  --accent: #f59e0b;
   --text: #1f2937;
   --text-light: #6b7280;
   --text-muted: #9ca3af;
@@ -1619,11 +1622,12 @@ function ensureRequiredFiles(files: ProjectFile[]): ProjectFile[] {
     // Combiner le CSS extrait + CSS Tailwind généré + fallback si nécessaire
     let finalCSS = '';
     
-    // Si le CSS extrait est suffisant, l'utiliser comme base
-    if (extracted.css.length > 500) {
+    // Accepter le CSS généré même s'il est court (seuil réduit de 500 à 100 chars)
+    if (extracted.css.length > 100) {
+      console.log(`[ensureRequiredFiles] Using extracted CSS (${extracted.css.length} chars)`);
       finalCSS = extracted.css;
     } else {
-      console.log('[ensureRequiredFiles] CSS too short, using complete fallback CSS');
+      console.log('[ensureRequiredFiles] CSS too short (<100 chars), using neutral fallback CSS');
       finalCSS = COMPLETE_FALLBACK_CSS;
     }
     
@@ -1663,14 +1667,14 @@ function ensureRequiredFiles(files: ProjectFile[]): ProjectFile[] {
     }
   }
   
-  // Vérifier que le CSS est suffisant
+  // Vérifier que le CSS est suffisant (seuil réduit de 500 à 100)
   if (cssFile) {
-    if (cssFile.content.length < 500) {
-      console.log('[ensureRequiredFiles] CSS file too short, replacing with complete fallback');
+    if (cssFile.content.length < 100) {
+      console.log('[ensureRequiredFiles] CSS file too short (<100 chars), replacing with neutral fallback');
       cssFile.content = COMPLETE_FALLBACK_CSS;
     }
   } else {
-    console.log('[ensureRequiredFiles] No CSS file, adding complete fallback');
+    console.log('[ensureRequiredFiles] No CSS file, adding neutral fallback');
     files.push({ path: '/styles.css', content: COMPLETE_FALLBACK_CSS, type: 'stylesheet' });
   }
   
@@ -2031,6 +2035,7 @@ RAPPEL CRITIQUE :
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
         max_tokens: 16000,
+        temperature: 0.7,  // Plus de créativité pour couleurs et design variés
         stream: true,
         system: systemPrompt,
         messages: [
