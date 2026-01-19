@@ -238,12 +238,12 @@ export class DependencyGraph {
   }
 }
 
-// Limites de lignes par complexité
+// Limites de lignes par complexité - P1: Augmenté pour meilleur contexte
 const LINE_LIMITS: Record<string, number> = {
-  trivial: 100,
-  simple: 150,
-  moderate: 250,
-  complex: 400,
+  trivial: 120,
+  simple: 200,
+  moderate: 350,
+  complex: 600, // P1: Augmenté de 400 à 600
 };
 
 export function optimizeContext(

@@ -90,7 +90,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { message, projectFiles, sessionId, memory } = await req.json();
+    const { message, projectFiles, sessionId, memory, conversationHistory } = await req.json();
 
     if (!message || !projectFiles || !sessionId) {
       return new Response(
@@ -104,6 +104,7 @@ serve(async (req) => {
       fileCount: Object.keys(projectFiles).length,
       sessionId,
       hasMemory: !!memory,
+      hasConversationHistory: !!conversationHistory?.length,
     });
 
     // Check cache
@@ -234,10 +235,12 @@ serve(async (req) => {
           const modelConfig = selectModel(analysis.complexity);
           console.log('[unified-modify] Selected model:', modelConfig);
 
+          // P0: Enrichir le prompt système avec l'historique de conversation
           const systemPrompt = buildSystemPrompt(
             analysis.complexity,
             optimizedContext.files,
-            memory ? JSON.stringify(memory) : undefined
+            memory ? JSON.stringify(memory) : undefined,
+            conversationHistory
           );
 
           const apiKey = Deno.env.get('ANTHROPIC_API_KEY');

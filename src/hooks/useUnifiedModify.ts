@@ -73,6 +73,8 @@ export interface UnifiedModifyParams {
   projectFiles: Record<string, string>;
   sessionId: string;
   memory?: any;
+  // P0: Historique de conversation pour contexte
+  conversationHistory?: Array<{ role: string; content: string }>;
 }
 
 // ============= Hook =============
@@ -99,7 +101,7 @@ export function useUnifiedModify() {
     params: UnifiedModifyParams,
     options: UseUnifiedModifyOptions = {}
   ): Promise<CompleteResult | null> => {
-    const { message, projectFiles, sessionId, memory } = params;
+    const { message, projectFiles, sessionId, memory, conversationHistory } = params;
     const { 
       onIntentMessage, 
       onGenerationEvent, 
@@ -144,6 +146,7 @@ export function useUnifiedModify() {
         fileCount: Object.keys(projectFiles).length,
         sessionId,
         hasMemory: !!memory,
+        hasConversationHistory: !!conversationHistory?.length,
       });
 
       // Make request
@@ -158,6 +161,8 @@ export function useUnifiedModify() {
           projectFiles,
           sessionId,
           memory,
+          // P0: Envoyer les 5 derniers messages de conversation pour contexte
+          conversationHistory: conversationHistory?.slice(-5),
         }),
         signal: abortControllerRef.current.signal,
       });
