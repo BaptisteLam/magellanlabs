@@ -402,22 +402,11 @@ export const SandpackPreview = forwardRef<SandpackPreviewHandle, SandpackPreview
       files['/app.js'] = { code: BASE_JS };
     }
     
-    // Injecter le router.js si le projet a des routes (liens avec hash)
-    const hasHashRoutes = Object.values(files).some(f => 
-      f.code.includes('href="#/') || f.code.includes('data-route=')
-    );
-    
-    if (hasHashRoutes && !files['/router.js']) {
-      console.log('📝 [SandpackPreview] Injecting router.js for hash navigation');
-      files['/router.js'] = { code: ROUTER_JS_TEMPLATE };
-      
-      // Ajouter le script router.js au HTML si pas déjà présent
-      if (files['/index.html'] && !files['/index.html'].code.includes('router.js')) {
-        files['/index.html'].code = files['/index.html'].code.replace(
-          '</body>',
-          '  <script src="router.js"></script>\n</body>'
-        );
-      }
+    // Note: router.js n'est plus utilisé - les sites sont générés en one-page avec ancres
+    // Si un ancien projet a des hash routes, on les garde compatibles
+    if (files['/router.js']) {
+      // Garder le router.js existant pour compatibilité avec anciens projets
+      console.log('📝 [SandpackPreview] Using existing router.js');
     }
     
     console.log('✅ [SandpackPreview] Final static files:', Object.keys(files).join(', '));
