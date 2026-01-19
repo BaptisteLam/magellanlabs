@@ -1,13 +1,15 @@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, ExternalLink, Globe } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Globe, Copy, Server } from 'lucide-react';
 import { useState } from 'react';
 import { CustomDomainDialog } from './CustomDomainDialog';
+import { toast as sonnerToast } from 'sonner';
 
 interface PublishSuccessDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   publicUrl: string;
+  cloudflareUrl?: string;
   projectName: string;
   sessionId?: string;
   cloudflareProjectName?: string;
@@ -17,14 +19,25 @@ export function PublishSuccessDialog({
   open, 
   onOpenChange,
   publicUrl,
+  cloudflareUrl,
   projectName,
   sessionId,
   cloudflareProjectName
 }: PublishSuccessDialogProps) {
   const [showDomainDialog, setShowDomainDialog] = useState(false);
+  const [showTechnicalUrl, setShowTechnicalUrl] = useState(false);
 
   const handleOpenSite = () => {
     window.open(publicUrl, '_blank');
+  };
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      sonnerToast.success('URL copiée !');
+    } catch {
+      sonnerToast.error('Erreur lors de la copie');
+    }
   };
 
   const handleAddDomain = () => {
@@ -54,14 +67,56 @@ export function PublishSuccessDialog({
               </p>
             </div>
 
-            {/* Lien du site */}
+            {/* URL publique principale */}
             <div className="w-full space-y-3">
-              <div className="flex items-center justify-center gap-2 p-4 bg-[#181818] rounded-lg border border-[#3a3a3b]">
-                <Globe className="w-5 h-5 text-muted-foreground" />
-                <span className="text-sm font-mono text-foreground">
-                  {publicUrl.replace('https://', '')}
-                </span>
+              <div className="flex items-center justify-between gap-2 p-4 bg-[#181818] rounded-lg border border-[#3a3a3b]">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Globe className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                  <span className="text-sm font-mono text-foreground truncate">
+                    {publicUrl.replace('https://', '')}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyUrl}
+                  className="h-8 w-8 p-0 flex-shrink-0"
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
               </div>
+
+              {/* URL technique (Cloudflare Pages) - collapsible */}
+              {cloudflareUrl && cloudflareUrl !== publicUrl && (
+                <div className="w-full">
+                  <button
+                    onClick={() => setShowTechnicalUrl(!showTechnicalUrl)}
+                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                  >
+                    <Server className="w-3 h-3" />
+                    {showTechnicalUrl ? 'Masquer' : 'Voir'} l'URL technique
+                  </button>
+                  
+                  {showTechnicalUrl && (
+                    <div className="mt-2 flex items-center gap-2 p-3 bg-[#141414] rounded-lg border border-[#2a2a2b]">
+                      <span className="text-xs font-mono text-muted-foreground truncate">
+                        {cloudflareUrl.replace('https://', '')}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(cloudflareUrl);
+                          sonnerToast.success('URL technique copiée !');
+                        }}
+                        className="h-6 w-6 p-0 flex-shrink-0"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Bouton Voir le site */}
               <Button

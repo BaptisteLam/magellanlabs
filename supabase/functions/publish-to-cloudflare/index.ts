@@ -11,17 +11,14 @@ function prepareDeployFiles(files: Record<string, string>): Record<string, strin
   const deployFiles: Record<string, string> = {};
 
   for (const [path, content] of Object.entries(files)) {
-    // Normaliser le chemin (supprimer le / initial si présent)
     let normalizedPath = path.startsWith('/') ? path.slice(1) : path;
     
-    // Ignorer les fichiers de config React/Vite
     const skipFiles = ['package.json', 'vite.config.ts', 'tsconfig.json', 'node_modules'];
     if (skipFiles.some(skip => normalizedPath.includes(skip))) continue;
     
     deployFiles[normalizedPath] = content;
   }
 
-  // S'assurer qu'on a un index.html à la racine
   if (!deployFiles['index.html']) {
     const indexLocations = ['public/index.html', 'src/index.html', 'dist/index.html'];
     for (const loc of indexLocations) {
@@ -32,7 +29,6 @@ function prepareDeployFiles(files: Record<string, string>): Record<string, strin
     }
   }
 
-  // Ajouter un _redirects pour SPA routing
   if (!deployFiles['_redirects']) {
     deployFiles['_redirects'] = '/*    /index.html   200';
   }
@@ -40,11 +36,119 @@ function prepareDeployFiles(files: Record<string, string>): Record<string, strin
   return deployFiles;
 }
 
-// Encoder le contenu en base64
-function toBase64(content: string): string {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(content);
-  return btoa(String.fromCharCode(...data));
+// Générer un subdomain unique
+function generateSubdomain(title: string): string {
+  return (title || 'mon-projet')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .substring(0, 50);
+}
+
+// Vérifier et obtenir un subdomain unique
+async function getUniqueSubdomain(
+  supabase: any, 
+  baseSubdomain: string, 
+  sessionId: string
+): Promise<string> {
+  // Vérifier si ce subdomain existe déjà pour un AUTRE projet
+  const { data: existing } = await supabase
+    .from('published_projects')
+    .select('id, build_session_id, subdomain')
+    .eq('subdomain', baseSubdomain)
+    .maybeSingle();
+
+  // Si le subdomain appartient à ce projet, on le garde
+  if (existing && existing.build_session_id === sessionId) {
+    return baseSubdomain;
+  }
+
+  // Si le subdomain n'existe pas, on le prend
+  if (!existing) {
+    return baseSubdomain;
+  }
+
+  // Sinon, on ajoute un suffixe numérique
+  let suffix = 2;
+  let uniqueSubdomain = `${baseSubdomain}-${suffix}`;
+  
+  while (true) {
+    const { data: check } = await supabase
+      .from('published_projects')
+      .select('id')
+      .eq('subdomain', uniqueSubdomain)
+      .maybeSingle();
+    
+    if (!check) {
+      return uniqueSubdomain;
+    }
+    
+    suffix++;
+    uniqueSubdomain = `${baseSubdomain}-${suffix}`;
+    
+    // Sécurité: max 100 tentatives
+    if (suffix > 100) {
+      return `${baseSubdomain}-${Date.now()}`;
+    }
+  }
+}
+
+// Mettre à jour le KV du Worker proxy
+async function updateProxyKV(
+  subdomain: string,
+  cloudflareUrl: string,
+  CLOUDFLARE_ACCOUNT_ID: string,
+  CLOUDFLARE_API_TOKEN: string,
+  CLOUDFLARE_KV_NAMESPACE_ID: string
+): Promise<boolean> {
+  try {
+    console.log(`🔗 Updating proxy KV: ${subdomain} -> ${cloudflareUrl}`);
+    
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${subdomain}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+          'Content-Type': 'text/plain',
+        },
+        body: cloudflareUrl,
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Failed to update KV:', errorText);
+      return false;
+    }
+
+    console.log(`✅ Proxy KV updated: ${subdomain}.builtbymagellan.com -> ${cloudflareUrl}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error updating proxy KV:', error);
+    return false;
+  }
+}
+
+// Vérifier que le site est accessible
+async function verifySiteAccessible(url: string, maxAttempts = 5): Promise<boolean> {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      if (response.ok || response.status === 304) {
+        console.log(`✅ Site accessible: ${url}`);
+        return true;
+      }
+    } catch (error) {
+      console.log(`⏳ Site not yet accessible, attempt ${i + 1}/${maxAttempts}`);
+    }
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+  return false;
 }
 
 serve(async (req) => {
@@ -68,6 +172,12 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
+    // Service client pour les opérations admin
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Authentication failed' }), {
@@ -79,6 +189,7 @@ serve(async (req) => {
     // Get Cloudflare credentials
     const CLOUDFLARE_ACCOUNT_ID = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
     const CLOUDFLARE_API_TOKEN = Deno.env.get('CLOUDFLARE_API_TOKEN');
+    const CLOUDFLARE_KV_NAMESPACE_ID = Deno.env.get('CLOUDFLARE_KV_NAMESPACE_ID');
     
     if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
       return new Response(JSON.stringify({ error: 'Cloudflare credentials not configured' }), {
@@ -88,7 +199,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { sessionId, projectFiles } = await req.json();
+    const { sessionId, projectFiles, siteName } = await req.json();
 
     if (!sessionId || !projectFiles) {
       return new Response(JSON.stringify({ error: 'Missing sessionId or projectFiles' }), {
@@ -128,15 +239,7 @@ serve(async (req) => {
     if (!projectName) {
       console.log('🆕 Creating new Cloudflare Pages project...');
       
-      // Générer un nom de projet unique
-      const safeName = (session.title || 'magellan-site')
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9-]/g, '-')
-        .replace(/-+/g, '-')
-        .substring(0, 30);
-      
+      const safeName = generateSubdomain(siteName || session.title);
       projectName = `${safeName}-${sessionId.substring(0, 8)}`;
 
       const createProjectResponse = await fetch(
@@ -157,7 +260,6 @@ serve(async (req) => {
       const createResult = await createProjectResponse.json();
       
       if (!createResult.success) {
-        // Si le projet existe déjà, on continue
         if (createResult.errors?.[0]?.code !== 8000007) {
           console.error('❌ Failed to create Cloudflare Pages project:', createResult.errors);
           return new Response(JSON.stringify({ 
@@ -183,20 +285,15 @@ serve(async (req) => {
     // Créer le déploiement avec Direct Upload
     console.log('📤 Creating deployment with Direct Upload...');
 
-    // Préparer le FormData avec les fichiers
     const formData = new FormData();
-    
-    // Ajouter chaque fichier au manifest
     const manifest: Record<string, string> = {};
     
     for (const [path, content] of Object.entries(deployFiles)) {
-      // Créer un Blob pour chaque fichier
       const blob = new Blob([content], { type: 'text/plain' });
       formData.append(path, blob, path);
       manifest[`/${path}`] = path;
     }
     
-    // Ajouter le manifest
     formData.append('manifest', JSON.stringify(manifest));
 
     const deployResponse = await fetch(
@@ -229,7 +326,7 @@ serve(async (req) => {
     // Attendre que le déploiement soit prêt
     let deployStatus = deployment.latest_stage?.name || 'queued';
     let attempts = 0;
-    const maxAttempts = 60; // 2 minutes max
+    const maxAttempts = 60;
 
     while (deployStatus !== 'deploy' && attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -249,12 +346,10 @@ serve(async (req) => {
         const stageStatus = stage?.status || 'unknown';
         console.log(`⏳ Deploy stage: ${deployStatus} (${stageStatus}) - attempt ${attempts + 1}`);
         
-        // Si c'est "deploy" et "success", on a fini
         if (deployStatus === 'deploy' && stageStatus === 'success') {
           break;
         }
         
-        // Si erreur, arrêter
         if (stageStatus === 'failure') {
           return new Response(JSON.stringify({ 
             error: 'Deployment failed',
@@ -269,26 +364,97 @@ serve(async (req) => {
       attempts++;
     }
 
-    // Récupérer l'URL finale
-    const finalUrl = deployment.url || `https://${projectName}.pages.dev`;
-    console.log('✅ Deployment successful:', finalUrl);
+    // Récupérer l'URL Cloudflare Pages
+    const cloudflareUrl = deployment.url || `https://${projectName}.pages.dev`;
+    console.log('✅ Cloudflare Pages deployment successful:', cloudflareUrl);
 
-    // Mettre à jour la session avec l'URL
+    // === INTÉGRATION PUBLISHED_PROJECTS ===
+    // Générer un subdomain unique pour builtbymagellan.com
+    const baseSubdomain = generateSubdomain(siteName || session.title);
+    const uniqueSubdomain = await getUniqueSubdomain(supabaseAdmin, baseSubdomain, sessionId);
+    const publicUrl = `https://${uniqueSubdomain}.builtbymagellan.com`;
+
+    console.log('🌐 Subdomain:', uniqueSubdomain, '-> Public URL:', publicUrl);
+
+    // Vérifier si le projet est déjà publié
+    const { data: existingProject } = await supabaseAdmin
+      .from('published_projects')
+      .select('*')
+      .eq('build_session_id', sessionId)
+      .maybeSingle();
+
+    if (existingProject) {
+      // Mettre à jour le projet existant
+      console.log('🔄 Updating existing published project');
+      
+      const { error: updateError } = await supabaseAdmin
+        .from('published_projects')
+        .update({
+          subdomain: uniqueSubdomain,
+          last_updated: new Date().toISOString()
+        })
+        .eq('id', existingProject.id);
+
+      if (updateError) {
+        console.error('❌ Error updating published project:', updateError);
+      }
+    } else {
+      // Créer un nouveau projet publié
+      console.log('✨ Creating new published project entry');
+      
+      const { error: insertError } = await supabaseAdmin
+        .from('published_projects')
+        .insert({
+          build_session_id: sessionId,
+          subdomain: uniqueSubdomain
+        });
+
+      if (insertError) {
+        console.error('❌ Error creating published project:', insertError);
+      }
+    }
+
+    // === MISE À JOUR DU WORKER PROXY KV ===
+    if (CLOUDFLARE_KV_NAMESPACE_ID) {
+      // Mapper subdomain -> projectName (nom du projet Cloudflare Pages)
+      await updateProxyKV(
+        uniqueSubdomain,
+        projectName, // Le worker proxy utilisera ce nom pour construire l'URL pages.dev
+        CLOUDFLARE_ACCOUNT_ID,
+        CLOUDFLARE_API_TOKEN,
+        CLOUDFLARE_KV_NAMESPACE_ID
+      );
+    } else {
+      console.warn('⚠️ CLOUDFLARE_KV_NAMESPACE_ID not set, skipping proxy KV update');
+    }
+
+    // Mettre à jour la session avec les URLs
     await supabase
       .from('build_sessions')
       .update({ 
-        cloudflare_deployment_url: finalUrl,
-        public_url: finalUrl,
+        cloudflare_deployment_url: cloudflareUrl,
+        public_url: publicUrl,
         updated_at: new Date().toISOString()
       })
       .eq('id', sessionId);
 
+    // Vérifier que le site est accessible
+    const isAccessible = await verifySiteAccessible(cloudflareUrl);
+    
+    console.log('✅ Publication complete!');
+    console.log('   Cloudflare URL:', cloudflareUrl);
+    console.log('   Public URL:', publicUrl);
+    console.log('   Accessible:', isAccessible);
+
     return new Response(
       JSON.stringify({
         success: true,
-        url: finalUrl,
+        url: publicUrl, // URL principale affichée à l'utilisateur
+        cloudflareUrl: cloudflareUrl, // URL Cloudflare Pages directe
+        subdomain: uniqueSubdomain,
         deployId: deployment.id,
         projectName: projectName,
+        isAccessible
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
