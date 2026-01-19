@@ -234,7 +234,7 @@ function ensureRequiredFiles(files: ProjectFile[]): ProjectFile[] {
   
   // Fallbacks pour fichiers manquants
   if (!hasHtml) {
-    console.log('[ensureRequiredFiles] Adding fallback index.html');
+    console.log('[ensureRequiredFiles] Adding minimal fallback index.html');
     files.push({
       path: '/index.html',
       content: `<!DOCTYPE html>
@@ -242,17 +242,13 @@ function ensureRequiredFiles(files: ProjectFile[]): ProjectFile[] {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Site en construction</title>
+  <title>Génération en cours</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="styles.css">
+  <style>body{margin:0;background:transparent;}</style>
 </head>
-<body class="min-h-screen bg-gray-50">
-  <div id="app" class="flex items-center justify-center min-h-screen">
-    <div class="text-center p-8">
-      <h1 class="text-2xl font-bold text-gray-800 mb-4">Site en construction</h1>
-      <p class="text-gray-600">Le contenu arrive bientôt...</p>
-    </div>
-  </div>
+<body>
+  <div id="app"></div>
   <script src="app.js"></script>
 </body>
 </html>`,
