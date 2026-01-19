@@ -1,7 +1,5 @@
-import { useMemo } from 'react';
 import { InteractiveSandpackPreview } from '@/components/InteractiveSandpackPreview';
 import { GeneratingPreview } from '@/components/GeneratingPreview';
-import { Loader } from 'lucide-react';
 import type { ElementInfo } from '@/components/InteractiveSandpackPreview';
 
 interface PreviewPanelProps {
