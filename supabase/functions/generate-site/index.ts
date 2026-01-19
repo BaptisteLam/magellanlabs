@@ -1024,6 +1024,529 @@ const BASE_JS = `document.addEventListener('DOMContentLoaded', function() {
 });
 `;
 
+// Mappage Tailwind -> CSS équivalent pour les classes les plus courantes
+const TAILWIND_TO_CSS: Record<string, string> = {
+  // Flexbox
+  'flex': 'display: flex',
+  'inline-flex': 'display: inline-flex',
+  'flex-col': 'flex-direction: column',
+  'flex-row': 'flex-direction: row',
+  'flex-wrap': 'flex-wrap: wrap',
+  'flex-1': 'flex: 1 1 0%',
+  'flex-auto': 'flex: 1 1 auto',
+  'flex-none': 'flex: none',
+  'grow': 'flex-grow: 1',
+  'shrink-0': 'flex-shrink: 0',
+  'items-center': 'align-items: center',
+  'items-start': 'align-items: flex-start',
+  'items-end': 'align-items: flex-end',
+  'items-stretch': 'align-items: stretch',
+  'justify-center': 'justify-content: center',
+  'justify-between': 'justify-content: space-between',
+  'justify-around': 'justify-content: space-around',
+  'justify-evenly': 'justify-content: space-evenly',
+  'justify-start': 'justify-content: flex-start',
+  'justify-end': 'justify-content: flex-end',
+  'self-center': 'align-self: center',
+  'self-start': 'align-self: flex-start',
+  'self-end': 'align-self: flex-end',
+  // Grid
+  'grid': 'display: grid',
+  'grid-cols-1': 'grid-template-columns: repeat(1, minmax(0, 1fr))',
+  'grid-cols-2': 'grid-template-columns: repeat(2, minmax(0, 1fr))',
+  'grid-cols-3': 'grid-template-columns: repeat(3, minmax(0, 1fr))',
+  'grid-cols-4': 'grid-template-columns: repeat(4, minmax(0, 1fr))',
+  'grid-cols-5': 'grid-template-columns: repeat(5, minmax(0, 1fr))',
+  'grid-cols-6': 'grid-template-columns: repeat(6, minmax(0, 1fr))',
+  'col-span-2': 'grid-column: span 2 / span 2',
+  'col-span-3': 'grid-column: span 3 / span 3',
+  'place-items-center': 'place-items: center',
+  // Gap
+  'gap-0': 'gap: 0',
+  'gap-1': 'gap: 0.25rem',
+  'gap-2': 'gap: 0.5rem',
+  'gap-3': 'gap: 0.75rem',
+  'gap-4': 'gap: 1rem',
+  'gap-5': 'gap: 1.25rem',
+  'gap-6': 'gap: 1.5rem',
+  'gap-8': 'gap: 2rem',
+  'gap-10': 'gap: 2.5rem',
+  'gap-12': 'gap: 3rem',
+  'gap-16': 'gap: 4rem',
+  // Spacing - Padding
+  'p-0': 'padding: 0',
+  'p-1': 'padding: 0.25rem',
+  'p-2': 'padding: 0.5rem',
+  'p-3': 'padding: 0.75rem',
+  'p-4': 'padding: 1rem',
+  'p-5': 'padding: 1.25rem',
+  'p-6': 'padding: 1.5rem',
+  'p-8': 'padding: 2rem',
+  'p-10': 'padding: 2.5rem',
+  'p-12': 'padding: 3rem',
+  'p-16': 'padding: 4rem',
+  'p-20': 'padding: 5rem',
+  'px-0': 'padding-left: 0; padding-right: 0',
+  'px-1': 'padding-left: 0.25rem; padding-right: 0.25rem',
+  'px-2': 'padding-left: 0.5rem; padding-right: 0.5rem',
+  'px-3': 'padding-left: 0.75rem; padding-right: 0.75rem',
+  'px-4': 'padding-left: 1rem; padding-right: 1rem',
+  'px-5': 'padding-left: 1.25rem; padding-right: 1.25rem',
+  'px-6': 'padding-left: 1.5rem; padding-right: 1.5rem',
+  'px-8': 'padding-left: 2rem; padding-right: 2rem',
+  'px-10': 'padding-left: 2.5rem; padding-right: 2.5rem',
+  'py-0': 'padding-top: 0; padding-bottom: 0',
+  'py-1': 'padding-top: 0.25rem; padding-bottom: 0.25rem',
+  'py-2': 'padding-top: 0.5rem; padding-bottom: 0.5rem',
+  'py-3': 'padding-top: 0.75rem; padding-bottom: 0.75rem',
+  'py-4': 'padding-top: 1rem; padding-bottom: 1rem',
+  'py-5': 'padding-top: 1.25rem; padding-bottom: 1.25rem',
+  'py-6': 'padding-top: 1.5rem; padding-bottom: 1.5rem',
+  'py-8': 'padding-top: 2rem; padding-bottom: 2rem',
+  'py-10': 'padding-top: 2.5rem; padding-bottom: 2.5rem',
+  'py-12': 'padding-top: 3rem; padding-bottom: 3rem',
+  'py-16': 'padding-top: 4rem; padding-bottom: 4rem',
+  'py-20': 'padding-top: 5rem; padding-bottom: 5rem',
+  'pt-0': 'padding-top: 0',
+  'pt-4': 'padding-top: 1rem',
+  'pt-8': 'padding-top: 2rem',
+  'pt-16': 'padding-top: 4rem',
+  'pt-20': 'padding-top: 5rem',
+  'pt-24': 'padding-top: 6rem',
+  'pb-0': 'padding-bottom: 0',
+  'pb-4': 'padding-bottom: 1rem',
+  'pb-8': 'padding-bottom: 2rem',
+  'pb-16': 'padding-bottom: 4rem',
+  'pb-20': 'padding-bottom: 5rem',
+  'pl-0': 'padding-left: 0',
+  'pl-4': 'padding-left: 1rem',
+  'pr-0': 'padding-right: 0',
+  'pr-4': 'padding-right: 1rem',
+  // Spacing - Margin
+  'm-0': 'margin: 0',
+  'm-auto': 'margin: auto',
+  'm-1': 'margin: 0.25rem',
+  'm-2': 'margin: 0.5rem',
+  'm-4': 'margin: 1rem',
+  'm-8': 'margin: 2rem',
+  'mx-auto': 'margin-left: auto; margin-right: auto',
+  'mx-0': 'margin-left: 0; margin-right: 0',
+  'mx-2': 'margin-left: 0.5rem; margin-right: 0.5rem',
+  'mx-4': 'margin-left: 1rem; margin-right: 1rem',
+  'my-0': 'margin-top: 0; margin-bottom: 0',
+  'my-2': 'margin-top: 0.5rem; margin-bottom: 0.5rem',
+  'my-4': 'margin-top: 1rem; margin-bottom: 1rem',
+  'my-8': 'margin-top: 2rem; margin-bottom: 2rem',
+  'mt-0': 'margin-top: 0',
+  'mt-1': 'margin-top: 0.25rem',
+  'mt-2': 'margin-top: 0.5rem',
+  'mt-4': 'margin-top: 1rem',
+  'mt-6': 'margin-top: 1.5rem',
+  'mt-8': 'margin-top: 2rem',
+  'mt-10': 'margin-top: 2.5rem',
+  'mt-12': 'margin-top: 3rem',
+  'mt-16': 'margin-top: 4rem',
+  'mb-0': 'margin-bottom: 0',
+  'mb-1': 'margin-bottom: 0.25rem',
+  'mb-2': 'margin-bottom: 0.5rem',
+  'mb-4': 'margin-bottom: 1rem',
+  'mb-6': 'margin-bottom: 1.5rem',
+  'mb-8': 'margin-bottom: 2rem',
+  'mb-10': 'margin-bottom: 2.5rem',
+  'mb-12': 'margin-bottom: 3rem',
+  'ml-0': 'margin-left: 0',
+  'ml-2': 'margin-left: 0.5rem',
+  'ml-4': 'margin-left: 1rem',
+  'ml-auto': 'margin-left: auto',
+  'mr-0': 'margin-right: 0',
+  'mr-2': 'margin-right: 0.5rem',
+  'mr-4': 'margin-right: 1rem',
+  'mr-auto': 'margin-right: auto',
+  // Width & Height
+  'w-full': 'width: 100%',
+  'w-auto': 'width: auto',
+  'w-screen': 'width: 100vw',
+  'w-1/2': 'width: 50%',
+  'w-1/3': 'width: 33.333333%',
+  'w-2/3': 'width: 66.666667%',
+  'w-1/4': 'width: 25%',
+  'w-3/4': 'width: 75%',
+  'w-4': 'width: 1rem',
+  'w-6': 'width: 1.5rem',
+  'w-8': 'width: 2rem',
+  'w-10': 'width: 2.5rem',
+  'w-12': 'width: 3rem',
+  'w-16': 'width: 4rem',
+  'w-20': 'width: 5rem',
+  'w-24': 'width: 6rem',
+  'w-32': 'width: 8rem',
+  'w-48': 'width: 12rem',
+  'w-64': 'width: 16rem',
+  'w-96': 'width: 24rem',
+  'min-w-0': 'min-width: 0',
+  'min-w-full': 'min-width: 100%',
+  'max-w-xs': 'max-width: 20rem',
+  'max-w-sm': 'max-width: 24rem',
+  'max-w-md': 'max-width: 28rem',
+  'max-w-lg': 'max-width: 32rem',
+  'max-w-xl': 'max-width: 36rem',
+  'max-w-2xl': 'max-width: 42rem',
+  'max-w-3xl': 'max-width: 48rem',
+  'max-w-4xl': 'max-width: 56rem',
+  'max-w-5xl': 'max-width: 64rem',
+  'max-w-6xl': 'max-width: 72rem',
+  'max-w-7xl': 'max-width: 80rem',
+  'max-w-full': 'max-width: 100%',
+  'max-w-screen-xl': 'max-width: 1280px',
+  'max-w-screen-2xl': 'max-width: 1536px',
+  'h-full': 'height: 100%',
+  'h-auto': 'height: auto',
+  'h-screen': 'height: 100vh',
+  'h-4': 'height: 1rem',
+  'h-6': 'height: 1.5rem',
+  'h-8': 'height: 2rem',
+  'h-10': 'height: 2.5rem',
+  'h-12': 'height: 3rem',
+  'h-16': 'height: 4rem',
+  'h-20': 'height: 5rem',
+  'h-24': 'height: 6rem',
+  'h-32': 'height: 8rem',
+  'h-48': 'height: 12rem',
+  'h-64': 'height: 16rem',
+  'h-96': 'height: 24rem',
+  'min-h-0': 'min-height: 0',
+  'min-h-full': 'min-height: 100%',
+  'min-h-screen': 'min-height: 100vh',
+  // Typography
+  'text-xs': 'font-size: 0.75rem; line-height: 1rem',
+  'text-sm': 'font-size: 0.875rem; line-height: 1.25rem',
+  'text-base': 'font-size: 1rem; line-height: 1.5rem',
+  'text-lg': 'font-size: 1.125rem; line-height: 1.75rem',
+  'text-xl': 'font-size: 1.25rem; line-height: 1.75rem',
+  'text-2xl': 'font-size: 1.5rem; line-height: 2rem',
+  'text-3xl': 'font-size: 1.875rem; line-height: 2.25rem',
+  'text-4xl': 'font-size: 2.25rem; line-height: 2.5rem',
+  'text-5xl': 'font-size: 3rem; line-height: 1',
+  'text-6xl': 'font-size: 3.75rem; line-height: 1',
+  'text-7xl': 'font-size: 4.5rem; line-height: 1',
+  'font-thin': 'font-weight: 100',
+  'font-light': 'font-weight: 300',
+  'font-normal': 'font-weight: 400',
+  'font-medium': 'font-weight: 500',
+  'font-semibold': 'font-weight: 600',
+  'font-bold': 'font-weight: 700',
+  'font-extrabold': 'font-weight: 800',
+  'italic': 'font-style: italic',
+  'not-italic': 'font-style: normal',
+  'uppercase': 'text-transform: uppercase',
+  'lowercase': 'text-transform: lowercase',
+  'capitalize': 'text-transform: capitalize',
+  'normal-case': 'text-transform: none',
+  'underline': 'text-decoration: underline',
+  'line-through': 'text-decoration: line-through',
+  'no-underline': 'text-decoration: none',
+  'text-left': 'text-align: left',
+  'text-center': 'text-align: center',
+  'text-right': 'text-align: right',
+  'text-justify': 'text-align: justify',
+  'leading-none': 'line-height: 1',
+  'leading-tight': 'line-height: 1.25',
+  'leading-snug': 'line-height: 1.375',
+  'leading-normal': 'line-height: 1.5',
+  'leading-relaxed': 'line-height: 1.625',
+  'leading-loose': 'line-height: 2',
+  'tracking-tight': 'letter-spacing: -0.025em',
+  'tracking-normal': 'letter-spacing: 0',
+  'tracking-wide': 'letter-spacing: 0.025em',
+  'tracking-wider': 'letter-spacing: 0.05em',
+  'tracking-widest': 'letter-spacing: 0.1em',
+  // Colors - Text
+  'text-white': 'color: #ffffff',
+  'text-black': 'color: #000000',
+  'text-transparent': 'color: transparent',
+  'text-gray-50': 'color: #f9fafb',
+  'text-gray-100': 'color: #f3f4f6',
+  'text-gray-200': 'color: #e5e7eb',
+  'text-gray-300': 'color: #d1d5db',
+  'text-gray-400': 'color: #9ca3af',
+  'text-gray-500': 'color: #6b7280',
+  'text-gray-600': 'color: #4b5563',
+  'text-gray-700': 'color: #374151',
+  'text-gray-800': 'color: #1f2937',
+  'text-gray-900': 'color: #111827',
+  'text-red-500': 'color: #ef4444',
+  'text-red-600': 'color: #dc2626',
+  'text-green-500': 'color: #22c55e',
+  'text-green-600': 'color: #16a34a',
+  'text-blue-500': 'color: #3b82f6',
+  'text-blue-600': 'color: #2563eb',
+  'text-cyan-500': 'color: #06b6d4',
+  'text-cyan-600': 'color: #0891b2',
+  'text-teal-500': 'color: #14b8a6',
+  'text-teal-600': 'color: #0d9488',
+  // Colors - Background
+  'bg-white': 'background-color: #ffffff',
+  'bg-black': 'background-color: #000000',
+  'bg-transparent': 'background-color: transparent',
+  'bg-gray-50': 'background-color: #f9fafb',
+  'bg-gray-100': 'background-color: #f3f4f6',
+  'bg-gray-200': 'background-color: #e5e7eb',
+  'bg-gray-300': 'background-color: #d1d5db',
+  'bg-gray-400': 'background-color: #9ca3af',
+  'bg-gray-500': 'background-color: #6b7280',
+  'bg-gray-600': 'background-color: #4b5563',
+  'bg-gray-700': 'background-color: #374151',
+  'bg-gray-800': 'background-color: #1f2937',
+  'bg-gray-900': 'background-color: #111827',
+  'bg-red-50': 'background-color: #fef2f2',
+  'bg-red-500': 'background-color: #ef4444',
+  'bg-green-50': 'background-color: #f0fdf4',
+  'bg-green-500': 'background-color: #22c55e',
+  'bg-blue-50': 'background-color: #eff6ff',
+  'bg-blue-500': 'background-color: #3b82f6',
+  'bg-blue-600': 'background-color: #2563eb',
+  'bg-cyan-50': 'background-color: #ecfeff',
+  'bg-cyan-500': 'background-color: #06b6d4',
+  'bg-cyan-600': 'background-color: #0891b2',
+  'bg-teal-50': 'background-color: #f0fdfa',
+  'bg-teal-500': 'background-color: #14b8a6',
+  'bg-teal-600': 'background-color: #0d9488',
+  // Borders
+  'border': 'border-width: 1px; border-style: solid',
+  'border-0': 'border-width: 0',
+  'border-2': 'border-width: 2px',
+  'border-4': 'border-width: 4px',
+  'border-t': 'border-top-width: 1px; border-style: solid',
+  'border-b': 'border-bottom-width: 1px; border-style: solid',
+  'border-l': 'border-left-width: 1px; border-style: solid',
+  'border-r': 'border-right-width: 1px; border-style: solid',
+  'border-solid': 'border-style: solid',
+  'border-dashed': 'border-style: dashed',
+  'border-dotted': 'border-style: dotted',
+  'border-none': 'border-style: none',
+  'border-gray-100': 'border-color: #f3f4f6',
+  'border-gray-200': 'border-color: #e5e7eb',
+  'border-gray-300': 'border-color: #d1d5db',
+  'border-gray-400': 'border-color: #9ca3af',
+  'border-white': 'border-color: #ffffff',
+  'border-black': 'border-color: #000000',
+  'border-transparent': 'border-color: transparent',
+  'border-cyan-500': 'border-color: #06b6d4',
+  'border-teal-500': 'border-color: #14b8a6',
+  // Border Radius
+  'rounded-none': 'border-radius: 0',
+  'rounded-sm': 'border-radius: 0.125rem',
+  'rounded': 'border-radius: 0.25rem',
+  'rounded-md': 'border-radius: 0.375rem',
+  'rounded-lg': 'border-radius: 0.5rem',
+  'rounded-xl': 'border-radius: 0.75rem',
+  'rounded-2xl': 'border-radius: 1rem',
+  'rounded-3xl': 'border-radius: 1.5rem',
+  'rounded-full': 'border-radius: 9999px',
+  // Shadow
+  'shadow-sm': 'box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05)',
+  'shadow': 'box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+  'shadow-md': 'box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+  'shadow-lg': 'box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+  'shadow-xl': 'box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+  'shadow-2xl': 'box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25)',
+  'shadow-none': 'box-shadow: none',
+  // Display
+  'block': 'display: block',
+  'inline-block': 'display: inline-block',
+  'inline': 'display: inline',
+  'hidden': 'display: none',
+  'invisible': 'visibility: hidden',
+  'visible': 'visibility: visible',
+  // Position
+  'static': 'position: static',
+  'fixed': 'position: fixed',
+  'absolute': 'position: absolute',
+  'relative': 'position: relative',
+  'sticky': 'position: sticky',
+  'inset-0': 'inset: 0',
+  'top-0': 'top: 0',
+  'right-0': 'right: 0',
+  'bottom-0': 'bottom: 0',
+  'left-0': 'left: 0',
+  'top-1/2': 'top: 50%',
+  'left-1/2': 'left: 50%',
+  '-translate-x-1/2': 'transform: translateX(-50%)',
+  '-translate-y-1/2': 'transform: translateY(-50%)',
+  'z-0': 'z-index: 0',
+  'z-10': 'z-index: 10',
+  'z-20': 'z-index: 20',
+  'z-30': 'z-index: 30',
+  'z-40': 'z-index: 40',
+  'z-50': 'z-index: 50',
+  // Overflow
+  'overflow-auto': 'overflow: auto',
+  'overflow-hidden': 'overflow: hidden',
+  'overflow-visible': 'overflow: visible',
+  'overflow-scroll': 'overflow: scroll',
+  'overflow-x-auto': 'overflow-x: auto',
+  'overflow-y-auto': 'overflow-y: auto',
+  'overflow-x-hidden': 'overflow-x: hidden',
+  'overflow-y-hidden': 'overflow-y: hidden',
+  // Object
+  'object-contain': 'object-fit: contain',
+  'object-cover': 'object-fit: cover',
+  'object-fill': 'object-fit: fill',
+  'object-none': 'object-fit: none',
+  'object-center': 'object-position: center',
+  // Cursor
+  'cursor-pointer': 'cursor: pointer',
+  'cursor-default': 'cursor: default',
+  'cursor-not-allowed': 'cursor: not-allowed',
+  // Opacity
+  'opacity-0': 'opacity: 0',
+  'opacity-25': 'opacity: 0.25',
+  'opacity-50': 'opacity: 0.5',
+  'opacity-75': 'opacity: 0.75',
+  'opacity-100': 'opacity: 1',
+  // Transitions
+  'transition': 'transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms',
+  'transition-all': 'transition-property: all; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms',
+  'transition-colors': 'transition-property: color, background-color, border-color, text-decoration-color, fill, stroke; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms',
+  'transition-opacity': 'transition-property: opacity; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms',
+  'transition-transform': 'transition-property: transform; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms',
+  'duration-75': 'transition-duration: 75ms',
+  'duration-100': 'transition-duration: 100ms',
+  'duration-150': 'transition-duration: 150ms',
+  'duration-200': 'transition-duration: 200ms',
+  'duration-300': 'transition-duration: 300ms',
+  'duration-500': 'transition-duration: 500ms',
+  'ease-in': 'transition-timing-function: cubic-bezier(0.4, 0, 1, 1)',
+  'ease-out': 'transition-timing-function: cubic-bezier(0, 0, 0.2, 1)',
+  'ease-in-out': 'transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1)',
+  // Transform
+  'transform': 'transform: translateX(var(--tw-translate-x)) translateY(var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))',
+  'scale-90': 'transform: scale(0.9)',
+  'scale-95': 'transform: scale(0.95)',
+  'scale-100': 'transform: scale(1)',
+  'scale-105': 'transform: scale(1.05)',
+  'scale-110': 'transform: scale(1.1)',
+  'hover\\:scale-105': 'transform: scale(1.05)',
+  'rotate-45': 'transform: rotate(45deg)',
+  'rotate-90': 'transform: rotate(90deg)',
+  'rotate-180': 'transform: rotate(180deg)',
+  // Pointer Events
+  'pointer-events-none': 'pointer-events: none',
+  'pointer-events-auto': 'pointer-events: auto',
+  // Select
+  'select-none': 'user-select: none',
+  'select-text': 'user-select: text',
+  'select-all': 'user-select: all',
+  // Whitespace
+  'whitespace-normal': 'white-space: normal',
+  'whitespace-nowrap': 'white-space: nowrap',
+  'whitespace-pre': 'white-space: pre',
+  'whitespace-pre-line': 'white-space: pre-line',
+  'whitespace-pre-wrap': 'white-space: pre-wrap',
+  // List
+  'list-none': 'list-style-type: none',
+  'list-disc': 'list-style-type: disc',
+  'list-decimal': 'list-style-type: decimal',
+  'list-inside': 'list-style-position: inside',
+  'list-outside': 'list-style-position: outside',
+  // Space between (approximations)
+  'space-x-1': 'column-gap: 0.25rem',
+  'space-x-2': 'column-gap: 0.5rem',
+  'space-x-4': 'column-gap: 1rem',
+  'space-x-6': 'column-gap: 1.5rem',
+  'space-y-1': 'row-gap: 0.25rem',
+  'space-y-2': 'row-gap: 0.5rem',
+  'space-y-4': 'row-gap: 1rem',
+  'space-y-6': 'row-gap: 1.5rem',
+  // Aspect ratio
+  'aspect-square': 'aspect-ratio: 1 / 1',
+  'aspect-video': 'aspect-ratio: 16 / 9',
+  'aspect-auto': 'aspect-ratio: auto',
+  // Filters
+  'backdrop-blur': 'backdrop-filter: blur(8px)',
+  'backdrop-blur-sm': 'backdrop-filter: blur(4px)',
+  'backdrop-blur-md': 'backdrop-filter: blur(12px)',
+  'backdrop-blur-lg': 'backdrop-filter: blur(16px)',
+  'backdrop-blur-xl': 'backdrop-filter: blur(24px)',
+  // Outline
+  'outline-none': 'outline: 2px solid transparent; outline-offset: 2px',
+  'ring-0': 'box-shadow: var(--tw-ring-inset) 0 0 0 calc(0px + var(--tw-ring-offset-width)) var(--tw-ring-color)',
+  'ring-1': 'box-shadow: 0 0 0 1px',
+  'ring-2': 'box-shadow: 0 0 0 2px',
+  // Focus ring (simplified)
+  'focus\\:outline-none': 'outline: none',
+  'focus\\:ring-2': 'box-shadow: 0 0 0 2px',
+};
+
+// Générer du CSS utilitaire à partir des classes Tailwind utilisées dans le HTML
+function generateTailwindCSS(html: string): string {
+  const usedClasses = new Set<string>();
+  
+  // Extraire toutes les classes du HTML
+  const classRegex = /class=["']([^"']+)["']/g;
+  let match;
+  while ((match = classRegex.exec(html)) !== null) {
+    const classes = match[1].split(/\s+/);
+    classes.forEach(cls => usedClasses.add(cls.trim()));
+  }
+  
+  // Générer le CSS pour chaque classe utilisée
+  let generatedCSS = `/* === AUTO-GENERATED TAILWIND UTILITIES === */\n\n`;
+  let rulesGenerated = 0;
+  
+  for (const cls of usedClasses) {
+    if (TAILWIND_TO_CSS[cls]) {
+      generatedCSS += `.${cls.replace(/[:\\]/g, '\\\\$&')} { ${TAILWIND_TO_CSS[cls]}; }\n`;
+      rulesGenerated++;
+    }
+    
+    // Gérer les classes hover:*
+    if (cls.startsWith('hover:')) {
+      const baseClass = cls.replace('hover:', '');
+      if (TAILWIND_TO_CSS[baseClass]) {
+        generatedCSS += `.${cls.replace(/:/g, '\\:')}:hover { ${TAILWIND_TO_CSS[baseClass]}; }\n`;
+        rulesGenerated++;
+      }
+    }
+    
+    // Gérer les classes focus:*
+    if (cls.startsWith('focus:')) {
+      const baseClass = cls.replace('focus:', '');
+      if (TAILWIND_TO_CSS[baseClass]) {
+        generatedCSS += `.${cls.replace(/:/g, '\\:')}:focus { ${TAILWIND_TO_CSS[baseClass]}; }\n`;
+        rulesGenerated++;
+      }
+    }
+    
+    // Gérer les classes md:* et lg:* (responsive)
+    if (cls.startsWith('md:')) {
+      const baseClass = cls.replace('md:', '');
+      if (TAILWIND_TO_CSS[baseClass]) {
+        generatedCSS += `@media (min-width: 768px) { .${cls.replace(/:/g, '\\:')} { ${TAILWIND_TO_CSS[baseClass]}; } }\n`;
+        rulesGenerated++;
+      }
+    }
+    if (cls.startsWith('lg:')) {
+      const baseClass = cls.replace('lg:', '');
+      if (TAILWIND_TO_CSS[baseClass]) {
+        generatedCSS += `@media (min-width: 1024px) { .${cls.replace(/:/g, '\\:')} { ${TAILWIND_TO_CSS[baseClass]}; } }\n`;
+        rulesGenerated++;
+      }
+    }
+    if (cls.startsWith('xl:')) {
+      const baseClass = cls.replace('xl:', '');
+      if (TAILWIND_TO_CSS[baseClass]) {
+        generatedCSS += `@media (min-width: 1280px) { .${cls.replace(/:/g, '\\:')} { ${TAILWIND_TO_CSS[baseClass]}; } }\n`;
+        rulesGenerated++;
+      }
+    }
+  }
+  
+  console.log(`[generateTailwindCSS] Generated ${rulesGenerated} utility CSS rules from ${usedClasses.size} classes`);
+  
+  return rulesGenerated > 0 ? generatedCSS : '';
+}
+
 // Supprimer les références Tailwind CDN du HTML
 function removeTailwindCDN(html: string): string {
   // Supprimer script Tailwind CDN
@@ -1077,7 +1600,7 @@ function extractInlineAssets(htmlContent: string): { html: string; css: string; 
 // S'assurer que les 3 fichiers requis existent avec du contenu suffisant
 function ensureRequiredFiles(files: ProjectFile[]): ProjectFile[] {
   const hasHtml = files.some(f => f.path === '/index.html');
-  const cssFile = files.find(f => f.path === '/styles.css');
+  let cssFile = files.find(f => f.path === '/styles.css');
   const jsFile = files.find(f => f.path === '/app.js');
   
   // Si on a un seul HTML avec du contenu inline, extraire CSS/JS
@@ -1089,15 +1612,27 @@ function ensureRequiredFiles(files: ProjectFile[]): ProjectFile[] {
     // Mettre à jour le HTML (supprimer Tailwind CDN si présent)
     htmlFile.content = removeTailwindCDN(extracted.html);
     
-    // Vérifier si le CSS extrait est suffisant (> 500 chars)
-    const extractedCssValid = extracted.css.length > 500;
+    // Générer du CSS utilitaire à partir des classes Tailwind utilisées dans le HTML
+    const tailwindCSS = generateTailwindCSS(htmlFile.content);
+    console.log(`[ensureRequiredFiles] Generated ${tailwindCSS.length} chars of Tailwind utility CSS`);
     
-    if (extractedCssValid) {
-      files.push({ path: '/styles.css', content: extracted.css, type: 'stylesheet' });
+    // Combiner le CSS extrait + CSS Tailwind généré + fallback si nécessaire
+    let finalCSS = '';
+    
+    // Si le CSS extrait est suffisant, l'utiliser comme base
+    if (extracted.css.length > 500) {
+      finalCSS = extracted.css;
     } else {
       console.log('[ensureRequiredFiles] CSS too short, using complete fallback CSS');
-      files.push({ path: '/styles.css', content: COMPLETE_FALLBACK_CSS, type: 'stylesheet' });
+      finalCSS = COMPLETE_FALLBACK_CSS;
     }
+    
+    // Ajouter toujours le CSS Tailwind généré s'il existe
+    if (tailwindCSS.length > 0) {
+      finalCSS = finalCSS + '\n\n' + tailwindCSS;
+    }
+    
+    files.push({ path: '/styles.css', content: finalCSS, type: 'stylesheet' });
     
     // Ajouter JS extrait ou fallback
     if (extracted.js && extracted.js.length > 100) {
@@ -1112,6 +1647,20 @@ function ensureRequiredFiles(files: ProjectFile[]): ProjectFile[] {
   // Vérifier et corriger le HTML existant (supprimer Tailwind CDN)
   if (htmlFile) {
     htmlFile.content = removeTailwindCDN(htmlFile.content);
+    
+    // Générer du CSS Tailwind si le HTML utilise des classes Tailwind
+    const tailwindCSS = generateTailwindCSS(htmlFile.content);
+    if (tailwindCSS.length > 0) {
+      console.log(`[ensureRequiredFiles] Generated ${tailwindCSS.length} chars of Tailwind utility CSS`);
+      
+      // Ajouter au CSS existant ou créer un nouveau fichier
+      if (cssFile) {
+        cssFile.content = cssFile.content + '\n\n' + tailwindCSS;
+      } else {
+        files.push({ path: '/styles.css', content: COMPLETE_FALLBACK_CSS + '\n\n' + tailwindCSS, type: 'stylesheet' });
+        cssFile = files.find(f => f.path === '/styles.css');
+      }
+    }
   }
   
   // Vérifier que le CSS est suffisant
