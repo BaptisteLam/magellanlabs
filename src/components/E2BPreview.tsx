@@ -104,13 +104,9 @@ export const E2BPreview = forwardRef<E2BPreviewHandle, E2BPreviewProps>(({
       console.log('[E2BPreview] Creating sandbox with', Object.keys(projectFiles).length, 'files');
       
       // Convertir en format array pour l'API
-      const filesArray = Object.entries(projectFiles).map(([path, content]) => ({
-        path,
-        content
-      }));
-
+      // Send files as Record<string, string> format (SDK expects this)
       const { data, error: invokeError } = await supabase.functions.invoke('preview-sandbox', {
-        body: { files: filesArray }
+        body: { files: projectFiles }
       });
 
       if (invokeError) {
@@ -152,15 +148,11 @@ export const E2BPreview = forwardRef<E2BPreviewHandle, E2BPreviewProps>(({
     try {
       console.log('[E2BPreview] Updating sandbox:', sandboxIdRef.current);
       
-      const filesArray = Object.entries(projectFiles).map(([path, content]) => ({
-        path,
-        content
-      }));
-
+      // Send files as Record<string, string> format
       const { data, error: invokeError } = await supabase.functions.invoke('update-sandbox', {
         body: { 
           sandboxId: sandboxIdRef.current,
-          files: filesArray 
+          files: projectFiles 
         }
       });
 

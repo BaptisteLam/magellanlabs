@@ -24,6 +24,7 @@ serve(async (req) => {
 
     console.log('[close-sandbox] Closing sandbox:', sandboxId);
 
+    // Use REST API to delete sandbox
     const response = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}`, {
       method: 'DELETE',
       headers: {
@@ -33,8 +34,10 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[close-sandbox] Error:', errorText);
-      // Ne pas throw, la sandbox peut déjà être fermée
+      console.log('[close-sandbox] Delete response:', response.status, errorText);
+      // Don't throw - sandbox might already be closed
+    } else {
+      console.log('[close-sandbox] Sandbox closed successfully');
     }
 
     return new Response(
