@@ -397,8 +397,8 @@ SCRIPT_EOF`;
     // Wait for server to start
     await new Promise(resolve => setTimeout(resolve, 3000));
 
-    // Get host URL
-    const previewUrl = `https://${sandboxId}-${PORT}.e2b.dev`;
+    // Get host URL - E2B 2024+ format: {PORT}-{sandboxId}.e2b.app
+    const previewUrl = `https://${PORT}-${sandboxId}.e2b.app`;
     console.log('[preview-sandbox] 8. Preview URL:', previewUrl);
 
     return new Response(
