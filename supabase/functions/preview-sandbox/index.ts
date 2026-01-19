@@ -15,115 +15,84 @@ interface RequestBody {
   sessionId?: string;
 }
 
-// Normaliser les fichiers en format array
-function normalizeFiles(files: ProjectFile[] | Record<string, string>): ProjectFile[] {
+// Normalize files to Record format
+function normalizeFiles(files: ProjectFile[] | Record<string, string>): Record<string, string> {
   if (Array.isArray(files)) {
-    return files;
+    const result: Record<string, string> = {};
+    for (const file of files) {
+      const cleanPath = file.path.replace(/^\//, '');
+      result[cleanPath] = file.content;
+    }
+    return result;
   }
-  
-  return Object.entries(files).map(([path, content]) => ({
-    path: path.startsWith('/') ? path.slice(1) : path,
-    content: content as string
-  }));
+  return files;
 }
 
-// Script de navigation à injecter dans chaque page HTML
+// Navigation script to inject into HTML files
 const NAVIGATION_SCRIPT = `
 <script>
 (function() {
-  // Notifier le parent du chargement de la page
-  function notifyParent() {
-    try {
+  function notifyParent(type, path) {
+    if (window.parent !== window) {
       window.parent.postMessage({
-        type: 'PAGE_LOADED',
-        path: window.location.pathname.replace('/home/user', '') || '/',
+        type: type,
+        path: path || window.location.pathname,
         title: document.title || 'Preview'
       }, '*');
-    } catch (e) {
-      console.error('[E2B Nav] Error notifying parent:', e);
     }
-  }
-
-  // Écouter les messages de navigation du parent
-  window.addEventListener('message', function(e) {
-    if (!e.data || !e.data.type) return;
-    
-    switch (e.data.type) {
-      case 'NAVIGATE':
-        if (e.data.path) {
-          let targetPath = e.data.path;
-          if (!targetPath.endsWith('.html') && targetPath !== '/') {
-            targetPath = targetPath + '.html';
-          }
-          if (targetPath === '/') targetPath = '/index.html';
-          window.location.href = targetPath;
-        }
-        break;
-      case 'RELOAD':
-        window.location.reload();
-        break;
-    }
-  });
-
-  // Intercepter les clics sur les liens internes pour navigation fluide
-  document.addEventListener('click', function(e) {
-    const link = e.target.closest('a');
-    if (link && link.href) {
-      const url = new URL(link.href);
-      // Lien interne
-      if (url.origin === window.location.origin) {
-        e.preventDefault();
-        const path = url.pathname;
-        window.parent.postMessage({
-          type: 'INTERNAL_NAVIGATION',
-          path: path
-        }, '*');
-        window.location.href = path;
-      }
-    }
-  });
-
-  // Notifier au chargement
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', notifyParent);
-  } else {
-    notifyParent();
   }
   
-  // Aussi notifier après le load complet
-  window.addEventListener('load', notifyParent);
+  notifyParent('PAGE_LOADED', window.location.pathname);
+  
+  window.addEventListener('message', function(e) {
+    if (!e.data || !e.data.type) return;
+    if (e.data.type === 'NAVIGATE' && e.data.path) {
+      window.location.href = e.data.path;
+    }
+    if (e.data.type === 'RELOAD') {
+      window.location.reload();
+    }
+  });
+  
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('a');
+    if (link && link.href && link.href.startsWith(window.location.origin)) {
+      e.preventDefault();
+      window.parent.postMessage({ type: 'INTERNAL_NAVIGATION', path: link.pathname }, '*');
+      window.location.href = link.href;
+    }
+  });
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { notifyParent('PAGE_LOADED'); });
+  }
+  window.addEventListener('load', function() { notifyParent('PAGE_LOADED'); });
 })();
 </script>
 `;
 
-// Injecter le script de navigation dans le HTML
 function injectNavigationScript(html: string): string {
-  // Injecter avant </body>
   if (html.includes('</body>')) {
     return html.replace('</body>', NAVIGATION_SCRIPT + '</body>');
   }
-  // Sinon ajouter à la fin
   return html + NAVIGATION_SCRIPT;
 }
 
-// Générer le HTML complet avec CSS et JS injectés
 function processHTMLFile(htmlContent: string, cssContent: string, jsContent: string): string {
   let html = htmlContent;
   
-  // Injecter le CSS dans le head si pas déjà présent
-  if (cssContent && !html.includes('styles.css') && !html.includes('<link rel="stylesheet"')) {
+  // Inject CSS
+  if (cssContent && !html.includes('<style>') && !html.includes('styles.css')) {
     const styleTag = `<style>\n${cssContent}\n</style>`;
     if (html.includes('</head>')) {
       html = html.replace('</head>', styleTag + '\n</head>');
-    } else if (html.includes('<body')) {
-      html = html.replace(/<body([^>]*)>/, `<head>${styleTag}</head><body$1>`);
     } else {
       html = styleTag + '\n' + html;
     }
   }
 
-  // Injecter le JS avant </body> si pas déjà présent
-  if (jsContent && !html.includes('app.js') && !html.includes('<script src=')) {
+  // Inject JS
+  if (jsContent && !html.includes('<script>') && !html.includes('app.js')) {
     const scriptTag = `<script>\n${jsContent}\n</script>`;
     if (html.includes('</body>')) {
       html = html.replace('</body>', scriptTag + '\n</body>');
@@ -132,98 +101,152 @@ function processHTMLFile(htmlContent: string, cssContent: string, jsContent: str
     }
   }
 
-  // Injecter le script de navigation
+  // Inject navigation script
   html = injectNavigationScript(html);
 
   return html;
 }
 
-// Fonction pour écrire un fichier via l'API E2B
-async function writeFileToSandbox(
-  sandboxId: string,
-  filePath: string,
-  content: string,
-  apiKey: string
-): Promise<boolean> {
-  // Encoder le contenu en base64 (UTF-8)
+// Escape content for Python triple-quoted string
+function escapeForPython(content: string): string {
+  return content
+    .replace(/\\/g, '\\\\')
+    .replace(/"""/g, '\\"\\"\\"')
+    .replace(/\r\n/g, '\\n')
+    .replace(/\r/g, '\\n')
+    .replace(/\n/g, '\\n');
+}
+
+// Execute code via WebSocket-based code execution
+async function executeCodeViaRPC(sandboxId: string, apiKey: string, code: string): Promise<{ success: boolean; stdout?: string; stderr?: string; error?: string }> {
+  // Use the RPC endpoint for code execution
+  const execUrl = `https://api.e2b.dev/sandboxes/${sandboxId}/code/execution`;
+  
+  console.log('[preview-sandbox] Executing code via RPC...');
+  
+  const response = await fetch(execUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': apiKey,
+    },
+    body: JSON.stringify({
+      code: code,
+      language: 'python',
+    }),
+  });
+
+  if (response.ok) {
+    const result = await response.json();
+    console.log('[preview-sandbox] RPC execution result:', JSON.stringify(result));
+    return { success: true, stdout: result.stdout, stderr: result.stderr };
+  }
+
+  const errorText = await response.text().catch(() => '(no body)');
+  console.log('[preview-sandbox] RPC execution failed:', response.status, errorText);
+  return { success: false, error: errorText };
+}
+
+// Alternative: Run shell command via process API
+async function runShellCommand(sandboxId: string, apiKey: string, cmd: string, background = false): Promise<{ success: boolean; output?: string; error?: string }> {
+  const processUrl = `https://api.e2b.dev/sandboxes/${sandboxId}/commands`;
+  
+  console.log('[preview-sandbox] Running command:', cmd.substring(0, 100) + '...');
+  
+  const response = await fetch(processUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': apiKey,
+    },
+    body: JSON.stringify({
+      cmd: cmd,
+      background: background,
+      envs: {},
+    }),
+  });
+
+  if (response.ok) {
+    const result = await response.json();
+    console.log('[preview-sandbox] Command result:', JSON.stringify(result).substring(0, 200));
+    return { success: true, output: result.stdout || result.output };
+  }
+
+  const errorText = await response.text().catch(() => '(no body)');
+  console.log('[preview-sandbox] Command failed:', response.status, errorText);
+  return { success: false, error: errorText };
+}
+
+// Write file via filesystem API with multiple fallbacks
+async function writeFileToSandbox(sandboxId: string, filePath: string, content: string, apiKey: string): Promise<boolean> {
+  console.log('[preview-sandbox] Writing file:', filePath);
+  
+  // Method 1: Try filesystem API with base64
   const data = new TextEncoder().encode(content);
   const base64Content = btoa(String.fromCharCode(...data));
-
-  const url = `https://api.e2b.dev/sandboxes/${sandboxId}/filesystem`;
-  const headers = {
-    'Content-Type': 'application/json',
-    'X-API-Key': apiKey,
-  };
-
-  // L’API E2B a eu plusieurs variantes (PUT/POST + payload "files" vs payload single).
-  // On tente plusieurs formats pour maximiser la compatibilité et on loggue chaque échec.
-  const attempts: Array<{ name: string; method: string; body: unknown }> = [
-    {
-      name: 'put_files_array',
-      method: 'PUT',
-      body: { files: [{ path: filePath, data: base64Content }] },
-    },
-    {
-      name: 'post_files_array',
-      method: 'POST',
-      body: { files: [{ path: filePath, data: base64Content }] },
-    },
-    {
-      name: 'put_single',
-      method: 'PUT',
-      body: { path: filePath, data: base64Content },
-    },
-    {
-      name: 'post_single',
-      method: 'POST',
-      body: { path: filePath, data: base64Content },
-    },
+  
+  const filesystemUrl = `https://api.e2b.dev/sandboxes/${sandboxId}/filesystem`;
+  
+  // Try various formats
+  const attempts = [
+    { method: 'POST', body: { path: filePath, content: base64Content } },
+    { method: 'PUT', body: { path: filePath, data: base64Content } },
+    { method: 'POST', body: { files: [{ path: filePath, data: base64Content }] } },
   ];
 
   for (const attempt of attempts) {
-    const res = await fetch(url, {
+    const res = await fetch(filesystemUrl, {
       method: attempt.method,
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': apiKey,
+      },
       body: JSON.stringify(attempt.body),
     });
 
-    if (res.ok) return true;
-
-    let errText = '';
-    try {
-      errText = await res.text();
-    } catch {
-      errText = '(no body)';
+    if (res.ok) {
+      console.log('[preview-sandbox] File written via filesystem API');
+      return true;
     }
-    console.error(
-      `[preview-sandbox] write ${filePath} failed via ${attempt.name} (${res.status}): ${errText}`,
-    );
+
+    const errText = await res.text().catch(() => '(no body)');
+    console.log(`[preview-sandbox] Filesystem attempt failed (${res.status}):`, errText.substring(0, 100));
   }
 
-  // Fallback legacy endpoint
-  const legacyUrl = `https://api.e2b.dev/sandboxes/${sandboxId}/files?path=${encodeURIComponent(filePath)}`;
-  const legacyRes = await fetch(legacyUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/octet-stream',
-      'X-API-Key': apiKey,
-    },
-    body: content,
-  });
-
-  if (!legacyRes.ok) {
-    const legacyText = await legacyRes.text().catch(() => '(no body)');
-    console.error(
-      `[preview-sandbox] write ${filePath} failed via legacy (${legacyRes.status}): ${legacyText}`,
-    );
-    return false;
+  // Method 2: Write via echo command (for small files)
+  if (content.length < 5000) {
+    // Escape for shell
+    const shellEscaped = content
+      .replace(/'/g, "'\\''")
+      .replace(/\n/g, '\\n');
+    
+    const echoResult = await runShellCommand(sandboxId, apiKey, `echo '${shellEscaped}' > ${filePath}`, false);
+    if (echoResult.success) {
+      console.log('[preview-sandbox] File written via echo command');
+      return true;
+    }
   }
 
-  return true;
+  // Method 3: Write via Python command
+  const pythonCode = `
+import os
+os.makedirs(os.path.dirname("${filePath}"), exist_ok=True)
+with open("${filePath}", "w", encoding="utf-8") as f:
+    f.write("""${escapeForPython(content)}""")
+print("Written: ${filePath}")
+`;
+
+  const pythonResult = await runShellCommand(sandboxId, apiKey, `python3 -c '${pythonCode.replace(/'/g, "'\\''")}'`, false);
+  if (pythonResult.success) {
+    console.log('[preview-sandbox] File written via Python');
+    return true;
+  }
+
+  console.error('[preview-sandbox] All file write methods failed for:', filePath);
+  return false;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -242,25 +265,22 @@ serve(async (req) => {
     }
 
     const normalizedFiles = normalizeFiles(files);
-    console.log('[preview-sandbox] Processing', normalizedFiles.length, 'files');
+    const fileCount = Object.keys(normalizedFiles).length;
+    console.log('[preview-sandbox] 1. Processing', fileCount, 'files');
 
-    // Séparer les fichiers par type
-    const htmlFiles = normalizedFiles.filter(f => f.path.endsWith('.html'));
-    const cssFile = normalizedFiles.find(f => f.path === 'styles.css' || f.path === 'style.css');
-    const jsFile = normalizedFiles.find(f => f.path === 'app.js' || f.path === 'main.js' || f.path === 'script.js');
-    const otherFiles = normalizedFiles.filter(f => 
-      !f.path.endsWith('.html') && 
-      f.path !== 'styles.css' && f.path !== 'style.css' &&
-      f.path !== 'app.js' && f.path !== 'main.js' && f.path !== 'script.js'
-    );
-
-    const cssContent = cssFile?.content || '';
-    const jsContent = jsFile?.content || '';
+    // Extract file types
+    const htmlFiles = Object.entries(normalizedFiles).filter(([path]) => path.endsWith('.html'));
+    const cssFile = Object.entries(normalizedFiles).find(([path]) => path.includes('style'));
+    const jsFile = Object.entries(normalizedFiles).find(([path]) => path.endsWith('.js'));
+    
+    const cssContent = cssFile?.[1] || '';
+    const jsContent = jsFile?.[1] || '';
 
     const PORT = 8000;
     const PUBLIC_DIR = '/home/user/public';
 
-    // Créer une sandbox E2B
+    // Create E2B sandbox
+    console.log('[preview-sandbox] 2. Creating E2B sandbox...');
     const createResponse = await fetch('https://api.e2b.dev/sandboxes', {
       method: 'POST',
       headers: {
@@ -269,9 +289,9 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         templateID: 'base',
-        timeout: 300, // 5 minutes
+        timeout: 300,
         metadata: {
-          sessionId: sessionId || 'unknown',
+          sessionId: sessionId || 'preview',
         },
       }),
     });
@@ -284,31 +304,21 @@ serve(async (req) => {
 
     const sandbox = await createResponse.json();
     const sandboxId = sandbox.sandboxID;
+    console.log('[preview-sandbox] 3. Sandbox created:', sandboxId);
 
-    console.log('[preview-sandbox] Created sandbox:', sandboxId);
+    // Create public directory via command
+    await runShellCommand(sandboxId, E2B_API_KEY, `mkdir -p ${PUBLIC_DIR}`, false);
+    console.log('[preview-sandbox] 4. Public directory created');
 
-    // S'assurer que le dossier public existe
-    const mkdirRes = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/process`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': E2B_API_KEY,
-      },
-      body: JSON.stringify({
-        cmd: `mkdir -p ${PUBLIC_DIR}`,
-        cwd: '/home/user',
-        background: false,
-      }),
-    });
-    if (!mkdirRes.ok) {
-      const t = await mkdirRes.text().catch(() => '(no body)');
-      console.warn('[preview-sandbox] mkdir -p failed:', mkdirRes.status, t);
-    }
-
-    // Traiter et écrire chaque fichier HTML
+    // Build Python script to write all files at once
     const writtenPages: string[] = [];
+    
+    let pythonScript = `
+import os
+os.makedirs("${PUBLIC_DIR}", exist_ok=True)
+`;
 
-    // Si aucun fichier HTML, créer un index.html par défaut
+    // If no HTML files, create a default index.html
     if (htmlFiles.length === 0) {
       const defaultHTML = processHTMLFile(`<!DOCTYPE html>
 <html lang="fr">
@@ -318,92 +328,96 @@ serve(async (req) => {
   <title>Preview</title>
 </head>
 <body>
-  <div id="app">
-    <h1>Preview</h1>
-    <p>Aucun fichier HTML généré.</p>
-  </div>
+  <div id="app"><h1>Preview</h1><p>Aucun fichier HTML.</p></div>
 </body>
 </html>`, cssContent, jsContent);
 
-      const success = await writeFileToSandbox(sandboxId, `${PUBLIC_DIR}/index.html`, defaultHTML, E2B_API_KEY);
-      if (success) writtenPages.push('/index.html');
+      pythonScript += `
+with open("${PUBLIC_DIR}/index.html", "w", encoding="utf-8") as f:
+    f.write('''${defaultHTML.replace(/'/g, "\\'")}''')
+print("Written: index.html")
+`;
+      writtenPages.push('/index.html');
     } else {
-      for (const htmlFile of htmlFiles) {
-        const processedHTML = processHTMLFile(htmlFile.content, cssContent, jsContent);
-        const fileName = htmlFile.path.replace(/^\//, '');
-        const filePath = `${PUBLIC_DIR}/${fileName}`;
-
-        const success = await writeFileToSandbox(sandboxId, filePath, processedHTML, E2B_API_KEY);
-        if (success) {
-          writtenPages.push(`/${fileName}`);
-          console.log('[preview-sandbox] Written:', fileName);
-        } else {
-          console.error('[preview-sandbox] Failed to write:', fileName);
-        }
+      for (const [path, content] of htmlFiles) {
+        const processedHTML = processHTMLFile(content, cssContent, jsContent);
+        const cleanPath = path.replace(/^\//, '');
+        const escapedContent = processedHTML.replace(/'/g, "\\'").replace(/\n/g, '\\n');
+        
+        pythonScript += `
+with open("${PUBLIC_DIR}/${cleanPath}", "w", encoding="utf-8") as f:
+    f.write('${escapedContent}')
+print("Written: ${cleanPath}")
+`;
+        writtenPages.push('/' + cleanPath);
       }
     }
 
-    // Écrire les autres fichiers (images, etc.) dans /public
-    for (const file of otherFiles) {
-      const fileName = file.path.replace(/^\//, '');
-      await writeFileToSandbox(sandboxId, `${PUBLIC_DIR}/${fileName}`, file.content, E2B_API_KEY);
-    }
+    // Start HTTP server
+    pythonScript += `
+import threading
+import http.server
+import socketserver
+import time
 
-    // Démarrer un serveur HTTP (bind 0.0.0.0) sur PORT=8000.
-    // On le lance dans un thread daemon et on garde le process vivant.
-    const pythonCmd = `python3 -u -c "import os, threading, time, http.server, socketserver; PORT=${PORT}; os.chdir('${PUBLIC_DIR}'); Handler=http.server.SimpleHTTPRequestHandler; class S(socketserver.ThreadingTCPServer): pass; S.allow_reuse_address=True; httpd=S(('0.0.0.0', PORT), Handler); t=threading.Thread(target=httpd.serve_forever, daemon=True); t.start(); print('HTTP server started', PORT, flush=True); time.sleep(10**9)"`;
+os.chdir("${PUBLIC_DIR}")
 
-    const startServerResponse = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/process`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': E2B_API_KEY,
-      },
-      body: JSON.stringify({
-        cmd: pythonCmd,
-        cwd: '/home/user',
-        background: true,
-      }),
-    });
+class QuietHandler(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, format, *args):
+        pass
 
-    if (!startServerResponse.ok) {
-      const t = await startServerResponse.text().catch(() => '(no body)');
-      console.error('[preview-sandbox] Failed to start python server:', startServerResponse.status, t);
-      throw new Error('Failed to start preview server');
-    }
+def start_server():
+    with socketserver.TCPServer(("0.0.0.0", ${PORT}), QuietHandler) as httpd:
+        httpd.serve_forever()
 
-    // Attendre que le serveur démarre
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+server_thread = threading.Thread(target=start_server, daemon=True)
+server_thread.start()
+time.sleep(2)
+print("SERVER_READY on port ${PORT}")
+`;
 
+    console.log('[preview-sandbox] 5. Executing combined Python script...');
+    
+    // Save Python script to file and execute
+    const scriptPath = '/home/user/setup.py';
+    const scriptEscaped = pythonScript.replace(/'/g, "'\\''");
+    
+    // Write the script using cat with heredoc
+    const writeScriptCmd = `cat > ${scriptPath} << 'SCRIPT_EOF'
+${pythonScript}
+SCRIPT_EOF`;
+    
+    await runShellCommand(sandboxId, E2B_API_KEY, writeScriptCmd, false);
+    console.log('[preview-sandbox] 6. Setup script written');
+
+    // Execute the script in background
+    const execResult = await runShellCommand(sandboxId, E2B_API_KEY, `python3 ${scriptPath}`, true);
+    console.log('[preview-sandbox] 7. Script execution result:', execResult);
+
+    // Wait for server to start
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    // Get host URL
     const previewUrl = `https://${sandboxId}-${PORT}.e2b.dev`;
-
-    console.log('[preview-sandbox] Preview URL:', previewUrl, 'Pages:', writtenPages);
+    console.log('[preview-sandbox] 8. Preview URL:', previewUrl);
 
     return new Response(
       JSON.stringify({
         success: true,
         sandboxId,
         previewUrl,
-        filesCount: normalizedFiles.length,
+        filesCount: fileCount,
         pages: writtenPages,
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[preview-sandbox] Error:', errorMessage);
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: errorMessage,
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ success: false, error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

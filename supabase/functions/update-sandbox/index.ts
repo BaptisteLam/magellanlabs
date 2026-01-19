@@ -10,95 +10,93 @@ interface ProjectFile {
   content: string;
 }
 
-// Générer le HTML complet avec CSS et JS injectés
-function generateCompleteHTML(files: ProjectFile[]): string {
-  let html = files.find(f => f.path === 'index.html' || f.path === '/index.html')?.content || '';
-  const css = files.find(f => f.path === 'styles.css' || f.path === '/styles.css')?.content || '';
-  const js = files.find(f => f.path === 'app.js' || f.path === '/app.js')?.content || '';
-  
-  if (!html) return '';
-
-  // Injecter le CSS dans le head
-  if (css && !html.includes('<style>') && !html.includes('styles.css')) {
-    html = html.replace('</head>', `<style>\n${css}\n</style>\n</head>`);
-  }
-
-  // Injecter le JS avant </body>
-  if (js && !html.includes('<script>') && !html.includes('app.js')) {
-    html = html.replace('</body>', `<script>\n${js}\n</script>\n</body>`);
-  }
-
-  return html;
-}
-
-function normalizeFiles(files: ProjectFile[] | Record<string, string>): ProjectFile[] {
+// Normalize files to Record format
+function normalizeFiles(files: ProjectFile[] | Record<string, string>): Record<string, string> {
   if (Array.isArray(files)) {
-    return files;
+    const result: Record<string, string> = {};
+    for (const file of files) {
+      const cleanPath = file.path.replace(/^\//, '');
+      result[cleanPath] = file.content;
+    }
+    return result;
   }
-  return Object.entries(files).map(([path, content]) => ({
-    path: path.startsWith('/') ? path.slice(1) : path,
-    content: content as string
-  }));
+  return files;
 }
 
-// Fonction pour écrire un fichier via l'API E2B
-async function writeFileToSandbox(
-  sandboxId: string,
-  filePath: string,
-  content: string,
-  apiKey: string
-): Promise<boolean> {
-  const data = new TextEncoder().encode(content);
-  const base64Content = btoa(String.fromCharCode(...data));
+// Navigation script
+const NAVIGATION_SCRIPT = `
+<script>
+(function() {
+  function notifyParent(type, path) {
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: type, path: path || window.location.pathname }, '*');
+    }
+  }
+  notifyParent('PAGE_LOADED', window.location.pathname);
+  window.addEventListener('message', function(e) {
+    if (!e.data) return;
+    if (e.data.type === 'NAVIGATE') window.location.href = e.data.path;
+    if (e.data.type === 'RELOAD') window.location.reload();
+  });
+})();
+</script>
+`;
 
-  const url = `https://api.e2b.dev/sandboxes/${sandboxId}/filesystem`;
-  const headers = {
-    'Content-Type': 'application/json',
-    'X-API-Key': apiKey,
-  };
+function injectNavigationScript(html: string): string {
+  if (html.includes('</body>')) {
+    return html.replace('</body>', NAVIGATION_SCRIPT + '</body>');
+  }
+  return html + NAVIGATION_SCRIPT;
+}
 
-  const attempts: Array<{ name: string; method: string; body: unknown }> = [
-    { name: 'put_files_array', method: 'PUT', body: { files: [{ path: filePath, data: base64Content }] } },
-    { name: 'post_files_array', method: 'POST', body: { files: [{ path: filePath, data: base64Content }] } },
-    { name: 'put_single', method: 'PUT', body: { path: filePath, data: base64Content } },
-    { name: 'post_single', method: 'POST', body: { path: filePath, data: base64Content } },
-  ];
-
-  for (const attempt of attempts) {
-    const res = await fetch(url, {
-      method: attempt.method,
-      headers,
-      body: JSON.stringify(attempt.body),
-    });
-
-    if (res.ok) return true;
-
-    const errText = await res.text().catch(() => '(no body)');
-    console.error(
-      `[update-sandbox] write ${filePath} failed via ${attempt.name} (${res.status}): ${errText}`,
-    );
+function processHTMLFile(htmlContent: string, cssContent: string, jsContent: string): string {
+  let html = htmlContent;
+  
+  if (cssContent && !html.includes('<style>')) {
+    const styleTag = `<style>\n${cssContent}\n</style>`;
+    if (html.includes('</head>')) {
+      html = html.replace('</head>', styleTag + '\n</head>');
+    } else {
+      html = styleTag + '\n' + html;
+    }
   }
 
-  // Fallback legacy endpoint
-  const legacyUrl = `https://api.e2b.dev/sandboxes/${sandboxId}/files?path=${encodeURIComponent(filePath)}`;
-  const legacyRes = await fetch(legacyUrl, {
+  if (jsContent && !html.includes('<script>')) {
+    const scriptTag = `<script>\n${jsContent}\n</script>`;
+    if (html.includes('</body>')) {
+      html = html.replace('</body>', scriptTag + '\n</body>');
+    } else {
+      html = html + '\n' + scriptTag;
+    }
+  }
+
+  return injectNavigationScript(html);
+}
+
+// Run shell command
+async function runShellCommand(sandboxId: string, apiKey: string, cmd: string, background = false): Promise<{ success: boolean; output?: string; error?: string }> {
+  const processUrl = `https://api.e2b.dev/sandboxes/${sandboxId}/commands`;
+  
+  const response = await fetch(processUrl, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/octet-stream',
+      'Content-Type': 'application/json',
       'X-API-Key': apiKey,
     },
-    body: content,
+    body: JSON.stringify({
+      cmd: cmd,
+      background: background,
+      envs: {},
+    }),
   });
 
-  if (!legacyRes.ok) {
-    const legacyText = await legacyRes.text().catch(() => '(no body)');
-    console.error(
-      `[update-sandbox] write ${filePath} failed via legacy (${legacyRes.status}): ${legacyText}`,
-    );
-    return false;
+  if (response.ok) {
+    const result = await response.json();
+    return { success: true, output: result.stdout || result.output };
   }
 
-  return true;
+  const errorText = await response.text().catch(() => '(no body)');
+  return { success: false, error: errorText };
 }
 
 serve(async (req) => {
@@ -119,47 +117,63 @@ serve(async (req) => {
     }
 
     const normalizedFiles = normalizeFiles(files);
-    console.log('[update-sandbox] Updating', normalizedFiles.length, 'files in sandbox:', sandboxId);
+    const fileCount = Object.keys(normalizedFiles).length;
+    console.log('[update-sandbox] Updating', fileCount, 'files in sandbox:', sandboxId);
+
+    // Check if sandbox exists
+    const checkResponse = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}`, {
+      method: 'GET',
+      headers: { 'X-API-Key': E2B_API_KEY },
+    });
+
+    if (!checkResponse.ok) {
+      console.log('[update-sandbox] Sandbox not found or expired');
+      return new Response(
+        JSON.stringify({ success: false, expired: true, error: 'Sandbox expired' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const PUBLIC_DIR = '/home/user/public';
 
-    // S'assurer que le dossier public existe
-    const mkdirRes = await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}/process`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': E2B_API_KEY,
-      },
-      body: JSON.stringify({
-        cmd: `mkdir -p ${PUBLIC_DIR}`,
-        cwd: '/home/user',
-        background: false,
-      }),
-    });
-    if (!mkdirRes.ok) {
-      const t = await mkdirRes.text().catch(() => '(no body)');
-      console.warn('[update-sandbox] mkdir -p failed:', mkdirRes.status, t);
-    }
+    // Extract file types
+    const cssFile = Object.entries(normalizedFiles).find(([path]) => path.includes('style'));
+    const jsFile = Object.entries(normalizedFiles).find(([path]) => path.endsWith('.js'));
+    const cssContent = cssFile?.[1] || '';
+    const jsContent = jsFile?.[1] || '';
 
-    // Générer le HTML complet avec CSS/JS injectés
-    const completeHTML = generateCompleteHTML(normalizedFiles);
+    // Build Python script to update files
+    let pythonScript = `
+import os
+os.makedirs("${PUBLIC_DIR}", exist_ok=True)
+`;
 
-    // Mettre à jour le fichier HTML principal
-    const success = await writeFileToSandbox(sandboxId, `${PUBLIC_DIR}/index.html`, completeHTML, E2B_API_KEY);
-
-    if (!success) {
-      throw new Error('Failed to update main HTML file');
-    }
-
-    // Mettre à jour les autres fichiers
-    for (const file of normalizedFiles) {
-      if (file.path !== 'index.html' && file.path !== '/index.html') {
-        const fileName = file.path.replace(/^\//, '');
-        await writeFileToSandbox(sandboxId, `${PUBLIC_DIR}/${fileName}`, file.content, E2B_API_KEY);
+    for (const [path, content] of Object.entries(normalizedFiles)) {
+      if (path.endsWith('.html')) {
+        const processedHTML = processHTMLFile(content, cssContent, jsContent);
+        const cleanPath = path.replace(/^\//, '');
+        const escapedContent = processedHTML.replace(/'/g, "\\'").replace(/\n/g, '\\n');
+        
+        pythonScript += `
+with open("${PUBLIC_DIR}/${cleanPath}", "w", encoding="utf-8") as f:
+    f.write('${escapedContent}')
+print("Updated: ${cleanPath}")
+`;
       }
     }
 
-    console.log('[update-sandbox] Files updated successfully');
+    pythonScript += 'print("FILES_UPDATED")';
+
+    // Write and execute the update script
+    const scriptPath = '/home/user/update.py';
+    const writeScriptCmd = `cat > ${scriptPath} << 'SCRIPT_EOF'
+${pythonScript}
+SCRIPT_EOF`;
+    
+    await runShellCommand(sandboxId, E2B_API_KEY, writeScriptCmd, false);
+    const execResult = await runShellCommand(sandboxId, E2B_API_KEY, `python3 ${scriptPath}`, false);
+    
+    console.log('[update-sandbox] Update result:', execResult);
 
     return new Response(
       JSON.stringify({ success: true }),
