@@ -39,6 +39,8 @@ interface AiGenerationMessageProps {
   generationStartTime?: number;
   onRestore: (messageIdx: number) => Promise<void>;
   onGoToPrevious: () => Promise<void>;
+  /** Show progress bar only for initial site generation, not reprompts */
+  isFirstGeneration?: boolean;
 }
 
 export default function AiGenerationMessage({
@@ -50,6 +52,7 @@ export default function AiGenerationMessage({
   generationStartTime,
   onRestore,
   onGoToPrevious,
+  isFirstGeneration = false,
 }: AiGenerationMessageProps) {
   const {
     thought_duration = 0,
@@ -138,33 +141,35 @@ export default function AiGenerationMessage({
 
   return (
     <div className="space-y-3">
-      {/* 1. Thought for Xs + Intent message */}
+      {/* 1. Message d'intention contextuel PROÉMINENT - Style Lovable */}
+      {intent_message && (
+        <div className="text-sm text-foreground mb-2">
+          {intent_message}
+        </div>
+      )}
+
+      {/* 2. Thought duration (discret) */}
       {thought_duration > 0 && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Lightbulb className="h-4 w-4 text-amber-500" />
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Lightbulb className="h-3 w-3 text-amber-500" />
           <span>Réflexion : {thoughtSeconds}s</span>
         </div>
       )}
-      
-      {/* 🆕 Message d'intention contextuel amélioré */}
-      {intent_message && (
-        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} italic`}>
-          {intent_message}
-        </p>
+
+      {/* 3. Barre de chargement - UNIQUEMENT pour la génération initiale */}
+      {isFirstGeneration && (
+        <LoadingProgress
+          isLoading={isLoading}
+          isDark={isDark}
+          startTime={generationStartTime}
+          currentFile={currentFile}
+          progress={progress}
+          completedSteps={generation_events.filter(e => e.status === 'completed').length}
+          totalSteps={generation_events.length}
+        />
       )}
 
-      {/* 2. Barre de chargement */}
-      <LoadingProgress
-        isLoading={isLoading}
-        isDark={isDark}
-        startTime={generationStartTime}
-        currentFile={currentFile}
-        progress={progress}
-        completedSteps={generation_events.filter(e => e.status === 'completed').length}
-        totalSteps={generation_events.length}
-      />
-
-      {/* 3. CollapsedAiTasks */}
+      {/* 4. CollapsedAiTasks - toujours visible */}
       {generation_events.length > 0 && (
         <CollapsedAiTasks 
           events={generation_events}
@@ -177,37 +182,33 @@ export default function AiGenerationMessage({
         />
       )}
 
-      {/* 🆕 4. Fichiers affectés (badges visuels) */}
+      {/* 5. Fichiers affectés (badges visuels) */}
       {!isLoading && fileChanges.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2">
           {fileChanges.map((file, idx) => (
             <div
               key={idx}
-              className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs ${
-                isDark 
-                  ? 'bg-slate-700/50 text-slate-300' 
-                  : 'bg-slate-100 text-slate-600'
-              }`}
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs bg-muted text-muted-foreground"
               title={file.description}
             >
               <FileText className="h-3 w-3" />
               <span className="max-w-[120px] truncate">{file.path.split('/').pop()}</span>
               {file.status === 'completed' && (
-                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                <CheckCircle2 className="h-3 w-3 text-primary" />
               )}
             </div>
           ))}
           {(modified_files?.length || 0) > 5 && (
-            <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <span className="text-xs text-muted-foreground">
               +{(modified_files?.length || 0) - 5} autres
             </span>
           )}
         </div>
       )}
 
-      {/* 5. Message de conclusion détaillé (uniquement après génération) */}
+      {/* 6. Message de conclusion détaillé (uniquement après génération) */}
       {!isLoading && contentString && (
-        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} mt-2`}>
+        <p className="text-sm text-muted-foreground mt-2">
           {contentString}
         </p>
       )}
