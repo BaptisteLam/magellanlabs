@@ -319,7 +319,8 @@ export const LocalInspectablePreview = forwardRef<LocalInspectablePreviewHandle,
       
       // 1. Essayer de remplacer le script app.js existant
       const scriptPattern = /<script[^>]*src=["'][^"']*app\.js["'][^>]*><\/script>/gi;
-      if (scriptPattern.test(combined)) {
+      const scriptMatch = combined.match(scriptPattern);
+      if (scriptMatch) {
         combined = combined.replace(scriptPattern, `<script>${js}</script>`);
         jsInjected = true;
       }

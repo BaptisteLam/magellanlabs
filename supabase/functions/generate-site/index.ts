@@ -282,6 +282,101 @@ p { color: var(--text-light); margin-bottom: 1rem; }
 .rounded-lg { border-radius: var(--radius-lg); }
 .shadow-lg { box-shadow: var(--shadow-lg); }
 
+/* ============================================
+   STYLES NATIFS (fallback pour éléments sans classes)
+   ============================================ */
+
+/* Formulaires - éléments natifs */
+form { max-width: 600px; }
+form > * + * { margin-top: 1rem; }
+
+input, textarea, select {
+  display: block;
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-family: inherit;
+  background: var(--background);
+  color: var(--text);
+  transition: var(--transition);
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+textarea { min-height: 120px; resize: vertical; }
+
+select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+input[type="checkbox"], input[type="radio"] {
+  display: inline-block;
+  width: auto;
+  margin-right: 0.5rem;
+  accent-color: var(--primary);
+}
+
+button, input[type="submit"], input[type="button"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.875rem 1.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+button:hover, input[type="submit"]:hover, input[type="button"]:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Footer natif */
+footer {
+  background: var(--secondary);
+  color: white;
+  padding: 3rem 0 1.5rem;
+  margin-top: 4rem;
+}
+
+footer a { color: rgba(255,255,255,0.7); }
+footer a:hover { color: var(--primary); }
+footer h3, footer h4 { color: white; margin-bottom: 1rem; }
+footer p { color: rgba(255,255,255,0.6); }
+footer ul { list-style: none; }
+footer ul li + li { margin-top: 0.5rem; }
+
+/* Icônes sociales basiques */
+footer svg, .social svg, .social-icons svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
 @media (max-width: 768px) { .hidden-mobile { display: none !important; } .section { padding: 3rem 0; } }
 `;
 }
