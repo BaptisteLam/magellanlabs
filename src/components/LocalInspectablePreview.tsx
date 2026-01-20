@@ -287,7 +287,8 @@ export const LocalInspectablePreview = forwardRef<LocalInspectablePreviewHandle,
       ];
 
       for (const pattern of linkPatterns) {
-        if (pattern.test(combined)) {
+        const match = combined.match(pattern);
+        if (match) {
           combined = combined.replace(pattern, `<style>${css}</style>`);
           cssInjected = true;
           break;
