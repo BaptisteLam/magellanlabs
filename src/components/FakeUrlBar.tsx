@@ -14,9 +14,6 @@ interface FakeUrlBarProps {
   cloudflareProjectName?: string;
   currentRoute?: string;
   onNavigate?: (path: string) => void;
-  onReload?: () => void;
-  onGoBack?: () => void;
-  onGoForward?: () => void;
   iframeRef?: React.RefObject<HTMLIFrameElement>;
 }
 
@@ -30,9 +27,6 @@ export function FakeUrlBar({
   cloudflareProjectName,
   currentRoute = '/',
   onNavigate,
-  onReload,
-  onGoBack,
-  onGoForward,
   iframeRef
 }: FakeUrlBarProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -57,22 +51,10 @@ export function FakeUrlBar({
     }
   }, [currentRoute, isEditingUrl]);
 
-  // Écouter les messages de l'iframe pour l'état de navigation (supporte E2B et ancien format)
+  // Écouter les messages de l'iframe pour l'état de navigation
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Message depuis l'iframe E2B
-      if (event.data?.type === 'PAGE_LOADED') {
-        if (!isEditingUrl) {
-          setDisplayRoute(event.data.path || '/');
-        }
-      }
-      // Navigation interne depuis E2B
-      if (event.data?.type === 'INTERNAL_NAVIGATION') {
-        if (!isEditingUrl) {
-          setDisplayRoute(event.data.path || '/');
-        }
-      }
-      // Ancien format pour compatibilité (router.js)
+      // Message depuis l'iframe (router.js)
       if (event.data?.type === 'ROUTE_CHANGE') {
         setCanGoBack(event.data.canGoBack ?? false);
         setCanGoForward(event.data.canGoForward ?? false);
@@ -80,6 +62,7 @@ export function FakeUrlBar({
           setDisplayRoute(event.data.path || '/');
         }
       }
+      // Ancien format pour compatibilité
       if (event.data?.type === 'navigation-state') {
         setCanGoBack(event.data.canGoBack);
         setCanGoForward(event.data.canGoForward);
@@ -102,29 +85,17 @@ export function FakeUrlBar({
 
   const handleNavigateBack = () => {
     console.log('⬅️ FakeUrlBar: Navigation arrière');
-    if (onGoBack) {
-      onGoBack();
-    } else {
-      sendNavigationMessage('NAVIGATE_BACK');
-    }
+    sendNavigationMessage('NAVIGATE_BACK');
   };
 
   const handleNavigateForward = () => {
     console.log('➡️ FakeUrlBar: Navigation avant');
-    if (onGoForward) {
-      onGoForward();
-    } else {
-      sendNavigationMessage('NAVIGATE_FORWARD');
-    }
+    sendNavigationMessage('NAVIGATE_FORWARD');
   };
 
   const handleReload = () => {
     console.log('🔄 FakeUrlBar: Rechargement');
-    if (onReload) {
-      onReload();
-    } else {
-      sendNavigationMessage('RELOAD');
-    }
+    sendNavigationMessage('RELOAD');
   };
 
   const handleUrlSubmit = (e: React.KeyboardEvent) => {

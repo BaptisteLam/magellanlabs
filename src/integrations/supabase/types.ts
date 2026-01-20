@@ -14,27 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      anonymous_chat_log: {
-        Row: {
-          created_at: string | null
-          id: string
-          ip_address: string
-          v0_chat_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          ip_address: string
-          v0_chat_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          ip_address?: string
-          v0_chat_id?: string
-        }
-        Relationships: []
-      }
       build_sessions: {
         Row: {
           business_sector: string | null
@@ -56,8 +35,6 @@ export type Database = {
           title: string | null
           updated_at: string
           user_id: string
-          v0_chat_id: string | null
-          v0_project_id: string | null
           web_analytics_site_token: string | null
           website_id: string | null
         }
@@ -81,8 +58,6 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id: string
-          v0_chat_id?: string | null
-          v0_project_id?: string | null
           web_analytics_site_token?: string | null
           website_id?: string | null
         }
@@ -106,8 +81,6 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id?: string
-          v0_chat_id?: string | null
-          v0_project_id?: string | null
           web_analytics_site_token?: string | null
           website_id?: string | null
         }
@@ -270,30 +243,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      guest_users: {
-        Row: {
-          created_at: string | null
-          email: string | null
-          id: string
-          last_active: string | null
-          session_token: string
-        }
-        Insert: {
-          created_at?: string | null
-          email?: string | null
-          id?: string
-          last_active?: string | null
-          session_token: string
-        }
-        Update: {
-          created_at?: string | null
-          email?: string | null
-          id?: string
-          last_active?: string | null
-          session_token?: string
-        }
-        Relationships: []
       }
       profiles: {
         Row: {
@@ -736,24 +685,6 @@ export type Database = {
           },
         ]
       }
-      user_rate_limits: {
-        Row: {
-          chats_today: number | null
-          last_reset: string | null
-          user_id: string
-        }
-        Insert: {
-          chats_today?: number | null
-          last_reset?: string | null
-          user_id: string
-        }
-        Update: {
-          chats_today?: number | null
-          last_reset?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       websites: {
         Row: {
           build_session_id: string | null
@@ -860,14 +791,7 @@ export type Database = {
       }
     }
     Views: {
-      v0_usage_stats: {
-        Row: {
-          day: string | null
-          total_chats: number | null
-          unique_ips: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       increment_code_version: { Args: { widget_uuid: string }; Returns: number }

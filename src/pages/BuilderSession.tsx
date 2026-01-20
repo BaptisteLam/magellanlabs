@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
-import { E2BPreview } from "@/components/E2BPreview";
+import { InteractiveSandpackPreview } from "@/components/InteractiveSandpackPreview";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
 import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
@@ -27,7 +27,7 @@ import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
 import AiGenerationMessage from '@/components/chat/AiGenerationMessage';
 import ChatOnlyMessage from '@/components/chat/ChatOnlyMessage';
-import { useV0GenerateSite } from '@/hooks/useV0GenerateSite';
+import { useGenerateSite } from '@/hooks/useGenerateSite';
 import html2canvas from 'html2canvas';
 import { MessageCounter } from '@/components/MessageCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
@@ -39,7 +39,7 @@ import { PublishSuccessDialog } from '@/components/PublishSuccessDialog';
 import { useUnifiedModify } from '@/hooks/useUnifiedModify';
 import { useProjectVersions } from '@/hooks/useProjectVersions';
 import { VersionHistory } from '@/components/VersionHistory';
-
+import type { ElementInfo } from '@/components/InteractiveSandpackPreview';
 import { IndexedDBCache } from '@/services/indexedDBCache';
 import { parseProjectFiles } from '@/lib/projectFilesParser';
 
@@ -152,8 +152,8 @@ export default function BuilderSession() {
   // Hook unifié pour unified-modify (remplace agent-v2 et modify-site)
   const unifiedModify = useUnifiedModify();
 
-  // Hook V0 pour génération de nouveaux sites complets
-  const generateSiteHook = useV0GenerateSite();
+  // Hook pour génération de nouveaux sites complets
+  const generateSiteHook = useGenerateSite();
 
   // Hook pour versioning R2
   const { versions, isLoading: isVersionsLoading, isRollingBack, fetchVersions, rollbackToVersion } = useProjectVersions(sessionId);
@@ -180,8 +180,8 @@ export default function BuilderSession() {
   // Flag pour éviter de traiter le prompt initial plusieurs fois
   const [initialPromptProcessed, setInitialPromptProcessed] = useState(false);
 
-  // E2B Preview reference
-  const e2bPreviewRef = useRef<{ reload: () => void; getPreviewUrl: () => string | null; getIframe: () => HTMLIFrameElement | null; navigate: (path: string) => void; goBack: () => void; goForward: () => void }>(null);
+  // Mode Inspect pour la preview interactive
+  const [inspectMode, setInspectMode] = useState(false);
 
   // Mode Chat pour discuter avec Claude sans générer de code
   const [chatMode, setChatMode] = useState(false);
@@ -817,27 +817,10 @@ export default function BuilderSession() {
         prompt: userPrompt,
         sessionId: sessionId!
       }, {
-        onGenerationEvent: (v0Event) => {
-          console.log('📌 V0 Generation event:', v0Event);
-          
-          // Mapper V0GenerationEvent vers GenerationEvent
-          const typeMap: Record<string, GenerationEvent['type']> = {
-            'progress': 'thought',
-            'files': 'create',
-            'complete': 'complete',
-            'error': 'error',
-          };
-          
-          const mappedEvent: GenerationEvent = {
-            type: typeMap[v0Event.type] || 'thought',
-            message: v0Event.message || `Phase: ${v0Event.phase || v0Event.type}`,
-            phase: v0Event.phase as GenerationEvent['phase'],
-            duration: v0Event.duration,
-            status: v0Event.type === 'complete' ? 'completed' : 'in-progress',
-          };
-          
+        onGenerationEvent: (event) => {
+          console.log('📌 Generation event:', event);
           // Ajouter l'événement à la liste
-          generationEventsRef.current = [...generationEventsRef.current, mappedEvent];
+          generationEventsRef.current = [...generationEventsRef.current, event];
           
           // Mettre à jour les métadonnées du message en temps réel
           setMessages(prev => {
@@ -1875,20 +1858,19 @@ export default function BuilderSession() {
               </Tooltip>
             </TooltipProvider>
 
-            {/* Bouton E2B Reload (remplace inspectMode) */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button onClick={() => e2bPreviewRef.current?.reload()} type="button" variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
-                  borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
-                  backgroundColor: 'transparent',
-                  color: isDark ? 'hsl(var(--foreground))' : '#64748b'
+                  <Button onClick={() => setInspectMode(!inspectMode)} type="button" variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
+                  borderColor: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
+                  backgroundColor: inspectMode ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
+                  color: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--foreground))' : '#64748b'
                 }}>
                     <Edit className="w-3.5 h-3.5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  <p>Recharger la preview</p>
+                  <p>{inspectMode ? 'Désactiver le mode édition' : 'Activer le mode édition'}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -2041,7 +2023,7 @@ export default function BuilderSession() {
             
             {/* Chat input */}
             <div className="p-4 backdrop-blur-sm bg-background">
-              <PromptBar inputValue={inputValue} setInputValue={setInputValue} onSubmit={handleSubmit} isLoading={unifiedModify.isLoading} onStop={() => unifiedModify.abort()} showPlaceholderAnimation={false} showConfigButtons={false} modificationMode={true} chatMode={chatMode} onChatToggle={() => setChatMode(!chatMode)} projectType={projectType} onProjectTypeChange={setProjectType} attachedFiles={attachedFiles} onRemoveFile={removeFile} onFileSelect={async files => {
+              <PromptBar inputValue={inputValue} setInputValue={setInputValue} onSubmit={handleSubmit} isLoading={unifiedModify.isLoading} onStop={() => unifiedModify.abort()} showPlaceholderAnimation={false} showConfigButtons={false} modificationMode={true} inspectMode={inspectMode} onInspectToggle={() => setInspectMode(!inspectMode)} chatMode={chatMode} onChatToggle={() => setChatMode(!chatMode)} projectType={projectType} onProjectTypeChange={setProjectType} attachedFiles={attachedFiles} onRemoveFile={removeFile} onFileSelect={async files => {
               const newFiles: Array<{
                 name: string;
                 base64: string;
@@ -2082,43 +2064,110 @@ export default function BuilderSession() {
             borderColor: isDark ? 'hsl(var(--border))' : 'hsl(var(--border))'
           }}>
                   {(generateSiteHook.isGenerating || Object.keys(projectFiles).length === 0) ? <GeneratingPreview /> : <>
-                      <FakeUrlBar 
-                        projectTitle={websiteTitle || 'Mon Projet'} 
-                        isDark={isDark} 
-                        sessionId={sessionId} 
-                        onTitleChange={setWebsiteTitle} 
-                        cloudflareProjectName={cloudflareProjectName || undefined}
-                        onReload={() => e2bPreviewRef.current?.reload()}
-                        onGoBack={() => e2bPreviewRef.current?.goBack()}
-                        onGoForward={() => e2bPreviewRef.current?.goForward()}
-                        onNavigate={(path) => e2bPreviewRef.current?.navigate(path)}
-                      />
-                      <E2BPreview 
-                        ref={e2bPreviewRef}
+                      <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
+                      <InteractiveSandpackPreview 
                         projectFiles={projectFiles} 
                         previewMode="mobile"
-                      />
+                        inspectMode={inspectMode} 
+                        onInspectModeChange={setInspectMode} 
+                        onElementModify={async (prompt, elementInfo) => {
+                const contextualPrompt = `Modifier l'élément suivant dans le code :
+
+Type: <${elementInfo.tagName.toLowerCase()}>
+${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
+${elementInfo.classList.length > 0 ? `Classes: ${elementInfo.classList.join(', ')}` : ''}
+Chemin CSS: ${elementInfo.path}
+Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textContent.length > 200 ? '...' : ''}"
+
+Instruction: ${prompt}
+
+Ne modifie que cet élément spécifique, pas le reste du code.`;
+
+                // IMPORTANT: Forcer le mode génération (pas chatMode)
+                setChatMode(false);
+                setInputValue(contextualPrompt);
+                setTimeout(() => handleSubmit(), 100);
+              }} />
                     </>}
                 </div> : <>
                   {(generateSiteHook.isGenerating || Object.keys(projectFiles).length === 0) ? <GeneratingPreview /> : <>
-                      <FakeUrlBar 
-                        projectTitle={websiteTitle || 'Mon Projet'} 
-                        isDark={isDark} 
-                        sessionId={sessionId} 
-                        onTitleChange={setWebsiteTitle} 
-                        currentFavicon={currentFavicon} 
-                        onFaviconChange={setCurrentFavicon} 
-                        cloudflareProjectName={cloudflareProjectName || undefined}
-                        onReload={() => e2bPreviewRef.current?.reload()}
-                        onGoBack={() => e2bPreviewRef.current?.goBack()}
-                        onGoForward={() => e2bPreviewRef.current?.goForward()}
-                        onNavigate={(path) => e2bPreviewRef.current?.navigate(path)}
-                      />
-                      <E2BPreview 
-                        ref={e2bPreviewRef}
+                      <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} />
+                      <InteractiveSandpackPreview 
                         projectFiles={projectFiles} 
                         previewMode="desktop"
-                      />
+                        inspectMode={inspectMode} 
+                        onInspectModeChange={setInspectMode} 
+                        onElementModify={async (prompt, elementInfo) => {
+                const contextualPrompt = `Modifier l'élément suivant dans le code :
+
+Type: <${elementInfo.tagName.toLowerCase()}>
+${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
+${elementInfo.classList.length > 0 ? `Classes: ${elementInfo.classList.join(', ')}` : ''}
+Chemin CSS: ${elementInfo.path}
+Contenu actuel: "${elementInfo.textContent.substring(0, 200)}${elementInfo.textContent.length > 200 ? '...' : ''}"
+
+Instruction: ${prompt}
+
+Ne modifie que cet élément spécifique, pas le reste du code.`;
+
+                // Envoyer directement à Claude sans afficher dans le chat
+                if (!user) {
+                  navigate('/auth');
+                  return;
+                }
+                setAiEvents([]);
+                generationEventsRef.current = [];
+                try {
+                  const result = await unifiedModify.unifiedModify({
+                    message: contextualPrompt,
+                    projectFiles,
+                    sessionId: sessionId!
+                  }, {
+                    onIntentMessage: message => {
+                      console.log('🎯 Intent:', message);
+                    },
+                    onGenerationEvent: event => {
+                      console.log('🔄 Generation:', event);
+                    },
+                    onASTModifications: async (modifications, updatedFiles) => {
+                      console.log('📦 Modifications:', modifications.length);
+                      await updateFiles(updatedFiles, true);
+                      if (updatedFiles['index.html']) {
+                        setGeneratedHtml(updatedFiles['index.html']);
+                      }
+                    },
+                    onTokens: tokens => {
+                      console.log('📊 Tokens:', tokens);
+                    },
+                    onError: error => {
+                      console.error('❌ Error:', error);
+                      sonnerToast.error(error);
+                    },
+                    onComplete: async result => {
+                      console.log('✅ Complete:', result);
+                      if (result?.success) {
+                        sonnerToast.success('Modification appliquée');
+                        await supabase.from('chat_messages').insert({
+                          session_id: sessionId,
+                          role: 'assistant',
+                          content: result.message,
+                          token_count: result.tokens.total,
+                          metadata: {
+                            input_tokens: result.tokens.input,
+                            output_tokens: result.tokens.output,
+                            total_tokens: result.tokens.total,
+                            project_files: result.updatedFiles,
+                            type: 'generation'
+                          }
+                        });
+                      }
+                    }
+                  });
+                } catch (error) {
+                  console.error('❌ Inspect mode error:', error);
+                  sonnerToast.error('Erreur lors de la modification');
+                }
+              }} />
                     </>}
                 </>}
             </div>
