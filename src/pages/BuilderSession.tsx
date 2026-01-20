@@ -2063,7 +2063,7 @@ export default function BuilderSession() {
             backgroundColor: isDark ? 'hsl(var(--background))' : 'hsl(var(--background))',
             borderColor: isDark ? 'hsl(var(--border))' : 'hsl(var(--border))'
           }}>
-                  {(generateSiteHook.isGenerating || Object.keys(projectFiles).length === 0) ? <GeneratingPreview /> : <>
+                  {Object.keys(projectFiles).length === 0 ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
                       <InteractiveCodeSandboxPreview 
                         projectFiles={projectFiles} 
@@ -2090,7 +2090,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
               }} />
                     </>}
                 </div> : <>
-                  {(generateSiteHook.isGenerating || Object.keys(projectFiles).length === 0) ? <GeneratingPreview /> : <>
+                  {Object.keys(projectFiles).length === 0 ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} />
                       <InteractiveCodeSandboxPreview 
                         projectFiles={projectFiles} 
