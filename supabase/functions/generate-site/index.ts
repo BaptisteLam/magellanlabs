@@ -866,46 +866,28 @@ serve(async (req) => {
           data: { sessionId, phase: 'analyzing', sector }
         })}\n\n`));
 
-        // Générer le nom du projet en parallèle avec vérification d'unicité
+        // Générer le nom du projet en parallèle - toujours unique et créatif
         let projectName: string | null = null;
-        
-        const ensureUniqueName = async (baseName: string): Promise<string> => {
-          // Vérifier si le nom existe déjà
-          const { data: existingProjects, error } = await supabaseClient
-            .from('build_sessions')
-            .select('title')
-            .ilike('title', `${baseName}%`);
-          
-          if (error) {
-            console.error('[generate-site] Error checking name uniqueness:', error);
-            // En cas d'erreur, ajouter un timestamp pour garantir l'unicité
-            return `${baseName}-${Date.now().toString(36)}`;
-          }
-          
-          if (!existingProjects || existingProjects.length === 0) {
-            return baseName;
-          }
-          
-          // Extraire les suffixes numériques existants
-          const existingNames = existingProjects.map(p => p.title?.toLowerCase() || '');
-          
-          // Si le nom exact n'existe pas, le retourner
-          if (!existingNames.includes(baseName.toLowerCase())) {
-            return baseName;
-          }
-          
-          // Trouver le prochain numéro disponible
-          let suffix = 2;
-          while (existingNames.includes(`${baseName.toLowerCase()}-${suffix}`)) {
-            suffix++;
-          }
-          
-          return `${baseName}-${suffix}`;
-        };
         
         const generateProjectName = async () => {
           try {
-            console.log('[generate-site] Generating project name...');
+            console.log('[generate-site] Generating creative project name...');
+            
+            // Récupérer les noms existants pour les exclure du prompt
+            const { data: existingProjects } = await supabaseClient
+              .from('build_sessions')
+              .select('title')
+              .not('title', 'is', null)
+              .limit(50);
+            
+            const existingNames = existingProjects?.map(p => p.title).filter(Boolean) || [];
+            const existingNamesStr = existingNames.length > 0 
+              ? `\n\nNoms DÉJÀ UTILISÉS (ne pas réutiliser) : ${existingNames.slice(0, 20).join(', ')}`
+              : '';
+            
+            // Générer un identifiant unique pour forcer la créativité
+            const uniqueId = Date.now().toString(36).slice(-4);
+            
             const nameResponse = await fetch('https://api.anthropic.com/v1/messages', {
               method: 'POST',
               headers: {
@@ -918,9 +900,15 @@ serve(async (req) => {
                 max_tokens: 50,
                 messages: [{ 
                   role: 'user', 
-                  content: `Génère un nom de projet court (2-4 mots max, format slug avec tirets). Pas de guillemets, pas de ponctuation. Sois créatif et unique.
-Exemples: mon-cabinet-avocat, sportcoach-app, luxestate-immo, delice-bistro, techvision-lab
-Pour: "${prompt.substring(0, 200)}"`
+                  content: `Génère un nom de projet UNIQUE et CRÉATIF (2-4 mots, format slug avec tirets).
+Sois inventif, combine des mots de façon originale. Pas de guillemets, pas de ponctuation.
+
+Exemples créatifs: pixel-savant, aurora-design, velocity-hub, nexus-craft, stellar-wave, prism-forge
+
+Pour ce projet: "${prompt.substring(0, 150)}"
+ID unique: ${uniqueId}${existingNamesStr}
+
+Réponds UNIQUEMENT avec le nom slug (ex: mon-nom-projet):`
                 }],
               }),
             });
@@ -928,15 +916,24 @@ Pour: "${prompt.substring(0, 200)}"`
             if (nameResponse.ok) {
               const data = await nameResponse.json();
               const rawName = data.content[0]?.text?.trim() || '';
-              const baseName = rawName
+              projectName = rawName
                 .toLowerCase()
                 .replace(/[^a-z0-9\s-]/g, '')
                 .replace(/\s+/g, '-')
                 .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '')
                 .substring(0, 30);
               
-              // Vérifier et garantir l'unicité du nom
-              projectName = await ensureUniqueName(baseName);
+              // Vérification finale - si le nom existe quand même, ajouter l'ID unique
+              const { data: check } = await supabaseClient
+                .from('build_sessions')
+                .select('id')
+                .eq('title', projectName)
+                .maybeSingle();
+              
+              if (check) {
+                projectName = `${projectName}-${uniqueId}`;
+              }
               
               console.log('[generate-site] Generated unique project name:', projectName);
               
@@ -952,9 +949,11 @@ Pour: "${prompt.substring(0, 200)}"`
                 })}\n\n`));
               }
             } else {
-              // Fallback avec timestamp si l'API échoue
-              projectName = `projet-${Date.now().toString(36)}`;
-              console.log('[generate-site] Using fallback project name:', projectName);
+              // Fallback créatif avec timestamp
+              const words = ['pixel', 'nova', 'flux', 'spark', 'wave', 'pulse', 'orbit', 'prism'];
+              const randomWord = words[Math.floor(Math.random() * words.length)];
+              projectName = `${randomWord}-${uniqueId}`;
+              console.log('[generate-site] Using creative fallback name:', projectName);
               
               if (sessionId) {
                 await supabaseClient
@@ -970,8 +969,11 @@ Pour: "${prompt.substring(0, 200)}"`
             }
           } catch (e) {
             console.error('[generate-site] Error generating project name:', e);
-            // Fallback de dernier recours
-            projectName = `projet-${Date.now().toString(36)}`;
+            // Fallback de dernier recours - toujours créatif
+            const words = ['apex', 'zenith', 'echo', 'drift', 'bloom', 'forge'];
+            const randomWord = words[Math.floor(Math.random() * words.length)];
+            projectName = `${randomWord}-${Date.now().toString(36).slice(-5)}`;
+            
             if (sessionId) {
               await supabaseClient
                 .from('build_sessions')

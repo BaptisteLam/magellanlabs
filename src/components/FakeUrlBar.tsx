@@ -1,4 +1,4 @@
-import { Search, Pencil, Copy, Check, Paperclip, Settings, ChevronLeft, ChevronRight, RotateCw } from 'lucide-react';
+import { Search, Pencil, Copy, Check, Paperclip, Settings, ChevronLeft, ChevronRight, RotateCw, AlertCircle } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -38,11 +38,77 @@ export function FakeUrlBar({
   const [canGoForward, setCanGoForward] = useState(false);
   const [displayRoute, setDisplayRoute] = useState(currentRoute);
   const [isEditingUrl, setIsEditingUrl] = useState(false);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [isCheckingTitle, setIsCheckingTitle] = useState(false);
   const faviconInputRef = useRef<HTMLInputElement | null>(null);
+  const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
     setEditedTitle(projectTitle);
+    setTitleError(null);
   }, [projectTitle]);
+
+  // Vérifier si le titre existe déjà (avec debounce)
+  const checkTitleUniqueness = async (title: string) => {
+    if (!title.trim() || title === projectTitle) {
+      setTitleError(null);
+      return;
+    }
+    
+    setIsCheckingTitle(true);
+    
+    // Normaliser le titre pour la comparaison
+    const normalizedTitle = title
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+    
+    try {
+      const { data: existingProject } = await supabase
+        .from('build_sessions')
+        .select('id, title')
+        .neq('id', sessionId || '')
+        .ilike('title', normalizedTitle)
+        .maybeSingle();
+      
+      if (existingProject) {
+        setTitleError('Ce nom de projet existe déjà');
+      } else {
+        setTitleError(null);
+      }
+    } catch (error) {
+      console.error('Error checking title uniqueness:', error);
+      setTitleError(null);
+    } finally {
+      setIsCheckingTitle(false);
+    }
+  };
+
+  // Debounce la vérification
+  const handleTitleChange = (newTitle: string) => {
+    setEditedTitle(newTitle);
+    
+    if (checkTimeoutRef.current) {
+      clearTimeout(checkTimeoutRef.current);
+    }
+    
+    checkTimeoutRef.current = setTimeout(() => {
+      checkTitleUniqueness(newTitle);
+    }, 300);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Synchroniser la route affichée avec la prop
   useEffect(() => {
@@ -139,6 +205,12 @@ export function FakeUrlBar({
 
   const handleSave = async () => {
     if (!sessionId || !editedTitle.trim()) return;
+    
+    // Bloquer la sauvegarde si le titre existe déjà
+    if (titleError) {
+      toast.error('Ce nom de projet existe déjà. Veuillez en choisir un autre.');
+      return;
+    }
 
     try {
       // Sauvegarder le nouveau titre
@@ -152,6 +224,8 @@ export function FakeUrlBar({
       if (onTitleChange) {
         onTitleChange(editedTitle);
       }
+      
+      toast.success('Nom du projet mis à jour');
 
       // Republier automatiquement le projet avec le nouveau subdomain
       console.log('🔄 Updating public URL with new title...');
@@ -166,24 +240,34 @@ export function FakeUrlBar({
       }
     } catch (error) {
       console.error('Error saving title:', error);
+      toast.error('Erreur lors de la sauvegarde');
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
+      if (titleError) {
+        toast.error('Ce nom de projet existe déjà');
+        return;
+      }
       setIsEditing(false);
       handleSave();
     } else if (e.key === 'Escape') {
       setIsEditing(false);
       setEditedTitle(projectTitle);
+      setTitleError(null);
     }
   };
 
   const handleBlur = () => {
-    setIsEditing(false);
-    if (editedTitle !== projectTitle) {
+    // Ne pas sauvegarder si erreur
+    if (titleError) {
+      setEditedTitle(projectTitle);
+      setTitleError(null);
+    } else if (editedTitle !== projectTitle) {
       handleSave();
     }
+    setIsEditing(false);
   };
 
   const handleSearchClick = () => {
@@ -358,16 +442,28 @@ export function FakeUrlBar({
         </button>
         
         {isEditing ? (
-          <input
-            type="text"
-            value={editedTitle}
-            onChange={(e) => setEditedTitle(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={handleBlur}
-            autoFocus
-            className="flex-1 bg-transparent outline-none text-sm font-medium min-w-0"
-            style={{ color: isDark ? '#E5E7EB' : '#1F2937' }}
-          />
+          <div className="flex-1 flex items-center gap-1 min-w-0">
+            <input
+              type="text"
+              value={editedTitle}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={handleBlur}
+              autoFocus
+              className={`flex-1 bg-transparent outline-none text-sm font-medium min-w-0 ${
+                titleError ? 'text-red-500' : ''
+              }`}
+              style={{ color: titleError ? '#ef4444' : (isDark ? '#E5E7EB' : '#1F2937') }}
+            />
+            {titleError && (
+              <div className="flex items-center gap-1 flex-shrink-0" title={titleError}>
+                <AlertCircle className="w-4 h-4 text-red-500" />
+              </div>
+            )}
+            {isCheckingTitle && (
+              <div className="w-3 h-3 border-2 border-gray-300 border-t-[#03A5C0] rounded-full animate-spin flex-shrink-0" />
+            )}
+          </div>
         ) : (
           <div 
             className="flex-1 flex items-center gap-1 min-w-0 cursor-pointer"
