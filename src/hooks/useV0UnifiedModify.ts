@@ -181,13 +181,11 @@ export function useV0UnifiedModify() {
 
       // Create AST modifications for compatibility
       const modifications: ASTModification[] = filesAffected.map(path => ({
-        type: (projectFiles[path] ? 'style-change' : 'jsx-change') as ASTModification['type'],
+        type: (projectFiles[path] ? 'update' : 'insert') as ASTModification['type'],
         path,
-        filePath: path,
-        fileType: path.endsWith('.css') ? 'css' : path.endsWith('.html') ? 'html' : 'jsx',
-        target: path,
-        content: newFiles[path],
-        changes: {},
+        fileType: (path.endsWith('.css') ? 'css' : path.endsWith('.html') ? 'html' : 'jsx') as ASTModification['fileType'],
+        target: { selector: path },
+        value: newFiles[path],
       }));
 
       const result: V0UnifiedModifyResult = {
