@@ -1,4 +1,4 @@
-// Phase 1: Analyse d'intention et détection de complexité
+// Phase 1: Analyse d'intention avancée avec détection multi-tours et coréférences
 
 export interface AnalysisResult {
   complexity: 'trivial' | 'simple' | 'moderate' | 'complex';
@@ -7,9 +7,34 @@ export interface AnalysisResult {
   explanation: string;
   score: number;
   detectedPatterns: string[];
+  // P0: Nouvelles propriétés pour contexte multi-tours
+  resolvedPrompt?: string;
+  implicitReferences?: string[];
+  multiIntent?: MultiIntent;
 }
 
-// Patterns simples (+15 points chacun) - P1: Enrichi avec plus de patterns FR/EN
+// P1: Interface pour multi-intentions
+interface MultiIntent {
+  intentions: Array<{
+    text: string;
+    complexity: AnalysisResult['complexity'];
+    dependencies: number[];
+  }>;
+  executionStrategy: 'sequential' | 'parallel' | 'hybrid';
+}
+
+// P0: Interface pour l'historique de conversation enrichi
+interface ConversationMessage {
+  role: string;
+  content: string;
+  metadata?: {
+    files_modified?: string[];
+    intent_message?: string;
+    filesAffected?: Array<{ path: string; changeType: string }>;
+  };
+}
+
+// Patterns simples (+15 points chacun) - Enrichi
 const SIMPLE_PATTERNS = [
   /chang(e|er|é)?\s*(la|le|les)?\s*couleur/i,
   /modifi(e|er|é)?\s*(le|la|les)?\s*texte/i,
@@ -26,7 +51,7 @@ const SIMPLE_PATTERNS = [
   /font.*size/i,
   /margin|padding/i,
   /border.*radius/i,
-  // P1: Nouveaux patterns
+  // P1: Patterns enrichis
   /responsive|mobile|tablet/i,
   /hover|survol|effet/i,
   /gradient|dégradé/i,
@@ -38,6 +63,11 @@ const SIMPLE_PATTERNS = [
   /alignement|align/i,
   /largeur|width/i,
   /hauteur|height/i,
+  // P0: Patterns de référence implicite
+  /plus\s*(grand|petit|foncé|clair|gros|fin)/i,
+  /moins\s*(grand|petit|visible)/i,
+  /pareil|même\s*chose|idem/i,
+  /comme\s*(avant|ça|cela)/i,
 ];
 
 // Patterns complexes (-20 points chacun)
@@ -61,18 +91,155 @@ const COMPLEX_PATTERNS = [
   /state.*management/i,
 ];
 
-export function analyzeIntent(
+// P0: Patterns pour détecter les références implicites
+const IMPLICIT_REFERENCE_PATTERNS = [
+  { pattern: /\b(le|la|les|ce|cette|ces)\s+(même|pareil)/i, type: 'same_reference' },
+  { pattern: /\bplus\s+(grand|petit|foncé|clair|épais|fin)/i, type: 'comparative' },
+  { pattern: /\bmoins\s+(grand|visible|large)/i, type: 'comparative' },
+  { pattern: /\baussi\b/i, type: 'additional' },
+  { pattern: /\bpareil\b|\bidem\b/i, type: 'same_reference' },
+  { pattern: /\bcomme\s+(avant|ça|le reste|les autres)/i, type: 'reference_to_previous' },
+];
+
+// P0: Extraire les références implicites du prompt
+function extractImplicitReferences(
+  prompt: string,
+  conversationHistory?: ConversationMessage[]
+): { references: string[]; resolvedContext: string } {
+  const references: string[] = [];
+  let resolvedContext = '';
+
+  for (const { pattern, type } of IMPLICIT_REFERENCE_PATTERNS) {
+    if (pattern.test(prompt)) {
+      references.push(type);
+    }
+  }
+
+  // Si références trouvées, chercher le contexte dans l'historique
+  if (references.length > 0 && conversationHistory && conversationHistory.length > 0) {
+    // Chercher le dernier message avec des fichiers modifiés
+    for (let i = conversationHistory.length - 1; i >= 0; i--) {
+      const msg = conversationHistory[i];
+      if (msg.metadata?.files_modified?.length || msg.metadata?.filesAffected?.length) {
+        const files = msg.metadata.files_modified || 
+          msg.metadata.filesAffected?.map(f => f.path) || [];
+        resolvedContext = `Contexte précédent: fichiers ${files.join(', ')}`;
+        break;
+      }
+      // Chercher aussi le message d'intention
+      if (msg.metadata?.intent_message) {
+        resolvedContext = `Action précédente: ${msg.metadata.intent_message}`;
+        break;
+      }
+    }
+  }
+
+  return { references, resolvedContext };
+}
+
+// P0: Résoudre les coréférences dans le prompt
+function resolveCoref(
+  prompt: string,
+  conversationHistory?: ConversationMessage[]
+): string {
+  if (!conversationHistory || conversationHistory.length === 0) {
+    return prompt;
+  }
+
+  let resolved = prompt;
+
+  // Trouver le dernier message utilisateur pour contexte
+  const lastUserMsg = [...conversationHistory]
+    .reverse()
+    .find(m => m.role === 'user');
+  
+  const lastAssistantMsg = [...conversationHistory]
+    .reverse()
+    .find(m => m.role === 'assistant' && m.metadata?.intent_message);
+
+  // Résoudre "plus foncé/clair" → ajouter le contexte de couleur
+  if (/plus\s*(foncé|clair)/i.test(prompt) && lastUserMsg?.content) {
+    const colorMatch = lastUserMsg.content.match(/\b(bleu|rouge|vert|jaune|orange|violet|rose|noir|blanc|gris|blue|red|green|yellow)/i);
+    if (colorMatch) {
+      resolved = `${prompt} (contexte: ${colorMatch[0]})`;
+    }
+  }
+
+  // Résoudre "pareil/même chose" → référence au dernier changement
+  if (/pareil|même\s*chose|idem/i.test(prompt) && lastAssistantMsg?.metadata?.intent_message) {
+    resolved = `${prompt} (comme: ${lastAssistantMsg.metadata.intent_message})`;
+  }
+
+  return resolved;
+}
+
+// P1: Détecter les multi-intentions
+function detectMultiIntents(
+  prompt: string,
+  projectFiles: Record<string, string>
+): MultiIntent | null {
+  // Détecter les connecteurs
+  const conjunctionPatterns = [
+    /\s+et\s+/gi,
+    /\s+puis\s+/gi,
+    /\s+ensuite\s+/gi,
+    /\s+avec\s+/gi,
+    /\s+ainsi\s+que\s+/gi,
+    /\s+and\s+/gi,
+    /\s+then\s+/gi,
+  ];
+
+  let hasMultipleIntents = false;
+  for (const pattern of conjunctionPatterns) {
+    if (pattern.test(prompt)) {
+      hasMultipleIntents = true;
+      break;
+    }
+  }
+
+  if (!hasMultipleIntents) {
+    return null;
+  }
+
+  // Segmenter le prompt
+  const segments = prompt.split(/\s+(?:et|puis|ensuite|avec|ainsi que|and|then)\s+/i)
+    .map(s => s.trim())
+    .filter(s => s.length > 3);
+
+  if (segments.length < 2) {
+    return null;
+  }
+
+  // Analyser chaque segment
+  const intentions = segments.map((seg, idx) => {
+    const analysis = analyzeIntentCore(seg, projectFiles);
+    return {
+      text: seg,
+      complexity: analysis.complexity,
+      dependencies: idx > 0 ? [idx - 1] : [] // Dépendance séquentielle simple
+    };
+  });
+
+  // Déterminer la stratégie d'exécution
+  const hasComplexIntent = intentions.some(i => i.complexity === 'complex' || i.complexity === 'moderate');
+  const strategy = hasComplexIntent ? 'sequential' : 'parallel';
+
+  return { intentions, executionStrategy: strategy };
+}
+
+// Core analysis function (sans contexte multi-tours)
+function analyzeIntentCore(
   prompt: string,
   projectFiles: Record<string, string>
 ): AnalysisResult {
-  let score = 50; // Score de base
+  let score = 50;
   const detectedPatterns: string[] = [];
   
   // Analyse des patterns simples (+15 points)
   for (const pattern of SIMPLE_PATTERNS) {
     if (pattern.test(prompt)) {
       score += 15;
-      detectedPatterns.push(`simple: ${pattern.source}`);
+      detectedPatterns.push(`simple: ${pattern.source.substring(0, 30)}`);
     }
   }
   
@@ -80,7 +247,7 @@ export function analyzeIntent(
   for (const pattern of COMPLEX_PATTERNS) {
     if (pattern.test(prompt)) {
       score -= 20;
-      detectedPatterns.push(`complex: ${pattern.source}`);
+      detectedPatterns.push(`complex: ${pattern.source.substring(0, 30)}`);
     }
   }
   
@@ -107,7 +274,7 @@ export function analyzeIntent(
     detectedPatterns.push('prompt: short (<50 chars)');
   }
   
-  // Normalisation du score entre -50 et 100
+  // Normalisation du score
   score = Math.max(-50, Math.min(100, score));
   
   // Mapping vers les niveaux de complexité
@@ -117,15 +284,11 @@ export function analyzeIntent(
   else if (score > -20) complexity = 'moderate';
   else complexity = 'complex';
   
-  // Calcul du niveau de confiance
   const confidence = Math.abs(score) / 100;
-  
-  // Détermination du type d'intention
   const intentType = complexity === 'trivial' || complexity === 'simple' 
     ? 'quick-modification' 
     : 'full-generation';
   
-  // Génération de l'explication
   const explanation = generateExplanation(complexity, score, detectedPatterns);
   
   return {
@@ -135,6 +298,46 @@ export function analyzeIntent(
     explanation,
     score,
     detectedPatterns,
+  };
+}
+
+// P0: Fonction principale d'analyse enrichie avec contexte conversationnel
+export function analyzeIntent(
+  prompt: string,
+  projectFiles: Record<string, string>,
+  conversationHistory?: ConversationMessage[]
+): AnalysisResult {
+  // 1. Extraire les références implicites
+  const { references, resolvedContext } = extractImplicitReferences(prompt, conversationHistory);
+  
+  // 2. Résoudre les coréférences
+  const resolvedPrompt = resolveCoref(prompt, conversationHistory);
+  
+  // 3. Détecter les multi-intentions
+  const multiIntent = detectMultiIntents(prompt, projectFiles);
+  
+  // 4. Analyse de base avec le prompt résolu
+  const baseAnalysis = analyzeIntentCore(resolvedPrompt, projectFiles);
+  
+  // 5. Ajuster la complexité si multi-intentions
+  if (multiIntent) {
+    const maxComplexity = multiIntent.intentions.reduce((max, intent) => {
+      const complexityOrder = { trivial: 0, simple: 1, moderate: 2, complex: 3 };
+      return complexityOrder[intent.complexity] > complexityOrder[max] 
+        ? intent.complexity 
+        : max;
+    }, baseAnalysis.complexity);
+    
+    baseAnalysis.complexity = maxComplexity;
+    baseAnalysis.detectedPatterns.push(`multi-intent: ${multiIntent.intentions.length} intentions`);
+  }
+  
+  // 6. Retourner l'analyse enrichie
+  return {
+    ...baseAnalysis,
+    resolvedPrompt: resolvedPrompt !== prompt ? resolvedPrompt : undefined,
+    implicitReferences: references.length > 0 ? references : undefined,
+    multiIntent: multiIntent || undefined,
   };
 }
 

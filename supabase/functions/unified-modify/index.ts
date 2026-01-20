@@ -5,7 +5,9 @@ import {
   DependencyGraph, 
   optimizeContext, 
   extractExplicitFiles,
-  buildContextWithMemory 
+  buildContextWithMemory,
+  scoreFilesByRelevance,
+  selectFilesWithBudget
 } from "./context.ts";
 import {
   selectModel,
@@ -140,24 +142,33 @@ serve(async (req) => {
             message: '🔍 Analyse de votre demande...'
           });
 
-          const analysis = analyzeIntent(message, projectFiles);
+          // P0: Passer l'historique de conversation pour analyse contextuelle
+          const analysis = analyzeIntent(message, projectFiles, conversationHistory);
           
           sendEvent('generation_event', {
             type: 'phase',
             phase: 'analyze',
             status: 'complete',
             message: `✅ Demande analysée (${analysis.complexity})`,
-            data: analysis
+            data: {
+              ...analysis,
+              resolvedPrompt: analysis.resolvedPrompt,
+              multiIntent: analysis.multiIntent
+            }
           });
 
-          // 🆕 Envoyer un message d'intention basé sur l'analyse
-          const intentPreview = generateIntentPreview(message, analysis);
+          // P0: Message d'intention intelligent avec extraction d'entités
+          const intentPreview = generateSmartIntentMessage(message, analysis, []);
           sendEvent('message', {
             type: 'intent',
             content: intentPreview
           });
 
-          console.log('[unified-modify] Analysis result:', analysis);
+          console.log('[unified-modify] Analysis result:', {
+            complexity: analysis.complexity,
+            resolvedPrompt: analysis.resolvedPrompt,
+            multiIntent: analysis.multiIntent?.intentions?.length
+          });
 
           // ========== PHASE 2: CONTEXT ==========
           console.log('[unified-modify] Phase 2: Building context...');
@@ -171,40 +182,35 @@ serve(async (req) => {
           const graph = new DependencyGraph(projectFiles);
           graph.buildGraph();
 
+          // P1: Utiliser le scoring hybride pour sélectionner les fichiers
+          const fileScores = scoreFilesByRelevance(message, projectFiles, graph, conversationHistory);
           const explicitFiles = extractExplicitFiles(message, projectFiles);
           
-          // Max files based on complexity
-          const maxFilesMap: Record<string, number> = {
-            'trivial': 3,
-            'simple': 8,
-            'moderate': 12,
-            'complex': 15
-          };
-          const maxFiles = maxFilesMap[analysis.complexity] || 10;
-
-          const relevantFiles = graph.getRelevantFiles(explicitFiles, maxFiles);
+          // P1: Sélection avec budget de tokens au lieu de limite fixe
+          const relevantProjectFiles = selectFilesWithBudget(fileScores, projectFiles, analysis.complexity);
           
-          // Create subset of project files
-          const relevantProjectFiles: Record<string, string> = {};
-          for (const path of relevantFiles) {
-            if (projectFiles[path]) {
-              relevantProjectFiles[path] = projectFiles[path];
+          // Ajouter les fichiers explicites s'ils ne sont pas déjà inclus
+          for (const explicitFile of explicitFiles) {
+            if (!relevantProjectFiles[explicitFile] && projectFiles[explicitFile]) {
+              relevantProjectFiles[explicitFile] = projectFiles[explicitFile];
             }
           }
 
           const optimizedContext = optimizeContext(relevantProjectFiles, analysis.complexity);
+          const relevantFiles = Object.keys(optimizedContext.files);
 
-          // 🆕 Envoyer les détails des fichiers identifiés
+          // Envoyer les détails des fichiers identifiés avec scores
           sendEvent('generation_event', {
             type: 'phase',
             phase: 'context',
             status: 'complete',
-            message: `✅ ${Object.keys(optimizedContext.files).length} fichiers identifiés`,
+            message: `✅ ${relevantFiles.length} fichiers identifiés`,
             data: {
               explicitFiles,
               relevantFiles,
-              fileCount: Object.keys(optimizedContext.files).length,
-              truncatedFiles: optimizedContext.truncatedFiles
+              fileCount: relevantFiles.length,
+              truncatedFiles: optimizedContext.truncatedFiles,
+              topScores: fileScores.slice(0, 5).map(f => ({ path: f.path, score: f.total }))
             }
           });
 
@@ -430,72 +436,146 @@ serve(async (req) => {
   }
 });
 
-// 🆕 Génère un aperçu de l'intention basé sur l'analyse
-function generateIntentPreview(message: string, analysis: any): string {
-  const msgLower = message.toLowerCase();
+// P2: Extraction d'entités du prompt pour messages contextuels
+function extractEntities(text: string): {
+  actions: string[];
+  elements: string[];
+  colors: string[];
+  properties: string[];
+} {
+  const entities = {
+    actions: [] as string[],
+    elements: [] as string[],
+    colors: [] as string[],
+    properties: [] as string[]
+  };
   
-  // Détecter la langue (simple heuristique)
-  const isFrench = /\b(le|la|les|un|une|des|du|de|en|et|pour|avec|dans|sur|au|aux|ce|cette|ces|je|tu|il|elle|nous|vous|ils|elles|mon|ton|son|notre|votre|leur|qui|que|quoi|dont|où|changer|modifier|ajouter|supprimer|créer|mettre|faire)\b/i.test(message);
+  const textLower = text.toLowerCase();
   
-  if (isFrench) {
-    // Messages contextuels en français
-    if (msgLower.includes('couleur') || msgLower.includes('color')) {
-      return `Je vais modifier les couleurs selon votre demande...`;
+  // Actions
+  const actionPatterns: Array<{ pattern: RegExp; action: string }> = [
+    { pattern: /\b(chang|modifi)/i, action: 'changer' },
+    { pattern: /\b(ajout|add|créer|create)/i, action: 'ajouter' },
+    { pattern: /\b(supprim|enlev|retir|remove|delete)/i, action: 'supprimer' },
+    { pattern: /\b(remplac|replace)/i, action: 'remplacer' },
+    { pattern: /\b(augment|agrandi|bigger|larger)/i, action: 'agrandir' },
+    { pattern: /\b(réduir|diminue|smaller)/i, action: 'réduire' },
+    { pattern: /\b(center|centr)/i, action: 'centrer' },
+    { pattern: /\b(align)/i, action: 'aligner' },
+  ];
+  
+  for (const { pattern, action } of actionPatterns) {
+    if (pattern.test(textLower)) {
+      entities.actions.push(action);
     }
-    if (msgLower.includes('bouton') || msgLower.includes('button')) {
-      return `Je vais modifier le(s) bouton(s) comme demandé...`;
-    }
-    if (msgLower.includes('titre') || msgLower.includes('header') || msgLower.includes('heading')) {
-      return `Je vais modifier le titre/header selon vos instructions...`;
-    }
-    if (msgLower.includes('texte') || msgLower.includes('text')) {
-      return `Je vais modifier le texte comme indiqué...`;
-    }
-    if (msgLower.includes('image') || msgLower.includes('photo') || msgLower.includes('logo')) {
-      return `Je vais ajuster l'image/le logo selon votre demande...`;
-    }
-    if (msgLower.includes('taille') || msgLower.includes('size') || msgLower.includes('grand') || msgLower.includes('petit')) {
-      return `Je vais ajuster les dimensions comme demandé...`;
-    }
-    if (msgLower.includes('police') || msgLower.includes('font')) {
-      return `Je vais modifier la police/typographie...`;
-    }
-    if (msgLower.includes('ajouter') || msgLower.includes('créer') || msgLower.includes('add')) {
-      return `Je vais ajouter le nouvel élément demandé...`;
-    }
-    if (msgLower.includes('supprimer') || msgLower.includes('enlever') || msgLower.includes('remove')) {
-      return `Je vais supprimer l'élément indiqué...`;
-    }
-    return `Je vais traiter votre demande...`;
-  } else {
-    // Messages contextuels en anglais
-    if (msgLower.includes('color') || msgLower.includes('colour')) {
-      return `I'll modify the colors as requested...`;
-    }
-    if (msgLower.includes('button')) {
-      return `I'll modify the button(s) as requested...`;
-    }
-    if (msgLower.includes('title') || msgLower.includes('header') || msgLower.includes('heading')) {
-      return `I'll modify the title/header as instructed...`;
-    }
-    if (msgLower.includes('text')) {
-      return `I'll modify the text as indicated...`;
-    }
-    if (msgLower.includes('image') || msgLower.includes('photo') || msgLower.includes('logo')) {
-      return `I'll adjust the image/logo as requested...`;
-    }
-    if (msgLower.includes('size') || msgLower.includes('bigger') || msgLower.includes('smaller')) {
-      return `I'll adjust the dimensions as requested...`;
-    }
-    if (msgLower.includes('font')) {
-      return `I'll modify the font/typography...`;
-    }
-    if (msgLower.includes('add') || msgLower.includes('create')) {
-      return `I'll add the new element as requested...`;
-    }
-    if (msgLower.includes('remove') || msgLower.includes('delete')) {
-      return `I'll remove the indicated element...`;
-    }
-    return `I'll process your request...`;
   }
+  
+  // Éléments UI
+  const elementPatterns: Array<{ pattern: RegExp; element: string }> = [
+    { pattern: /bouton|button|btn|cta/i, element: 'bouton' },
+    { pattern: /titre|title|heading|h1|h2|h3/i, element: 'titre' },
+    { pattern: /header|en-?tête|navbar/i, element: 'header' },
+    { pattern: /footer|pied/i, element: 'footer' },
+    { pattern: /menu|nav(igation)?/i, element: 'navigation' },
+    { pattern: /card|carte/i, element: 'carte' },
+    { pattern: /image|photo|logo|icon/i, element: 'image' },
+    { pattern: /form(ulaire)?|input|champ/i, element: 'formulaire' },
+    { pattern: /texte|text|paragraph/i, element: 'texte' },
+    { pattern: /section|bloc|div/i, element: 'section' },
+    { pattern: /hero|banner|bannière/i, element: 'hero' },
+    { pattern: /fond|background|bg/i, element: 'fond' },
+    { pattern: /lien|link/i, element: 'lien' },
+  ];
+  
+  for (const { pattern, element } of elementPatterns) {
+    if (pattern.test(textLower)) {
+      entities.elements.push(element);
+    }
+  }
+  
+  // Couleurs
+  const colorPatterns = [
+    /\b(bleu|blue|#[0-9a-f]{3,6}|rgb\([^)]+\))/i,
+    /\b(rouge|red)/i,
+    /\b(vert|green)/i,
+    /\b(jaune|yellow)/i,
+    /\b(orange)/i,
+    /\b(violet|purple)/i,
+    /\b(rose|pink)/i,
+    /\b(noir|black)/i,
+    /\b(blanc|white)/i,
+    /\b(gris|gray|grey)/i,
+    /\b(foncé|dark|sombre)/i,
+    /\b(clair|light)/i,
+  ];
+  
+  for (const pattern of colorPatterns) {
+    const match = textLower.match(pattern);
+    if (match) {
+      entities.colors.push(match[0]);
+    }
+  }
+  
+  // Propriétés CSS
+  const propertyPatterns: Array<{ pattern: RegExp; property: string }> = [
+    { pattern: /taille|size|dimension/i, property: 'taille' },
+    { pattern: /police|font/i, property: 'police' },
+    { pattern: /marge|margin|padding|espacement/i, property: 'espacement' },
+    { pattern: /bordure|border|contour/i, property: 'bordure' },
+    { pattern: /arrondi|radius|rounded/i, property: 'arrondi' },
+    { pattern: /ombre|shadow/i, property: 'ombre' },
+    { pattern: /opacité|opacity|transparent/i, property: 'opacité' },
+    { pattern: /animation|transition|effet/i, property: 'animation' },
+  ];
+  
+  for (const { pattern, property } of propertyPatterns) {
+    if (pattern.test(textLower)) {
+      entities.properties.push(property);
+    }
+  }
+  
+  return entities;
+}
+
+// P2: Génère un message d'intention intelligent basé sur extraction d'entités
+function generateSmartIntentMessage(
+  prompt: string,
+  analysis: any,
+  targetFiles: string[]
+): string {
+  const entities = extractEntities(prompt);
+  const isFrench = /\b(le|la|les|un|une|des|du|de|en|et|pour|avec|dans|sur|changer|modifier|ajouter)\b/i.test(prompt);
+  
+  // Construire le message contextuel
+  const action = entities.actions[0] || (isFrench ? 'modifier' : 'modify');
+  const element = entities.elements[0] || (isFrench ? 'les éléments' : 'the elements');
+  const color = entities.colors[0];
+  const property = entities.properties[0];
+  
+  // Construire la partie fichiers
+  let filesStr = '';
+  if (targetFiles.length > 0) {
+    const shortFiles = targetFiles.slice(0, 2).map(f => f.split('/').pop()).join(', ');
+    filesStr = isFrench ? ` dans ${shortFiles}` : ` in ${shortFiles}`;
+  }
+  
+  // Construire le message complet
+  if (isFrench) {
+    let msg = `Je vais ${action} ${element}`;
+    if (color) msg += ` en ${color}`;
+    else if (property) msg += ` (${property})`;
+    msg += filesStr + '...';
+    return msg;
+  } else {
+    let msg = `I'll ${action} ${element}`;
+    if (color) msg += ` to ${color}`;
+    else if (property) msg += ` (${property})`;
+    msg += filesStr + '...';
+    return msg;
+  }
+}
+
+// Fonction legacy pour compatibilité
+function generateIntentPreview(message: string, analysis: any): string {
+  return generateSmartIntentMessage(message, analysis, []);
 }

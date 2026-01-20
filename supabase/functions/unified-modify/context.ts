@@ -238,45 +238,174 @@ export class DependencyGraph {
   }
 }
 
-// Limites de lignes par complexité - P1: Augmenté pour meilleur contexte
-const LINE_LIMITS: Record<string, number> = {
-  trivial: 120,
-  simple: 200,
-  moderate: 350,
-  complex: 600, // P1: Augmenté de 400 à 600
+// Limites de TOKENS par complexité (au lieu de lignes) - P1
+const TOKEN_BUDGETS: Record<string, number> = {
+  trivial: 4000,   // ~3 fichiers moyens
+  simple: 8000,    // ~6 fichiers
+  moderate: 12000, // ~10 fichiers
+  complex: 20000,  // ~15 fichiers
 };
+
+// Estimation simple des tokens (1 token ≈ 4 caractères)
+function estimateTokens(content: string): number {
+  return Math.ceil(content.length / 4);
+}
+
+// P1: Scoring hybride pour fichiers
+export interface FileRelevanceScore {
+  path: string;
+  scores: {
+    ast: number;        // Score basé sur imports/exports
+    keyword: number;    // Fréquence termes du prompt dans le fichier
+    recency: number;    // Fichiers récemment mentionnés
+    critical: number;   // Fichiers critiques (index, main, etc.)
+  };
+  total: number;
+}
+
+// P1: Calculer le score de pertinence par mots-clés
+function calculateKeywordScore(prompt: string, content: string): number {
+  const promptTerms = prompt.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+  const contentLower = content.toLowerCase();
+  
+  let matchCount = 0;
+  for (const term of promptTerms) {
+    if (contentLower.includes(term)) {
+      matchCount++;
+    }
+  }
+  
+  return promptTerms.length > 0 ? (matchCount / promptTerms.length) * 50 : 0;
+}
+
+// P1: Scoring hybride des fichiers
+export function scoreFilesByRelevance(
+  prompt: string,
+  projectFiles: Record<string, string>,
+  graph: DependencyGraph,
+  conversationHistory?: Array<{ metadata?: { files_modified?: string[] } }>
+): FileRelevanceScore[] {
+  const scores: FileRelevanceScore[] = [];
+  const recentFiles = new Set<string>();
+
+  // Extraire les fichiers récemment modifiés de l'historique
+  if (conversationHistory) {
+    for (const msg of conversationHistory.slice(-5)) {
+      if (msg.metadata?.files_modified) {
+        msg.metadata.files_modified.forEach(f => recentFiles.add(f));
+      }
+    }
+  }
+
+  for (const [path, content] of Object.entries(projectFiles)) {
+    const node = graph['nodes']?.get?.(path);
+    
+    // Score AST (imports/exports)
+    const astScore = node?.importanceScore || 0;
+    
+    // Score mots-clés
+    const keywordScore = calculateKeywordScore(prompt, content);
+    
+    // Score récence
+    const recencyScore = recentFiles.has(path) ? 30 : 0;
+    
+    // Score critique
+    const fileName = path.split('/').pop()?.replace(/\.[^.]+$/, '').toLowerCase() || '';
+    const criticalScore = CRITICAL_FILES.includes(fileName) ? 50 : 0;
+    
+    // Score total pondéré
+    const total = 
+      astScore * 0.3 + 
+      keywordScore * 0.3 + 
+      recencyScore * 0.2 + 
+      criticalScore * 0.2;
+    
+    scores.push({
+      path,
+      scores: { ast: astScore, keyword: keywordScore, recency: recencyScore, critical: criticalScore },
+      total
+    });
+  }
+  
+  return scores.sort((a, b) => b.total - a.total);
+}
+
+// P1: Sélection avec budget de tokens
+export function selectFilesWithBudget(
+  rankedFiles: FileRelevanceScore[],
+  projectFiles: Record<string, string>,
+  complexity: string
+): Record<string, string> {
+  const budget = TOKEN_BUDGETS[complexity] || 8000;
+  let currentTokens = 0;
+  const selected: Record<string, string> = {};
+  
+  for (const file of rankedFiles) {
+    const content = projectFiles[file.path];
+    if (!content) continue;
+    
+    const fileTokens = estimateTokens(content);
+    
+    if (currentTokens + fileTokens <= budget) {
+      selected[file.path] = content;
+      currentTokens += fileTokens;
+    } else if (Object.keys(selected).length < 3) {
+      // Toujours inclure au moins 3 fichiers, même si ça dépasse
+      selected[file.path] = content;
+      currentTokens += fileTokens;
+    } else {
+      break;
+    }
+  }
+  
+  return selected;
+}
 
 export function optimizeContext(
   files: Record<string, string>,
   complexity: string
 ): OptimizedContext {
-  const limit = LINE_LIMITS[complexity] || 250;
+  const tokenBudget = TOKEN_BUDGETS[complexity] || 8000;
   const optimizedFiles: Record<string, string> = {};
   const truncatedFiles: string[] = [];
   let totalLines = 0;
   let optimizedLines = 0;
+  let currentTokens = 0;
 
-  for (const [path, content] of Object.entries(files)) {
+  // Trier les fichiers par taille (plus petits d'abord)
+  const sortedFiles = Object.entries(files).sort(
+    (a, b) => a[1].length - b[1].length
+  );
+
+  for (const [path, content] of sortedFiles) {
     const lines = content.split('\n');
     totalLines += lines.length;
+    const fileTokens = estimateTokens(content);
 
-    if (lines.length <= limit) {
+    if (currentTokens + fileTokens <= tokenBudget) {
+      // Le fichier entre dans le budget
       optimizedFiles[path] = content;
       optimizedLines += lines.length;
-    } else {
-      // Garder 40% du début, 40% de la fin
-      const keepStart = Math.floor(limit * 0.4);
-      const keepEnd = Math.floor(limit * 0.4);
+      currentTokens += fileTokens;
+    } else if (Object.keys(optimizedFiles).length < 3) {
+      // Fichier tronqué mais on doit inclure au minimum 3 fichiers
+      const maxChars = (tokenBudget - currentTokens) * 4;
+      const keepStart = Math.floor(lines.length * 0.5);
+      const keepEnd = Math.floor(lines.length * 0.3);
       const omittedCount = lines.length - keepStart - keepEnd;
 
       const truncatedContent = [
         ...lines.slice(0, keepStart),
-        `\n// ... ${omittedCount} lignes omises ...\n`,
+        `\n// ... ${omittedCount} lignes omises (budget tokens) ...\n`,
         ...lines.slice(-keepEnd),
-      ].join('\n');
+      ].join('\n').substring(0, maxChars);
 
       optimizedFiles[path] = truncatedContent;
       optimizedLines += keepStart + keepEnd + 1;
+      truncatedFiles.push(path);
+      currentTokens += estimateTokens(truncatedContent);
+    } else {
+      // Fichier exclu du contexte
       truncatedFiles.push(path);
     }
   }
