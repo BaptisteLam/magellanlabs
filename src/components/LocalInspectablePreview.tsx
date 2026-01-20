@@ -229,21 +229,42 @@ export const LocalInspectablePreview = forwardRef<LocalInspectablePreviewHandle,
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isReady, setIsReady] = useState(false);
 
+  // Helper pour récupérer le contenu d'un fichier avec normalisation des chemins
+  const getFileContent = useCallback((files: Record<string, string>, filename: string): string => {
+    const variants = [`/${filename}`, filename, `./${filename}`];
+    for (const variant of variants) {
+      if (files[variant]) return files[variant];
+    }
+    // Chercher par nom de fichier uniquement
+    for (const [path, content] of Object.entries(files)) {
+      if (path.endsWith(filename)) return content;
+    }
+    return '';
+  }, []);
+
   // Combiner les fichiers du projet en un seul HTML
   const combinedHtml = useMemo(() => {
-    // Récupérer les fichiers
-    const html = projectFiles['/index.html'] || projectFiles['index.html'] || '';
-    const css = projectFiles['/styles.css'] || projectFiles['styles.css'] || '';
-    const js = projectFiles['/app.js'] || projectFiles['app.js'] || '';
+    // Récupérer les fichiers avec normalisation
+    const html = getFileContent(projectFiles, 'index.html');
+    const css = getFileContent(projectFiles, 'styles.css');
+    const js = getFileContent(projectFiles, 'app.js');
+
+    // Log diagnostic
+    console.log('[LocalInspectablePreview] Files received:', {
+      keys: Object.keys(projectFiles),
+      htmlLength: html.length,
+      cssLength: css.length,
+      jsLength: js.length,
+    });
 
     if (!html) {
+      console.warn('[LocalInspectablePreview] No HTML found, using fallback');
       return `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Preview</title>
-  <script src="https://cdn.tailwindcss.com"></script>
   <style>${css}</style>
 </head>
 <body>
@@ -255,38 +276,72 @@ export const LocalInspectablePreview = forwardRef<LocalInspectablePreviewHandle,
     }
 
     let combined = html;
+    let cssInjected = false;
 
-    // Injecter le CSS inline
-    if (css) {
-      // Remplacer le lien vers styles.css par le contenu inline
-      combined = combined.replace(
-        /<link[^>]*href=["']\.?\/?styles\.css["'][^>]*>/gi,
-        `<style>${css}</style>`
-      );
-      // Si pas de lien trouvé, ajouter avant </head>
-      if (!combined.includes(`<style>${css}</style>`)) {
-        combined = combined.replace('</head>', `<style>${css}</style></head>`);
+    // Injecter le CSS inline - stratégie robuste
+    if (css && css.trim()) {
+      // 1. Essayer de remplacer les liens stylesheet existants (plusieurs patterns)
+      const linkPatterns = [
+        /<link[^>]*href=["'][^"']*styles\.css["'][^>]*\/?>/gi,
+        /<link[^>]*rel=["']stylesheet["'][^>]*href=["'][^"']*\.css["'][^>]*\/?>/gi,
+      ];
+
+      for (const pattern of linkPatterns) {
+        if (pattern.test(combined)) {
+          combined = combined.replace(pattern, `<style>${css}</style>`);
+          cssInjected = true;
+          break;
+        }
       }
+
+      // 2. Si aucun lien trouvé, injecter avant </head>
+      if (!cssInjected) {
+        if (combined.includes('</head>')) {
+          combined = combined.replace('</head>', `<style>${css}</style>\n</head>`);
+          cssInjected = true;
+        } else if (combined.includes('<body')) {
+          combined = combined.replace(/<body[^>]*>/i, (match) => `<style>${css}</style>\n${match}`);
+          cssInjected = true;
+        } else {
+          // Dernier recours : ajouter au début
+          combined = `<style>${css}</style>\n${combined}`;
+          cssInjected = true;
+        }
+      }
+
+      console.log('[LocalInspectablePreview] CSS injected:', cssInjected);
     }
 
-    // Injecter le JS inline
-    if (js) {
-      // Remplacer le script vers app.js par le contenu inline
-      combined = combined.replace(
-        /<script[^>]*src=["']\.?\/?app\.js["'][^>]*><\/script>/gi,
-        `<script>${js}</script>`
-      );
-      // Si pas de script trouvé, ajouter avant </body>
-      if (!combined.includes(`<script>${js}</script>`)) {
-        combined = combined.replace('</body>', `<script>${js}</script></body>`);
+    // Injecter le JS inline - stratégie robuste
+    if (js && js.trim()) {
+      let jsInjected = false;
+      
+      // 1. Essayer de remplacer le script app.js existant
+      const scriptPattern = /<script[^>]*src=["'][^"']*app\.js["'][^>]*><\/script>/gi;
+      if (scriptPattern.test(combined)) {
+        combined = combined.replace(scriptPattern, `<script>${js}</script>`);
+        jsInjected = true;
+      }
+
+      // 2. Si pas de script trouvé, ajouter avant </body>
+      if (!jsInjected) {
+        if (combined.includes('</body>')) {
+          combined = combined.replace('</body>', `<script>${js}</script>\n</body>`);
+        } else {
+          combined += `\n<script>${js}</script>`;
+        }
       }
     }
 
     // Injecter le script d'inspection
-    combined = combined.replace('</body>', `<script>${INSPECTOR_SCRIPT}</script></body>`);
+    if (combined.includes('</body>')) {
+      combined = combined.replace('</body>', `<script>${INSPECTOR_SCRIPT}</script>\n</body>`);
+    } else {
+      combined += `\n<script>${INSPECTOR_SCRIPT}</script>`;
+    }
 
     return combined;
-  }, [projectFiles]);
+  }, [projectFiles, getFileContent]);
 
   // Écouter les messages de l'iframe
   useEffect(() => {
