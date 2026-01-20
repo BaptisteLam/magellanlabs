@@ -44,16 +44,12 @@ export function useGenerateSite() {
   const [progress, setProgress] = useState('');
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const timeoutRef = useRef<number | null>(null);
+  // Timeout supprimé - la génération n'a plus de limite de temps
 
   const abort = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
-    }
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
     }
   }, []);
 
@@ -77,28 +73,7 @@ export function useGenerateSite() {
     // Create abort controller
     abortControllerRef.current = new AbortController();
 
-    // Flag pour savoir si des fichiers ont été reçus
-    let filesReceived = false;
-
-    // Security timeout: 300 seconds (5 minutes) pour génération complète
-    // Ne déclenche PAS d'erreur si les fichiers ont déjà été reçus
-    timeoutRef.current = window.setTimeout(() => {
-      if (!filesReceived) {
-        console.warn('[useGenerateSite] Request timeout after 300 seconds - no files received');
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
-        }
-        onError?.('Timeout - la génération a pris trop de temps');
-      } else {
-        console.log('[useGenerateSite] Timeout reached but files already received - completing gracefully');
-        // Forcer la completion si fichiers reçus mais pas de 'complete' event
-        onGenerationEvent?.({
-          type: 'complete',
-          message: 'Site généré avec succès!',
-          status: 'completed'
-        });
-      }
-    }, 300000);
+    // Pas de timeout - la génération peut prendre le temps nécessaire
 
     const startTime = Date.now();
 
@@ -237,13 +212,7 @@ export function useGenerateSite() {
                     count: Object.keys(data.data.files || {}).length,
                   });
                   if (data.data.files) {
-                    // Marquer que les fichiers ont été reçus et annuler le timeout
-                    filesReceived = true;
-                    if (timeoutRef.current) {
-                      clearTimeout(timeoutRef.current);
-                      timeoutRef.current = null;
-                      console.log('[useGenerateSite] Timeout cleared - files received');
-                    }
+                    console.log('[useGenerateSite] Files received successfully');
                     
                     // Émettre des événements de complétion pour chaque fichier
                     Object.keys(data.data.files).forEach(filePath => {
@@ -357,12 +326,6 @@ export function useGenerateSite() {
 
     } finally {
       setIsGenerating(false);
-
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-
       abortControllerRef.current = null;
     }
   }, []);
