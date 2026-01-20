@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { CodeSandboxPreview, CodeSandboxPreviewHandle } from './CodeSandboxPreview';
 import { LocalInspectablePreview, LocalInspectablePreviewHandle } from './LocalInspectablePreview';
 import { EnhancedEditToolbar } from './EnhancedEditToolbar';
 import { MousePointer2 } from 'lucide-react';
@@ -30,7 +29,6 @@ export function InteractiveCodeSandboxPreview({
   
   const containerRef = useRef<HTMLDivElement>(null);
   const localPreviewRef = useRef<LocalInspectablePreviewHandle>(null);
-  const codesandboxRef = useRef<CodeSandboxPreviewHandle>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   // Gérer les messages de l'inspector (LocalInspectablePreview)
@@ -96,12 +94,12 @@ export function InteractiveCodeSandboxPreview({
 
   // Activer/désactiver le mode inspection
   useEffect(() => {
-    if (inspectMode && localPreviewRef.current) {
-      localPreviewRef.current.setInspectMode(true);
-    } else if (!inspectMode && localPreviewRef.current) {
-      localPreviewRef.current.setInspectMode(false);
-      setHoveredElement(null);
-      setInspectorReady(false);
+    if (localPreviewRef.current) {
+      localPreviewRef.current.setInspectMode(inspectMode);
+      if (!inspectMode) {
+        setHoveredElement(null);
+        setInspectorReady(false);
+      }
     }
   }, [inspectMode]);
 
@@ -135,23 +133,14 @@ export function InteractiveCodeSandboxPreview({
 
   return (
     <div ref={containerRef} className="relative w-full h-full">
-      {/* Mode inspection activé = utiliser LocalInspectablePreview (srcdoc) */}
-      {inspectMode ? (
-        <LocalInspectablePreview
-          ref={localPreviewRef}
-          projectFiles={projectFiles}
-          previewMode={previewMode}
-          onInspectorMessage={handleInspectorMessage}
-          onIframeReady={handleLocalIframeReady}
-        />
-      ) : (
-        /* Mode normal = utiliser CodeSandbox embed */
-        <CodeSandboxPreview
-          ref={codesandboxRef}
-          projectFiles={projectFiles}
-          previewMode={previewMode}
-        />
-      )}
+      {/* Toujours utiliser LocalInspectablePreview - zero dépendance réseau, chargement instantané */}
+      <LocalInspectablePreview
+        ref={localPreviewRef}
+        projectFiles={projectFiles}
+        previewMode={previewMode}
+        onInspectorMessage={handleInspectorMessage}
+        onIframeReady={handleLocalIframeReady}
+      />
 
       {/* Overlay pour afficher l'indicateur de mode inspection */}
       {inspectMode && (
