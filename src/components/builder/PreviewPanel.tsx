@@ -1,6 +1,6 @@
-import { InteractiveSandpackPreview } from '@/components/InteractiveSandpackPreview';
+import { InteractiveCodeSandboxPreview } from '@/components/InteractiveCodeSandboxPreview';
 import { GeneratingPreview } from '@/components/GeneratingPreview';
-import type { ElementInfo } from '@/components/InteractiveSandpackPreview';
+import type { ElementInfo } from '@/types/elementInfo';
 
 interface PreviewPanelProps {
   projectFiles: Record<string, string>;
@@ -26,9 +26,9 @@ export function PreviewPanel({
     return <GeneratingPreview />;
   }
 
-  // Preview via Sandpack
+  // Preview via CodeSandbox
   return (
-    <InteractiveSandpackPreview
+    <InteractiveCodeSandboxPreview
       projectFiles={projectFiles}
       previewMode={previewMode}
       inspectMode={inspectMode}
