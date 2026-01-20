@@ -21,9 +21,9 @@ export function PreviewPanel({
   onInspectModeChange = () => {},
   onElementModify,
 }: PreviewPanelProps) {
-  // Afficher GeneratingPreview UNIQUEMENT si aucun fichier n'est disponible
-  // Prioriser l'affichage des fichiers même si isGenerating est encore true
-  if (Object.keys(projectFiles).length === 0) {
+  // Afficher GeneratingPreview tant que la génération est en cours OU qu'aucun fichier n'est disponible
+  // La preview du site ne s'affiche qu'une fois la génération terminée ET les fichiers reçus
+  if (isGenerating || Object.keys(projectFiles).length === 0) {
     return <GeneratingPreview />;
   }
 
