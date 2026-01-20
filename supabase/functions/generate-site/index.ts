@@ -815,8 +815,8 @@ serve(async (req) => {
         system: SYSTEM_PROMPT,
         messages: [
           { role: 'user', content: prompt },
-          // Prefill pour forcer le format
-          { role: 'assistant', content: '// FILE: index.html\n<!DOCTYPE html>\n<html lang="fr">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>' }
+          // Prefill pour forcer le format avec lien CSS inclus
+          { role: 'assistant', content: '// FILE: index.html\n<!DOCTYPE html>\n<html lang="fr">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <link rel="stylesheet" href="styles.css">\n  <title>' }
         ],
       }),
     });
