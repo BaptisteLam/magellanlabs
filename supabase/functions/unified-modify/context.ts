@@ -263,7 +263,55 @@ export interface FileRelevanceScore {
   total: number;
 }
 
-// P1: Calculer le score de pertinence par mots-clés
+// P1: TF-IDF complet avec poids inverse et normalisation
+function calculateTFIDF(
+  queryTerms: string[],
+  document: string,
+  documentFrequencies: Map<string, number>,
+  totalDocs: number
+): number {
+  const docTerms = document.toLowerCase().split(/\s+/);
+  const docLength = docTerms.length;
+  
+  if (docLength === 0) return 0;
+  
+  let score = 0;
+  for (const term of queryTerms) {
+    // TF: fréquence du terme dans le document (normalisée)
+    const termCount = docTerms.filter(t => t.includes(term)).length;
+    const tf = termCount / docLength;
+    
+    // IDF: log(N / df) où N = nombre total de docs, df = docs contenant le terme
+    const df = documentFrequencies.get(term) || 1;
+    const idf = Math.log((totalDocs + 1) / (df + 1)) + 1; // Lissage pour éviter log(0)
+    
+    score += tf * idf;
+  }
+  
+  return score * 100; // Normaliser pour être comparable aux autres scores
+}
+
+// P1: Pré-calculer les fréquences de documents pour TF-IDF
+function computeDocumentFrequencies(
+  queryTerms: string[],
+  projectFiles: Record<string, string>
+): Map<string, number> {
+  const frequencies = new Map<string, number>();
+  
+  for (const term of queryTerms) {
+    let count = 0;
+    for (const content of Object.values(projectFiles)) {
+      if (content.toLowerCase().includes(term)) {
+        count++;
+      }
+    }
+    frequencies.set(term, count);
+  }
+  
+  return frequencies;
+}
+
+// P1: Calculer le score de pertinence par mots-clés (wrapper pour compatibilité)
 function calculateKeywordScore(prompt: string, content: string): number {
   const promptTerms = prompt.toLowerCase().split(/\s+/).filter(t => t.length > 2);
   const contentLower = content.toLowerCase();
@@ -278,7 +326,7 @@ function calculateKeywordScore(prompt: string, content: string): number {
   return promptTerms.length > 0 ? (matchCount / promptTerms.length) * 50 : 0;
 }
 
-// P1: Scoring hybride des fichiers
+// P1: Scoring hybride des fichiers avec TF-IDF amélioré
 export function scoreFilesByRelevance(
   prompt: string,
   projectFiles: Record<string, string>,
@@ -287,10 +335,20 @@ export function scoreFilesByRelevance(
 ): FileRelevanceScore[] {
   const scores: FileRelevanceScore[] = [];
   const recentFiles = new Set<string>();
+  const totalDocs = Object.keys(projectFiles).length;
+
+  // P1: Pré-traitement du prompt pour TF-IDF
+  const queryTerms = prompt.toLowerCase()
+    .split(/\s+/)
+    .filter(t => t.length > 2)
+    .filter(t => !['les', 'des', 'une', 'pour', 'dans', 'avec', 'sur', 'the', 'and', 'for', 'with'].includes(t));
+
+  // P1: Calculer les fréquences de documents
+  const docFrequencies = computeDocumentFrequencies(queryTerms, projectFiles);
 
   // Extraire les fichiers récemment modifiés de l'historique
   if (conversationHistory) {
-    for (const msg of conversationHistory.slice(-5)) {
+    for (const msg of conversationHistory.slice(-10)) {
       if (msg.metadata?.files_modified) {
         msg.metadata.files_modified.forEach(f => recentFiles.add(f));
       }
@@ -303,26 +361,36 @@ export function scoreFilesByRelevance(
     // Score AST (imports/exports)
     const astScore = node?.importanceScore || 0;
     
-    // Score mots-clés
-    const keywordScore = calculateKeywordScore(prompt, content);
+    // P1: Score TF-IDF amélioré
+    const tfidfScore = calculateTFIDF(queryTerms, content, docFrequencies, totalDocs);
     
-    // Score récence
-    const recencyScore = recentFiles.has(path) ? 30 : 0;
+    // Score récence (augmenté pour fichiers récents)
+    const recencyScore = recentFiles.has(path) ? 40 : 0;
     
     // Score critique
     const fileName = path.split('/').pop()?.replace(/\.[^.]+$/, '').toLowerCase() || '';
     const criticalScore = CRITICAL_FILES.includes(fileName) ? 50 : 0;
     
-    // Score total pondéré
+    // P1: Score d'extension (prioriser les fichiers modifiables)
+    const ext = path.split('.').pop()?.toLowerCase();
+    const extensionScore = ['tsx', 'jsx', 'css', 'html', 'ts', 'js'].includes(ext || '') ? 10 : 0;
+    
+    // Score total pondéré (ajusté pour TF-IDF)
     const total = 
-      astScore * 0.3 + 
-      keywordScore * 0.3 + 
-      recencyScore * 0.2 + 
-      criticalScore * 0.2;
+      astScore * 0.25 + 
+      tfidfScore * 0.35 +  // Poids augmenté pour TF-IDF
+      recencyScore * 0.15 + 
+      criticalScore * 0.15 +
+      extensionScore * 0.10;
     
     scores.push({
       path,
-      scores: { ast: astScore, keyword: keywordScore, recency: recencyScore, critical: criticalScore },
+      scores: { 
+        ast: astScore, 
+        keyword: tfidfScore,  // Renommé en interne mais gardé pour compatibilité
+        recency: recencyScore, 
+        critical: criticalScore 
+      },
       total
     });
   }

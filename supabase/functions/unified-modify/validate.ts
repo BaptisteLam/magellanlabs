@@ -287,7 +287,7 @@ export function applyModifications(
   };
 }
 
-// Parser CSS simplifié pour Deno (sans postcss) - P0: Version robuste
+// P2: Parser CSS robuste pour Deno - Gère media queries, pseudo-classes, variables
 function applyCSSModification(content: string, mod: ASTModification): string {
   const { target, property, value } = mod;
   
@@ -297,44 +297,97 @@ function applyCSSModification(content: string, mod: ASTModification): string {
   }
   
   try {
-    // Regex pour trouver le sélecteur et son bloc
     const escapedTarget = escapeRegex(target);
     const escapedProperty = escapeRegex(property);
     
-    // P0: Regex plus tolérante pour différents formats CSS
-    const selectorRegex = new RegExp(
-      `(${escapedTarget}\\s*\\{[^}]*)\\b${escapedProperty}\\s*:\\s*[^;]+;`,
-      'gi'
-    );
+    // P2: Détecter si c'est une pseudo-classe ou media query
+    const hasPseudo = target.includes(':');
+    const isMediaQuery = target.startsWith('@media');
     
-    if (selectorRegex.test(content)) {
-      // Propriété existe, la remplacer
-      content = content.replace(selectorRegex, `$1${property}: ${value};`);
-      console.log(`[css] Updated ${target} { ${property}: ${value} }`);
-    } else {
-      // Vérifier si le sélecteur existe
-      const selectorOnlyRegex = new RegExp(`(${escapedTarget})\\s*\\{([^}]*)\\}`, 'gi');
-      const match = selectorOnlyRegex.exec(content);
+    // P2: Parser basé sur les blocs CSS pour plus de robustesse
+    const blocks = parseCSSBlocks(content);
+    let modified = false;
+    
+    for (const block of blocks) {
+      // Vérifier si le sélecteur correspond (avec support pseudo-classes)
+      const selectorMatch = hasPseudo 
+        ? block.selector === target || block.selector.includes(target)
+        : block.selector === target || block.selector.startsWith(target + ' ') || block.selector.endsWith(' ' + target);
       
-      if (match) {
-        // Ajouter la propriété au bloc existant
-        const existingContent = match[2];
-        const updatedBlock = `${match[1]} {\n  ${property}: ${value};${existingContent}\n}`;
-        content = content.replace(selectorOnlyRegex, updatedBlock);
-        console.log(`[css] Added ${property}: ${value} to ${target}`);
-      } else {
-        // Créer un nouveau bloc à la fin
-        content = content.trim() + `\n\n${target} {\n  ${property}: ${value};\n}`;
-        console.log(`[css] Created new rule ${target} { ${property}: ${value} }`);
+      if (selectorMatch) {
+        // Chercher et remplacer la propriété dans le bloc
+        const propRegex = new RegExp(`\\b${escapedProperty}\\s*:\\s*[^;]+;`, 'gi');
+        
+        if (propRegex.test(block.content)) {
+          // Remplacer la propriété existante
+          const newContent = block.content.replace(propRegex, `${property}: ${value};`);
+          content = content.replace(block.full, block.full.replace(block.content, newContent));
+          modified = true;
+          console.log(`[css] Updated ${target} { ${property}: ${value} }`);
+        } else {
+          // Ajouter la propriété au bloc existant
+          const insertPos = block.content.lastIndexOf('}');
+          if (insertPos === -1) {
+            const newContent = block.content.trimEnd() + `\n  ${property}: ${value};\n`;
+            content = content.replace(block.full, block.full.replace(block.content, newContent));
+          } else {
+            const newContent = `  ${property}: ${value};\n` + block.content;
+            content = content.replace(block.content, newContent);
+          }
+          modified = true;
+          console.log(`[css] Added ${property}: ${value} to ${target}`);
+        }
+        break;
       }
+    }
+    
+    // Si pas de bloc trouvé, en créer un nouveau
+    if (!modified) {
+      // P2: Gérer les pseudo-classes - créer le bloc avec la pseudo-classe
+      const newBlock = `\n${target} {\n  ${property}: ${value};\n}`;
+      content = content.trim() + '\n' + newBlock;
+      console.log(`[css] Created new rule ${target} { ${property}: ${value} }`);
     }
     
     return content;
   } catch (error) {
     console.error('[css] Error applying modification:', error);
-    // P0: Fallback - ajouter le nouveau bloc à la fin
     return content.trim() + `\n\n${target} {\n  ${property}: ${value};\n}`;
   }
+}
+
+// P2: Parser les blocs CSS pour manipulation plus précise
+interface CSSBlock {
+  selector: string;
+  content: string;
+  full: string;
+  startIndex: number;
+  endIndex: number;
+}
+
+function parseCSSBlocks(content: string): CSSBlock[] {
+  const blocks: CSSBlock[] = [];
+  // Regex améliorée pour capturer sélecteurs complexes incluant pseudo-classes et media queries
+  const blockRegex = /([^{}]+)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g;
+  
+  let match;
+  while ((match = blockRegex.exec(content)) !== null) {
+    const selector = match[1].trim();
+    const blockContent = match[2];
+    
+    // Ignorer les commentaires
+    if (selector.startsWith('/*') || selector.startsWith('//')) continue;
+    
+    blocks.push({
+      selector,
+      content: blockContent,
+      full: match[0],
+      startIndex: match.index,
+      endIndex: match.index + match[0].length
+    });
+  }
+  
+  return blocks;
 }
 
 // Parser HTML simplifié pour Deno (sans parse5) - P0: Version robuste
@@ -400,7 +453,7 @@ function applyHTMLModification(content: string, mod: ASTModification): string {
   }
 }
 
-// Parser JSX/TSX simplifié pour Deno (sans babel) - P0: Version robuste
+// P2: Parser JSX/TSX robuste pour Deno - Gère template literals, expressions conditionnelles
 function applyJSXModification(content: string, mod: ASTModification, _ext: string): string {
   const { target, changes, value } = mod;
   
@@ -412,91 +465,44 @@ function applyJSXModification(content: string, mod: ASTModification, _ext: strin
   try {
     const escapedTarget = escapeRegex(target);
     
-    // Si changes contient du code complet, essayer un remplacement intelligent
     if (changes && typeof changes === 'object') {
-      // Chercher le composant ou la fonction ciblée
-      const componentRegex = new RegExp(
-        `(function\\s+${escapedTarget}|const\\s+${escapedTarget}\\s*=)`,
-        'g'
-      );
-      
-      const hasComponent = componentRegex.test(content);
-      
-      // Pour les changements de props/attributs dans JSX
+      // P2: Pour les changements de props/attributs dans JSX
       if ('props' in changes && changes.props && typeof changes.props === 'object') {
         const propsChanges = changes.props as unknown as Record<string, string>;
         for (const [propName, propValue] of Object.entries(propsChanges)) {
-          const escapedPropName = escapeRegex(propName);
-          // P0: Regex plus robuste pour trouver et modifier les props
-          const propRegex = new RegExp(
-            `(<${escapedTarget}[^>]*)(${escapedPropName}=\\{[^}]+\\}|${escapedPropName}=["'][^"']*["'])([^>]*>)`,
-            'gi'
-          );
-          
-          if (propRegex.test(content)) {
-            content = content.replace(propRegex, `$1${propName}="${propValue}"$3`);
-          } else {
-            // Ajouter la prop si elle n'existe pas
-            const addPropRegex = new RegExp(`(<${escapedTarget})(\\s[^>]*>|>)`, 'gi');
-            content = content.replace(addPropRegex, `$1 ${propName}="${propValue}"$2`);
-          }
+          content = updateJSXAttribute(content, target, propName, propValue);
           console.log(`[jsx] Updated prop ${propName}="${propValue}" on ${target}`);
         }
       }
       
-      // Pour les changements de className
+      // P2: Pour les changements de className - supporte template literals et expressions
       if ('className' in changes) {
         const newClassName = changes.className as string;
-        // P0: Regex robuste pour className avec template literals, expressions, etc.
-        const classNameRegex = new RegExp(
-          `(<${escapedTarget}[^>]*)(className=\\{[^}]*\\}|className=["'][^"']*["']|className=\`[^\`]*\`)([^>]*>)`,
-          'gi'
-        );
-        
-        if (classNameRegex.test(content)) {
-          content = content.replace(classNameRegex, `$1className="${newClassName}"$3`);
-        } else {
-          const addClassRegex = new RegExp(`(<${escapedTarget})(\\s[^>]*>|>)`, 'gi');
-          content = content.replace(addClassRegex, `$1 className="${newClassName}"$2`);
-        }
+        content = updateJSXClassName(content, target, newClassName);
         console.log(`[jsx] Updated className on ${target}`);
       }
       
-      // Pour les changements de style inline
+      // P2: Pour les changements de style inline - gère objets imbriqués
       if ('style' in changes) {
-        const styleObj = changes.style;
-        const styleStr = JSON.stringify(styleObj);
-        // P0: Regex robuste pour style avec différents formats
-        const styleRegex = new RegExp(
-          `(<${escapedTarget}[^>]*)(style=\\{[^}]+\\}|style=\\{\\{[^}]+\\}\\})([^>]*>)`,
-          'gi'
-        );
-        
-        if (styleRegex.test(content)) {
-          content = content.replace(styleRegex, `$1style={${styleStr}}$3`);
-        } else {
-          const addStyleRegex = new RegExp(`(<${escapedTarget})(\\s[^>]*>|>)`, 'gi');
-          content = content.replace(addStyleRegex, `$1 style={${styleStr}}$2`);
+        const styleValue = changes.style;
+        if (styleValue && typeof styleValue === 'object') {
+          content = updateJSXStyle(content, target, styleValue as Record<string, unknown>);
+          console.log(`[jsx] Updated style on ${target}`);
         }
-        console.log(`[jsx] Updated style on ${target}`);
       }
       
-      // P0: Pour les changements génériques (clé: valeur)
+      // P2: Pour les changements de contenu textuel (children)
+      if ('children' in changes || 'content' in changes || 'text' in changes) {
+        const textContent = (changes.children || changes.content || changes.text) as string;
+        content = updateJSXChildren(content, target, textContent);
+        console.log(`[jsx] Updated content on ${target}`);
+      }
+      
+      // P2: Pour les changements génériques (clé: valeur)
       for (const [key, val] of Object.entries(changes)) {
-        if (!['props', 'className', 'style'].includes(key)) {
-          const escapedKey = escapeRegex(key);
-          const attrRegex = new RegExp(
-            `(<${escapedTarget}[^>]*)(${escapedKey}=\\{[^}]+\\}|${escapedKey}=["'][^"']*["'])([^>]*>)`,
-            'gi'
-          );
-          
+        if (!['props', 'className', 'style', 'children', 'content', 'text'].includes(key)) {
           const valStr = typeof val === 'string' ? `"${val}"` : `{${JSON.stringify(val)}}`;
-          if (attrRegex.test(content)) {
-            content = content.replace(attrRegex, `$1${key}=${valStr}$3`);
-          } else {
-            const addAttrRegex = new RegExp(`(<${escapedTarget})(\\s[^>]*>|>)`, 'gi');
-            content = content.replace(addAttrRegex, `$1 ${key}=${valStr}$2`);
-          }
+          content = updateJSXAttribute(content, target, key, val);
           console.log(`[jsx] Updated ${key} on ${target}`);
         }
       }
@@ -504,22 +510,8 @@ function applyJSXModification(content: string, mod: ASTModification, _ext: strin
     
     // Si value contient du code de remplacement direct
     if (value && typeof value === 'string') {
-      // P0: Remplacement plus robuste basé sur la cible
-      const simpleRegex = new RegExp(
-        `(<${escapedTarget}[^>]*>)[^<]*(</${escapedTarget}>)`,
-        'gi'
-      );
-      
-      if (simpleRegex.test(content)) {
-        content = content.replace(simpleRegex, `$1${value}$2`);
-        console.log(`[jsx] Updated ${target} content`);
-      } else {
-        // P0: Fallback - chercher self-closing tag
-        const selfClosingRegex = new RegExp(`(<${escapedTarget}[^/]*)(/?>)`, 'gi');
-        if (value && !selfClosingRegex.test(content)) {
-          console.log(`[jsx] Could not find ${target} to update content`);
-        }
-      }
+      content = updateJSXChildren(content, target, value);
+      console.log(`[jsx] Updated ${target} content`);
     }
     
     return content;
@@ -527,6 +519,135 @@ function applyJSXModification(content: string, mod: ASTModification, _ext: strin
     console.error('[jsx] Error applying modification:', error);
     return content;
   }
+}
+
+// P2: Mise à jour robuste d'attribut JSX
+function updateJSXAttribute(content: string, target: string, attrName: string, attrValue: unknown): string {
+  const escapedTarget = escapeRegex(target);
+  const escapedAttr = escapeRegex(attrName);
+  
+  // P2: Patterns pour différents formats d'attributs
+  const patterns = [
+    // Attribut avec expression: prop={value}
+    new RegExp(`(<${escapedTarget}[^>]*)(\\s${escapedAttr}=\\{[^}]*\\})([^>]*>)`, 'gi'),
+    // Attribut avec template literal: prop={\`value\`}
+    new RegExp(`(<${escapedTarget}[^>]*)(\\s${escapedAttr}=\\{\`[^\`]*\`\\})([^>]*>)`, 'gi'),
+    // Attribut avec string double: prop="value"
+    new RegExp(`(<${escapedTarget}[^>]*)(\\s${escapedAttr}="[^"]*")([^>]*>)`, 'gi'),
+    // Attribut avec string simple: prop='value'
+    new RegExp(`(<${escapedTarget}[^>]*)(\\s${escapedAttr}='[^']*')([^>]*>)`, 'gi'),
+    // Attribut booléen: prop
+    new RegExp(`(<${escapedTarget}[^>]*)(\\s${escapedAttr})(?=[\\s/>])([^>]*>)`, 'gi'),
+  ];
+  
+  // Déterminer le format de la nouvelle valeur
+  const newValue = formatJSXAttributeValue(attrName, attrValue);
+  
+  for (const pattern of patterns) {
+    if (pattern.test(content)) {
+      return content.replace(pattern, `$1 ${attrName}=${newValue}$3`);
+    }
+  }
+  
+  // Attribut n'existe pas, l'ajouter
+  const addAttrRegex = new RegExp(`(<${escapedTarget})(\\s[^>]*>|>)`, 'gi');
+  return content.replace(addAttrRegex, `$1 ${attrName}=${newValue}$2`);
+}
+
+// P2: Mise à jour robuste de className JSX
+function updateJSXClassName(content: string, target: string, newClassName: string): string {
+  const escapedTarget = escapeRegex(target);
+  
+  // P2: Patterns pour className avec différents formats
+  const classPatterns = [
+    // className={`template ${dynamic}`}
+    new RegExp(`(<${escapedTarget}[^>]*)(className=\\{\`[^\`]*\`\\})([^>]*>)`, 'gi'),
+    // className={condition ? 'a' : 'b'}
+    new RegExp(`(<${escapedTarget}[^>]*)(className=\\{[^}]+\\?[^}]+\\})([^>]*>)`, 'gi'),
+    // className={cn(...)}
+    new RegExp(`(<${escapedTarget}[^>]*)(className=\\{cn\\([^)]+\\)\\})([^>]*>)`, 'gi'),
+    // className={variable}
+    new RegExp(`(<${escapedTarget}[^>]*)(className=\\{[^}]+\\})([^>]*>)`, 'gi'),
+    // className="static"
+    new RegExp(`(<${escapedTarget}[^>]*)(className="[^"]*")([^>]*>)`, 'gi'),
+  ];
+  
+  for (const pattern of classPatterns) {
+    if (pattern.test(content)) {
+      return content.replace(pattern, `$1className="${newClassName}"$3`);
+    }
+  }
+  
+  // className n'existe pas, l'ajouter
+  const addClassRegex = new RegExp(`(<${escapedTarget})(\\s[^>]*>|>)`, 'gi');
+  return content.replace(addClassRegex, `$1 className="${newClassName}"$2`);
+}
+
+// P2: Mise à jour robuste du style inline JSX
+function updateJSXStyle(content: string, target: string, styleObj: Record<string, unknown>): string {
+  const escapedTarget = escapeRegex(target);
+  const styleStr = JSON.stringify(styleObj);
+  
+  // P2: Patterns pour style avec différents formats
+  const stylePatterns = [
+    // style={{ key: value }}
+    new RegExp(`(<${escapedTarget}[^>]*)(style=\\{\\{[^}]*\\}\\})([^>]*>)`, 'gi'),
+    // style={styleVariable}
+    new RegExp(`(<${escapedTarget}[^>]*)(style=\\{[^}]+\\})([^>]*>)`, 'gi'),
+  ];
+  
+  for (const pattern of stylePatterns) {
+    if (pattern.test(content)) {
+      return content.replace(pattern, `$1style={${styleStr}}$3`);
+    }
+  }
+  
+  // style n'existe pas, l'ajouter
+  const addStyleRegex = new RegExp(`(<${escapedTarget})(\\s[^>]*>|>)`, 'gi');
+  return content.replace(addStyleRegex, `$1 style={${styleStr}}$2`);
+}
+
+// P2: Mise à jour robuste des enfants JSX
+function updateJSXChildren(content: string, target: string, newChildren: string): string {
+  const escapedTarget = escapeRegex(target);
+  
+  // Pattern pour élément avec enfants
+  const childrenRegex = new RegExp(
+    `(<${escapedTarget}[^>]*>)[\\s\\S]*?(<\\/${escapedTarget}>)`,
+    'gi'
+  );
+  
+  if (childrenRegex.test(content)) {
+    return content.replace(childrenRegex, `$1${newChildren}$2`);
+  }
+  
+  // Fallback: self-closing tag - le convertir en élément avec enfants
+  const selfClosingRegex = new RegExp(`<${escapedTarget}([^>]*)/\\s*>`, 'gi');
+  if (selfClosingRegex.test(content)) {
+    return content.replace(selfClosingRegex, `<${target}$1>${newChildren}</${target}>`);
+  }
+  
+  console.log(`[jsx] Could not find ${target} to update children`);
+  return content;
+}
+
+// P2: Formater la valeur d'attribut selon son type
+function formatJSXAttributeValue(name: string, value: unknown): string {
+  if (typeof value === 'string') {
+    // Éviter les doubles quotes dans les strings
+    if (value.includes('"')) {
+      return `'${value}'`;
+    }
+    return `"${value}"`;
+  }
+  if (typeof value === 'boolean') {
+    return value ? '' : '{false}'; // Pour les booléens, on retourne juste le nom ou {false}
+  }
+  if (typeof value === 'number') {
+    return `{${value}}`;
+  }
+  // Objet ou array
+  return `{${JSON.stringify(value)}}`;
 }
 
 // Utilitaire pour échapper les caractères regex
