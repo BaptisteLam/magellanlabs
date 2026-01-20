@@ -866,8 +866,43 @@ serve(async (req) => {
           data: { sessionId, phase: 'analyzing', sector }
         })}\n\n`));
 
-        // Générer le nom du projet en parallèle
+        // Générer le nom du projet en parallèle avec vérification d'unicité
         let projectName: string | null = null;
+        
+        const ensureUniqueName = async (baseName: string): Promise<string> => {
+          // Vérifier si le nom existe déjà
+          const { data: existingProjects, error } = await supabaseClient
+            .from('build_sessions')
+            .select('title')
+            .ilike('title', `${baseName}%`);
+          
+          if (error) {
+            console.error('[generate-site] Error checking name uniqueness:', error);
+            // En cas d'erreur, ajouter un timestamp pour garantir l'unicité
+            return `${baseName}-${Date.now().toString(36)}`;
+          }
+          
+          if (!existingProjects || existingProjects.length === 0) {
+            return baseName;
+          }
+          
+          // Extraire les suffixes numériques existants
+          const existingNames = existingProjects.map(p => p.title?.toLowerCase() || '');
+          
+          // Si le nom exact n'existe pas, le retourner
+          if (!existingNames.includes(baseName.toLowerCase())) {
+            return baseName;
+          }
+          
+          // Trouver le prochain numéro disponible
+          let suffix = 2;
+          while (existingNames.includes(`${baseName.toLowerCase()}-${suffix}`)) {
+            suffix++;
+          }
+          
+          return `${baseName}-${suffix}`;
+        };
+        
         const generateProjectName = async () => {
           try {
             console.log('[generate-site] Generating project name...');
@@ -883,8 +918,8 @@ serve(async (req) => {
                 max_tokens: 50,
                 messages: [{ 
                   role: 'user', 
-                  content: `Génère un nom de projet court (2-4 mots max, format slug avec tirets). Pas de guillemets, pas de ponctuation.
-Exemples: mon-cabinet-avocat, sportcoach-app, luxestate-immo
+                  content: `Génère un nom de projet court (2-4 mots max, format slug avec tirets). Pas de guillemets, pas de ponctuation. Sois créatif et unique.
+Exemples: mon-cabinet-avocat, sportcoach-app, luxestate-immo, delice-bistro, techvision-lab
 Pour: "${prompt.substring(0, 200)}"`
                 }],
               }),
@@ -893,16 +928,35 @@ Pour: "${prompt.substring(0, 200)}"`
             if (nameResponse.ok) {
               const data = await nameResponse.json();
               const rawName = data.content[0]?.text?.trim() || '';
-              projectName = rawName
+              const baseName = rawName
                 .toLowerCase()
                 .replace(/[^a-z0-9\s-]/g, '')
                 .replace(/\s+/g, '-')
                 .replace(/-+/g, '-')
                 .substring(0, 30);
               
-              console.log('[generate-site] Generated project name:', projectName);
+              // Vérifier et garantir l'unicité du nom
+              projectName = await ensureUniqueName(baseName);
+              
+              console.log('[generate-site] Generated unique project name:', projectName);
               
               if (sessionId && projectName) {
+                await supabaseClient
+                  .from('build_sessions')
+                  .update({ title: projectName })
+                  .eq('id', sessionId);
+                
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'project_name',
+                  data: { name: projectName }
+                })}\n\n`));
+              }
+            } else {
+              // Fallback avec timestamp si l'API échoue
+              projectName = `projet-${Date.now().toString(36)}`;
+              console.log('[generate-site] Using fallback project name:', projectName);
+              
+              if (sessionId) {
                 await supabaseClient
                   .from('build_sessions')
                   .update({ title: projectName })
@@ -916,6 +970,19 @@ Pour: "${prompt.substring(0, 200)}"`
             }
           } catch (e) {
             console.error('[generate-site] Error generating project name:', e);
+            // Fallback de dernier recours
+            projectName = `projet-${Date.now().toString(36)}`;
+            if (sessionId) {
+              await supabaseClient
+                .from('build_sessions')
+                .update({ title: projectName })
+                .eq('id', sessionId);
+              
+              safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'project_name',
+                data: { name: projectName }
+              })}\n\n`));
+            }
           }
         };
         
