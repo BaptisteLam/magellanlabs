@@ -37,7 +37,6 @@ export interface V0GenerateSiteResult {
 
 export interface UseV0GenerateSiteOptions {
   onGenerationEvent?: (event: V0GenerationEvent) => void;
-  onGenerationEvent?: (event: GenerationEvent) => void;
   onProjectName?: (name: string) => void;
   onProgress?: (content: string) => void;
   onFiles?: (files: Record<string, string>) => Promise<void> | void;
