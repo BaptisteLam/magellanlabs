@@ -102,7 +102,7 @@ export function buildSystemPrompt(
     conversationSection = `\n## Recent Conversation History\nUse this context to understand the user's intent and maintain consistency with previous requests:\n${formattedHistory}\n`;
   }
   
-  return `You are an expert web developer. You must generate code modifications in AST JSON format with contextual messages.
+  return `You are an expert web developer. Generate code modifications in AST JSON format.
 
 ## Detected Complexity: ${complexity.toUpperCase()}
 
@@ -112,67 +112,48 @@ ${conversationSection}
 ## Project Files
 ${filesContext}
 
-## Response Format
-You must respond with ONLY valid JSON (no markdown code blocks). The format is:
+## CRITICAL: JSON FORMATTING RULES
+1. Respond with ONLY valid JSON - NO markdown code blocks (no \`\`\`json)
+2. The response MUST be parseable by JSON.parse() directly
+3. Keep the modifications array simple and focused
+4. For simple changes, generate 1-5 modifications maximum
+5. ALWAYS close all brackets [] and braces {} properly
+6. NO trailing commas before ] or }
+7. Ensure all strings are properly escaped
+
+## Response Format (STRICT JSON - copy this structure exactly):
 {
-  "intentMessage": "A clear, user-friendly message in the same language as the user request describing what you WILL do (e.g., 'Je vais modifier la couleur du bouton principal en bleu et ajuster le padding')",
-  "message": "A clear, user-friendly conclusion message in the same language as the user request describing what you DID and the key changes made (e.g., 'J'ai changé la couleur du bouton de #333 à #03A5C0 et augmenté le padding de 10px à 16px pour une meilleure lisibilité.')",
+  "intentMessage": "Description claire de ce que vous ALLEZ faire (même langue que la demande)",
+  "message": "Résumé de ce que vous AVEZ fait avec valeurs spécifiques",
   "filesAffected": [
-    {
-      "path": "styles.css",
-      "description": "Couleur du bouton modifiée de #333 à #03A5C0",
-      "changeType": "modified"
-    }
+    {"path": "styles.css", "description": "Change description", "changeType": "modified"}
   ],
   "modifications": [
-    // Array of AST modifications
+    {"type": "css-change", "path": "styles.css", "target": ".selector", "property": "color", "value": "#03A5C0"}
   ]
 }
 
-## CRITICAL RULES FOR MESSAGES:
-1. **intentMessage**: Write in the SAME LANGUAGE as the user's request. Be specific about WHAT you will change and WHERE.
-2. **message**: Write in the SAME LANGUAGE as the user's request. Summarize the ACTUAL changes made with specific values (colors, sizes, etc.)
-3. **filesAffected**: List EVERY file you modified with a clear description of the change
-4. Never use generic messages like "Modifications applied" or "Changes made"
-5. Always mention specific values, properties, or elements that were changed
+## RULES FOR MESSAGES:
+1. **intentMessage**: Same language as user. Be specific: "Je vais changer la couleur du bouton de #333 à #03A5C0"
+2. **message**: Same language as user. Summarize with values: "J'ai modifié la couleur du bouton principal"
+3. **filesAffected**: List EVERY modified file
+4. NEVER use generic messages
 
 ## Modification Types
 
 ### css-change
-For CSS property modifications:
-{
-  "type": "css-change",
-  "path": "styles.css",
-  "target": ".selector",
-  "property": "color",
-  "value": "#ff0000"
-}
+{"type": "css-change", "path": "styles.css", "target": ".selector", "property": "color", "value": "#ff0000"}
 
-### html-change
-For HTML attribute modifications:
-{
-  "type": "html-change",
-  "path": "index.html",
-  "target": "h1",
-  "attribute": "class",
-  "value": "new-class"
-}
+### html-change  
+{"type": "html-change", "path": "index.html", "target": "h1", "attribute": "class", "value": "new-class"}
 
 ### jsx-change
-For JSX/JavaScript modifications:
-{
-  "type": "jsx-change",
-  "path": "App.tsx",
-  "target": "componentName",
-  "changes": {
-    "prop": "newValue"
-  }
-}
+{"type": "jsx-change", "path": "App.tsx", "target": "componentName", "changes": {"prop": "newValue"}}
 
 ## Instructions for ${complexity} complexity
 ${complexityInstructions}
 
-IMPORTANT: Respond with ONLY valid JSON. No markdown, no code blocks, just raw JSON.`;
+IMPORTANT: Your ENTIRE response must be valid JSON. Start with { and end with }. No text before or after.`;
 }
 
 function getComplexityInstructions(complexity: AnalysisResult['complexity']): string {
@@ -240,45 +221,135 @@ export async function generateWithStreaming(
   };
 }
 
-// Parse le JSON AST depuis la réponse Claude avec support des nouveaux champs
+// Fonction pour réparer le JSON tronqué ou malformé
+function attemptJsonRepair(json: string): string {
+  let fixed = json;
+  
+  // Supprimer les virgules trailing avant ] ou }
+  fixed = fixed.replace(/,(\s*[\]}])/g, '$1');
+  
+  // Compter les crochets et accolades
+  const openBraces = (fixed.match(/\{/g) || []).length;
+  const closeBraces = (fixed.match(/\}/g) || []).length;
+  const openBrackets = (fixed.match(/\[/g) || []).length;
+  const closeBrackets = (fixed.match(/\]/g) || []).length;
+  
+  // Fermer les crochets manquants
+  for (let i = 0; i < openBrackets - closeBrackets; i++) {
+    fixed += ']';
+  }
+  // Fermer les accolades manquantes
+  for (let i = 0; i < openBraces - closeBraces; i++) {
+    fixed += '}';
+  }
+  
+  return fixed;
+}
+
+// Parse le JSON AST depuis la réponse Claude avec support robuste
 export function parseASTFromResponse(response: string): GenerationResult {
-  // Regex tolérante pour extraire JSON avec ou sans markdown
-  const jsonMatch = response.match(/\{[\s\S]*"modifications"[\s\S]*\}/);
+  // 1. Nettoyer les blocs markdown
+  let cleanResponse = response
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/gi, '')
+    .trim();
+  
+  // 2. Regex tolérante pour extraire JSON avec modifications
+  let jsonMatch = cleanResponse.match(/\{[\s\S]*"modifications"\s*:\s*\[[\s\S]*\]/);
+  
+  // 3. Si pas trouvé, essayer une regex plus permissive
+  if (!jsonMatch) {
+    jsonMatch = cleanResponse.match(/\{[\s\S]*"modifications"[\s\S]*/);
+  }
   
   if (!jsonMatch) {
-    console.error('No JSON found in response:', response.substring(0, 200));
+    console.error('[parseAST] No JSON found in response:', cleanResponse.substring(0, 300));
     return {
-      intentMessage: '',
-      message: 'Error: No valid JSON found in response',
+      intentMessage: 'Je vais traiter votre demande...',
+      message: 'Erreur: Aucun JSON valide trouvé dans la réponse',
       modifications: [],
       filesAffected: [],
     };
   }
   
+  let jsonStr = jsonMatch[0];
+  
+  // 4. Essayer de parser directement
   try {
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonStr);
     
     if (!Array.isArray(parsed.modifications)) {
-      console.error('Invalid modifications structure:', parsed);
+      console.error('[parseAST] Invalid modifications structure:', parsed);
       return {
-        intentMessage: '',
-        message: 'Error: Invalid modifications structure',
+        intentMessage: parsed.intentMessage || '',
+        message: 'Erreur: Structure de modifications invalide',
         modifications: [],
-        filesAffected: [],
+        filesAffected: parsed.filesAffected || [],
       };
     }
     
+    console.log('[parseAST] Successfully parsed JSON:', {
+      intentMessage: parsed.intentMessage?.substring(0, 50),
+      message: parsed.message?.substring(0, 50),
+      modifications: parsed.modifications.length,
+      filesAffected: parsed.filesAffected?.length || 0
+    });
+    
     return {
       intentMessage: parsed.intentMessage || '',
-      message: parsed.message || 'Modifications generated',
+      message: parsed.message || 'Modifications appliquées',
       modifications: parsed.modifications,
       filesAffected: parsed.filesAffected || [],
     };
   } catch (error) {
-    console.error('JSON parse error:', error, 'Response:', response.substring(0, 500));
+    console.warn('[parseAST] Initial parse failed, attempting repair...', error);
+    
+    // 5. Tentative de réparation
+    const repairedJson = attemptJsonRepair(jsonStr);
+    
+    try {
+      const parsed = JSON.parse(repairedJson);
+      
+      if (Array.isArray(parsed.modifications)) {
+        console.log('[parseAST] Repaired JSON successfully:', {
+          modifications: parsed.modifications.length
+        });
+        
+        return {
+          intentMessage: parsed.intentMessage || '',
+          message: parsed.message || 'Modifications appliquées (réparé)',
+          modifications: parsed.modifications,
+          filesAffected: parsed.filesAffected || [],
+        };
+      }
+    } catch (repairError) {
+      console.error('[parseAST] Repair failed:', repairError);
+    }
+    
+    // 6. Dernier recours: extraire les modifications avec regex
+    console.warn('[parseAST] Attempting regex extraction...');
+    const modsMatch = cleanResponse.match(/"modifications"\s*:\s*\[([\s\S]*?)\]/);
+    
+    if (modsMatch) {
+      try {
+        const modsArray = JSON.parse(`[${modsMatch[1]}]`);
+        console.log('[parseAST] Regex extracted modifications:', modsArray.length);
+        
+        return {
+          intentMessage: 'Modifications en cours...',
+          message: 'Modifications extraites avec succès',
+          modifications: modsArray,
+          filesAffected: [],
+        };
+      } catch (e) {
+        console.error('[parseAST] Regex extraction failed:', e);
+      }
+    }
+    
+    console.error('[parseAST] All parsing attempts failed. Response:', cleanResponse.substring(0, 500));
     return {
       intentMessage: '',
-      message: 'Parse error',
+      message: 'Erreur de parsing',
       modifications: [],
       filesAffected: [],
     };

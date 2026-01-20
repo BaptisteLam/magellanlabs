@@ -1,6 +1,7 @@
 import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
 import ChatOnlyMessage from '@/components/chat/ChatOnlyMessage';
+import AiGenerationMessage from '@/components/chat/AiGenerationMessage';
 import type { Message } from '@/hooks/useChat';
 import type { GenerationEvent } from '@/types/agent';
 import { format } from 'date-fns';
@@ -35,6 +36,7 @@ export function ChatPanel({
       console.error('Error copying code:', error);
     }
   };
+
   // Déterminer quels messages doivent être dimmed (versions futures)
   const shouldDimMessage = (index: number) => {
     if (currentVersionIndex === null) return false;
@@ -48,6 +50,18 @@ export function ChatPanel({
     return format(date, "d MMM 'à' HH:mm", { locale: fr });
   };
 
+  // Déterminer si c'est la première génération (avant que des fichiers n'existent)
+  const isFirstGenerationMessage = (index: number): boolean => {
+    // Chercher le premier message avec des project_files
+    for (let i = 0; i < index; i++) {
+      const prevMsg = messages[i];
+      if (prevMsg.metadata?.project_files && Object.keys(prevMsg.metadata.project_files as Record<string, string>).length > 0) {
+        return false; // Il y a déjà des fichiers avant ce message
+      }
+    }
+    return true; // C'est le premier message avec génération
+  };
+
   return (
     <div className="h-full flex flex-col bg-background">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -56,6 +70,7 @@ export function ChatPanel({
           const isRecapMessage = msg.metadata?.type === 'recap';
           const isIntroMessage = msg.metadata?.type === 'intro';
           const isChatMessage = msg.metadata?.type === 'message';
+          const isGenerationMessage = msg.metadata?.type === 'generation';
           const messageEvents = msg.metadata?.generation_events as GenerationEvent[] || [];
 
           return (
@@ -67,11 +82,11 @@ export function ChatPanel({
             >
               {msg.role === 'user' ? (
                 <div className="space-y-1">
-                {msg.created_at && (
-                  <div className="text-center text-muted-foreground" style={{ fontSize: '12px' }}>
-                    {formatMessageDate(msg.created_at)}
-                  </div>
-                )}
+                  {msg.created_at && (
+                    <div className="text-center text-muted-foreground" style={{ fontSize: '12px' }}>
+                      {formatMessageDate(msg.created_at)}
+                    </div>
+                  )}
                   <div className="inline-block max-w-[80%] bg-primary text-primary-foreground rounded-lg px-4 py-2">
                     {typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}
                   </div>
@@ -95,7 +110,23 @@ export function ChatPanel({
                     />
                   )}
 
-                  {messageEvents.length > 0 && (
+                  {/* Utiliser AiGenerationMessage pour les messages de génération/modification */}
+                  {isGenerationMessage && (
+                    <AiGenerationMessage
+                      message={msg}
+                      messageIndex={index}
+                      isLatestMessage={index === messages.length - 1}
+                      isDark={isDark}
+                      isLoading={isGenerating && index === messages.length - 1}
+                      isFirstGeneration={isFirstGenerationMessage(index)}
+                      generationStartTime={msg.metadata?.startTime as number | undefined}
+                      onRestore={async (idx) => onRevertToVersion(idx)}
+                      onGoToPrevious={async () => onRevertToVersion(Math.max(0, index - 1))}
+                    />
+                  )}
+
+                  {/* Fallback: si pas de type spécifique mais des events, utiliser CollapsedAiTasks */}
+                  {!isGenerationMessage && messageEvents.length > 0 && (
                     <CollapsedAiTasks
                       events={messageEvents}
                       isDark={isDark}
@@ -119,7 +150,7 @@ export function ChatPanel({
                     </div>
                   )}
 
-                  {!isIntroMessage && !isRecapMessage && !isChatMessage && (
+                  {!isIntroMessage && !isRecapMessage && !isChatMessage && !isGenerationMessage && messageEvents.length === 0 && (
                     <div className="text-foreground/90 bg-muted/50 rounded-lg px-4 py-2">
                       {typeof msg.content === 'string' ? msg.content : ''}
                     </div>
