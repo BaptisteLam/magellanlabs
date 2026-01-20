@@ -27,7 +27,7 @@ import { CollapsedAiTasks } from '@/components/chat/CollapsedAiTasks';
 import { MessageActions } from '@/components/chat/MessageActions';
 import AiGenerationMessage from '@/components/chat/AiGenerationMessage';
 import ChatOnlyMessage from '@/components/chat/ChatOnlyMessage';
-import { useGenerateSite } from '@/hooks/useGenerateSite';
+import { useV0GenerateSite } from '@/hooks/useV0GenerateSite';
 import html2canvas from 'html2canvas';
 import { MessageCounter } from '@/components/MessageCounter';
 import { capturePreviewThumbnail } from '@/lib/capturePreviewThumbnail';
@@ -152,8 +152,8 @@ export default function BuilderSession() {
   // Hook unifié pour unified-modify (remplace agent-v2 et modify-site)
   const unifiedModify = useUnifiedModify();
 
-  // Hook pour génération de nouveaux sites complets
-  const generateSiteHook = useGenerateSite();
+  // Hook V0 pour génération de nouveaux sites complets
+  const generateSiteHook = useV0GenerateSite();
 
   // Hook pour versioning R2
   const { versions, isLoading: isVersionsLoading, isRollingBack, fetchVersions, rollbackToVersion } = useProjectVersions(sessionId);
@@ -817,10 +817,27 @@ export default function BuilderSession() {
         prompt: userPrompt,
         sessionId: sessionId!
       }, {
-        onGenerationEvent: (event) => {
-          console.log('📌 Generation event:', event);
+        onGenerationEvent: (v0Event) => {
+          console.log('📌 V0 Generation event:', v0Event);
+          
+          // Mapper V0GenerationEvent vers GenerationEvent
+          const typeMap: Record<string, GenerationEvent['type']> = {
+            'progress': 'thought',
+            'files': 'create',
+            'complete': 'complete',
+            'error': 'error',
+          };
+          
+          const mappedEvent: GenerationEvent = {
+            type: typeMap[v0Event.type] || 'thought',
+            message: v0Event.message || `Phase: ${v0Event.phase || v0Event.type}`,
+            phase: v0Event.phase as GenerationEvent['phase'],
+            duration: v0Event.duration,
+            status: v0Event.type === 'complete' ? 'completed' : 'in-progress',
+          };
+          
           // Ajouter l'événement à la liste
-          generationEventsRef.current = [...generationEventsRef.current, event];
+          generationEventsRef.current = [...generationEventsRef.current, mappedEvent];
           
           // Mettre à jour les métadonnées du message en temps réel
           setMessages(prev => {
