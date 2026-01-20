@@ -1938,7 +1938,15 @@ export default function BuilderSession() {
                       </div>
                     </div> : msg.metadata?.type === 'generation' ?
                 // Nouveau message unifié style Lovable
-                <AiGenerationMessage message={msg} messageIndex={idx} isLatestMessage={idx === messages.length - 1} isDark={isDark} isLoading={idx === messages.length - 1 && (unifiedModify.isLoading || isQuickModLoading)} generationStartTime={idx === messages.length - 1 && (unifiedModify.isLoading || isQuickModLoading) ? generationStartTimeRef.current : undefined} onRestore={async messageIdx => {
+                <AiGenerationMessage 
+                  message={msg} 
+                  messageIndex={idx} 
+                  isLatestMessage={idx === messages.length - 1} 
+                  isDark={isDark} 
+                  isLoading={idx === messages.length - 1 && (generateSiteHook.isGenerating || unifiedModify.isLoading || isQuickModLoading)} 
+                  isFirstGeneration={isInitialGeneration && idx === messages.length - 1}
+                  generationStartTime={idx === messages.length - 1 && (generateSiteHook.isGenerating || unifiedModify.isLoading || isQuickModLoading) ? generationStartTimeRef.current : undefined} 
+                  onRestore={async messageIdx => {
                   const targetMessage = messages[messageIdx];
                   if (!targetMessage.id || !sessionId) return;
                   console.log('🔄 RESTORING VERSION FROM MESSAGE', messageIdx);
