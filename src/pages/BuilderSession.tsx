@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
-import { InteractiveSandpackPreview } from "@/components/InteractiveSandpackPreview";
+import { InteractiveCodeSandboxPreview } from "@/components/InteractiveCodeSandboxPreview";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
 import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
@@ -39,7 +39,7 @@ import { PublishSuccessDialog } from '@/components/PublishSuccessDialog';
 import { useUnifiedModify } from '@/hooks/useUnifiedModify';
 import { useProjectVersions } from '@/hooks/useProjectVersions';
 import { VersionHistory } from '@/components/VersionHistory';
-import type { ElementInfo } from '@/components/InteractiveSandpackPreview';
+import type { ElementInfo } from '@/types/elementInfo';
 import { IndexedDBCache } from '@/services/indexedDBCache';
 import { parseProjectFiles } from '@/lib/projectFilesParser';
 
@@ -2065,7 +2065,7 @@ export default function BuilderSession() {
           }}>
                   {(generateSiteHook.isGenerating || Object.keys(projectFiles).length === 0) ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
-                      <InteractiveSandpackPreview 
+                      <InteractiveCodeSandboxPreview 
                         projectFiles={projectFiles} 
                         previewMode="mobile"
                         inspectMode={inspectMode} 
@@ -2092,7 +2092,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                 </div> : <>
                   {(generateSiteHook.isGenerating || Object.keys(projectFiles).length === 0) ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} />
-                      <InteractiveSandpackPreview 
+                      <InteractiveCodeSandboxPreview 
                         projectFiles={projectFiles} 
                         previewMode="desktop"
                         inspectMode={inspectMode} 

@@ -1,49 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { SandpackPreview, SandpackPreviewHandle } from './SandpackPreview';
+import { CodeSandboxPreview, CodeSandboxPreviewHandle } from './CodeSandboxPreview';
+import { LocalInspectablePreview, LocalInspectablePreviewHandle } from './LocalInspectablePreview';
 import { EnhancedEditToolbar } from './EnhancedEditToolbar';
-import { ArrowUp, ArrowDown, MousePointer2 } from 'lucide-react';
+import { MousePointer2 } from 'lucide-react';
+import type { ElementInfo } from '@/types/elementInfo';
 
-export interface ElementInfo {
-  tagName: string;
-  textContent: string;
-  classList: string[];
-  path: string;
-  innerHTML: string;
-  id?: string;
-  elementType?: string;
-  isInteractive?: boolean;
-  parentTree?: Array<{
-    tagName: string;
-    id?: string;
-    classList: string[];
-    isSemanticParent?: boolean;
-  }>;
-  semanticParent?: {
-    tagName: string;
-    id?: string;
-    classList: string[];
-  } | null;
-  computedStyles?: {
-    fontSize: string;
-    fontWeight: string;
-    color: string;
-    backgroundColor: string;
-    display: string;
-    position: string;
-    padding: { top: number; right: number; bottom: number; left: number };
-    margin: { top: number; right: number; bottom: number; left: number };
-  };
-  boundingRect?: {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-    bottom: number;
-    right: number;
-  };
-}
+// Re-export ElementInfo pour la compatibilité
+export type { ElementInfo };
 
-interface InteractiveSandpackPreviewProps {
+interface InteractiveCodeSandboxPreviewProps {
   projectFiles: Record<string, string>;
   previewMode?: 'desktop' | 'mobile';
   inspectMode?: boolean;
@@ -51,28 +16,28 @@ interface InteractiveSandpackPreviewProps {
   onElementModify?: (prompt: string, elementInfo: ElementInfo) => void;
 }
 
-export function InteractiveSandpackPreview({
+export function InteractiveCodeSandboxPreview({
   projectFiles,
   previewMode = 'desktop',
   inspectMode = false,
   onInspectModeChange,
   onElementModify,
-}: InteractiveSandpackPreviewProps) {
+}: InteractiveCodeSandboxPreviewProps) {
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [showEditBar, setShowEditBar] = useState(false);
   const [hoveredElement, setHoveredElement] = useState<ElementInfo | null>(null);
   const [inspectorReady, setInspectorReady] = useState(false);
+  
   const containerRef = useRef<HTMLDivElement>(null);
-  const sandpackRef = useRef<SandpackPreviewHandle>(null);
+  const localPreviewRef = useRef<LocalInspectablePreviewHandle>(null);
+  const codesandboxRef = useRef<CodeSandboxPreviewHandle>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Gérer les messages de l'inspector injecté dans Sandpack
+  // Gérer les messages de l'inspector (LocalInspectablePreview)
   const handleInspectorMessage = useCallback((data: any) => {
     switch (data.type) {
-      case 'inspector-loaded':
       case 'inspector-ready':
-        console.log('[InteractiveSandpackPreview] Inspector ready');
+        console.log('[InteractiveCodeSandboxPreview] Inspector ready');
         setInspectorReady(true);
         break;
         
@@ -123,63 +88,25 @@ export function InteractiveSandpackPreview({
         break;
         
       case 'inspect-escape':
-        // L'utilisateur a appuyé sur Escape dans l'iframe
         onInspectModeChange?.(false);
         setHoveredElement(null);
         break;
     }
   }, [onInspectModeChange]);
 
-  // Activer/désactiver le mode inspection avec retry
+  // Activer/désactiver le mode inspection
   useEffect(() => {
-    // Nettoyer le timeout précédent
-    if (retryTimeoutRef.current) {
-      clearTimeout(retryTimeoutRef.current);
-      retryTimeoutRef.current = null;
-    }
-    
-    if (inspectMode) {
-      // Activer le mode inspection
-      const activateInspectMode = () => {
-        if (sandpackRef.current) {
-          sandpackRef.current.setInspectMode(true);
-        }
-      };
-      
-      // Activer immédiatement
-      activateInspectMode();
-      
-      // Si l'inspector n'est pas encore prêt, réessayer
-      if (!inspectorReady) {
-        const retryInterval = setInterval(() => {
-          console.log('[InteractiveSandpackPreview] Retrying inspect mode activation...');
-          activateInspectMode();
-        }, 500);
-        
-        // Arrêter après 5 secondes
-        retryTimeoutRef.current = setTimeout(() => {
-          clearInterval(retryInterval);
-        }, 5000);
-        
-        return () => {
-          clearInterval(retryInterval);
-          if (retryTimeoutRef.current) {
-            clearTimeout(retryTimeoutRef.current);
-          }
-        };
-      }
-    } else {
-      // Désactiver le mode inspection
-      if (sandpackRef.current) {
-        sandpackRef.current.setInspectMode(false);
-      }
+    if (inspectMode && localPreviewRef.current) {
+      localPreviewRef.current.setInspectMode(true);
+    } else if (!inspectMode && localPreviewRef.current) {
+      localPreviewRef.current.setInspectMode(false);
       setHoveredElement(null);
       setInspectorReady(false);
     }
-  }, [inspectMode, inspectorReady]);
+  }, [inspectMode]);
 
-  // Callback quand l'iframe est prête
-  const handleIframeReady = useCallback((iframe: HTMLIFrameElement | null) => {
+  // Callback quand l'iframe locale est prête
+  const handleLocalIframeReady = useCallback((iframe: HTMLIFrameElement) => {
     iframeRef.current = iframe;
   }, []);
 
@@ -195,12 +122,11 @@ export function InteractiveSandpackPreview({
     setShowEditBar(false);
     setSelectedElement(null);
   }, []);
-  
+
   // Sélectionner un élément du parent tree
   const handleSelectParent = useCallback((parentIndex: number) => {
     if (!selectedElement?.parentTree || !iframeRef.current) return;
     
-    // Envoyer un message à l'iframe pour sélectionner le parent
     iframeRef.current.contentWindow?.postMessage({
       type: 'select-parent',
       parentIndex
@@ -209,15 +135,23 @@ export function InteractiveSandpackPreview({
 
   return (
     <div ref={containerRef} className="relative w-full h-full">
-      {/* Preview Sandpack avec inspector activé */}
-      <SandpackPreview
-        ref={sandpackRef}
-        projectFiles={projectFiles}
-        previewMode={previewMode}
-        enableInspector={inspectMode}
-        onIframeReady={handleIframeReady}
-        onInspectorMessage={handleInspectorMessage}
-      />
+      {/* Mode inspection activé = utiliser LocalInspectablePreview (srcdoc) */}
+      {inspectMode ? (
+        <LocalInspectablePreview
+          ref={localPreviewRef}
+          projectFiles={projectFiles}
+          previewMode={previewMode}
+          onInspectorMessage={handleInspectorMessage}
+          onIframeReady={handleLocalIframeReady}
+        />
+      ) : (
+        /* Mode normal = utiliser CodeSandbox embed */
+        <CodeSandboxPreview
+          ref={codesandboxRef}
+          projectFiles={projectFiles}
+          previewMode={previewMode}
+        />
+      )}
 
       {/* Overlay pour afficher l'indicateur de mode inspection */}
       {inspectMode && (
@@ -234,7 +168,7 @@ export function InteractiveSandpackPreview({
             <MousePointer2 className="w-4 h-4" />
             <span>
               {inspectorReady 
-                ? 'Cliquez sur un élément • Shift+Clic = parent • ↑↓ = naviguer'
+                ? 'Cliquez sur un élément • Shift+Clic = parent • Escape = quitter'
                 : 'Chargement...'
               }
             </span>
@@ -301,4 +235,4 @@ export function InteractiveSandpackPreview({
   );
 }
 
-export default InteractiveSandpackPreview;
+export default InteractiveCodeSandboxPreview;

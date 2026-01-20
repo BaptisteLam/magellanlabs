@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Code2, Tag, FileText } from 'lucide-react';
-import type { ElementInfo } from './InteractiveSandpackPreview';
+import type { ElementInfo } from '@/types/elementInfo';
 
 interface ElementEditDialogProps {
   isOpen: boolean;

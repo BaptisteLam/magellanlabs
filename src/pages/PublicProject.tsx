@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Eye, ExternalLink } from 'lucide-react';
-import { SandpackPreview } from '@/components/SandpackPreview';
+import { CodeSandboxPreview } from '@/components/CodeSandboxPreview';
 import { useSubdomain } from '@/hooks/useSubdomain';
 
 interface ProjectData {
@@ -197,7 +197,7 @@ export default function PublicProject() {
 
       {/* Preview */}
       <main className="w-full h-[calc(100vh-80px)]">
-        <SandpackPreview
+        <CodeSandboxPreview
           projectFiles={project.project_files}
           previewMode="desktop"
         />
