@@ -141,12 +141,16 @@ export function useUnifiedModify() {
       }
       const url = `${supabaseUrl}/functions/v1/unified-modify`;
 
+      // P0: Passer les 10 derniers messages (au lieu de 5) pour meilleur contexte multi-tours
+      const enrichedHistory = conversationHistory?.slice(-10);
+
       console.log('[useUnifiedModify] Starting request:', {
         messageLength: message.length,
         fileCount: Object.keys(projectFiles).length,
         sessionId,
         hasMemory: !!memory,
-        hasConversationHistory: !!conversationHistory?.length,
+        hasConversationHistory: !!enrichedHistory?.length,
+        conversationHistoryLength: enrichedHistory?.length || 0,
       });
 
       // Make request
@@ -161,8 +165,8 @@ export function useUnifiedModify() {
           projectFiles,
           sessionId,
           memory,
-          // P0: Envoyer les 5 derniers messages de conversation pour contexte
-          conversationHistory: conversationHistory?.slice(-5),
+          // P0: Envoyer les 10 derniers messages de conversation pour contexte étendu
+          conversationHistory: enrichedHistory,
         }),
         signal: abortControllerRef.current.signal,
       });

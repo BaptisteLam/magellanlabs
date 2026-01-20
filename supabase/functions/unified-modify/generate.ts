@@ -92,14 +92,45 @@ export function buildSystemPrompt(
     ? `\n## Project Memory\n${projectMemory}\n` 
     : '';
   
-  // P0: Ajouter l'historique de conversation au contexte
+  // P0: Ajouter l'historique de conversation enrichi au contexte
   let conversationSection = '';
   if (conversationHistory && conversationHistory.length > 0) {
+    // Formater les messages récents avec métadonnées pour contexte enrichi
     const formattedHistory = conversationHistory
-      .slice(-5) // Limiter aux 5 derniers messages
-      .map(msg => `[${msg.role.toUpperCase()}]: ${msg.content}`)
-      .join('\n');
-    conversationSection = `\n## Recent Conversation History\nUse this context to understand the user's intent and maintain consistency with previous requests:\n${formattedHistory}\n`;
+      .slice(-10) // P0: Utiliser les 10 derniers messages au lieu de 5
+      .map(msg => {
+        let formatted = `[${msg.role.toUpperCase()}]: ${msg.content}`;
+        // P0: Inclure les fichiers modifiés si disponibles pour contexte
+        if ((msg as any).metadata?.filesAffected) {
+          const files = (msg as any).metadata.filesAffected.map((f: any) => f.path || f).join(', ');
+          formatted += `\n  → Fichiers modifiés: ${files}`;
+        }
+        return formatted;
+      })
+      .join('\n\n');
+    
+    // P0: Ajouter un résumé des modifications récentes
+    const recentMods = conversationHistory
+      .filter(msg => (msg as any).metadata?.filesAffected?.length > 0)
+      .slice(-3);
+    
+    let modsSummary = '';
+    if (recentMods.length > 0) {
+      modsSummary = '\n\n### Recent Modifications Summary:\n' + recentMods
+        .map(msg => {
+          const intent = (msg as any).metadata?.intent_message || msg.content.substring(0, 50);
+          const files = (msg as any).metadata?.filesAffected?.map((f: any) => f.path || f).join(', ') || 'unknown';
+          return `- ${intent}: ${files}`;
+        })
+        .join('\n');
+    }
+    
+    conversationSection = `\n## Recent Conversation History (last ${conversationHistory.length} messages)
+Use this context to understand the user's intent, resolve references like "plus foncé", "la même chose", and maintain consistency with previous requests.
+
+### Conversation:
+${formattedHistory}
+${modsSummary}\n`;
   }
   
   return `You are an expert web developer. Generate code modifications in AST JSON format.

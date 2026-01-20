@@ -137,7 +137,58 @@ function extractImplicitReferences(
   return { references, resolvedContext };
 }
 
-// P0: Résoudre les coréférences dans le prompt
+// P0: Extraire les dernières valeurs modifiées depuis l'historique
+function extractLastModifiedValues(conversationHistory: ConversationMessage[]): {
+  lastColor?: string;
+  lastElement?: string;
+  lastProperty?: string;
+  lastFiles?: string[];
+} {
+  const result: {
+    lastColor?: string;
+    lastElement?: string;
+    lastProperty?: string;
+    lastFiles?: string[];
+  } = {};
+  
+  // Parcourir l'historique en ordre inverse pour trouver les dernières valeurs
+  for (let i = conversationHistory.length - 1; i >= 0; i--) {
+    const msg = conversationHistory[i];
+    const content = msg.content || '';
+    
+    // Chercher des couleurs mentionnées (codes hex ou noms)
+    if (!result.lastColor) {
+      const hexMatch = content.match(/#[0-9a-fA-F]{3,6}/);
+      const colorNameMatch = content.match(/\b(bleu|rouge|vert|jaune|orange|violet|rose|noir|blanc|gris|blue|red|green|yellow|purple|pink|black|white|gray|navy|cyan|teal)/i);
+      if (hexMatch) result.lastColor = hexMatch[0];
+      else if (colorNameMatch) result.lastColor = colorNameMatch[0];
+    }
+    
+    // Chercher des éléments UI mentionnés
+    if (!result.lastElement) {
+      const elementMatch = content.match(/\b(bouton|button|titre|header|footer|navigation|nav|menu|card|carte|image|logo|icon|formulaire|form|texte|section|hero|background|fond|lien|link)/i);
+      if (elementMatch) result.lastElement = elementMatch[0];
+    }
+    
+    // Chercher des propriétés CSS mentionnées
+    if (!result.lastProperty) {
+      const propMatch = content.match(/\b(couleur|color|taille|size|police|font|marge|margin|padding|bordure|border|arrondi|radius|ombre|shadow)/i);
+      if (propMatch) result.lastProperty = propMatch[0];
+    }
+    
+    // Chercher les fichiers modifiés
+    if (!result.lastFiles && msg.metadata?.filesAffected) {
+      result.lastFiles = msg.metadata.filesAffected.map(f => typeof f === 'string' ? f : f.path);
+    }
+    
+    // Arrêter si on a trouvé toutes les valeurs
+    if (result.lastColor && result.lastElement && result.lastProperty && result.lastFiles) break;
+  }
+  
+  return result;
+}
+
+// P0: Résoudre les coréférences dans le prompt avec contexte enrichi
 function resolveCoref(
   prompt: string,
   conversationHistory?: ConversationMessage[]
@@ -147,6 +198,7 @@ function resolveCoref(
   }
 
   let resolved = prompt;
+  const lastValues = extractLastModifiedValues(conversationHistory);
 
   // Trouver le dernier message utilisateur pour contexte
   const lastUserMsg = [...conversationHistory]
@@ -157,18 +209,42 @@ function resolveCoref(
     .reverse()
     .find(m => m.role === 'assistant' && m.metadata?.intent_message);
 
-  // Résoudre "plus foncé/clair" → ajouter le contexte de couleur
-  if (/plus\s*(foncé|clair)/i.test(prompt) && lastUserMsg?.content) {
-    const colorMatch = lastUserMsg.content.match(/\b(bleu|rouge|vert|jaune|orange|violet|rose|noir|blanc|gris|blue|red|green|yellow)/i);
-    if (colorMatch) {
-      resolved = `${prompt} (contexte: ${colorMatch[0]})`;
+  // P0 AMÉLIORÉ: Résoudre "plus foncé/clair" avec la dernière couleur trouvée
+  if (/plus\s*(foncé|clair|sombre|lumineux|vif|pâle)/i.test(prompt)) {
+    if (lastValues.lastColor) {
+      resolved = `${prompt} (contexte: ${lastValues.lastColor})`;
+    } else if (lastUserMsg?.content) {
+      const colorMatch = lastUserMsg.content.match(/\b(bleu|rouge|vert|jaune|orange|violet|rose|noir|blanc|gris|blue|red|green|yellow|#[0-9a-fA-F]{3,6})/i);
+      if (colorMatch) {
+        resolved = `${prompt} (contexte: ${colorMatch[0]})`;
+      }
     }
   }
 
-  // Résoudre "pareil/même chose" → référence au dernier changement
-  if (/pareil|même\s*chose|idem/i.test(prompt) && lastAssistantMsg?.metadata?.intent_message) {
-    resolved = `${prompt} (comme: ${lastAssistantMsg.metadata.intent_message})`;
+  // P0 AMÉLIORÉ: Résoudre "pareil/même chose/la même couleur" avec les dernières valeurs
+  if (/pareil|même\s*(chose|couleur|style)|idem|aussi/i.test(prompt)) {
+    const contextParts: string[] = [];
+    if (lastValues.lastColor) contextParts.push(`couleur: ${lastValues.lastColor}`);
+    if (lastValues.lastElement) contextParts.push(`élément: ${lastValues.lastElement}`);
+    if (lastAssistantMsg?.metadata?.intent_message) {
+      contextParts.push(`action: ${lastAssistantMsg.metadata.intent_message}`);
+    }
+    if (contextParts.length > 0) {
+      resolved = `${prompt} (comme: ${contextParts.join(', ')})`;
+    }
   }
+
+  // P0: Résoudre "au reste/aux autres/partout" → appliquer aux autres éléments similaires
+  if (/au\s*reste|aux\s*autres|partout|everywhere|all/i.test(prompt) && lastValues.lastFiles) {
+    resolved = `${prompt} (fichiers précédents: ${lastValues.lastFiles.join(', ')})`;
+  }
+
+  // P0: Résoudre "sur le/la/les même(s)" → référencer l'élément précédent
+  if (/sur\s*le\s*même|sur\s*la\s*même|les\s*mêmes/i.test(prompt) && lastValues.lastElement) {
+    resolved = `${prompt} (élément: ${lastValues.lastElement})`;
+  }
+
+  console.log('[resolveCoref] Resolved prompt:', { original: prompt, resolved, lastValues });
 
   return resolved;
 }

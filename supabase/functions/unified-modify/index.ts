@@ -92,7 +92,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { message, projectFiles, sessionId, memory, conversationHistory } = await req.json();
+    const { message, projectFiles, sessionId, memory: providedMemory, conversationHistory } = await req.json();
 
     if (!message || !projectFiles || !sessionId) {
       return new Response(
@@ -101,12 +101,35 @@ serve(async (req) => {
       );
     }
 
+    // P0 CRITIQUE: Charger la mémoire depuis Supabase si non fournie
+    let memory = providedMemory;
+    if (!memory) {
+      console.log('[unified-modify] Loading memory from Supabase for session:', sessionId);
+      const { data: memoryData, error: memoryError } = await supabase
+        .from('project_memory')
+        .select('*')
+        .eq('session_id', sessionId)
+        .maybeSingle();
+      
+      if (memoryError) {
+        console.warn('[unified-modify] Error loading memory:', memoryError);
+      } else if (memoryData) {
+        memory = memoryData.memory_data;
+        console.log('[unified-modify] Loaded memory from Supabase:', {
+          hasArchitecture: !!memory?.architecture,
+          recentChangesCount: memory?.recentChanges?.length || 0,
+          knownIssuesCount: memory?.knownIssues?.length || 0
+        });
+      }
+    }
+
     console.log('[unified-modify] Request received:', {
       messageLength: message.length,
       fileCount: Object.keys(projectFiles).length,
       sessionId,
       hasMemory: !!memory,
       hasConversationHistory: !!conversationHistory?.length,
+      conversationHistoryLength: conversationHistory?.length || 0,
     });
 
     // Check cache
@@ -392,6 +415,41 @@ serve(async (req) => {
           };
 
           sendEvent('complete', finalResult);
+
+          // P0 CRITIQUE: Sauvegarder la mémoire mise à jour dans Supabase
+          try {
+            const updatedMemory = {
+              architecture: memory?.architecture || {},
+              recentChanges: [
+                ...(memory?.recentChanges || []),
+                {
+                  timestamp: new Date().toISOString(),
+                  prompt: message,
+                  intentMessage: parsed.intentMessage,
+                  filesAffected: parsed.filesAffected?.map((f: any) => f.path) || [],
+                  modificationsCount: modifications.length,
+                }
+              ].slice(-50), // Garder les 50 dernières modifications
+              knownIssues: memory?.knownIssues || [],
+              userPreferences: memory?.userPreferences || {},
+            };
+
+            const { error: upsertError } = await supabase
+              .from('project_memory')
+              .upsert({
+                session_id: sessionId,
+                memory_data: updatedMemory,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'session_id' });
+
+            if (upsertError) {
+              console.warn('[unified-modify] Error saving memory:', upsertError);
+            } else {
+              console.log('[unified-modify] Memory saved successfully');
+            }
+          } catch (memoryError) {
+            console.warn('[unified-modify] Error in memory save:', memoryError);
+          }
 
           // Cache result for trivial/simple requests
           if (analysis.complexity === 'trivial' || analysis.complexity === 'simple') {
