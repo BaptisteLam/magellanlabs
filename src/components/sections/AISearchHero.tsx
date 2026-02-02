@@ -79,16 +79,28 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       return;
     }
 
-    if (!user) {
-      localStorage.setItem('redirectAfterAuth', '/');
-      sonnerToast.info("Connectez-vous pour générer votre site");
-      navigate('/auth');
-      return;
-    }
+    // Mode invité: permettre la création sans authentification
+    const userId = user?.id || 'guest-' + crypto.randomUUID();
 
     setIsLoading(true);
     try {
       const prompt = inputValue.trim();
+
+      // Si l'utilisateur n'est pas connecté, on navigue directement vers le builder
+      // avec le prompt en state, sans créer de session en base
+      if (!user) {
+        setInputValue('');
+        setAttachedFiles([]);
+        navigate('/builder/new', {
+          state: {
+            initialPrompt: prompt,
+            attachedFiles,
+            projectType,
+            isGuest: true
+          }
+        });
+        return;
+      }
 
       const { data: session, error: sessionError } = await supabase
         .from('build_sessions')
@@ -108,9 +120,9 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
 
       setInputValue('');
       setAttachedFiles([]);
-      
-      navigate(`/builder/${session.id}`, { 
-        state: { attachedFiles } 
+
+      navigate(`/builder/${session.id}`, {
+        state: { attachedFiles }
       });
     } catch (error) {
       console.error('Erreur:', error);
