@@ -585,7 +585,7 @@ export class VibeSDKService {
         .from('profiles')
         .select('tokens_used')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (profile) {
         // Mettre à jour les tokens utilisés

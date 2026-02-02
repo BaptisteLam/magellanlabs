@@ -1076,7 +1076,7 @@ export default function BuilderSession() {
             .from('profiles')
             .select('messages_used')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
           if (!fetchError && profile) {
             const currentMessages = (profile as any).messages_used || 0;
@@ -1468,7 +1468,7 @@ export default function BuilderSession() {
             .from('profiles')
             .select('messages_used')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
           if (!fetchError && profile) {
             const currentMessages = (profile as any).messages_used || 0;
