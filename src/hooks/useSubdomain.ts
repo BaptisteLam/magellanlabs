@@ -18,7 +18,6 @@ export function useSubdomain(): string | null {
 
     // Domaines de plateforme à ignorer (pas de subdomain)
     const platformDomains = [
-      '.lovableproject.com',
       '.pages.dev',           // Cloudflare Pages
       '.netlify.app',         // Netlify
       '.vercel.app',          // Vercel

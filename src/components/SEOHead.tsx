@@ -14,7 +14,7 @@ const SEOHead = ({
   description, 
   keywords = "agence web, création site internet, développement web, SEO, Magellan Studio",
   canonicalUrl,
-  ogImage = "/lovable-uploads/magellan-logo-light.png",
+  ogImage = "/assets/magellan-logo-light.png",
   structuredData 
 }: SEOHeadProps) => {
   // Use title as-is if it already contains Magellan, otherwise add it

@@ -158,7 +158,7 @@ export default function PublicProject() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <img 
-                src="/lovable-uploads/magellan-logo-light.png" 
+                src="/assets/magellan-logo-light.png" 
                 alt="Magellan" 
                 className="h-8"
               />

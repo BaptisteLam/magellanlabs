@@ -141,7 +141,7 @@ export default function AiGenerationMessage({
 
   return (
     <div className="space-y-3">
-      {/* 1. Message d'intention contextuel PROÉMINENT - Style Lovable */}
+      {/* 1. Message d'intention contextuel */}
       {intent_message && (
         <div className="text-sm text-foreground mb-2">
           {intent_message}

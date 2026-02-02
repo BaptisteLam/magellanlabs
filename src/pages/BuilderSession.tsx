@@ -1937,7 +1937,7 @@ export default function BuilderSession() {
                           </div>}
                       </div>
                     </div> : msg.metadata?.type === 'generation' ?
-                // Nouveau message unifié style Lovable
+                // Message de génération unifié
                 <AiGenerationMessage 
                   message={msg} 
                   messageIndex={idx} 

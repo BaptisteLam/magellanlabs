@@ -305,7 +305,7 @@ export function CollapsedAiTasks({
         </div>
       </div>
 
-      {/* Bouton "voir" discret à droite - style Lovable */}
+      {/* Bouton "voir" discret à droite */}
       {!autoExpand && !isLoading && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}

@@ -5,8 +5,8 @@
  */
 export function generate404Page(isDark: boolean = false): string {
   const logoUrl = isDark 
-    ? '/lovable-uploads/magellan-logo-dark.png'
-    : '/lovable-uploads/magellan-logo-light.png';
+    ? '/assets/magellan-logo-dark.png'
+    : '/assets/magellan-logo-light.png';
     
   return `<!DOCTYPE html>
 <html lang="fr">

@@ -67,7 +67,7 @@ const Header = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img 
-              src={isDark ? "/lovable-uploads/magellan-logo-dark.png" : "/lovable-uploads/magellan-logo-light.png"}
+              src={isDark ? "/assets/magellan-logo-dark.png" : "/assets/magellan-logo-light.png"}
               alt="Magellan"
               className="h-20 w-auto"
             />
