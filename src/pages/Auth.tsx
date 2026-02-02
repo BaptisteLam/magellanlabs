@@ -44,6 +44,8 @@ export default function Auth() {
 
       if (session) {
         console.log('✅ User already logged in:', session.user.email);
+        // S'assurer que le profil existe avant de rediriger
+        await ensureUserProfile(session.user);
         handleRedirectAfterAuth();
       }
     };
@@ -51,10 +53,12 @@ export default function Auth() {
     checkSession();
 
     // Écouter les changements d'authentification (important pour OAuth callback)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔄 Auth state changed:', event, session?.user?.email);
 
       if (event === 'SIGNED_IN' && session) {
+        // S'assurer que le profil utilisateur existe (fallback si le trigger DB échoue)
+        await ensureUserProfile(session.user);
         toast.success(`Bienvenue ${session.user.email}!`);
         handleRedirectAfterAuth();
       } else if (event === 'SIGNED_OUT') {
@@ -66,6 +70,44 @@ export default function Auth() {
 
     return () => subscription.unsubscribe();
   }, [navigate, searchParams]);
+
+  // Vérifie et crée le profil utilisateur si nécessaire (fallback si le trigger DB échoue)
+  const ensureUserProfile = async (user: { id: string; email?: string }) => {
+    try {
+      // Vérifier si le profil existe
+      const { data: profile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('❌ Error checking profile:', fetchError);
+        return;
+      }
+
+      // Si le profil n'existe pas, le créer
+      if (!profile) {
+        console.log('📝 Creating missing profile for user:', user.email);
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email || '',
+          });
+
+        if (insertError) {
+          console.error('❌ Error creating profile:', insertError);
+        } else {
+          console.log('✅ Profile created successfully');
+        }
+      } else {
+        console.log('✅ Profile exists for user:', user.email);
+      }
+    } catch (error) {
+      console.error('❌ ensureUserProfile error:', error);
+    }
+  };
 
   const handleRedirectAfterAuth = () => {
     const redirectPath = localStorage.getItem('redirectAfterAuth');
