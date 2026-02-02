@@ -247,6 +247,33 @@ export default function BuilderSession() {
         console.warn('⚠️ No sessionId, skipping load');
         return;
       }
+
+      // Mode invité: sessionId === "new"
+      if (sessionId === 'new') {
+        console.log('🆕 Guest mode detected - loading initial prompt from state');
+        setSessionLoading(false);
+
+        // Récupérer le prompt initial depuis location.state
+        const initialPrompt = location.state?.initialPrompt;
+        const stateAttachedFiles = location.state?.attachedFiles;
+        const stateProjectType = location.state?.projectType;
+
+        if (stateAttachedFiles && Array.isArray(stateAttachedFiles)) {
+          setAttachedFiles(stateAttachedFiles);
+        }
+
+        if (initialPrompt) {
+          console.log('🚀 Guest mode with initial prompt:', initialPrompt.substring(0, 100));
+          setInputValue(initialPrompt);
+
+          // Déclencher la génération automatiquement après un court délai
+          setTimeout(() => {
+            handleGenerateSite(initialPrompt);
+          }, 500);
+        }
+        return;
+      }
+
       console.log('🔄 Starting session load:', sessionId);
       setSessionLoading(true);
       try {
@@ -743,11 +770,8 @@ export default function BuilderSession() {
       sessionId
     });
 
-    if (!user) {
-      console.error('❌ No user, redirecting to auth');
-      navigate('/auth');
-      return;
-    }
+    // Mode invité autorisé - pas de redirection vers /auth
+    // La publication nécessitera une connexion
 
     // Ajouter le message utilisateur
     const userMessage: Message = {
@@ -1121,11 +1145,8 @@ export default function BuilderSession() {
       hasMemory: !!memory,
       skipFallback
     });
-    if (!user) {
-      console.error('❌ No user, redirecting to auth');
-      navigate('/auth');
-      return;
-    }
+
+    // Mode invité autorisé - pas de redirection vers /auth
 
     // Ajouter le message utilisateur
     const userMessage: Message = {
@@ -1517,10 +1538,8 @@ export default function BuilderSession() {
       sonnerToast.error("Veuillez entrer votre message ou joindre un fichier");
       return;
     }
-    if (!user) {
-      navigate('/auth');
-      throw new Error('Authentication required');
-    }
+
+    // Mode invité autorisé - pas de redirection vers /auth
 
     // MODE CHAT - Simple conversation sans génération de code
     if (chatMode) {
@@ -2119,10 +2138,7 @@ Instruction: ${prompt}
 Ne modifie que cet élément spécifique, pas le reste du code.`;
 
                 // Envoyer directement à Claude sans afficher dans le chat
-                if (!user) {
-                  navigate('/auth');
-                  return;
-                }
+                // Mode invité autorisé - pas de redirection vers /auth
                 setAiEvents([]);
                 generationEventsRef.current = [];
                 try {
