@@ -33,7 +33,7 @@ const Footer = () => {
           <div className="md:col-span-2">
             <div className="flex items-center space-x-3 mb-4">
               <img 
-                src={isDark ? "/lovable-uploads/magellan-logo-dark.png" : "/lovable-uploads/magellan-logo-light.png"}
+                src={isDark ? "/assets/magellan-logo-dark.png" : "/assets/magellan-logo-light.png"}
                 alt="Magellan - Agence Web"
                 className="h-16 w-auto"
               />

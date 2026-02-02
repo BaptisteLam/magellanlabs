@@ -22,6 +22,27 @@ export default function Auth() {
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
 
   useEffect(() => {
+    // Vérifier la configuration Supabase au démarrage
+    const checkSupabaseConfig = async () => {
+      try {
+        // Test simple pour vérifier que Supabase est accessible
+        const { error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('❌ Supabase connection error:', error);
+          if (error.message?.includes('Invalid API key') || error.message?.includes('Invalid URL')) {
+            toast.error('Configuration Supabase invalide. Vérifiez les variables d\'environnement.');
+          }
+        } else {
+          console.log('✅ Supabase connection OK');
+        }
+      } catch (e) {
+        console.error('❌ Supabase unreachable:', e);
+        toast.error('Impossible de se connecter à Supabase. Vérifiez votre connexion.');
+      }
+    };
+
+    checkSupabaseConfig();
+
     // Gérer les erreurs OAuth dans l'URL (ex: error=access_denied)
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
@@ -187,7 +208,7 @@ export default function Auth() {
         if (error) throw error;
         toast.success("Connexion réussie !");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -196,19 +217,60 @@ export default function Auth() {
         });
 
         if (error) throw error;
-        toast.success("Compte créé ! Vérifiez votre email pour confirmer.");
+
+        console.log('📧 Signup response:', {
+          user: data.user?.id,
+          session: !!data.session,
+          confirmationSentAt: data.user?.confirmation_sent_at,
+          emailConfirmedAt: data.user?.email_confirmed_at,
+        });
+
+        // Vérifier si l'utilisateur a déjà une session (confirmation d'email désactivée)
+        if (data.session) {
+          toast.success("Compte créé avec succès ! Vous êtes connecté.");
+        } else if (data.user && !data.user.email_confirmed_at) {
+          toast.success("Compte créé ! Vérifiez votre boîte mail pour confirmer votre inscription.");
+        } else {
+          toast.success("Compte créé !");
+        }
       }
     } catch (error: any) {
+      console.error('❌ Auth error:', error);
+
       // Messages d'erreur personnalisés en français
       let errorMessage = error.message;
 
+      // Erreurs de connexion
       if (error.message?.includes('Invalid login credentials')) {
         errorMessage = "Email ou mot de passe incorrect";
       } else if (error.message?.includes('Email not confirmed')) {
         errorMessage = "Veuillez confirmer votre email avant de vous connecter";
-      } else if (error.message?.includes('User already registered')) {
-        errorMessage = "Un compte existe déjà avec cet email";
       }
+      // Erreurs d'inscription
+      else if (error.message?.includes('User already registered')) {
+        errorMessage = "Un compte existe déjà avec cet email";
+      } else if (error.message?.includes('Password should be at least')) {
+        errorMessage = "Le mot de passe doit contenir au moins 6 caractères";
+      } else if (error.message?.includes('Unable to validate email address')) {
+        errorMessage = "Adresse email invalide";
+      } else if (error.message?.includes('Signups not allowed')) {
+        errorMessage = "Les inscriptions sont désactivées. Contactez l'administrateur.";
+      } else if (error.message?.includes('Email rate limit exceeded')) {
+        errorMessage = "Trop de tentatives. Veuillez réessayer plus tard.";
+      } else if (error.message?.includes('Database error')) {
+        errorMessage = "Erreur de base de données. Veuillez réessayer.";
+      } else if (error.message?.includes('Failed to fetch')) {
+        errorMessage = "Erreur de connexion au serveur. Vérifiez votre connexion internet.";
+      } else if (error.message?.includes('AuthApiError')) {
+        errorMessage = "Erreur d'authentification. Veuillez réessayer.";
+      }
+
+      console.error('📋 Error details:', {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+        details: error.details,
+      });
 
       toast.error(errorMessage);
     } finally {

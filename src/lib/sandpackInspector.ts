@@ -1,5 +1,5 @@
 // Script d'inspection amélioré injecté dans les projets Sandpack
-// Avec overlay intelligent style Lovable : dimensions, labels, navigation clavier
+// Avec overlay intelligent : dimensions, labels, navigation clavier
 
 export const INSPECTOR_SCRIPT = `
 (function() {

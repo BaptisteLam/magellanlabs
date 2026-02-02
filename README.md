@@ -1,99 +1,85 @@
-# Welcome to your Lovable project
+# Magellan - Crée ton site web avec l'IA
 
-## Project info
+Magellan est une plateforme SaaS qui permet de créer des sites web professionnels en quelques secondes grâce à l'intelligence artificielle.
 
-**URL**: https://lovable.dev/projects/bd69d0ff-8787-4ab6-be94-536fb7e5ee8b
+## Technologies
 
-## How can I edit this code?
+- **Frontend**: React 18, TypeScript, Vite
+- **UI**: Tailwind CSS, shadcn/ui, Radix UI
+- **Backend**: Supabase (Auth, Database, Storage, Edge Functions)
+- **IA**: VibeSDK (Cloudflare AI)
+- **Déploiement**: Cloudflare Pages
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/bd69d0ff-8787-4ab6-be94-536fb7e5ee8b) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Installation locale
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Cloner le repository
+git clone https://github.com/BaptisteLam/magellanlabs.git
+cd magellanlabs
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Installer les dépendances
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Configurer les variables d'environnement
+cp .env.example .env
+# Éditer .env avec vos clés Supabase et VibeSDK
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Lancer le serveur de développement
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Configuration
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Variables d'environnement requises
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-### Automatic Deployment (via Lovable)
-
-Simply open [Lovable](https://lovable.dev/projects/bd69d0ff-8787-4ab6-be94-536fb7e5ee8b) and click on Share -> Publish. Your project will be automatically deployed to Cloudflare Pages.
-
-### Manual Deployment to Cloudflare Pages
-
-**Prerequisites:**
-- Install [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
-- Have a Cloudflare account with Pages enabled
-
-**Deploy via CLI:**
-```sh
-# Build the project
-npm run build
-
-# Deploy to Cloudflare Pages
-npx wrangler pages deploy dist --project-name=your-project-name
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key
+VITE_USE_VIBESDK=true
+VITE_VIBESDK_API_KEY=your-vibesdk-key
 ```
 
-**Deploy via API (used by Lovable):**
-The project includes an edge function at `supabase/functions/deploy-to-cloudflare/index.ts` that handles automatic deployments to Cloudflare Pages via their REST API.
+### Base de données Supabase
 
-**Configuration:**
-The deployment requires the following environment variables (configured in Supabase secrets):
-- `CLOUDFLARE_ACCOUNT_ID` - Your Cloudflare account ID
-- `CLOUDFLARE_API_TOKEN` - API token with Pages write permissions
-- `GA_MEASUREMENT_ID` (optional) - Google Analytics tracking ID
+Appliquez les migrations dans l'ordre depuis le dossier `supabase/migrations/`.
 
-## Can I connect a custom domain to my Lovable project?
+## Déploiement
 
-Yes, you can!
+### Cloudflare Pages
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```sh
+# Build du projet
+npm run build
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+# Déploiement
+npx wrangler pages deploy dist --project-name=magellan
+```
+
+### Variables d'environnement Cloudflare
+
+Configurez ces variables dans Settings > Environment variables:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_USE_VIBESDK`
+- `VITE_VIBESDK_API_KEY`
+
+## Structure du projet
+
+```
+src/
+├── components/     # Composants React réutilisables
+├── pages/          # Pages de l'application
+├── hooks/          # Hooks React personnalisés
+├── lib/            # Utilitaires et helpers
+├── services/       # Services (VibeSDK, etc.)
+├── stores/         # Stores Zustand
+└── integrations/   # Intégrations (Supabase)
+
+supabase/
+├── functions/      # Edge Functions
+└── migrations/     # Migrations SQL
+```
+
+## Licence
+
+Propriétaire - Magellan Labs
