@@ -18,6 +18,7 @@ import SessionPreview from "./pages/SessionPreview";
 import PublicProject from "./pages/PublicProject";
 import ProjectDashboard from "./pages/ProjectDashboard";
 import ScrollToTop from "./components/ScrollToTop";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 import { useThemeStore } from "./stores/themeStore";
 import { useEffect } from "react";
@@ -41,11 +42,11 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/builder" element={<AIBuilder />} />
-        <Route path="/builder/:sessionId" element={<BuilderSession />} />
-        <Route path="/preview/:sessionId" element={<SessionPreview />} />
-        <Route path="/project/:projectId" element={<ProjectDashboard />} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/builder" element={<ProtectedRoute><AIBuilder /></ProtectedRoute>} />
+        <Route path="/builder/:sessionId" element={<ProtectedRoute><BuilderSession /></ProtectedRoute>} />
+        <Route path="/preview/:sessionId" element={<ProtectedRoute><SessionPreview /></ProtectedRoute>} />
+        <Route path="/project/:projectId" element={<ProtectedRoute><ProjectDashboard /></ProtectedRoute>} />
         <Route path="/p/:subdomain" element={<PublicProject />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />

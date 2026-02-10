@@ -17,10 +17,6 @@ export default function Dashboard() {
     searchParams.get('projectId')
   );
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
   // Synchroniser l'URL avec l'état
   useEffect(() => {
     const params: Record<string, string> = { section: currentSection };
@@ -29,14 +25,6 @@ export default function Dashboard() {
     }
     setSearchParams(params);
   }, [currentSection, selectedProjectId, setSearchParams]);
-
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate("/auth");
-      return;
-    }
-  };
 
   const handleSectionChange = (section: SettingsSection) => {
     setCurrentSection(section);
