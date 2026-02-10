@@ -269,12 +269,13 @@ export class VibeSDKClient {
       .replace('https://', 'wss://')
       .replace('http://', 'ws://');
 
-    const url = `${wsUrl}/api/v1/sessions/${sessionId}/ws?token=${this.config.apiKey}`;
+    const url = `${wsUrl}/api/v1/sessions/${sessionId}/ws`;
 
     console.log('[VibeSDK] Connecting WebSocket');
 
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(url);
+      // Passer le token via le sous-protocole WebSocket pour éviter de l'exposer dans l'URL
+      this.ws = new WebSocket(url, [`bearer-${this.config.apiKey}`]);
 
       this.ws.onopen = () => {
         console.log('[VibeSDK] WebSocket connected');

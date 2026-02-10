@@ -36,12 +36,18 @@ const AIBuilder = () => {
       return;
     }
 
+    if (!user) {
+      sonnerToast.error("Vous devez être connecté pour créer un projet");
+      navigate('/auth');
+      return;
+    }
+
     try {
       // Créer une nouvelle session avec les images attachées
       const { data: sessionData, error: sessionError } = await supabase
         .from('build_sessions')
         .insert({
-          user_id: user?.id || null,
+          user_id: user.id,
           messages: [{ 
             role: 'user', 
             content: inputValue,

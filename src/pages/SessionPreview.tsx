@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function SessionPreview() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const navigate = useNavigate();
   const [html, setHtml] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
@@ -12,10 +13,18 @@ export default function SessionPreview() {
       if (!sessionId) return;
 
       try {
+        // Vérifier que l'utilisateur est propriétaire de la session
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        if (!authSession) {
+          navigate('/auth');
+          return;
+        }
+
         const { data, error } = await supabase
           .from('build_sessions')
           .select('project_files, project_type')
           .eq('id', sessionId)
+          .eq('user_id', authSession.user.id)
           .single();
 
         if (error) throw error;

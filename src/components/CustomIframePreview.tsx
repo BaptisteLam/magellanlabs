@@ -411,6 +411,9 @@ export function CustomIframePreview({
   // Écouter les messages de l'iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Valider que le message vient bien de notre iframe (srcDoc = origin null)
+      if (event.source !== iframeRef.current?.contentWindow) return;
+
       // Gérer le handshake de readiness
       if (event.data.type === 'inspect-ready') {
         console.log('✅ Iframe prête - Message inspect-ready reçu');
