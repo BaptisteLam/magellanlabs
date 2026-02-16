@@ -1,15 +1,14 @@
--- Migration: Intégration v0 Platform API
--- Ajoute les tables generations et billing pour le système de crédits
+-- Migration: Intégration VibeSDK - Génération et Billing
+-- Crée les tables generations et billing pour le système de crédits
 
 -- ============= Table: generations =============
--- Historique des générations v0 liées aux sessions
+-- Historique des générations liées aux sessions
 
 CREATE TABLE IF NOT EXISTS public.generations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   session_id UUID REFERENCES public.build_sessions(id) ON DELETE SET NULL,
-  v0_chat_id TEXT,
-  v0_project_id TEXT,
+  vibesdk_session_id TEXT,
   prompt TEXT NOT NULL,
   code TEXT,
   preview_url TEXT,
@@ -27,7 +26,7 @@ CREATE TABLE IF NOT EXISTS public.generations (
 -- Index pour recherches rapides
 CREATE INDEX IF NOT EXISTS idx_generations_user_id ON public.generations(user_id);
 CREATE INDEX IF NOT EXISTS idx_generations_session_id ON public.generations(session_id);
-CREATE INDEX IF NOT EXISTS idx_generations_v0_chat_id ON public.generations(v0_chat_id);
+CREATE INDEX IF NOT EXISTS idx_generations_vibesdk_session_id ON public.generations(vibesdk_session_id);
 CREATE INDEX IF NOT EXISTS idx_generations_created_at ON public.generations(created_at DESC);
 
 -- RLS
