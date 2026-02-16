@@ -23,12 +23,30 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useThemeStore } from "./stores/themeStore";
 import { useEffect } from "react";
 import { useSubdomain } from "./hooks/useSubdomain";
+import { supabaseMisconfigured } from "./integrations/supabase/client";
 
 const queryClient = new QueryClient();
 
 function AppContent() {
   const subdomain = useSubdomain();
-  
+
+  if (supabaseMisconfigured) {
+    return (
+      <div style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif', maxWidth: 600, margin: '4rem auto' }}>
+        <h1 style={{ color: '#dc2626' }}>Configuration manquante</h1>
+        <p>Les variables d'environnement Supabase ne sont pas définies :</p>
+        <ul>
+          <li><code>VITE_SUPABASE_URL</code></li>
+          <li><code>VITE_SUPABASE_PUBLISHABLE_KEY</code></li>
+        </ul>
+        <p>
+          Sur <strong>Vercel</strong> : Settings &gt; Environment Variables<br />
+          En local : créez un fichier <code>.env</code> (voir <code>.env.example</code>)
+        </p>
+      </div>
+    );
+  }
+
   // Si on est sur un sous-domaine, afficher directement le projet publié
   if (subdomain) {
     return <PublicProject />;
