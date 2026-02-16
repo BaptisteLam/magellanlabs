@@ -823,6 +823,122 @@ export type Database = {
           },
         ]
       }
+      generations: {
+        Row: {
+          id: string
+          user_id: string
+          session_id: string | null
+          v0_chat_id: string | null
+          v0_project_id: string | null
+          prompt: string
+          code: string | null
+          preview_url: string | null
+          demo_url: string | null
+          deployed_url: string | null
+          status: string
+          input_tokens: number | null
+          output_tokens: number | null
+          tokens_used: number | null
+          cost_usd: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          session_id?: string | null
+          v0_chat_id?: string | null
+          v0_project_id?: string | null
+          prompt: string
+          code?: string | null
+          preview_url?: string | null
+          demo_url?: string | null
+          deployed_url?: string | null
+          status?: string
+          input_tokens?: number | null
+          output_tokens?: number | null
+          tokens_used?: number | null
+          cost_usd?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          session_id?: string | null
+          v0_chat_id?: string | null
+          v0_project_id?: string | null
+          prompt?: string
+          code?: string | null
+          preview_url?: string | null
+          demo_url?: string | null
+          deployed_url?: string | null
+          status?: string
+          input_tokens?: number | null
+          output_tokens?: number | null
+          tokens_used?: number | null
+          cost_usd?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "build_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing: {
+        Row: {
+          id: string
+          user_id: string
+          plan: string
+          messages_used_this_month: number
+          messages_limit: number
+          total_tokens_used: number | null
+          total_cost_usd: number | null
+          billing_cycle_start: string
+          billing_cycle_end: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          plan?: string
+          messages_used_this_month?: number
+          messages_limit?: number
+          total_tokens_used?: number | null
+          total_cost_usd?: number | null
+          billing_cycle_start?: string
+          billing_cycle_end?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          plan?: string
+          messages_used_this_month?: number
+          messages_limit?: number
+          total_tokens_used?: number | null
+          total_cost_usd?: number | null
+          billing_cycle_start?: string
+          billing_cycle_end?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       widget_data: {
         Row: {
           created_at: string | null
@@ -874,6 +990,26 @@ export type Database = {
       increment_view_count: {
         Args: { project_subdomain: string }
         Returns: undefined
+      }
+      check_user_credits: {
+        Args: { p_user_id: string }
+        Returns: {
+          messages_used: number
+          messages_limit: number
+          remaining: number
+          plan: string
+          can_send: boolean
+          cycle_reset: string
+        }[]
+      }
+      increment_messages_used: {
+        Args: { p_user_id: string }
+        Returns: {
+          messages_used: number
+          messages_limit: number
+          plan: string
+          can_send: boolean
+        }[]
       }
     }
     Enums: {
