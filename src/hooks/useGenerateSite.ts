@@ -89,7 +89,7 @@ export function useGenerateSite() {
       if (!supabaseUrl) {
         throw new Error('VITE_SUPABASE_URL not configured');
       }
-      const url = `${supabaseUrl}/functions/v1/generate-site`;
+      const url = `${supabaseUrl}/functions/v1/v0-chat`;
 
       console.log('[useGenerateSite] Starting generation:', {
         promptLength: prompt.length,

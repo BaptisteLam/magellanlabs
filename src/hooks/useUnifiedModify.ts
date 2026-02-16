@@ -73,7 +73,6 @@ export interface UnifiedModifyParams {
   projectFiles: Record<string, string>;
   sessionId: string;
   memory?: any;
-  // P0: Historique de conversation pour contexte
   conversationHistory?: Array<{ role: string; content: string }>;
 }
 
@@ -82,7 +81,7 @@ export interface UnifiedModifyParams {
 export function useUnifiedModify() {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  
+
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutRef = useRef<number | null>(null);
 
@@ -101,59 +100,72 @@ export function useUnifiedModify() {
     params: UnifiedModifyParams,
     options: UseUnifiedModifyOptions = {}
   ): Promise<CompleteResult | null> => {
-    const { message, projectFiles, sessionId, memory, conversationHistory } = params;
-    const { 
-      onIntentMessage, 
-      onGenerationEvent, 
+    const { message, projectFiles, sessionId } = params;
+    const {
+      onIntentMessage,
+      onGenerationEvent,
       onFileModified,
-      onASTModifications, 
-      onTokens, 
+      onASTModifications,
+      onTokens,
       onError,
-      onComplete 
+      onComplete
     } = options;
 
     setIsLoading(true);
     setIsStreaming(true);
 
-    // Create abort controller
     abortControllerRef.current = new AbortController();
 
-    // Security timeout: 120 seconds
+    // Timeout: 180 seconds (v0 API can take longer)
     timeoutRef.current = window.setTimeout(() => {
-      console.warn('[useUnifiedModify] Request timeout after 120 seconds');
+      console.warn('[useUnifiedModify] Request timeout after 180 seconds');
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-      onError?.('Request timeout after 120 seconds');
-    }, 120000);
+      onError?.('Request timeout after 180 seconds');
+    }, 180000);
+
+    const startTime = Date.now();
 
     try {
-      // Get auth token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error('Not authenticated');
       }
 
-      // Build request URL
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       if (!supabaseUrl) {
         throw new Error('VITE_SUPABASE_URL not configured');
       }
-      const url = `${supabaseUrl}/functions/v1/unified-modify`;
 
-      // P0: Passer les 10 derniers messages (au lieu de 5) pour meilleur contexte multi-tours
-      const enrichedHistory = conversationHistory?.slice(-10);
+      // Récupérer le v0_chat_id de la session pour faire un follow-up
+      const { data: buildSession } = await supabase
+        .from('build_sessions')
+        .select('v0_chat_id')
+        .eq('id', sessionId)
+        .maybeSingle();
 
-      console.log('[useUnifiedModify] Starting request:', {
+      const v0ChatId = buildSession?.v0_chat_id;
+
+      // Utiliser v0-chat avec isFollowUp si on a un chatId existant
+      const url = `${supabaseUrl}/functions/v1/v0-chat`;
+
+      console.log('[useUnifiedModify] Starting v0 request:', {
         messageLength: message.length,
         fileCount: Object.keys(projectFiles).length,
         sessionId,
-        hasMemory: !!memory,
-        hasConversationHistory: !!enrichedHistory?.length,
-        conversationHistoryLength: enrichedHistory?.length || 0,
+        isFollowUp: !!v0ChatId,
+        v0ChatId,
       });
 
-      // Make request
+      // Émettre l'événement d'analyse
+      onGenerationEvent?.({
+        type: 'phase',
+        phase: 'analyze',
+        status: 'starting',
+        message: 'Analyse de la demande via v0...',
+      });
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -161,12 +173,10 @@ export function useUnifiedModify() {
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          message,
-          projectFiles,
+          prompt: message,
           sessionId,
-          memory,
-          // P0: Envoyer les 10 derniers messages de conversation pour contexte étendu
-          conversationHistory: enrichedHistory,
+          chatId: v0ChatId || undefined,
+          isFollowUp: !!v0ChatId,
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -180,7 +190,7 @@ export function useUnifiedModify() {
         throw new Error('No response body');
       }
 
-      // Parse SSE stream
+      // Parse SSE stream from v0-chat edge function
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -188,126 +198,128 @@ export function useUnifiedModify() {
 
       while (true) {
         const { done, value } = await reader.read();
-        
+
         if (done) {
           console.log('[useUnifiedModify] Stream completed');
           break;
         }
 
-        // Decode chunk and add to buffer
         buffer += decoder.decode(value, { stream: true });
-
-        // Split on double newlines to get complete events
         const events = buffer.split('\n\n');
-        
-        // Keep last incomplete event in buffer
         buffer = events.pop() || '';
 
-        // Process complete events
         for (const eventStr of events) {
           if (!eventStr.trim()) continue;
 
           const lines = eventStr.split('\n');
-          let eventName = '';
-          let eventData = '';
 
           for (const line of lines) {
-            if (line.startsWith('event: ')) {
-              eventName = line.slice(7).trim();
-            } else if (line.startsWith('data: ')) {
-              eventData = line.slice(6);
-            }
-          }
+            if (!line.startsWith('data: ')) continue;
+            const dataStr = line.slice(6);
 
-          if (!eventName || !eventData) continue;
+            try {
+              const data = JSON.parse(dataStr);
 
-          try {
-            const data = JSON.parse(eventData);
+              switch (data.type) {
+                case 'start':
+                  console.log('[useUnifiedModify] v0 chat started:', data.data);
+                  onIntentMessage?.('Modification en cours via v0 Platform...');
+                  break;
 
-            switch (eventName) {
-              case 'generation_event':
-                console.log('[useUnifiedModify] Generation event:', data);
-                onGenerationEvent?.(data as SSEGenerationEvent);
-                
-                // 🆕 Gérer les événements de fichiers modifiés
-                if (data.type === 'file_modified' && data.file) {
-                  onFileModified?.(data.file, data.description || '');
-                }
-                break;
+                case 'generation_event':
+                  console.log('[useUnifiedModify] Generation event:', data.data);
+                  onGenerationEvent?.(data.data as SSEGenerationEvent);
 
-              case 'message':
-                console.log('[useUnifiedModify] Message:', data.type, data.content);
-                // 🆕 Gérer les différents types de messages
-                if (data.type === 'intent' || data.type === 'intent_detailed') {
-                  onIntentMessage?.(data.content || data.message);
-                } else if (data.type === 'completion') {
-                  // Le message de conclusion sera dans le résultat final
-                  console.log('[useUnifiedModify] Completion message:', data.content);
-                }
-                break;
+                  if (data.data?.type === 'file_modified' && data.data?.file) {
+                    onFileModified?.(data.data.file, data.data.description || '');
+                  }
+                  if (data.data?.type === 'create' && data.data?.file) {
+                    onFileModified?.(data.data.file, data.data.message || 'Created');
+                  }
+                  break;
 
-              case 'tokens':
-                console.log('[useUnifiedModify] Tokens:', data);
-                onTokens?.(data as TokensData);
-                break;
+                case 'files':
+                  if (data.data?.files) {
+                    console.log('[useUnifiedModify] Files received:', Object.keys(data.data.files).length);
 
-              case 'complete':
-                console.log('[useUnifiedModify] Complete:', {
-                  success: data.success,
-                  modifications: data.modifications?.length,
-                  duration: data.duration,
-                  message: data.message,
-                  intentMessage: data.intentMessage,
-                  filesAffected: data.filesAffected?.length,
-                });
-                finalResult = data as CompleteResult;
-                
-                if (data.modifications && data.updatedFiles) {
-                  await onASTModifications?.(data.modifications, data.updatedFiles);
-                }
-                onComplete?.(data);
-                break;
+                    // Calculer les modifications par rapport aux fichiers existants
+                    const modifications: ASTModification[] = [];
+                    const updatedFiles = data.data.files as Record<string, string>;
 
-              case 'error':
-                console.error('[useUnifiedModify] Error event:', data);
-                onError?.(data.message || 'Unknown error');
-                break;
+                    for (const [path, content] of Object.entries(updatedFiles)) {
+                      if (!projectFiles[path]) {
+                        modifications.push({ type: 'html-change', path, changes: { created: 'true' } });
+                        onFileModified?.(path, 'Fichier créé');
+                      } else if (projectFiles[path] !== content) {
+                        modifications.push({ type: 'html-change', path, changes: { modified: 'true' } });
+                        onFileModified?.(path, 'Fichier modifié');
+                      }
+                    }
 
-              default:
-                console.log('[useUnifiedModify] Unknown event:', eventName, data);
-            }
-          } catch (parseError) {
-            console.error('[useUnifiedModify] Failed to parse event data:', parseError, eventData);
-          }
-        }
-      }
+                    // Appeler onASTModifications avec les fichiers mis à jour
+                    if (modifications.length > 0) {
+                      await onASTModifications?.(modifications, updatedFiles);
+                    }
+                  }
+                  break;
 
-      // Process any remaining buffer
-      if (buffer.trim()) {
-        const lines = buffer.split('\n');
-        let eventName = '';
-        let eventData = '';
+                case 'preview':
+                  console.log('[useUnifiedModify] Preview URL:', data.data?.url);
+                  break;
 
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            eventName = line.slice(7).trim();
-          } else if (line.startsWith('data: ')) {
-            eventData = line.slice(6);
-          }
-        }
+                case 'credits':
+                  console.log('[useUnifiedModify] Credits:', data.data);
+                  break;
 
-        if (eventName && eventData) {
-          try {
-            const data = JSON.parse(eventData);
-            if (eventName === 'complete') {
-              finalResult = data as CompleteResult;
-              if (data.modifications && data.updatedFiles) {
-                await onASTModifications?.(data.modifications, data.updatedFiles);
+                case 'complete':
+                  console.log('[useUnifiedModify] Complete:', data.data);
+
+                  const duration = Date.now() - startTime;
+                  const completedFiles = data.data?.files || {};
+
+                  // Construire les modifications
+                  const finalModifications: ASTModification[] = [];
+                  const filesAffected: FileAffected[] = [];
+
+                  for (const path of Object.keys(completedFiles)) {
+                    if (!projectFiles[path]) {
+                      finalModifications.push({ type: 'html-change', path });
+                      filesAffected.push({ path, description: 'Created', changeType: 'created' });
+                    } else if (projectFiles[path] !== completedFiles[path]) {
+                      finalModifications.push({ type: 'html-change', path });
+                      filesAffected.push({ path, description: 'Modified', changeType: 'modified' });
+                    }
+                  }
+
+                  finalResult = {
+                    success: true,
+                    modifications: finalModifications,
+                    updatedFiles: completedFiles,
+                    message: 'Modifications appliquées via v0 Platform',
+                    intentMessage: 'Modification via v0',
+                    filesAffected,
+                    tokens: data.data?.tokens || { input: 0, output: 0, total: 0 },
+                    duration,
+                    analysis: {
+                      complexity: 'moderate',
+                      intentType: 'quick-modification',
+                      confidence: 90,
+                      explanation: 'Modified via v0 Platform API',
+                    },
+                  };
+
+                  onTokens?.(finalResult.tokens);
+                  onComplete?.(finalResult);
+                  break;
+
+                case 'error':
+                  console.error('[useUnifiedModify] Error:', data.data);
+                  onError?.(data.data?.message || 'Unknown error');
+                  break;
               }
-              onComplete?.(data);
+            } catch (parseError) {
+              console.error('[useUnifiedModify] Failed to parse event:', parseError, dataStr);
             }
-          } catch (e) {
-            console.error('[useUnifiedModify] Failed to parse final buffer:', e);
           }
         }
       }
@@ -331,12 +343,12 @@ export function useUnifiedModify() {
     } finally {
       setIsLoading(false);
       setIsStreaming(false);
-      
+
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
-      
+
       abortControllerRef.current = null;
     }
   }, []);
