@@ -116,7 +116,7 @@ export function useUnifiedModify() {
 
     abortControllerRef.current = new AbortController();
 
-    // Timeout: 180 seconds (v0 API can take longer)
+    // Timeout: 180 seconds (VibeSDK can take longer for complex builds)
     timeoutRef.current = window.setTimeout(() => {
       console.warn('[useUnifiedModify] Request timeout after 180 seconds');
       if (abortControllerRef.current) {
@@ -138,24 +138,24 @@ export function useUnifiedModify() {
         throw new Error('VITE_SUPABASE_URL not configured');
       }
 
-      // Récupérer le v0_chat_id de la session pour faire un follow-up
+      // Récupérer le vibesdk_session_id de la session pour faire un follow-up
       const { data: buildSession } = await supabase
         .from('build_sessions')
-        .select('v0_chat_id')
+        .select('vibesdk_session_id')
         .eq('id', sessionId)
         .maybeSingle();
 
-      const v0ChatId = buildSession?.v0_chat_id;
+      const vibeAgentId = buildSession?.vibesdk_session_id;
 
-      // Utiliser v0-chat avec isFollowUp si on a un chatId existant
-      const url = `${supabaseUrl}/functions/v1/v0-chat`;
+      // Utiliser vibesdk-chat avec isFollowUp si on a un agentId existant
+      const url = `${supabaseUrl}/functions/v1/vibesdk-chat`;
 
-      console.log('[useUnifiedModify] Starting v0 request:', {
+      console.log('[useUnifiedModify] Starting VibeSDK request:', {
         messageLength: message.length,
         fileCount: Object.keys(projectFiles).length,
         sessionId,
-        isFollowUp: !!v0ChatId,
-        v0ChatId,
+        isFollowUp: !!vibeAgentId,
+        vibeAgentId,
       });
 
       // Émettre l'événement d'analyse
@@ -163,7 +163,7 @@ export function useUnifiedModify() {
         type: 'phase',
         phase: 'analyze',
         status: 'starting',
-        message: 'Analyse de la demande via v0...',
+        message: 'Analyse de la demande via VibeSDK...',
       });
 
       const response = await fetch(url, {
@@ -175,8 +175,8 @@ export function useUnifiedModify() {
         body: JSON.stringify({
           prompt: message,
           sessionId,
-          chatId: v0ChatId || undefined,
-          isFollowUp: !!v0ChatId,
+          agentId: vibeAgentId || undefined,
+          isFollowUp: !!vibeAgentId,
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -190,7 +190,7 @@ export function useUnifiedModify() {
         throw new Error('No response body');
       }
 
-      // Parse SSE stream from v0-chat edge function
+      // Parse SSE stream from vibesdk-chat edge function
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -222,8 +222,8 @@ export function useUnifiedModify() {
 
               switch (data.type) {
                 case 'start':
-                  console.log('[useUnifiedModify] v0 chat started:', data.data);
-                  onIntentMessage?.('Modification en cours via v0 Platform...');
+                  console.log('[useUnifiedModify] VibeSDK session started:', data.data);
+                  onIntentMessage?.('Modification en cours via VibeSDK...');
                   break;
 
                 case 'generation_event':
@@ -295,8 +295,8 @@ export function useUnifiedModify() {
                     success: true,
                     modifications: finalModifications,
                     updatedFiles: completedFiles,
-                    message: 'Modifications appliquées via v0 Platform',
-                    intentMessage: 'Modification via v0',
+                    message: 'Modifications appliquées via VibeSDK',
+                    intentMessage: 'Modification via VibeSDK',
                     filesAffected,
                     tokens: data.data?.tokens || { input: 0, output: 0, total: 0 },
                     duration,
@@ -304,7 +304,7 @@ export function useUnifiedModify() {
                       complexity: 'moderate',
                       intentType: 'quick-modification',
                       confidence: 90,
-                      explanation: 'Modified via v0 Platform API',
+                      explanation: 'Modified via Cloudflare VibeSDK',
                     },
                   };
 

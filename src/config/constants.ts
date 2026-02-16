@@ -1,6 +1,6 @@
 /**
  * Configuration et constantes pour le système de crédits et tarification
- * Basé sur l'API v0 Platform de Vercel
+ * Basé sur Cloudflare VibeSDK
  */
 
 // ============= Plans & Pricing =============
@@ -50,14 +50,13 @@ export function calculateTokenCost(inputTokens: number, outputTokens: number): n
   return inputCost + outputCost;
 }
 
-// ============= v0 API Configuration =============
+// ============= VibeSDK Configuration =============
 
-export const V0_API_CONFIG = {
-  baseUrl: 'https://api.v0.dev',
-  defaultModel: 'v0-1.5-md' as const,
-  defaultPrivacy: 'private' as const,
-  streamResponseMode: 'experimental_stream' as const,
-  syncResponseMode: 'sync' as const,
+export const VIBESDK_CONFIG = {
+  // URL de votre instance VibeSDK déployée (ou build.cloudflare.dev pour le service public)
+  baseUrl: 'https://build.cloudflare.dev',
+  defaultProjectType: 'app' as const,
+  defaultBehaviorType: 'phasic' as const,
 } as const;
 
 // ============= Rate Limits =============

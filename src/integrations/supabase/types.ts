@@ -19,19 +19,19 @@ export type Database = {
           created_at: string | null
           id: string
           ip_address: string
-          v0_chat_id: string
+          vibesdk_session_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           ip_address: string
-          v0_chat_id: string
+          vibesdk_session_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
           ip_address?: string
-          v0_chat_id?: string
+          vibesdk_session_id?: string
         }
         Relationships: []
       }
@@ -56,8 +56,7 @@ export type Database = {
           title: string | null
           updated_at: string
           user_id: string
-          v0_chat_id: string | null
-          v0_project_id: string | null
+          vibesdk_session_id: string | null
           web_analytics_site_token: string | null
           website_id: string | null
         }
@@ -81,8 +80,7 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id: string
-          v0_chat_id?: string | null
-          v0_project_id?: string | null
+          vibesdk_session_id?: string | null
           web_analytics_site_token?: string | null
           website_id?: string | null
         }
@@ -106,8 +104,7 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id?: string
-          v0_chat_id?: string | null
-          v0_project_id?: string | null
+          vibesdk_session_id?: string | null
           web_analytics_site_token?: string | null
           website_id?: string | null
         }
@@ -828,8 +825,7 @@ export type Database = {
           id: string
           user_id: string
           session_id: string | null
-          v0_chat_id: string | null
-          v0_project_id: string | null
+          vibesdk_session_id: string | null
           prompt: string
           code: string | null
           preview_url: string | null
@@ -847,8 +843,7 @@ export type Database = {
           id?: string
           user_id: string
           session_id?: string | null
-          v0_chat_id?: string | null
-          v0_project_id?: string | null
+          vibesdk_session_id?: string | null
           prompt: string
           code?: string | null
           preview_url?: string | null
@@ -866,8 +861,7 @@ export type Database = {
           id?: string
           user_id?: string
           session_id?: string | null
-          v0_chat_id?: string | null
-          v0_project_id?: string | null
+          vibesdk_session_id?: string | null
           prompt?: string
           code?: string | null
           preview_url?: string | null
@@ -976,7 +970,7 @@ export type Database = {
       }
     }
     Views: {
-      v0_usage_stats: {
+      usage_stats: {
         Row: {
           day: string | null
           total_chats: number | null

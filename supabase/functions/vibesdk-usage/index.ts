@@ -7,11 +7,11 @@ const corsHeaders = {
 };
 
 /**
- * v0-usage Edge Function
+ * vibesdk-usage Edge Function
  *
  * Retourne les informations d'utilisation et de crédits de l'utilisateur.
  *
- * GET /v0-usage
+ * GET /vibesdk-usage
  * Returns: { plan, messages_used, messages_limit, remaining, can_send, cycle_reset, total_tokens, total_cost }
  */
 serve(async (req) => {
@@ -48,7 +48,7 @@ serve(async (req) => {
       .rpc('check_user_credits', { p_user_id: user.id });
 
     if (creditsError) {
-      console.error('[v0-usage] Error checking credits:', creditsError);
+      console.error('[vibesdk-usage] Error checking credits:', creditsError);
       return new Response(
         JSON.stringify({ error: 'Failed to check credits' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -82,22 +82,6 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .gte('created_at', startOfMonth.toISOString());
 
-    // ---- Optionally fetch v0 billing info ----
-    let v0Billing = null;
-    const V0_API_KEY = Deno.env.get('V0_API_KEY');
-    if (V0_API_KEY) {
-      try {
-        const v0Response = await fetch('https://api.v0.dev/v1/rate-limits', {
-          headers: { 'Authorization': `Bearer ${V0_API_KEY}` },
-        });
-        if (v0Response.ok) {
-          v0Billing = await v0Response.json();
-        }
-      } catch (e) {
-        console.warn('[v0-usage] Could not fetch v0 billing:', e);
-      }
-    }
-
     // ---- Response ----
     return new Response(
       JSON.stringify({
@@ -113,13 +97,12 @@ serve(async (req) => {
         billing_cycle_end: billing?.billing_cycle_end || null,
         generation_count_this_month: generationCount || 0,
         has_stripe: !!billing?.stripe_customer_id,
-        v0_rate_limits: v0Billing,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('[v0-usage] Error:', error);
+    console.error('[vibesdk-usage] Error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -6,16 +6,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const V0_API_BASE = 'https://api.v0.dev';
-
 /**
- * v0-chat Edge Function
+ * vibesdk-chat Edge Function
  *
- * Crée un chat v0 avec le prompt utilisateur ou envoie un message de suivi.
+ * Crée une session VibeSDK avec le prompt utilisateur ou envoie un message de suivi.
  * Gère le streaming SSE, le suivi des crédits, et la persistence en DB.
  *
- * POST /v0-chat
- * Body: { prompt, sessionId, chatId?, projectId?, isFollowUp? }
+ * POST /vibesdk-chat
+ * Body: { prompt, sessionId, agentId?, isFollowUp? }
  */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -47,7 +45,7 @@ serve(async (req) => {
     }
 
     // ---- Parse body ----
-    const { prompt, sessionId, chatId, projectId, isFollowUp } = await req.json();
+    const { prompt, sessionId, agentId, isFollowUp } = await req.json();
 
     if (!prompt) {
       return new Response(
@@ -66,7 +64,7 @@ serve(async (req) => {
       .rpc('check_user_credits', { p_user_id: user.id });
 
     if (creditsError) {
-      console.error('[v0-chat] Error checking credits:', creditsError);
+      console.error('[vibesdk-chat] Error checking credits:', creditsError);
     }
 
     const creditInfo = credits?.[0];
@@ -83,83 +81,119 @@ serve(async (req) => {
       );
     }
 
-    // ---- v0 API Key ----
-    const V0_API_KEY = Deno.env.get('V0_API_KEY');
-    if (!V0_API_KEY) {
+    // ---- VibeSDK API Key ----
+    const VIBESDK_API_KEY = Deno.env.get('VIBESDK_API_KEY');
+    if (!VIBESDK_API_KEY) {
       return new Response(
-        JSON.stringify({ error: 'V0_API_KEY not configured' }),
+        JSON.stringify({ error: 'VIBESDK_API_KEY not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[v0-chat] User ${user.id} | Session ${sessionId} | Follow-up: ${!!isFollowUp} | Prompt: ${prompt.substring(0, 100)}...`);
+    const VIBESDK_BASE_URL = Deno.env.get('VIBESDK_BASE_URL') || 'https://build.cloudflare.dev';
 
-    // ---- Call v0 API ----
-    let v0Response: Response;
+    console.log(`[vibesdk-chat] User ${user.id} | Session ${sessionId} | Follow-up: ${!!isFollowUp} | Prompt: ${prompt.substring(0, 100)}...`);
 
-    if (isFollowUp && chatId) {
-      // Envoyer un message de suivi à un chat existant
-      v0Response = await fetch(`${V0_API_BASE}/v1/chats/${chatId}/messages`, {
+    // ---- Call VibeSDK API ----
+    let vibeResponse: Response;
+    let vibeAgentId = agentId;
+
+    if (isFollowUp && agentId) {
+      // Envoyer un message de suivi à un agent existant
+      vibeResponse = await fetch(`${VIBESDK_BASE_URL}/api/agent/${agentId}/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${V0_API_KEY}`,
+          'Authorization': `Bearer ${VIBESDK_API_KEY}`,
         },
         body: JSON.stringify({
           message: prompt,
-          responseMode: 'sync',
+          type: 'user_suggestion',
         }),
       });
     } else {
-      // Créer un nouveau chat
-      v0Response = await fetch(`${V0_API_BASE}/v1/chats`, {
+      // Créer un nouvel agent/build
+      vibeResponse = await fetch(`${VIBESDK_BASE_URL}/api/agent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${V0_API_KEY}`,
+          'Authorization': `Bearer ${VIBESDK_API_KEY}`,
         },
         body: JSON.stringify({
-          message: prompt,
-          system: 'Tu génères des sites web professionnels, modernes et responsive. Utilise HTML, CSS et JavaScript vanilla. Crée un design unique et attractif.',
-          chatPrivacy: 'private',
-          responseMode: 'sync',
-          ...(projectId ? { projectId } : {}),
-          modelConfiguration: {
-            imageGenerations: false,
-            thinking: true,
-          },
+          query: prompt,
+          projectType: 'app',
+          behaviorType: 'phasic',
         }),
       });
     }
 
-    if (!v0Response.ok) {
-      const errorText = await v0Response.text();
-      console.error('[v0-chat] v0 API error:', v0Response.status, errorText);
+    if (!vibeResponse.ok) {
+      const errorText = await vibeResponse.text();
+      console.error('[vibesdk-chat] VibeSDK API error:', vibeResponse.status, errorText);
       return new Response(
-        JSON.stringify({ error: `v0 API error: ${v0Response.status}`, details: errorText }),
-        { status: v0Response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: `VibeSDK API error: ${vibeResponse.status}`, details: errorText }),
+        { status: vibeResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const v0Data = await v0Response.json();
-    console.log('[v0-chat] v0 response received:', {
-      chatId: v0Data.id,
-      hasLatestVersion: !!v0Data.latestVersion,
-      filesCount: v0Data.latestVersion?.files?.length || 0,
-      demoUrl: v0Data.latestVersion?.demoUrl,
-      status: v0Data.latestVersion?.status,
+    const vibeData = await vibeResponse.json();
+    console.log('[vibesdk-chat] VibeSDK response received:', {
+      agentId: vibeData.agentId || vibeData.id,
+      hasFiles: !!vibeData.files,
+      previewUrl: vibeData.previewUrl,
+      status: vibeData.status,
     });
 
-    // ---- Extract files from v0 response ----
-    const v0Files = v0Data.latestVersion?.files || [];
-    const filesRecord: Record<string, string> = {};
-    for (const file of v0Files) {
-      const path = file.name.startsWith('/') ? file.name : `/${file.name}`;
-      filesRecord[path] = file.content;
+    // ---- Extract data from VibeSDK response ----
+    vibeAgentId = vibeData.agentId || vibeData.id || agentId;
+
+    // Récupérer les fichiers - VibeSDK peut retourner les fichiers directement
+    // ou on doit les récupérer via un appel séparé
+    let filesRecord: Record<string, string> = {};
+
+    if (vibeData.files) {
+      // Fichiers directement dans la réponse
+      if (Array.isArray(vibeData.files)) {
+        for (const file of vibeData.files) {
+          const path = (file.path || file.name || '').startsWith('/') ? (file.path || file.name) : `/${file.path || file.name}`;
+          filesRecord[path] = file.content;
+        }
+      } else if (typeof vibeData.files === 'object') {
+        filesRecord = vibeData.files;
+      }
     }
 
-    const demoUrl = v0Data.latestVersion?.demoUrl || null;
-    const v0ChatId = v0Data.id;
+    // Si pas de fichiers dans la réponse initiale, essayer de les récupérer
+    if (Object.keys(filesRecord).length === 0 && vibeAgentId) {
+      try {
+        // Attendre un moment pour que la génération se termine
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const filesResponse = await fetch(`${VIBESDK_BASE_URL}/api/agent/${vibeAgentId}/status`, {
+          headers: {
+            'Authorization': `Bearer ${VIBESDK_API_KEY}`,
+          },
+        });
+
+        if (filesResponse.ok) {
+          const statusData = await filesResponse.json();
+          if (statusData.files) {
+            if (Array.isArray(statusData.files)) {
+              for (const file of statusData.files) {
+                const path = (file.path || file.name || '').startsWith('/') ? (file.path || file.name) : `/${file.path || file.name}`;
+                filesRecord[path] = file.content;
+              }
+            } else if (typeof statusData.files === 'object') {
+              filesRecord = statusData.files;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[vibesdk-chat] Could not fetch files from agent status:', e);
+      }
+    }
+
+    const previewUrl = vibeData.previewUrl || null;
 
     // ---- Increment credits ----
     const { data: newCredits } = await supabaseAdmin
@@ -169,14 +203,13 @@ serve(async (req) => {
     await supabaseAdmin.from('generations').insert({
       user_id: user.id,
       session_id: sessionId || null,
-      v0_chat_id: v0ChatId,
-      v0_project_id: v0Data.projectId || null,
+      vibesdk_session_id: vibeAgentId,
       prompt,
       code: JSON.stringify(filesRecord),
-      preview_url: demoUrl,
-      demo_url: demoUrl,
+      preview_url: previewUrl,
+      demo_url: previewUrl,
       status: 'completed',
-      tokens_used: 0, // v0 API doesn't expose token counts directly
+      tokens_used: 0,
       created_at: new Date().toISOString(),
     });
 
@@ -184,16 +217,12 @@ serve(async (req) => {
     if (sessionId && Object.keys(filesRecord).length > 0) {
       const updateData: Record<string, unknown> = {
         project_files: filesRecord,
-        v0_chat_id: v0ChatId,
+        vibesdk_session_id: vibeAgentId,
         updated_at: new Date().toISOString(),
       };
 
-      if (v0Data.projectId) {
-        updateData.v0_project_id = v0Data.projectId;
-      }
-
-      // Utiliser le nom du chat v0 comme titre si pas déjà défini
-      if (v0Data.name) {
+      // Utiliser le nom retourné par VibeSDK comme titre si disponible
+      if (vibeData.name || vibeData.title) {
         const { data: currentSession } = await supabaseAdmin
           .from('build_sessions')
           .select('title')
@@ -201,7 +230,7 @@ serve(async (req) => {
           .maybeSingle();
 
         if (!currentSession?.title || currentSession.title === sessionId) {
-          updateData.title = v0Data.name;
+          updateData.title = vibeData.name || vibeData.title;
         }
       }
 
@@ -210,7 +239,7 @@ serve(async (req) => {
         .update(updateData)
         .eq('id', sessionId);
 
-      console.log('[v0-chat] Build session updated');
+      console.log('[vibesdk-chat] Build session updated');
     }
 
     // ---- Build SSE response for frontend compatibility ----
@@ -224,7 +253,7 @@ serve(async (req) => {
         };
 
         // Émettre les événements dans le format attendu par useGenerateSite
-        send('start', { sessionId, chatId: v0ChatId });
+        send('start', { sessionId, agentId: vibeAgentId });
 
         send('generation_event', {
           type: 'analyze',
@@ -234,13 +263,24 @@ serve(async (req) => {
 
         send('generation_event', {
           type: 'thought',
-          message: 'Génération du code en cours...',
+          message: 'Génération du code via VibeSDK...',
           status: 'in-progress',
         });
 
+        // Émettre les phases si disponibles
+        if (vibeData.phases && Array.isArray(vibeData.phases)) {
+          for (const phase of vibeData.phases) {
+            send('generation_event', {
+              type: 'phase',
+              phase: phase.name || phase.id,
+              status: phase.status || 'completed',
+              message: `Phase: ${phase.name || phase.id}`,
+            });
+          }
+        }
+
         // Émettre les fichiers
         if (Object.keys(filesRecord).length > 0) {
-          // Émettre un événement par fichier
           for (const filePath of Object.keys(filesRecord)) {
             send('generation_event', {
               type: 'create',
@@ -254,13 +294,13 @@ serve(async (req) => {
         }
 
         // Preview URL
-        if (demoUrl) {
-          send('preview', { url: demoUrl });
+        if (previewUrl) {
+          send('preview', { url: previewUrl });
         }
 
         // Nom du projet
-        if (v0Data.name) {
-          send('project_name', { name: v0Data.name });
+        if (vibeData.name || vibeData.title) {
+          send('project_name', { name: vibeData.name || vibeData.title });
         }
 
         // Crédits restants
@@ -276,8 +316,8 @@ serve(async (req) => {
         send('complete', {
           success: true,
           files: filesRecord,
-          chatId: v0ChatId,
-          demoUrl,
+          agentId: vibeAgentId,
+          previewUrl,
           fileCount: Object.keys(filesRecord).length,
           tokens: { input: 0, output: 0, total: 0 },
         });
@@ -296,7 +336,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('[v0-chat] Error:', error);
+    console.error('[vibesdk-chat] Error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
