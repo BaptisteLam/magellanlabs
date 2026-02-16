@@ -1,5 +1,5 @@
 /**
- * useV0Credits - Hook pour gérer les crédits et l'utilisation v0
+ * useCredits - Hook pour gérer les crédits et l'utilisation
  * Affiche les crédits restants, le plan, et vérifie les limites
  */
 
@@ -9,7 +9,7 @@ import { PLANS, type PlanId } from '@/config/constants';
 
 // ============= Types =============
 
-export interface V0UsageData {
+export interface UsageData {
   plan: PlanId;
   messagesUsed: number;
   messagesLimit: number;
@@ -24,8 +24,8 @@ export interface V0UsageData {
 
 // ============= Hook =============
 
-export function useV0Credits() {
-  const [usage, setUsage] = useState<V0UsageData | null>(null);
+export function useCredits() {
+  const [usage, setUsage] = useState<UsageData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +46,7 @@ export function useV0Credits() {
         return;
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/v0-usage`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/vibesdk-usage`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
         },
@@ -71,7 +71,7 @@ export function useV0Credits() {
         hasStripe: data.has_stripe || false,
       });
     } catch (err) {
-      console.error('[useV0Credits] Error fetching usage:', err);
+      console.error('[useCredits] Error fetching usage:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setIsLoading(false);
@@ -113,4 +113,4 @@ export function useV0Credits() {
   };
 }
 
-export default useV0Credits;
+export default useCredits;
