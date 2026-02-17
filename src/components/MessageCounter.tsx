@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
 import { MessageSquare } from 'lucide-react';
+import { PLANS } from '@/config/constants';
 
 interface MessageCounterProps {
   isDark: boolean;
@@ -10,40 +11,72 @@ interface MessageCounterProps {
 
 export function MessageCounter({ isDark, userId }: MessageCounterProps) {
   const [messagesUsed, setMessagesUsed] = useState(0);
-  const [messagesQuota] = useState(100); // 100 messages par mois fixe
+  const [messagesLimit, setMessagesLimit] = useState(PLANS.free.messagesPerMonth);
+  const [plan, setPlan] = useState<'free' | 'premium'>('free');
 
   useEffect(() => {
     if (!userId) return;
 
-    const fetchMessageData = async () => {
-      console.log('💬 MessageCounter: Récupération des messages pour userId:', userId);
-
+    const fetchBillingData = async () => {
+      // Fetch from billing table for real plan data
       const { data, error } = await supabase
-        .from('profiles')
-        .select('messages_used')
-        .eq('id', userId)
+        .from('billing')
+        .select('plan, messages_used_this_month, messages_limit')
+        .eq('user_id', userId)
         .maybeSingle();
 
       if (error) {
-        console.error('💬 MessageCounter: Erreur récupération messages:', error);
-      } else if (data) {
-        const used = (data as any).messages_used || 0;
-        console.log('💬 MessageCounter: Messages utilisés -', {
-          messages_used: used,
-          messages_quota: messagesQuota
-        });
-        setMessagesUsed(Math.min(used, messagesQuota));
-      } else {
-        console.warn('💬 MessageCounter: Aucune donnée de profil trouvée');
+        console.error('💬 MessageCounter: Erreur récupération billing:', error);
+        // Fallback to profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('messages_used')
+          .eq('id', userId)
+          .maybeSingle();
+        if (profile) {
+          setMessagesUsed((profile as any).messages_used || 0);
+        }
+        return;
+      }
+
+      if (data) {
+        const userPlan = (data as any).plan || 'free';
+        const used = (data as any).messages_used_this_month || 0;
+        const limit = (data as any).messages_limit || PLANS[userPlan as keyof typeof PLANS]?.messagesPerMonth || 5;
+
+        setPlan(userPlan as 'free' | 'premium');
+        setMessagesUsed(used);
+        setMessagesLimit(limit);
+
+        console.log('💬 MessageCounter:', { plan: userPlan, used, limit });
       }
     };
 
-    fetchMessageData();
+    fetchBillingData();
 
-    // Écouter les changements en temps réel
-    console.log('💬 MessageCounter: Abonnement aux mises à jour en temps réel');
+    // Écouter les changements en temps réel sur billing
     const channel = supabase
-      .channel('message-updates')
+      .channel('billing-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'billing',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log('💬 MessageCounter: Mise à jour billing reçue:', payload.new);
+          if (payload.new) {
+            const userPlan = (payload.new as any).plan || 'free';
+            const used = (payload.new as any).messages_used_this_month || 0;
+            const limit = (payload.new as any).messages_limit || PLANS[userPlan as keyof typeof PLANS]?.messagesPerMonth || 5;
+            setPlan(userPlan as 'free' | 'premium');
+            setMessagesUsed(used);
+            setMessagesLimit(limit);
+          }
+        }
+      )
       .on(
         'postgres_changes',
         {
@@ -53,26 +86,22 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
           filter: `id=eq.${userId}`,
         },
         (payload) => {
-          console.log('💬 MessageCounter: Mise à jour en temps réel reçue:', payload.new);
+          // Also listen to profiles for backwards compatibility
           if (payload.new) {
             const used = (payload.new as any).messages_used || 0;
-            console.log('💬 MessageCounter: Nouveaux messages utilisés -', {
-              messages_used: used
-            });
-            setMessagesUsed(Math.min(used, messagesQuota));
+            setMessagesUsed(used);
           }
         }
       )
       .subscribe();
 
     return () => {
-      console.log('💬 MessageCounter: Désinscription des mises à jour');
       supabase.removeChannel(channel);
     };
-  }, [userId, messagesQuota]);
+  }, [userId]);
 
-  const messagesRemaining = messagesQuota - messagesUsed;
-  const progressPercentage = (messagesRemaining / messagesQuota) * 100;
+  const messagesRemaining = Math.max(0, messagesLimit - messagesUsed);
+  const progressPercentage = messagesLimit > 0 ? (messagesRemaining / messagesLimit) * 100 : 0;
 
   return (
     <div
@@ -96,8 +125,8 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
         />
 
         {/* Compteur de messages - Messages restants/Total */}
-        <span className="text-xs font-medium whitespace-nowrap" style={{ color: '#ffffff', fontSize: '12px' }}>
-          {messagesRemaining}/{messagesQuota}
+        <span className="text-xs font-medium whitespace-nowrap" style={{ color: isDark ? '#ffffff' : '#1F2937', fontSize: '12px' }}>
+          {messagesRemaining}/{messagesLimit}
         </span>
       </div>
     </div>

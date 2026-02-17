@@ -21,7 +21,7 @@ export const PLANS = {
   premium: {
     id: 'premium',
     name: 'Premium',
-    price: 13,
+    price: 12.99,
     messagesPerMonth: 50,
     costPerUserPerMonth: 1.75, // ~$1.75 en tokens
     features: {
