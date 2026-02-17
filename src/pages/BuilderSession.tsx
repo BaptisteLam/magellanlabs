@@ -1548,7 +1548,8 @@ export default function BuilderSession() {
         } = await supabase.functions.invoke('chat-only', {
           body: {
             message: prompt,
-            chatHistory
+            chatHistory,
+            sessionId
           }
         });
         if (error) throw error;
