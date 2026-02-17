@@ -9,12 +9,144 @@ const corsHeaders = {
 /**
  * vibesdk-chat Edge Function
  *
- * Crée une session VibeSDK avec le prompt utilisateur ou envoie un message de suivi.
- * Gère le streaming SSE, le suivi des crédits, et la persistence en DB.
+ * Creates a VibeSDK session or sends a follow-up message.
+ * Handles JWT token exchange, polling for files, SSE streaming,
+ * credit tracking, and DB persistence.
  *
  * POST /vibesdk-chat
  * Body: { prompt, sessionId, agentId?, isFollowUp? }
  */
+
+// ---- Token cache (in-memory, resets on cold start) ----
+let cachedToken: { jwt: string; expiresAt: number } | null = null;
+
+/**
+ * Exchange the API key for a short-lived JWT.
+ * Caches the token and refreshes 60s before expiry.
+ */
+async function getVibeSDKToken(apiKey: string, baseUrl: string): Promise<string> {
+  // Return cached token if still valid (with 60s buffer)
+  if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) {
+    return cachedToken.jwt;
+  }
+
+  console.log('[vibesdk-chat] Exchanging API key for JWT...');
+
+  const exchangeResponse = await fetch(`${baseUrl}/api/auth/exchange-api-key`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+  });
+
+  if (!exchangeResponse.ok) {
+    const errorText = await exchangeResponse.text();
+    console.error('[vibesdk-chat] Token exchange failed:', exchangeResponse.status, errorText);
+    throw new Error(`VibeSDK token exchange failed (${exchangeResponse.status}): ${errorText}`);
+  }
+
+  const data = await exchangeResponse.json();
+  const jwt = data.accessToken || data.token || data.jwt;
+
+  if (!jwt) {
+    throw new Error('VibeSDK token exchange returned no token');
+  }
+
+  // Cache for 15 minutes (default JWT lifetime)
+  cachedToken = {
+    jwt,
+    expiresAt: Date.now() + 15 * 60 * 1000,
+  };
+
+  console.log('[vibesdk-chat] JWT obtained successfully');
+  return jwt;
+}
+
+/**
+ * Extract files from a VibeSDK response (handles multiple formats).
+ */
+function extractFiles(data: any): Record<string, string> {
+  const files: Record<string, string> = {};
+
+  if (!data?.files) return files;
+
+  if (Array.isArray(data.files)) {
+    for (const file of data.files) {
+      if (!file.content && !file.source) continue;
+      const rawPath = file.path || file.name || '';
+      const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+      files[path] = file.content || file.source || '';
+    }
+  } else if (typeof data.files === 'object') {
+    for (const [key, value] of Object.entries(data.files)) {
+      if (typeof value === 'string') {
+        const path = key.startsWith('/') ? key : `/${key}`;
+        files[path] = value;
+      }
+    }
+  }
+
+  return files;
+}
+
+/**
+ * Poll the VibeSDK agent status until files are available or timeout.
+ * Uses exponential backoff: 3s, 5s, 8s, 12s, 15s (up to ~60s total).
+ */
+async function pollForFiles(
+  agentId: string,
+  token: string,
+  baseUrl: string,
+  maxAttempts = 8,
+): Promise<{ files: Record<string, string>; previewUrl?: string; status?: string }> {
+  const delays = [3000, 5000, 8000, 10000, 12000, 15000, 15000, 15000];
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const delay = delays[Math.min(attempt, delays.length - 1)];
+    console.log(`[vibesdk-chat] Polling attempt ${attempt + 1}/${maxAttempts} (wait ${delay}ms)...`);
+    await new Promise(resolve => setTimeout(resolve, delay));
+
+    try {
+      const statusResponse = await fetch(`${baseUrl}/api/agent/${agentId}/status`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!statusResponse.ok) {
+        console.warn(`[vibesdk-chat] Status poll failed: ${statusResponse.status}`);
+        continue;
+      }
+
+      const statusData = await statusResponse.json();
+      console.log(`[vibesdk-chat] Poll ${attempt + 1}: status=${statusData.status}, hasFiles=${!!statusData.files}`);
+
+      const files = extractFiles(statusData);
+
+      if (Object.keys(files).length > 0) {
+        console.log(`[vibesdk-chat] Got ${Object.keys(files).length} files after ${attempt + 1} polls`);
+        return {
+          files,
+          previewUrl: statusData.previewUrl,
+          status: statusData.status,
+        };
+      }
+
+      // If generation is complete but no files, stop polling
+      if (statusData.status === 'complete' || statusData.status === 'error' || statusData.status === 'failed') {
+        console.warn(`[vibesdk-chat] Agent status is '${statusData.status}' but no files found`);
+        return { files: {}, status: statusData.status };
+      }
+    } catch (e) {
+      console.warn(`[vibesdk-chat] Poll error (attempt ${attempt + 1}):`, e);
+    }
+  }
+
+  console.warn('[vibesdk-chat] Polling exhausted without files');
+  return { files: {} };
+}
+
+// ============= Main Handler =============
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -81,7 +213,7 @@ serve(async (req) => {
       );
     }
 
-    // ---- VibeSDK API Key ----
+    // ---- VibeSDK Configuration ----
     const VIBESDK_API_KEY = Deno.env.get('VIBESDK_API_KEY');
     if (!VIBESDK_API_KEY) {
       return new Response(
@@ -94,17 +226,33 @@ serve(async (req) => {
 
     console.log(`[vibesdk-chat] User ${user.id} | Session ${sessionId} | Follow-up: ${!!isFollowUp} | Prompt: ${prompt.substring(0, 100)}...`);
 
+    // ---- Exchange API key for JWT ----
+    let vibeToken: string;
+    try {
+      vibeToken = await getVibeSDKToken(VIBESDK_API_KEY, VIBESDK_BASE_URL);
+    } catch (tokenError) {
+      console.error('[vibesdk-chat] Token exchange failed:', tokenError);
+      return new Response(
+        JSON.stringify({
+          error: 'VibeSDK authentication failed',
+          details: tokenError instanceof Error ? tokenError.message : 'Token exchange failed',
+        }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ---- Call VibeSDK API ----
     let vibeResponse: Response;
     let vibeAgentId = agentId;
 
     if (isFollowUp && agentId) {
-      // Envoyer un message de suivi à un agent existant
+      // Send follow-up message to existing agent
+      console.log(`[vibesdk-chat] Sending follow-up to agent ${agentId}`);
       vibeResponse = await fetch(`${VIBESDK_BASE_URL}/api/agent/${agentId}/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${VIBESDK_API_KEY}`,
+          'Authorization': `Bearer ${vibeToken}`,
         },
         body: JSON.stringify({
           message: prompt,
@@ -112,12 +260,13 @@ serve(async (req) => {
         }),
       });
     } else {
-      // Créer un nouvel agent/build
+      // Create new agent/build
+      console.log('[vibesdk-chat] Creating new agent');
       vibeResponse = await fetch(`${VIBESDK_BASE_URL}/api/agent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${VIBESDK_API_KEY}`,
+          'Authorization': `Bearer ${vibeToken}`,
         },
         body: JSON.stringify({
           query: prompt,
@@ -130,70 +279,73 @@ serve(async (req) => {
     if (!vibeResponse.ok) {
       const errorText = await vibeResponse.text();
       console.error('[vibesdk-chat] VibeSDK API error:', vibeResponse.status, errorText);
-      return new Response(
-        JSON.stringify({ error: `VibeSDK API error: ${vibeResponse.status}`, details: errorText }),
-        { status: vibeResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+
+      // If auth failed (token expired), invalidate cache and retry once
+      if (vibeResponse.status === 401 || vibeResponse.status === 403) {
+        cachedToken = null;
+        console.log('[vibesdk-chat] Token might be expired, retrying exchange...');
+        try {
+          vibeToken = await getVibeSDKToken(VIBESDK_API_KEY, VIBESDK_BASE_URL);
+          // Retry the original request
+          const retryUrl = isFollowUp && agentId
+            ? `${VIBESDK_BASE_URL}/api/agent/${agentId}/message`
+            : `${VIBESDK_BASE_URL}/api/agent`;
+          const retryBody = isFollowUp && agentId
+            ? JSON.stringify({ message: prompt, type: 'user_suggestion' })
+            : JSON.stringify({ query: prompt, projectType: 'app', behaviorType: 'phasic' });
+
+          vibeResponse = await fetch(retryUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${vibeToken}`,
+            },
+            body: retryBody,
+          });
+
+          if (!vibeResponse.ok) {
+            const retryError = await vibeResponse.text();
+            throw new Error(`Retry failed: ${vibeResponse.status} ${retryError}`);
+          }
+        } catch (retryError) {
+          return new Response(
+            JSON.stringify({ error: `VibeSDK API error after retry: ${vibeResponse.status}`, details: errorText }),
+            { status: vibeResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } else {
+        return new Response(
+          JSON.stringify({ error: `VibeSDK API error: ${vibeResponse.status}`, details: errorText }),
+          { status: vibeResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const vibeData = await vibeResponse.json();
-    console.log('[vibesdk-chat] VibeSDK response received:', {
+    console.log('[vibesdk-chat] VibeSDK response:', {
       agentId: vibeData.agentId || vibeData.id,
       hasFiles: !!vibeData.files,
       previewUrl: vibeData.previewUrl,
       status: vibeData.status,
+      keys: Object.keys(vibeData),
     });
 
-    // ---- Extract data from VibeSDK response ----
+    // ---- Extract agent ID ----
     vibeAgentId = vibeData.agentId || vibeData.id || agentId;
 
-    // Récupérer les fichiers - VibeSDK peut retourner les fichiers directement
-    // ou on doit les récupérer via un appel séparé
-    let filesRecord: Record<string, string> = {};
+    // ---- Extract files (direct or via polling) ----
+    let filesRecord = extractFiles(vibeData);
+    let previewUrl = vibeData.previewUrl || null;
 
-    if (vibeData.files) {
-      // Fichiers directement dans la réponse
-      if (Array.isArray(vibeData.files)) {
-        for (const file of vibeData.files) {
-          const path = (file.path || file.name || '').startsWith('/') ? (file.path || file.name) : `/${file.path || file.name}`;
-          filesRecord[path] = file.content;
-        }
-      } else if (typeof vibeData.files === 'object') {
-        filesRecord = vibeData.files;
-      }
-    }
-
-    // Si pas de fichiers dans la réponse initiale, essayer de les récupérer
+    // If no files in initial response, poll the agent status
     if (Object.keys(filesRecord).length === 0 && vibeAgentId) {
-      try {
-        // Attendre un moment pour que la génération se termine
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        const filesResponse = await fetch(`${VIBESDK_BASE_URL}/api/agent/${vibeAgentId}/status`, {
-          headers: {
-            'Authorization': `Bearer ${VIBESDK_API_KEY}`,
-          },
-        });
-
-        if (filesResponse.ok) {
-          const statusData = await filesResponse.json();
-          if (statusData.files) {
-            if (Array.isArray(statusData.files)) {
-              for (const file of statusData.files) {
-                const path = (file.path || file.name || '').startsWith('/') ? (file.path || file.name) : `/${file.path || file.name}`;
-                filesRecord[path] = file.content;
-              }
-            } else if (typeof statusData.files === 'object') {
-              filesRecord = statusData.files;
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('[vibesdk-chat] Could not fetch files from agent status:', e);
-      }
+      console.log('[vibesdk-chat] No files in initial response, starting polling...');
+      const pollResult = await pollForFiles(vibeAgentId, vibeToken, VIBESDK_BASE_URL);
+      filesRecord = pollResult.files;
+      previewUrl = pollResult.previewUrl || previewUrl;
     }
 
-    const previewUrl = vibeData.previewUrl || null;
+    console.log(`[vibesdk-chat] Final: ${Object.keys(filesRecord).length} files, previewUrl: ${previewUrl}`);
 
     // ---- Increment credits ----
     const { data: newCredits } = await supabaseAdmin
@@ -208,20 +360,23 @@ serve(async (req) => {
       code: JSON.stringify(filesRecord),
       preview_url: previewUrl,
       demo_url: previewUrl,
-      status: 'completed',
+      status: Object.keys(filesRecord).length > 0 ? 'completed' : 'pending',
       tokens_used: 0,
       created_at: new Date().toISOString(),
     });
 
     // ---- Update build session ----
-    if (sessionId && Object.keys(filesRecord).length > 0) {
+    if (sessionId) {
       const updateData: Record<string, unknown> = {
-        project_files: filesRecord,
         vibesdk_session_id: vibeAgentId,
         updated_at: new Date().toISOString(),
       };
 
-      // Utiliser le nom retourné par VibeSDK comme titre si disponible
+      if (Object.keys(filesRecord).length > 0) {
+        updateData.project_files = filesRecord;
+      }
+
+      // Use VibeSDK project name as title if available
       if (vibeData.name || vibeData.title) {
         const { data: currentSession } = await supabaseAdmin
           .from('build_sessions')
@@ -252,7 +407,7 @@ serve(async (req) => {
           } catch { /* stream closed */ }
         };
 
-        // Émettre les événements dans le format attendu par useGenerateSite
+        // Emit events in the format expected by useGenerateSite
         send('start', { sessionId, agentId: vibeAgentId });
 
         send('generation_event', {
@@ -267,7 +422,7 @@ serve(async (req) => {
           status: 'in-progress',
         });
 
-        // Émettre les phases si disponibles
+        // Emit phases if available
         if (vibeData.phases && Array.isArray(vibeData.phases)) {
           for (const phase of vibeData.phases) {
             send('generation_event', {
@@ -279,7 +434,7 @@ serve(async (req) => {
           }
         }
 
-        // Émettre les fichiers
+        // Emit files
         if (Object.keys(filesRecord).length > 0) {
           for (const filePath of Object.keys(filesRecord)) {
             send('generation_event', {
@@ -298,12 +453,12 @@ serve(async (req) => {
           send('preview', { url: previewUrl });
         }
 
-        // Nom du projet
+        // Project name
         if (vibeData.name || vibeData.title) {
           send('project_name', { name: vibeData.name || vibeData.title });
         }
 
-        // Crédits restants
+        // Remaining credits
         const creditResult = newCredits?.[0];
         send('credits', {
           messages_used: creditResult?.messages_used || 0,
@@ -312,9 +467,9 @@ serve(async (req) => {
           can_send: creditResult?.can_send ?? true,
         });
 
-        // Complétion
+        // Completion
         send('complete', {
-          success: true,
+          success: Object.keys(filesRecord).length > 0,
           files: filesRecord,
           agentId: vibeAgentId,
           previewUrl,

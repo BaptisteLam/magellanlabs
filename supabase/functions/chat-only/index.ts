@@ -74,55 +74,80 @@ Deno.serve(async (req) => {
 
     let responseText = '';
 
-    // Strategy 1: Use VibeSDK follow-up if we have an active agent
-    if (VIBESDK_API_KEY && agentId) {
+    // Helper: exchange API key for JWT (required by VibeSDK)
+    async function getVibeToken(): Promise<string | null> {
+      if (!VIBESDK_API_KEY) return null;
       try {
-        console.log('[chat-only] Routing through VibeSDK follow-up API');
-
-        const vibeResponse = await fetch(`${VIBESDK_BASE_URL}/api/agent/${agentId}/message`, {
+        const exchangeRes = await fetch(`${VIBESDK_BASE_URL}/api/auth/exchange-api-key`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${VIBESDK_API_KEY}`,
           },
-          body: JSON.stringify({
-            message: message,
-            type: 'user_suggestion',
-          }),
         });
+        if (!exchangeRes.ok) {
+          console.warn('[chat-only] Token exchange failed:', exchangeRes.status);
+          return null;
+        }
+        const data = await exchangeRes.json();
+        return data.accessToken || data.token || data.jwt || null;
+      } catch (e) {
+        console.warn('[chat-only] Token exchange error:', e);
+        return null;
+      }
+    }
 
-        if (vibeResponse.ok) {
-          const vibeData = await vibeResponse.json();
-          // VibeSDK may return response in different formats
-          responseText = vibeData.message
-            || vibeData.response
-            || vibeData.text
-            || vibeData.content
-            || '';
+    // Strategy 1: Use VibeSDK follow-up if we have an active agent
+    if (VIBESDK_API_KEY && agentId) {
+      try {
+        console.log('[chat-only] Routing through VibeSDK follow-up API');
+        const vibeToken = await getVibeToken();
 
-          // If VibeSDK returned something useful, use it
-          if (responseText && responseText.length > 20) {
-            console.log('[chat-only] VibeSDK response received:', responseText.substring(0, 100));
-          } else {
-            // If response is too short or empty, try to get status for more context
-            const statusResponse = await fetch(`${VIBESDK_BASE_URL}/api/agent/${agentId}/status`, {
-              headers: { 'Authorization': `Bearer ${VIBESDK_API_KEY}` },
-            });
+        if (vibeToken) {
+          const vibeResponse = await fetch(`${VIBESDK_BASE_URL}/api/agent/${agentId}/message`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${vibeToken}`,
+            },
+            body: JSON.stringify({
+              message: message,
+              type: 'user_suggestion',
+            }),
+          });
 
-            if (statusResponse.ok) {
-              const statusData = await statusResponse.json();
-              if (statusData.lastMessage || statusData.status) {
-                responseText = statusData.lastMessage || `Le projet est en statut: ${statusData.status}. Votre message a été envoyé à l'agent VibeSDK.`;
+          if (vibeResponse.ok) {
+            const vibeData = await vibeResponse.json();
+            responseText = vibeData.message
+              || vibeData.response
+              || vibeData.text
+              || vibeData.content
+              || '';
+
+            if (responseText && responseText.length > 20) {
+              console.log('[chat-only] VibeSDK response received:', responseText.substring(0, 100));
+            } else {
+              // Poll status for more context
+              const statusResponse = await fetch(`${VIBESDK_BASE_URL}/api/agent/${agentId}/status`, {
+                headers: { 'Authorization': `Bearer ${vibeToken}` },
+              });
+
+              if (statusResponse.ok) {
+                const statusData = await statusResponse.json();
+                if (statusData.lastMessage || statusData.status) {
+                  responseText = statusData.lastMessage || `Le projet est en statut: ${statusData.status}. Votre message a été envoyé à l'agent VibeSDK.`;
+                }
+              }
+
+              if (!responseText || responseText.length < 20) {
+                responseText = generateLocalPlan(message, chatHistory);
               }
             }
-
-            // If still nothing useful, generate a local plan
-            if (!responseText || responseText.length < 20) {
-              responseText = generateLocalPlan(message, chatHistory);
-            }
+          } else {
+            console.warn('[chat-only] VibeSDK follow-up failed:', vibeResponse.status);
+            responseText = generateLocalPlan(message, chatHistory);
           }
         } else {
-          console.warn('[chat-only] VibeSDK follow-up failed:', vibeResponse.status);
           responseText = generateLocalPlan(message, chatHistory);
         }
       } catch (vibeError) {
@@ -134,39 +159,43 @@ Deno.serve(async (req) => {
     else if (VIBESDK_API_KEY && !agentId) {
       try {
         console.log('[chat-only] Creating new VibeSDK agent for chat');
+        const vibeToken = await getVibeToken();
 
-        const vibeResponse = await fetch(`${VIBESDK_BASE_URL}/api/agent`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${VIBESDK_API_KEY}`,
-          },
-          body: JSON.stringify({
-            query: `Respond to this user question as a web development planning assistant. Give a structured plan with analysis, action steps, and recommendations. Question: ${message}`,
-            projectType: 'app',
-            behaviorType: 'phasic',
-          }),
-        });
+        if (vibeToken) {
+          const vibeResponse = await fetch(`${VIBESDK_BASE_URL}/api/agent`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${vibeToken}`,
+            },
+            body: JSON.stringify({
+              query: `Respond to this user question as a web development planning assistant. Give a structured plan with analysis, action steps, and recommendations. Question: ${message}`,
+              projectType: 'app',
+              behaviorType: 'phasic',
+            }),
+          });
 
-        if (vibeResponse.ok) {
-          const vibeData = await vibeResponse.json();
-          const newAgentId = vibeData.agentId || vibeData.id;
+          if (vibeResponse.ok) {
+            const vibeData = await vibeResponse.json();
+            const newAgentId = vibeData.agentId || vibeData.id;
 
-          // Store the new agentId in the session for future follow-ups
-          if (sessionId && newAgentId) {
-            await supabase
-              .from('build_sessions')
-              .update({ vibesdk_session_id: newAgentId })
-              .eq('id', sessionId);
-          }
+            if (sessionId && newAgentId) {
+              await supabase
+                .from('build_sessions')
+                .update({ vibesdk_session_id: newAgentId })
+                .eq('id', sessionId);
+            }
 
-          responseText = vibeData.message || vibeData.response || vibeData.text || '';
+            responseText = vibeData.message || vibeData.response || vibeData.text || '';
 
-          if (!responseText || responseText.length < 20) {
+            if (!responseText || responseText.length < 20) {
+              responseText = generateLocalPlan(message, chatHistory);
+            }
+          } else {
+            console.warn('[chat-only] VibeSDK agent creation failed:', vibeResponse.status);
             responseText = generateLocalPlan(message, chatHistory);
           }
         } else {
-          console.warn('[chat-only] VibeSDK agent creation failed:', vibeResponse.status);
           responseText = generateLocalPlan(message, chatHistory);
         }
       } catch (vibeError) {
