@@ -300,7 +300,7 @@ export function useGenerateSite() {
     const { onProgress, onFiles, onTokens, onError, onComplete, onGenerationEvent, onProjectName, onPreviewUrl } = options;
 
     setIsGenerating(true);
-    setProgress('Starting generation...');
+    setProgress('Démarrage de la génération...');
 
     onGenerationEvent?.({
       type: 'analyze',
@@ -384,7 +384,7 @@ export function useGenerateSite() {
               switch (data.type) {
                 case 'start':
                   console.log('[useGenerateSite] Generation started:', data.data);
-                  setProgress('🎨 Creating your site...');
+                  setProgress('🎨 Création de votre site...');
                   onGenerationEvent?.({
                     type: 'analyze',
                     message: 'Analyse de votre demande...',
@@ -442,7 +442,7 @@ export function useGenerateSite() {
                       console.log(`[useGenerateSite] Got ${Object.keys(files).length} files from WebSocket`);
 
                       onFiles?.(files);
-                      setProgress('✅ Files created successfully');
+                      setProgress('✅ Fichiers créés avec succès');
 
                       if (projectName) {
                         onProjectName?.(projectName);
@@ -463,7 +463,7 @@ export function useGenerateSite() {
                       });
 
                       onComplete?.(finalResult);
-                      setProgress('✨ Site ready!');
+                      setProgress('✨ Site prêt !');
 
                       // Save files to DB
                       try {
@@ -479,8 +479,8 @@ export function useGenerateSite() {
                       }
                     } else {
                       console.warn('[useGenerateSite] No files from WebSocket');
-                      onError?.('No files generated. Please try again.');
-                      setProgress('❌ No files generated');
+                      onError?.('Aucun fichier généré. Veuillez réessayer.');
+                      setProgress('❌ Aucun fichier généré');
                     }
                   } catch (wsError) {
                     if (wsError instanceof DOMException && wsError.name === 'AbortError') {
@@ -488,7 +488,7 @@ export function useGenerateSite() {
                     }
                     console.error('[useGenerateSite] WebSocket error:', wsError);
                     onError?.(`WebSocket error: ${wsError instanceof Error ? wsError.message : 'Unknown'}`);
-                    setProgress('❌ Connection failed');
+                    setProgress('❌ Connexion échouée');
                   }
                   break;
                 }
@@ -514,7 +514,7 @@ export function useGenerateSite() {
                       });
                     });
                     onFiles?.(data.data.files);
-                    setProgress('✅ Files created successfully');
+                    setProgress('✅ Fichiers créés avec succès');
                   }
                   break;
 
@@ -541,7 +541,7 @@ export function useGenerateSite() {
                     });
 
                     onComplete?.(finalResult);
-                    setProgress('✨ Site ready!');
+                    setProgress('✨ Site prêt !');
                   }
                   break;
 
@@ -564,7 +564,7 @@ export function useGenerateSite() {
                 case 'error':
                   console.error('[useGenerateSite] Error:', data.data.message);
                   onError?.(data.data.message || 'Unknown error');
-                  setProgress('❌ Generation failed');
+                  setProgress('❌ Génération échouée');
                   break;
 
                 default:

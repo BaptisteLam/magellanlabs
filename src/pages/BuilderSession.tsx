@@ -795,7 +795,7 @@ export default function BuilderSession() {
       metadata: {
         type: 'generation',
         thought_duration: 0,
-        intent_message: 'Creating your site...',
+        intent_message: 'Création de votre site...',
         generation_events: [],
         files_modified: 0,
         modified_files: [],
@@ -971,7 +971,7 @@ export default function BuilderSession() {
                 idx === prev.length - 1
                   ? {
                       ...msg,
-                      content: `Created ${fileCount} files in ${thoughtSeconds}s`,
+                      content: `${fileCount} fichiers créés en ${thoughtSeconds}s`,
                       metadata: {
                         ...msg.metadata,
                         files_created: fileCount,
@@ -1050,12 +1050,12 @@ export default function BuilderSession() {
               await supabase.from('chat_messages').insert([{
                 session_id: sessionId,
                 role: 'assistant',
-                content: `Created ${fileCount} files in ${thoughtSeconds}s`,
+                content: `${fileCount} fichiers créés en ${thoughtSeconds}s`,
                 token_count: result.tokens.total,
                 metadata: {
                   type: 'generation',
                   thought_duration: result.duration,
-                  intent_message: 'Creating your site...',
+                  intent_message: 'Création de votre site...',
                   generation_events: generationEventsRef.current,
                   files_created: fileCount,
                   new_files: Object.keys(result.files),
@@ -1180,7 +1180,7 @@ export default function BuilderSession() {
       metadata: {
         type: 'generation',
         thought_duration: 0,
-        intent_message: 'Analyzing your request...',
+        intent_message: 'Analyse de votre demande...',
         generation_events: [],
         files_modified: 0,
         modified_files: [],
@@ -1425,7 +1425,7 @@ export default function BuilderSession() {
             if (lastMsg?.metadata?.type === 'generation') {
               return prev.map((msg, idx) => idx === prev.length - 1 ? {
                 ...msg,
-                content: completeResult.message || 'Modifications applied',
+                content: completeResult.message || 'Modifications appliquées',
                 metadata: {
                   ...msg.metadata,
                   thought_duration: duration,
@@ -1455,12 +1455,12 @@ export default function BuilderSession() {
               await supabase.from('chat_messages').insert([{
                 session_id: sessionId,
                 role: 'assistant',
-                content: completeResult.message || 'Modifications applied',
+                content: completeResult.message || 'Modifications appliquées',
                 token_count: completeResult.tokens?.total || 0,
                 metadata: {
                   type: 'generation',
                   thought_duration: duration,
-                  intent_message: 'Analyzing your request...',
+                  intent_message: 'Analyse de votre demande...',
                   generation_events: generationEventsRef.current,
                   files_modified: completeResult.modifications?.length || 0,
                   modified_files: Object.keys(completeResult.updatedFiles || {}),

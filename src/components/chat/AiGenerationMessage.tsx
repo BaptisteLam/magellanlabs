@@ -169,12 +169,13 @@ export default function AiGenerationMessage({
         />
       )}
 
-      {/* 4. CollapsedAiTasks - toujours visible */}
-      {generation_events.length > 0 && (
-        <CollapsedAiTasks 
+      {/* 4. CollapsedAiTasks - visible pendant le chargement ou quand il y a des événements */}
+      {(generation_events.length > 0 || isLoading) && (
+        <CollapsedAiTasks
           events={generation_events}
           isDark={isDark}
           isLoading={isLoading}
+          startTime={generationStartTime}
           defaultCollapsed={!isLoading}
           summary={summary}
           autoExpand={isLoading}

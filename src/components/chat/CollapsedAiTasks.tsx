@@ -231,13 +231,13 @@ export function CollapsedAiTasks({
                 )}
               </div>
               <span className="flex-shrink-0 font-normal">
-                {isLoading 
-                  ? `Thinking for ${Math.floor(elapsedTime / 1000)}s...` 
-                  : hasError 
-                    ? 'Error occurred' 
-                    : editCount > 0 
-                      ? `${editCount} change${editCount > 1 ? 's' : ''} applied` 
-                      : 'Completed'}
+                {isLoading
+                  ? `Réflexion ${Math.floor(elapsedTime / 1000)}s...`
+                  : hasError
+                    ? 'Une erreur est survenue'
+                    : editCount > 0
+                      ? `${editCount} modification${editCount > 1 ? 's' : ''} appliquée${editCount > 1 ? 's' : ''}`
+                      : 'Terminé'}
               </span>
             </div>
           ) : (
@@ -260,28 +260,28 @@ export function CollapsedAiTasks({
                     <span className="flex-1">
                       {event.type === 'thought' && (
                         <>
-                          {event.duration 
-                            ? `Analyzed request (${event.duration}s)` 
+                          {event.duration
+                            ? `Analyse de la demande (${event.duration}s)`
                             : event.message}
                         </>
                       )}
                       {event.type === 'read' && (
-                        <>Reading {event.file || event.message}</>
+                        <>Lecture de {event.file || event.message}</>
                       )}
                       {event.type === 'edit' && (
-                        <>Editing {event.file || event.message}</>
+                        <>Modification de {event.file || event.message}</>
                       )}
                       {event.type === 'create' && (
-                        <>Creating {event.file || event.message}</>
+                        <>Création de {event.file || event.message}</>
                       )}
                       {event.type === 'analyze' && (
-                        <>Analyzing {event.file || event.message}</>
+                        <>Analyse de {event.file || event.message}</>
                       )}
                       {event.type === 'plan' && (
-                        <>Planning {event.message}</>
+                        <>Planification {event.message}</>
                       )}
                       {event.type === 'write' && (
-                        <>Writing {event.file || event.message}</>
+                        <>Écriture de {event.file || event.message}</>
                       )}
                       {event.type === 'error' && (
                         <span className="text-red-500">{event.message}</span>
@@ -297,7 +297,7 @@ export function CollapsedAiTasks({
                   style={{ color: isDark ? '#94a3b8' : '#64748b' }}
                 >
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Working...</span>
+                  <span>En cours...</span>
                 </div>
               )}
             </div>
@@ -321,7 +321,7 @@ export function CollapsedAiTasks({
             e.currentTarget.style.color = isDark ? '#64748b' : '#94a3b8';
           }}
         >
-          {isExpanded ? 'hide' : 'show all'}
+          {isExpanded ? 'masquer' : 'voir tout'}
         </button>
       )}
     </div>
