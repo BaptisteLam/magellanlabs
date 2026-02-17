@@ -109,6 +109,8 @@ export default function BuilderSession() {
     cloudflareUrl?: string;
     subdomain?: string;
   } | null>(null);
+  // URL de preview VibeSDK (deployed React app, utilisée pour la preview et le publish)
+  const [vibePreviewUrl, setVibePreviewUrl] = useState<string | null>(null);
 
   // Hook optimisé pour la gestion des fichiers avec cache et sync
   const {
@@ -844,6 +846,22 @@ export default function BuilderSession() {
         onProjectName: (name) => {
           console.log('📛 [BuilderSession] Project name received:', name);
           setWebsiteTitle(name);
+        },
+        onPreviewUrl: async (url) => {
+          console.log('🌐 [BuilderSession] VibeSDK preview URL received:', url);
+          setVibePreviewUrl(url);
+          // Sauvegarder l'URL de preview en base de données
+          if (sessionId) {
+            try {
+              await supabase
+                .from('build_sessions')
+                .update({ cloudflare_deployment_url: url })
+                .eq('id', sessionId);
+              console.log('✅ VibeSDK preview URL saved to DB');
+            } catch (err) {
+              console.warn('⚠️ Failed to save preview URL to DB:', err);
+            }
+          }
         },
         onProgress: (content) => {
           console.log('📝 Progress:', content.length, 'characters');
@@ -1744,11 +1762,13 @@ export default function BuilderSession() {
       sonnerToast.info("🚀 Déploiement sur Cloudflare Pages en cours...");
 
       // Appel à publish-to-cloudflare
+      // Si on a un vibePreviewUrl, on le passe pour éviter un redéploiement inutile
       const { data: result, error: publishError } = await supabase.functions.invoke('publish-to-cloudflare', {
         body: {
           sessionId,
           projectFiles,
-          siteName
+          siteName,
+          vibePreviewUrl: vibePreviewUrl || undefined,
         }
       });
 
@@ -2072,13 +2092,21 @@ export default function BuilderSession() {
             backgroundColor: isDark ? 'hsl(var(--background))' : 'hsl(var(--background))',
             borderColor: isDark ? 'hsl(var(--border))' : 'hsl(var(--border))'
           }}>
-                  {Object.keys(projectFiles).length === 0 ? <GeneratingPreview /> : <>
+                  {Object.keys(projectFiles).length === 0 && !vibePreviewUrl ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
-                      <InteractiveCodeSandboxPreview 
-                        projectFiles={projectFiles} 
+                      {vibePreviewUrl ? (
+                        <iframe
+                          src={vibePreviewUrl}
+                          title="Preview"
+                          className="w-full h-full border-0"
+                          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
+                        />
+                      ) : (
+                      <InteractiveCodeSandboxPreview
+                        projectFiles={projectFiles}
                         previewMode="mobile"
-                        inspectMode={inspectMode} 
-                        onInspectModeChange={setInspectMode} 
+                        inspectMode={inspectMode}
+                        onInspectModeChange={setInspectMode}
                         onElementModify={async (prompt, elementInfo) => {
                 const contextualPrompt = `Modifier l'élément suivant dans le code :
 
@@ -2097,12 +2125,21 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                 setInputValue(contextualPrompt);
                 setTimeout(() => handleSubmit(), 100);
               }} />
+                      )}
                     </>}
                 </div> : <>
-                  {Object.keys(projectFiles).length === 0 ? <GeneratingPreview /> : <>
+                  {Object.keys(projectFiles).length === 0 && !vibePreviewUrl ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} />
-                      <InteractiveCodeSandboxPreview 
-                        projectFiles={projectFiles} 
+                      {vibePreviewUrl ? (
+                        <iframe
+                          src={vibePreviewUrl}
+                          title="Preview"
+                          className="w-full h-full border-0"
+                          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
+                        />
+                      ) : (
+                      <InteractiveCodeSandboxPreview
+                        projectFiles={projectFiles}
                         previewMode="desktop"
                         inspectMode={inspectMode} 
                         onInspectModeChange={setInspectMode} 
@@ -2177,6 +2214,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                   sonnerToast.error('Erreur lors de la modification');
                 }
               }} />
+                      )}
                     </>}
                 </>}
             </div>

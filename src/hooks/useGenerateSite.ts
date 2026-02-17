@@ -35,6 +35,7 @@ export interface UseGenerateSiteOptions {
   onComplete?: (result: GenerateSiteResult) => void;
   onGenerationEvent?: (event: GenerationEvent) => void;
   onProjectName?: (name: string) => void;
+  onPreviewUrl?: (url: string) => void;
 }
 
 // ============= WebSocket File Collector =============
@@ -44,7 +45,8 @@ export interface UseGenerateSiteOptions {
  * Protocol:
  * - Send { type: "generate_all" } on connect (for new builds)
  * - Listen for file_generated / file_regenerated events
- * - Resolve on generation_complete event
+ * - On generation_complete, send { type: "preview" } to request deployment
+ * - Resolve on deployment_completed (with previewURL) or generation_complete (if already has previewURL)
  */
 function collectFilesViaWebSocket(
   wsUrl: string,
@@ -53,6 +55,7 @@ function collectFilesViaWebSocket(
   onFileGenerated?: (filePath: string) => void,
   onPhaseUpdate?: (message: string) => void,
   onAbort?: AbortSignal,
+  onGenerationEvent?: (event: GenerationEvent) => void,
 ): Promise<{
   files: GeneratedFiles;
   previewUrl?: string;
@@ -125,11 +128,22 @@ function collectFilesViaWebSocket(
           case 'generation_started':
             console.log(`[useGenerateSite] Generation started: ${msg.totalFiles || '?'} files`);
             onPhaseUpdate?.(`Génération de ${msg.totalFiles || 'plusieurs'} fichiers...`);
+            onGenerationEvent?.({
+              type: 'plan',
+              message: `Génération de ${msg.totalFiles || 'plusieurs'} fichiers...`,
+              status: 'in-progress',
+            });
             break;
 
           case 'file_generating':
             console.log(`[useGenerateSite] Generating: ${msg.filePath}`);
             onFileGenerated?.(msg.filePath);
+            onGenerationEvent?.({
+              type: 'write',
+              file: msg.filePath,
+              message: `Génération: ${msg.filePath}`,
+              status: 'in-progress',
+            });
             break;
 
           case 'file_generated':
@@ -140,6 +154,12 @@ function collectFilesViaWebSocket(
               files[normalizedPath] = file.fileContents;
               console.log(`[useGenerateSite] File ready: ${normalizedPath} (${file.fileContents.length} chars)`);
               onFileGenerated?.(normalizedPath);
+              onGenerationEvent?.({
+                type: 'create',
+                file: normalizedPath,
+                message: `Fichier créé: ${normalizedPath}`,
+                status: 'completed',
+              });
             }
             break;
           }
@@ -151,17 +171,52 @@ function collectFilesViaWebSocket(
           case 'generation_complete': {
             console.log(`[useGenerateSite] Generation complete! ${Object.keys(files).length} files`);
             if (msg.previewURL) previewUrl = msg.previewURL;
-            if (!resolved) {
-              resolved = true;
-              clearTimeout(timeout);
-              try { ws.close(); } catch { /* ignore */ }
-              resolve({ files, previewUrl, projectName });
+
+            if (previewUrl) {
+              // Already have a previewUrl from generation_complete, resolve immediately
+              if (!resolved) {
+                resolved = true;
+                clearTimeout(timeout);
+                try { ws.close(); } catch { /* ignore */ }
+                resolve({ files, previewUrl, projectName });
+              }
+            } else {
+              // Request preview deployment from VibeSDK to get a previewUrl
+              try {
+                ws.send(JSON.stringify({ type: 'preview' }));
+                console.log('[useGenerateSite] Sent preview request, waiting for deployment_completed...');
+                // Set a 30-second sub-timeout for the preview deployment
+                setTimeout(() => {
+                  if (!resolved) {
+                    resolved = true;
+                    clearTimeout(timeout);
+                    console.warn('[useGenerateSite] Preview deployment timeout, resolving without previewUrl');
+                    try { ws.close(); } catch { /* ignore */ }
+                    resolve({ files, previewUrl, projectName });
+                  }
+                }, 30_000);
+              } catch {
+                // If sending fails, resolve with files we have
+                if (!resolved) {
+                  resolved = true;
+                  clearTimeout(timeout);
+                  try { ws.close(); } catch { /* ignore */ }
+                  resolve({ files, previewUrl, projectName });
+                }
+              }
             }
             break;
           }
 
           case 'deployment_completed':
             if (msg.previewURL) previewUrl = msg.previewURL;
+            console.log('[useGenerateSite] Deployment completed! previewUrl:', previewUrl);
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timeout);
+              try { ws.close(); } catch { /* ignore */ }
+              resolve({ files, previewUrl, projectName });
+            }
             break;
 
           case 'error':
@@ -171,12 +226,27 @@ function collectFilesViaWebSocket(
 
           case 'phase_generating':
             onPhaseUpdate?.(`Phase: ${msg.phase?.name || msg.message || 'Planning...'}`);
+            onGenerationEvent?.({
+              type: 'plan',
+              message: msg.phase?.name || msg.message || 'Planning...',
+              status: 'in-progress',
+            });
             break;
           case 'phase_implementing':
             onPhaseUpdate?.(`Implémentation: ${msg.phase?.name || msg.message || '...'}`);
+            onGenerationEvent?.({
+              type: 'write',
+              message: msg.phase?.name || msg.message || 'Implementing...',
+              status: 'in-progress',
+            });
             break;
           case 'phase_validated':
             onPhaseUpdate?.(`Validé: ${msg.phase?.name || msg.message || '...'}`);
+            onGenerationEvent?.({
+              type: 'edit',
+              message: msg.phase?.name || msg.message || 'Validated',
+              status: 'completed',
+            });
             break;
 
           default:
@@ -227,7 +297,7 @@ export function useGenerateSite() {
     options: UseGenerateSiteOptions = {}
   ): Promise<GenerateSiteResult | null> => {
     const { prompt, sessionId } = params;
-    const { onProgress, onFiles, onTokens, onError, onComplete, onGenerationEvent, onProjectName } = options;
+    const { onProgress, onFiles, onTokens, onError, onComplete, onGenerationEvent, onProjectName, onPreviewUrl } = options;
 
     setIsGenerating(true);
     setProgress('Starting generation...');
@@ -351,23 +421,22 @@ export function useGenerateSite() {
                       ticket,
                       isFollowUp,
                       (filePath) => {
-                        // File generated callback
                         setProgress(`📄 ${filePath}`);
-                        onGenerationEvent?.({
-                          type: 'create',
-                          file: filePath,
-                          message: `Fichier créé: ${filePath}`,
-                          status: 'completed'
-                        });
                       },
                       (message) => {
-                        // Phase update callback
                         setProgress(`⚡ ${message}`);
                       },
                       abortControllerRef.current?.signal,
+                      onGenerationEvent,
                     );
 
                     const { files, previewUrl, projectName } = wsResult;
+
+                    // Notify with previewUrl if available
+                    if (previewUrl) {
+                      console.log('[useGenerateSite] Preview URL from VibeSDK:', previewUrl);
+                      onPreviewUrl?.(previewUrl);
+                    }
 
                     if (Object.keys(files).length > 0) {
                       console.log(`[useGenerateSite] Got ${Object.keys(files).length} files from WebSocket`);
@@ -398,9 +467,6 @@ export function useGenerateSite() {
 
                       // Save files to DB
                       try {
-                        const adminUrl = `${supabaseUrl}/functions/v1/vibesdk-chat`;
-                        // Files are already saved by the edge function on subsequent calls
-                        // Just update the build session
                         await supabase
                           .from('build_sessions')
                           .update({
