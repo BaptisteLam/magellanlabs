@@ -10,6 +10,7 @@ interface PreviewPanelProps {
   previewMode?: 'desktop' | 'mobile';
   onInspectModeChange?: (mode: boolean) => void;
   onElementModify?: (prompt: string, elementInfo: ElementInfo) => void;
+  previewUrl?: string;
 }
 
 export function PreviewPanel({
@@ -20,14 +21,28 @@ export function PreviewPanel({
   previewMode = 'desktop',
   onInspectModeChange = () => {},
   onElementModify,
+  previewUrl,
 }: PreviewPanelProps) {
-  // Afficher GeneratingPreview tant que la génération est en cours OU qu'aucun fichier n'est disponible
-  // La preview du site ne s'affiche qu'une fois la génération terminée ET les fichiers reçus
-  if (isGenerating || Object.keys(projectFiles).length === 0) {
+  // Afficher GeneratingPreview tant que la génération est en cours OU qu'aucun fichier/URL n'est disponible
+  if (isGenerating || (Object.keys(projectFiles).length === 0 && !previewUrl)) {
     return <GeneratingPreview />;
   }
 
-  // Preview via CodeSandbox
+  // Si on a un previewUrl VibeSDK, l'afficher directement dans un iframe
+  if (previewUrl) {
+    return (
+      <div className="w-full h-full">
+        <iframe
+          src={previewUrl}
+          title="Preview"
+          className="w-full h-full border-0"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
+        />
+      </div>
+    );
+  }
+
+  // Fallback: Preview via CodeSandbox / LocalInspectablePreview
   return (
     <InteractiveCodeSandboxPreview
       projectFiles={projectFiles}

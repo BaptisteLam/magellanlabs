@@ -199,7 +199,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { sessionId, projectFiles, siteName } = await req.json();
+    const { sessionId, projectFiles, siteName, vibePreviewUrl } = await req.json();
 
     if (!sessionId || !projectFiles) {
       return new Response(JSON.stringify({ error: 'Missing sessionId or projectFiles' }), {
@@ -229,6 +229,85 @@ serve(async (req) => {
       });
     }
 
+    // === SI vibePreviewUrl FOURNI: Utiliser l'URL VibeSDK directement ===
+    // VibeSDK déploie déjà l'app React compilée - pas besoin de re-déployer
+    if (vibePreviewUrl) {
+      console.log('🚀 Using VibeSDK preview URL directly:', vibePreviewUrl);
+
+      // Générer un subdomain unique
+      const baseSubdomain = generateSubdomain(siteName || session.title);
+      const uniqueSubdomain = await getUniqueSubdomain(supabaseAdmin, baseSubdomain, sessionId);
+      const publicUrl = `https://${uniqueSubdomain}.builtbymagellan.com`;
+
+      console.log('🌐 Subdomain:', uniqueSubdomain, '-> Public URL:', publicUrl);
+
+      // Mettre à jour ou créer l'entrée published_projects
+      const { data: existingProject } = await supabaseAdmin
+        .from('published_projects')
+        .select('*')
+        .eq('build_session_id', sessionId)
+        .maybeSingle();
+
+      if (existingProject) {
+        await supabaseAdmin
+          .from('published_projects')
+          .update({ subdomain: uniqueSubdomain, last_updated: new Date().toISOString() })
+          .eq('id', existingProject.id);
+      } else {
+        await supabaseAdmin
+          .from('published_projects')
+          .insert({ build_session_id: sessionId, subdomain: uniqueSubdomain });
+      }
+
+      // Mapper le subdomain vers l'URL VibeSDK dans le KV proxy
+      if (CLOUDFLARE_KV_NAMESPACE_ID) {
+        // Stocker directement l'URL VibeSDK dans le KV (pas juste le nom du projet Pages)
+        try {
+          const kvResponse = await fetch(
+            `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${uniqueSubdomain}`,
+            {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+                'Content-Type': 'text/plain',
+              },
+              body: vibePreviewUrl,
+            }
+          );
+          if (kvResponse.ok) {
+            console.log(`✅ KV proxy updated: ${uniqueSubdomain}.builtbymagellan.com -> ${vibePreviewUrl}`);
+          }
+        } catch (kvErr) {
+          console.warn('⚠️ Failed to update KV proxy:', kvErr);
+        }
+      }
+
+      // Mettre à jour la session
+      await supabase
+        .from('build_sessions')
+        .update({
+          cloudflare_deployment_url: vibePreviewUrl,
+          public_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', sessionId);
+
+      console.log('✅ Publication complete (via VibeSDK URL)!');
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          url: publicUrl,
+          cloudflareUrl: vibePreviewUrl,
+          subdomain: uniqueSubdomain,
+          projectName: uniqueSubdomain,
+          isAccessible: true,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // === DÉPLOIEMENT CLOUDFLARE PAGES (fallback pour fichiers statiques) ===
     console.log('📦 Preparing files for Cloudflare Pages deployment...');
     const deployFiles = prepareDeployFiles(projectFiles);
     console.log(`📁 ${Object.keys(deployFiles).length} files prepared`);
