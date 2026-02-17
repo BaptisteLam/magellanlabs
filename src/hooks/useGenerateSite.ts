@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 // ============= Types =============
@@ -73,9 +73,11 @@ function collectFilesViaWebSocket(
     const ws = new WebSocket(fullUrl);
 
     // 3-minute timeout for generation
+    let subTimeout: ReturnType<typeof setTimeout> | null = null;
     const timeout = setTimeout(() => {
       if (!resolved) {
         resolved = true;
+        if (subTimeout) clearTimeout(subTimeout);
         console.warn(`[useGenerateSite] WebSocket timeout, returning ${Object.keys(files).length} files`);
         try { ws.close(); } catch { /* ignore */ }
         resolve({ files, previewUrl, projectName });
@@ -88,6 +90,7 @@ function collectFilesViaWebSocket(
         if (!resolved) {
           resolved = true;
           clearTimeout(timeout);
+          if (subTimeout) clearTimeout(subTimeout);
           try { ws.close(); } catch { /* ignore */ }
           reject(new DOMException('Aborted', 'AbortError'));
         }
@@ -186,7 +189,7 @@ function collectFilesViaWebSocket(
                 ws.send(JSON.stringify({ type: 'preview' }));
                 console.log('[useGenerateSite] Sent preview request, waiting for deployment_completed...');
                 // Set a 30-second sub-timeout for the preview deployment
-                setTimeout(() => {
+                subTimeout = setTimeout(() => {
                   if (!resolved) {
                     resolved = true;
                     clearTimeout(timeout);
@@ -292,6 +295,16 @@ export function useGenerateSite() {
     }
   }, []);
 
+  // Cleanup: abort generation on component unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
+
   const generateSite = useCallback(async (
     params: GenerateSiteParams,
     options: UseGenerateSiteOptions = {}
@@ -300,7 +313,7 @@ export function useGenerateSite() {
     const { onProgress, onFiles, onTokens, onError, onComplete, onGenerationEvent, onProjectName, onPreviewUrl } = options;
 
     setIsGenerating(true);
-    setProgress('Starting generation...');
+    setProgress('Démarrage de la génération...');
 
     onGenerationEvent?.({
       type: 'analyze',
@@ -384,7 +397,7 @@ export function useGenerateSite() {
               switch (data.type) {
                 case 'start':
                   console.log('[useGenerateSite] Generation started:', data.data);
-                  setProgress('🎨 Creating your site...');
+                  setProgress('🎨 Création de votre site...');
                   onGenerationEvent?.({
                     type: 'analyze',
                     message: 'Analyse de votre demande...',
@@ -442,7 +455,7 @@ export function useGenerateSite() {
                       console.log(`[useGenerateSite] Got ${Object.keys(files).length} files from WebSocket`);
 
                       onFiles?.(files);
-                      setProgress('✅ Files created successfully');
+                      setProgress('✅ Fichiers créés avec succès');
 
                       if (projectName) {
                         onProjectName?.(projectName);
@@ -463,7 +476,7 @@ export function useGenerateSite() {
                       });
 
                       onComplete?.(finalResult);
-                      setProgress('✨ Site ready!');
+                      setProgress('✨ Site prêt !');
 
                       // Save files to DB
                       try {
@@ -479,8 +492,8 @@ export function useGenerateSite() {
                       }
                     } else {
                       console.warn('[useGenerateSite] No files from WebSocket');
-                      onError?.('No files generated. Please try again.');
-                      setProgress('❌ No files generated');
+                      onError?.('Aucun fichier généré. Veuillez réessayer.');
+                      setProgress('❌ Aucun fichier généré');
                     }
                   } catch (wsError) {
                     if (wsError instanceof DOMException && wsError.name === 'AbortError') {
@@ -488,7 +501,7 @@ export function useGenerateSite() {
                     }
                     console.error('[useGenerateSite] WebSocket error:', wsError);
                     onError?.(`WebSocket error: ${wsError instanceof Error ? wsError.message : 'Unknown'}`);
-                    setProgress('❌ Connection failed');
+                    setProgress('❌ Connexion échouée');
                   }
                   break;
                 }
@@ -514,7 +527,7 @@ export function useGenerateSite() {
                       });
                     });
                     onFiles?.(data.data.files);
-                    setProgress('✅ Files created successfully');
+                    setProgress('✅ Fichiers créés avec succès');
                   }
                   break;
 
@@ -541,7 +554,7 @@ export function useGenerateSite() {
                     });
 
                     onComplete?.(finalResult);
-                    setProgress('✨ Site ready!');
+                    setProgress('✨ Site prêt !');
                   }
                   break;
 
@@ -564,7 +577,7 @@ export function useGenerateSite() {
                 case 'error':
                   console.error('[useGenerateSite] Error:', data.data.message);
                   onError?.(data.data.message || 'Unknown error');
-                  setProgress('❌ Generation failed');
+                  setProgress('❌ Génération échouée');
                   break;
 
                 default:

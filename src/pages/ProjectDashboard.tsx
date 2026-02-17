@@ -91,7 +91,24 @@ export default function ProjectDashboard() {
   }
 
   if (!project) {
-    return null;
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">Projet introuvable</p>
+          <Button
+            onClick={() => navigate('/dashboard')}
+            variant="outline"
+            style={{
+              borderColor: 'rgb(3,165,192)',
+              backgroundColor: 'rgba(3,165,192,0.1)',
+              color: 'rgb(3,165,192)',
+            }}
+          >
+            Retour au tableau de bord
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -115,6 +132,7 @@ export default function ProjectDashboard() {
             variant="ghost"
             size="icon"
             className="hover:text-[#03A5C0]"
+            aria-label="Retour au tableau de bord"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>

@@ -42,6 +42,8 @@ import { VersionHistory } from '@/components/VersionHistory';
 import type { ElementInfo } from '@/types/elementInfo';
 import { IndexedDBCache } from '@/services/indexedDBCache';
 import { parseProjectFiles } from '@/lib/projectFilesParser';
+import { useCredits } from '@/hooks/useCredits';
+import { Crown } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -103,6 +105,8 @@ export default function BuilderSession() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [showPublishSuccess, setShowPublishSuccess] = useState(false);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const { usage, canDeploy, refetch: refetchCredits } = useCredits();
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [lastPublishResult, setLastPublishResult] = useState<{
     publicUrl: string;
@@ -795,7 +799,7 @@ export default function BuilderSession() {
       metadata: {
         type: 'generation',
         thought_duration: 0,
-        intent_message: 'Creating your site...',
+        intent_message: 'Création de votre site...',
         generation_events: [],
         files_modified: 0,
         modified_files: [],
@@ -971,7 +975,7 @@ export default function BuilderSession() {
                 idx === prev.length - 1
                   ? {
                       ...msg,
-                      content: `Created ${fileCount} files in ${thoughtSeconds}s`,
+                      content: `${fileCount} fichiers créés en ${thoughtSeconds}s`,
                       metadata: {
                         ...msg.metadata,
                         files_created: fileCount,
@@ -1050,12 +1054,12 @@ export default function BuilderSession() {
               await supabase.from('chat_messages').insert([{
                 session_id: sessionId,
                 role: 'assistant',
-                content: `Created ${fileCount} files in ${thoughtSeconds}s`,
+                content: `${fileCount} fichiers créés en ${thoughtSeconds}s`,
                 token_count: result.tokens.total,
                 metadata: {
                   type: 'generation',
                   thought_duration: result.duration,
-                  intent_message: 'Creating your site...',
+                  intent_message: 'Création de votre site...',
                   generation_events: generationEventsRef.current,
                   files_created: fileCount,
                   new_files: Object.keys(result.files),
@@ -1180,7 +1184,7 @@ export default function BuilderSession() {
       metadata: {
         type: 'generation',
         thought_duration: 0,
-        intent_message: 'Analyzing your request...',
+        intent_message: 'Analyse de votre demande...',
         generation_events: [],
         files_modified: 0,
         modified_files: [],
@@ -1425,7 +1429,7 @@ export default function BuilderSession() {
             if (lastMsg?.metadata?.type === 'generation') {
               return prev.map((msg, idx) => idx === prev.length - 1 ? {
                 ...msg,
-                content: completeResult.message || 'Modifications applied',
+                content: completeResult.message || 'Modifications appliquées',
                 metadata: {
                   ...msg.metadata,
                   thought_duration: duration,
@@ -1455,12 +1459,12 @@ export default function BuilderSession() {
               await supabase.from('chat_messages').insert([{
                 session_id: sessionId,
                 role: 'assistant',
-                content: completeResult.message || 'Modifications applied',
+                content: completeResult.message || 'Modifications appliquées',
                 token_count: completeResult.tokens?.total || 0,
                 metadata: {
                   type: 'generation',
                   thought_duration: duration,
-                  intent_message: 'Analyzing your request...',
+                  intent_message: 'Analyse de votre demande...',
                   generation_events: generationEventsRef.current,
                   files_modified: completeResult.modifications?.length || 0,
                   modified_files: Object.keys(completeResult.updatedFiles || {}),
@@ -1725,6 +1729,13 @@ export default function BuilderSession() {
       navigate('/auth');
       return;
     }
+
+    // Vérifier si le plan permet la publication
+    if (!canDeploy) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+
     if (!projectFiles || Object.keys(projectFiles).length === 0) {
       sonnerToast.error("Aucun contenu à publier");
       return;
@@ -1935,7 +1946,7 @@ export default function BuilderSession() {
             </Button>
           </div>
 
-          <Button onClick={toggleTheme} variant="iconOnly" size="icon" className="h-8 w-8">
+          <Button onClick={toggleTheme} variant="iconOnly" size="icon" className="h-8 w-8" aria-label={isDark ? "Passer en mode clair" : "Passer en mode sombre"}>
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
         </div>
@@ -2248,15 +2259,68 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
       </Dialog>
 
       {/* Dialog de succès de publication */}
-      <PublishSuccessDialog 
-        open={showPublishSuccess} 
-        onOpenChange={setShowPublishSuccess} 
-        publicUrl={lastPublishResult?.publicUrl || deployedUrl || ''} 
+      <PublishSuccessDialog
+        open={showPublishSuccess}
+        onOpenChange={setShowPublishSuccess}
+        publicUrl={lastPublishResult?.publicUrl || deployedUrl || ''}
         cloudflareUrl={lastPublishResult?.cloudflareUrl}
-        projectName={cloudflareProjectName || websiteTitle} 
-        sessionId={sessionId} 
-        cloudflareProjectName={cloudflareProjectName || undefined} 
+        projectName={cloudflareProjectName || websiteTitle}
+        sessionId={sessionId}
+        cloudflareProjectName={cloudflareProjectName || undefined}
       />
+
+      {/* Dialog upgrade pour publier */}
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5" style={{ color: '#03A5C0' }} />
+              Publication réservée aux abonnés Premium
+            </DialogTitle>
+            <DialogDescription>
+              La publication de votre site nécessite un abonnement Premium. Passez à l'offre Premium pour publier votre site en ligne et accéder à 50 messages par mois.
+            </DialogDescription>
+          </DialogHeader>
+          <div
+            className="rounded-xl p-4 space-y-3"
+            style={{
+              background: 'linear-gradient(135deg, rgba(3,165,192,0.1) 0%, rgba(3,165,192,0.05) 100%)',
+              border: '1px solid rgba(3,165,192,0.2)'
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-foreground">Premium</p>
+                <p className="text-sm text-muted-foreground">50 messages/mois + publication illimitée</p>
+              </div>
+              <div>
+                <span className="text-2xl font-bold text-foreground">12,99€</span>
+                <span className="text-sm text-muted-foreground">/mois</span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowUpgradeDialog(false)}
+              className="rounded-full"
+            >
+              Plus tard
+            </Button>
+            <Button
+              onClick={() => {
+                setShowUpgradeDialog(false);
+                navigate('/pricing');
+              }}
+              className="rounded-full text-white"
+              style={{ backgroundColor: '#03A5C0' }}
+            >
+              <Crown className="h-4 w-4 mr-2" />
+              Passer en Premium
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog historique des versions */}
       <VersionHistory

@@ -10,9 +10,9 @@ const PrivacyPolicy = () => {
     <>
       <SEOHead
         title="Politique de Confidentialité"
-        description="Politique de confidentialité de Trinity Studio. Découvrez comment nous collectons, utilisons et protégeons vos données personnelles."
-        keywords="politique de confidentialité, RGPD, protection des données, Trinity Studio"
-        canonicalUrl="https://trinity-studio.fr/politique-de-confidentialite"
+        description="Politique de confidentialité de Magellan. Découvrez comment nous collectons, utilisons et protégeons vos données personnelles."
+        keywords="politique de confidentialité, RGPD, protection des données, Magellan"
+        canonicalUrl="https://magellan-studio.fr/politique-de-confidentialite"
       />
       <Header />
       <main className="min-h-screen bg-background">
@@ -25,17 +25,17 @@ const PrivacyPolicy = () => {
                 <strong>Date de dernière mise à jour :</strong> 10 janvier 2025
               </p>
               <p>
-                Trinity Studio s'engage à protéger la confidentialité et la sécurité de vos données personnelles. Cette politique de confidentialité décrit comment nous collectons, utilisons et protégeons vos informations conformément au RGPD.
+                Magellan s'engage à protéger la confidentialité et la sécurité de vos données personnelles. Cette politique de confidentialité décrit comment nous collectons, utilisons et protégeons vos informations conformément au RGPD.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">1. Responsable du traitement</h2>
               <p>
-                <strong>Trinity Studio</strong><br />
+                <strong>Magellan</strong><br />
                 15 Rue de la République<br />
                 75011 Paris, France<br />
-                Email : contact@trinity-studio.fr<br />
+                Email : contact@magellan-studio.fr<br />
                 Téléphone : +33 6 78 01 57 32
               </p>
             </section>
@@ -85,7 +85,7 @@ const PrivacyPolicy = () => {
               <h2 className="text-2xl font-semibold mb-4 text-foreground">6. Destinataires des données</h2>
               <p className="mb-3">Vos données peuvent être transmises à :</p>
               <ul className="list-disc pl-6 space-y-2">
-                <li>Les membres de l'équipe Trinity Studio</li>
+                <li>Les membres de l'équipe Magellan</li>
                 <li>Nos prestataires techniques (hébergement, maintenance)</li>
                 <li>Les autorités légales sur demande justifiée</li>
               </ul>
@@ -107,7 +107,7 @@ const PrivacyPolicy = () => {
                 <li><strong>Droit de retirer votre consentement</strong> à tout moment</li>
               </ul>
               <p className="mt-4">
-                Pour exercer vos droits, contactez-nous à : <a href="mailto:contact@trinity-studio.fr" className="text-primary hover:underline">contact@trinity-studio.fr</a>
+                Pour exercer vos droits, contactez-nous à : <a href="mailto:contact@magellan-studio.fr" className="text-primary hover:underline">contact@magellan-studio.fr</a>
               </p>
               <p className="mt-2">
                 Vous avez également le droit de déposer une plainte auprès de la CNIL (Commission Nationale de l'Informatique et des Libertés).
@@ -139,7 +139,7 @@ const PrivacyPolicy = () => {
               <h2 className="text-2xl font-semibold mb-4 text-foreground">11. Contact</h2>
               <p>
                 Pour toute question concernant cette politique de confidentialité, contactez-nous :<br />
-                Email : <a href="mailto:contact@trinity-studio.fr" className="text-primary hover:underline">contact@trinity-studio.fr</a><br />
+                Email : <a href="mailto:contact@magellan-studio.fr" className="text-primary hover:underline">contact@magellan-studio.fr</a><br />
                 Téléphone : <a href="tel:+33678015732" className="text-primary hover:underline">+33 6 78 01 57 32</a>
               </p>
             </section>

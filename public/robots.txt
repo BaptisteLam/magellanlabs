@@ -14,4 +14,4 @@ User-agent: *
 Allow: /
 
 # Sitemap pour l'indexation optimale
-Sitemap: https://trinity-studio.fr/sitemap.xml
+Sitemap: https://magellan-studio.fr/sitemap.xml

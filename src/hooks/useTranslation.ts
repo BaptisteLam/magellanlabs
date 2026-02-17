@@ -55,9 +55,9 @@ const translations = {
     'services.crm.duration': '4 semaines',
 
     // About
-    'about.title': 'À Propos de Trinity Studio',
+    'about.title': 'À Propos de Magellan',
     'about.subtitle': 'Votre partenaire digital de confiance',
-    'about.description': 'Trinity Studio accompagne artisans, restaurateurs et TPE dans leur transformation digitale avec des solutions simples et innovantes.',
+    'about.description': 'Magellan accompagne artisans, restaurateurs et TPE dans leur transformation digitale avec des solutions simples et innovantes.',
     'about.team.title': 'Notre Équipe',
     'about.team.subtitle': 'Une équipe passionnée et complémentaire au service de vos projets',
     'about.team.guillaume.name': 'Guillaume',
@@ -88,7 +88,7 @@ const translations = {
 
     // About Timeline
     'about.timeline.2021.title': 'Les débuts',
-    'about.timeline.2021.description': 'Création de Trinity Studio par trois développeurs passionnés avec la mission de démocratiser le web pour les TPE.',
+    'about.timeline.2021.description': 'Création de Magellan par trois développeurs passionnés avec la mission de démocratiser le web pour les TPE.',
     'about.timeline.2022.title': 'Premiers succès',
     'about.timeline.2022.description': 'Réalisation de nos 10 premiers projets pour des artisans locaux avec un taux de satisfaction de 100%.',
     'about.timeline.2023.title': 'Expansion',
@@ -100,7 +100,7 @@ const translations = {
     'about.history.title': 'Notre Histoire',
     'about.history.subtitle': 'De la passion commune à l\'expertise reconnue',
     'about.story.title': 'Notre Histoire',
-    'about.story.content': 'Trinity Studio est née de la passion commune de trois développeurs pour créer des solutions web innovantes. Nous avons rapidement compris que les artisans, restaurateurs et petites entreprises avaient besoin d\'un accompagnement sur-mesure pour réussir leur transformation digitale. Aujourd\'hui, nous sommes fiers d\'avoir aidé plus de 50 entreprises à développer leur présence en ligne.',
+    'about.story.content': 'Magellan est née de la passion commune de trois développeurs pour créer des solutions web innovantes. Nous avons rapidement compris que les artisans, restaurateurs et petites entreprises avaient besoin d\'un accompagnement sur-mesure pour réussir leur transformation digitale. Aujourd\'hui, nous sommes fiers d\'avoir aidé plus de 50 entreprises à développer leur présence en ligne.',
 
     // About Stats
     'about.stats.title': 'Nos Chiffres',
@@ -165,10 +165,10 @@ const translations = {
     'contact.form.timelines.3months': 'Dans les 3 mois',
     'contact.form.timelines.6months': 'Dans les 6 mois',
     'contact.form.timelines.flexible': 'Flexible',
-    'contact.form.privacy': 'En envoyant ce formulaire, vous acceptez que Trinity Studio traite vos données pour vous répondre. Réponse garantie sous 24h.',
+    'contact.form.privacy': 'En envoyant ce formulaire, vous acceptez que Magellan traite vos données pour vous répondre. Réponse garantie sous 24h.',
     'contact.info.title': 'Nos coordonnées',
     'contact.info.email.title': 'Email',
-    'contact.info.email.value': 'contact@trinitystudio.fr',
+    'contact.info.email.value': 'contact@magellan-studio.fr',
     'contact.info.email.description': 'Réponse garantie sous 24h',
     'contact.info.phone.title': 'Téléphone',
     'contact.info.phone.value': '+33 6 78 01 57 32',
@@ -187,7 +187,7 @@ const translations = {
     'contact.advantages.quote.title': 'Devis détaillé',
     'contact.advantages.quote.description': 'Proposition chiffrée complète avec planning de réalisation',
     'contact.calendly.title': 'Ou réservez directement un créneau',
-    'contact.testimonial.text': 'L\'équipe de Trinity Studio a parfaitement compris nos besoins. Leur accompagnement et leur réactivité ont fait toute la différence !',
+    'contact.testimonial.text': 'L\'équipe de Magellan a parfaitement compris nos besoins. Leur accompagnement et leur réactivité ont fait toute la différence !',
     'contact.testimonial.author': 'Marie Dubois',
     'contact.testimonial.role': 'Restaurant Le Jardin',
 
@@ -349,9 +349,9 @@ const translations = {
     'services.crm.duration': '4 weeks',
 
     // About
-    'about.title': 'About Trinity Studio',
+    'about.title': 'About Magellan',
     'about.subtitle': 'Your Trusted Digital Partner',
-    'about.description': 'Trinity Studio empowers craftsmen, restaurants, and small businesses with simple, innovative digital solutions.',
+    'about.description': 'Magellan empowers craftsmen, restaurants, and small businesses with simple, innovative digital solutions.',
     'about.team.title': 'Meet Our Team',
     'about.team.subtitle': 'A passionate, complementary team dedicated to your success',
     'about.team.guillaume.name': 'Guillaume',
@@ -382,7 +382,7 @@ const translations = {
 
     // About Timeline
     'about.timeline.2021.title': 'The Beginning',
-    'about.timeline.2021.description': 'Trinity Studio founded by three passionate developers with a mission to democratize web for small businesses.',
+    'about.timeline.2021.description': 'Magellan founded by three passionate developers with a mission to democratize web for small businesses.',
     'about.timeline.2022.title': 'First Successes',
     'about.timeline.2022.description': 'Delivered our first 10 projects for local craftsmen with 100% client satisfaction.',
     'about.timeline.2023.title': 'Expansion',
@@ -394,7 +394,7 @@ const translations = {
     'about.history.title': 'Our Journey',
     'about.history.subtitle': 'From shared passion to recognized expertise',
     'about.story.title': 'Our Story',
-    'about.story.content': 'Trinity Studio was born from the shared passion of three developers creating innovative web solutions. We recognized that craftsmen, restaurants, and small businesses needed personalized support for their digital transformation. Today, we\'re proud to have helped over 50 companies establish their online presence.',
+    'about.story.content': 'Magellan was born from the shared passion of three developers creating innovative web solutions. We recognized that craftsmen, restaurants, and small businesses needed personalized support for their digital transformation. Today, we\'re proud to have helped over 50 companies establish their online presence.',
     'about.stats.title': 'By the Numbers',
     'about.stats.subtitle': 'Our clients\' trust, quantified',
     'about.stats.projects': 'Projects Delivered',
@@ -457,10 +457,10 @@ const translations = {
     'contact.form.timelines.3months': 'Within 3 Months',
     'contact.form.timelines.6months': 'Within 6 Months',
     'contact.form.timelines.flexible': 'Flexible',
-    'contact.form.privacy': 'By submitting this form, you agree to Trinity Studio processing your data. We guarantee a response within 24 hours.',
+    'contact.form.privacy': 'By submitting this form, you agree to Magellan processing your data. We guarantee a response within 24 hours.',
     'contact.info.title': 'Contact Information',
     'contact.info.email.title': 'Email',
-    'contact.info.email.value': 'contact@trinitystudio.fr',
+    'contact.info.email.value': 'contact@magellan-studio.fr',
     'contact.info.email.description': '24-hour response guarantee',
     'contact.info.phone.title': 'Phone',
     'contact.info.phone.value': '+33 6 78 01 57 32',
@@ -479,7 +479,7 @@ const translations = {
     'contact.advantages.quote.title': 'Detailed Proposal',
     'contact.advantages.quote.description': 'Comprehensive quote with project timeline',
     'contact.calendly.title': 'Or Schedule a Call',
-    'contact.testimonial.text': 'The Trinity Studio team truly understood our vision. Their support and responsiveness made all the difference!',
+    'contact.testimonial.text': 'The Magellan team truly understood our vision. Their support and responsiveness made all the difference!',
     'contact.testimonial.author': 'Marie Dubois',
     'contact.testimonial.role': 'Restaurant Le Jardin',
 

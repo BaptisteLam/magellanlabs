@@ -53,12 +53,12 @@ export default function SessionPreview() {
           } else {
             // Pour les webapps React, on ne peut pas les afficher directement
             // Afficher un message d'erreur
-            setHtml('<html><body><h1>React apps cannot be previewed directly</h1></body></html>');
+            setHtml('<html><body><h1>Les applications React ne peuvent pas être prévisualisées directement</h1></body></html>');
           }
         }
       } catch (error) {
         console.error('Error loading session:', error);
-        setHtml('<html><body><h1>Error loading session</h1></body></html>');
+        setHtml('<html><body><h1>Erreur lors du chargement de la session</h1></body></html>');
       } finally {
         setLoading(false);
       }
@@ -68,7 +68,7 @@ export default function SessionPreview() {
   }, [sessionId]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div>Chargement...</div>;
   }
 
   return (

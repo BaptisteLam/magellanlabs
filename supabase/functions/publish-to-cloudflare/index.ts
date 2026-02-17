@@ -229,6 +229,24 @@ serve(async (req) => {
       });
     }
 
+    // === Vérifier que le plan permet la publication ===
+    const { data: billing } = await supabaseAdmin
+      .from('billing')
+      .select('plan')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const userPlan = (billing as any)?.plan || 'free';
+    if (userPlan === 'free') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'La publication nécessite un abonnement Premium. Passez à l\'offre Premium pour publier votre site.',
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // === SI vibePreviewUrl FOURNI: Utiliser l'URL VibeSDK directement ===
     // VibeSDK déploie déjà l'app React compilée - pas besoin de re-déployer
     if (vibePreviewUrl) {
@@ -341,9 +359,8 @@ serve(async (req) => {
       if (!createResult.success) {
         if (createResult.errors?.[0]?.code !== 8000007) {
           console.error('❌ Failed to create Cloudflare Pages project:', createResult.errors);
-          return new Response(JSON.stringify({ 
-            error: 'Failed to create Cloudflare Pages project',
-            details: createResult.errors 
+          return new Response(JSON.stringify({
+            error: 'Erreur lors de la création du projet. Veuillez réessayer.',
           }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -390,9 +407,8 @@ serve(async (req) => {
     
     if (!deployResult.success) {
       console.error('❌ Failed to create deployment:', deployResult.errors);
-      return new Response(JSON.stringify({ 
-        error: 'Failed to create deployment',
-        details: deployResult.errors 
+      return new Response(JSON.stringify({
+        error: 'Erreur lors du déploiement. Veuillez réessayer.',
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -541,7 +557,7 @@ serve(async (req) => {
   } catch (error: any) {
     console.error('❌ publish-to-cloudflare error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ error: 'Une erreur interne est survenue lors de la publication. Veuillez réessayer.' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

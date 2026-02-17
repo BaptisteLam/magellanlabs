@@ -104,14 +104,39 @@ serve(async (req) => {
     }
 
     // ---- Parse body ----
-    const { prompt, sessionId, agentId, isFollowUp } = await req.json();
+    const { prompt: rawPrompt, sessionId, agentId, isFollowUp } = await req.json();
 
-    if (!prompt) {
+    if (!rawPrompt) {
       return new Response(
         JSON.stringify({ error: 'Prompt is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // ---- Detect language and wrap prompt with instructions ----
+    // Simple heuristic: detect French by common French words/patterns
+    const lowerPrompt = rawPrompt.toLowerCase();
+    const frenchIndicators = [
+      'je veux', 'créer', 'créé', 'faire', 'site', 'pour', 'avec', 'une', 'des',
+      'mon', 'mes', 'les', 'dans', 'est', 'sont', 'qui', 'que', 'nous', 'vous',
+      'leur', 'cette', 'votre', 'notre', 'aussi', 'très', 'bien', 'mais',
+      'agence', 'immobilière', 'restaurant', 'boutique', 'entreprise',
+      'moderne', 'élégant', 'professionnel', 'français', 'france',
+      "j'aimerais", "j'ai", "c'est", "s'il", 'merci', 'bonjour',
+      'ajouter', 'modifier', 'changer', 'mettre', 'supprimer',
+    ];
+    const frenchScore = frenchIndicators.filter(w => lowerPrompt.includes(w)).length;
+    const detectedLang = frenchScore >= 2 ? 'fr' : 'en';
+
+    const langInstruction = detectedLang === 'fr'
+      ? 'IMPORTANT: ALL text content, labels, buttons, headings, descriptions, and placeholder text in the generated website MUST be in French. The user is French-speaking.'
+      : 'Generate all text content in the same language as the user request.';
+
+    const prompt = `${langInstruction}
+IMPORTANT: Do NOT include any "Powered by Cloudflare", "Built with Cloudflare", "Made with Cloudflare" or any Cloudflare branding/attribution anywhere in the generated code or UI.
+Generate the actual website/application as described by the user. Do NOT generate a website builder or meta-application.
+
+USER REQUEST: ${rawPrompt}`;
 
     // ---- Check credits ----
     const supabaseAdmin = createClient(
@@ -183,7 +208,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${vibeToken}`,
         },
-        body: JSON.stringify({ message: prompt, type: 'user_suggestion' }),
+        body: JSON.stringify({ message: `${langInstruction}\nDo NOT include any Cloudflare branding.\n\n${rawPrompt}`, type: 'user_suggestion' }),
       });
 
       if (!msgResponse.ok) {
@@ -199,7 +224,7 @@ serve(async (req) => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${vibeToken}`,
             },
-            body: JSON.stringify({ message: prompt, type: 'user_suggestion' }),
+            body: JSON.stringify({ message: `${langInstruction}\nDo NOT include any Cloudflare branding.\n\n${rawPrompt}`, type: 'user_suggestion' }),
           });
           if (!retry.ok) {
             return new Response(
