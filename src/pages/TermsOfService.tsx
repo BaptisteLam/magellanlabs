@@ -10,9 +10,9 @@ const TermsOfService = () => {
     <>
       <SEOHead
         title="Conditions Générales de Vente"
-        description="Conditions générales de vente de Trinity Studio. Consultez nos conditions pour la création de sites web, le développement et les services SEO."
-        keywords="CGV, conditions générales, conditions de vente, Trinity Studio, agence web"
-        canonicalUrl="https://trinity-studio.fr/cgv"
+        description="Conditions générales de vente de Magellan. Consultez nos conditions pour la création de sites web, le développement et les services SEO."
+        keywords="CGV, conditions générales, conditions de vente, Magellan, agence web"
+        canonicalUrl="https://magellan-studio.fr/cgv"
       />
       <Header />
       <main className="min-h-screen bg-background">
@@ -25,18 +25,18 @@ const TermsOfService = () => {
                 <strong>Date de dernière mise à jour :</strong> 10 janvier 2025
               </p>
               <p>
-                Les présentes Conditions Générales de Vente (CGV) régissent les relations contractuelles entre Trinity Studio et ses clients pour la fourniture de services de création de sites web, développement, design et référencement.
+                Les présentes Conditions Générales de Vente (CGV) régissent les relations contractuelles entre Magellan et ses clients pour la fourniture de services de création de sites web, développement, design et référencement.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">1. Identification</h2>
               <p>
-                <strong>Trinity Studio</strong><br />
+                <strong>Magellan</strong><br />
                 Agence de création de sites web et développement digital<br />
                 15 Rue de la République<br />
                 75011 Paris, France<br />
-                Email : contact@trinity-studio.fr<br />
+                Email : contact@magellan-studio.fr<br />
                 Téléphone : +33 6 78 01 57 32
               </p>
             </section>
@@ -44,7 +44,7 @@ const TermsOfService = () => {
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">2. Objet</h2>
               <p>
-                Les présentes CGV ont pour objet de définir les conditions dans lesquelles Trinity Studio fournit ses services aux clients, notamment :
+                Les présentes CGV ont pour objet de définir les conditions dans lesquelles Magellan fournit ses services aux clients, notamment :
               </p>
               <ul className="list-disc pl-6 space-y-2 mt-3">
                 <li>Création de sites web (vitrines, e-commerce, applications web)</li>
@@ -103,7 +103,7 @@ const TermsOfService = () => {
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">7. Délais de réalisation</h2>
               <p>
-                Les délais de réalisation indiqués dans le devis sont donnés à titre indicatif et dépendent de la fourniture par le client de tous les éléments nécessaires (contenus, images, accès, etc.). Trinity Studio s'engage à respecter au mieux ces délais, mais ne saurait être tenu responsable des retards dus au client ou à des événements indépendants de sa volonté.
+                Les délais de réalisation indiqués dans le devis sont donnés à titre indicatif et dépendent de la fourniture par le client de tous les éléments nécessaires (contenus, images, accès, etc.). Magellan s'engage à respecter au mieux ces délais, mais ne saurait être tenu responsable des retards dus au client ou à des événements indépendants de sa volonté.
               </p>
             </section>
 
@@ -122,23 +122,23 @@ const TermsOfService = () => {
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">9. Propriété intellectuelle</h2>
               <p className="mb-3">
-                <strong>9.1 Création originale :</strong> Trinity Studio reste propriétaire des créations réalisées jusqu'au paiement intégral du prix convenu.
+                <strong>9.1 Création originale :</strong> Magellan reste propriétaire des créations réalisées jusqu'au paiement intégral du prix convenu.
               </p>
               <p className="mb-3">
                 <strong>9.2 Droits d'utilisation :</strong> Après paiement complet, le client dispose des droits d'utilisation du site ou de l'application pour l'usage défini dans le devis.
               </p>
               <p className="mb-3">
-                <strong>9.3 Code source :</strong> Le code source reste la propriété de Trinity Studio, sauf accord contraire spécifié dans le contrat.
+                <strong>9.3 Code source :</strong> Le code source reste la propriété de Magellan, sauf accord contraire spécifié dans le contrat.
               </p>
               <p>
-                <strong>9.4 Référence :</strong> Trinity Studio se réserve le droit de mentionner le projet réalisé dans son portfolio et ses supports de communication, sauf refus explicite du client.
+                <strong>9.4 Référence :</strong> Magellan se réserve le droit de mentionner le projet réalisé dans son portfolio et ses supports de communication, sauf refus explicite du client.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">10. Garanties</h2>
               <p className="mb-3">
-                Trinity Studio garantit que :
+                Magellan garantit que :
               </p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>Les prestations seront réalisées avec soin et professionnalisme</li>
@@ -154,31 +154,31 @@ const TermsOfService = () => {
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">11. Maintenance et hébergement</h2>
               <p>
-                Les services de maintenance et d'hébergement font l'objet de contrats séparés. En l'absence de contrat de maintenance, Trinity Studio n'est pas tenu d'assurer les mises à jour, corrections ou interventions après la période de garantie.
+                Les services de maintenance et d'hébergement font l'objet de contrats séparés. En l'absence de contrat de maintenance, Magellan n'est pas tenu d'assurer les mises à jour, corrections ou interventions après la période de garantie.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">12. Résiliation</h2>
               <p className="mb-3">
-                <strong>12.1 Par le client :</strong> Le client peut résilier le contrat à tout moment. Les sommes déjà versées restent acquises à Trinity Studio au titre des travaux réalisés.
+                <strong>12.1 Par le client :</strong> Le client peut résilier le contrat à tout moment. Les sommes déjà versées restent acquises à Magellan au titre des travaux réalisés.
               </p>
               <p>
-                <strong>12.2 Par Trinity Studio :</strong> En cas de manquement grave du client à ses obligations (notamment défaut de paiement ou non-fourniture des éléments nécessaires), Trinity Studio peut résilier le contrat après mise en demeure restée sans effet pendant 15 jours.
+                <strong>12.2 Par Magellan :</strong> En cas de manquement grave du client à ses obligations (notamment défaut de paiement ou non-fourniture des éléments nécessaires), Magellan peut résilier le contrat après mise en demeure restée sans effet pendant 15 jours.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">13. Responsabilité</h2>
               <p>
-                La responsabilité de Trinity Studio est limitée au montant des prestations facturées. Trinity Studio ne saurait être tenu responsable des dommages indirects (perte de chiffre d'affaires, perte de données, etc.). Le client est seul responsable du contenu publié sur son site.
+                La responsabilité de Magellan est limitée au montant des prestations facturées. Magellan ne saurait être tenu responsable des dommages indirects (perte de chiffre d'affaires, perte de données, etc.). Le client est seul responsable du contenu publié sur son site.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">14. Force majeure</h2>
               <p>
-                Trinity Studio ne pourra être tenu responsable de l'inexécution de ses obligations en cas de force majeure, notamment en cas de grève, panne informatique, interruption de services tiers, catastrophe naturelle ou tout événement échappant à son contrôle.
+                Magellan ne pourra être tenu responsable de l'inexécution de ses obligations en cas de force majeure, notamment en cas de grève, panne informatique, interruption de services tiers, catastrophe naturelle ou tout événement échappant à son contrôle.
               </p>
             </section>
 
@@ -199,7 +199,7 @@ const TermsOfService = () => {
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">17. Modification des CGV</h2>
               <p>
-                Trinity Studio se réserve le droit de modifier les présentes CGV à tout moment. Les conditions applicables sont celles en vigueur à la date de la commande.
+                Magellan se réserve le droit de modifier les présentes CGV à tout moment. Les conditions applicables sont celles en vigueur à la date de la commande.
               </p>
             </section>
 
@@ -207,7 +207,7 @@ const TermsOfService = () => {
               <h2 className="text-2xl font-semibold mb-4 text-foreground">18. Contact</h2>
               <p>
                 Pour toute question concernant ces CGV, contactez-nous :<br />
-                Email : <a href="mailto:contact@trinity-studio.fr" className="text-primary hover:underline">contact@trinity-studio.fr</a><br />
+                Email : <a href="mailto:contact@magellan-studio.fr" className="text-primary hover:underline">contact@magellan-studio.fr</a><br />
                 Téléphone : <a href="tel:+33678015732" className="text-primary hover:underline">+33 6 78 01 57 32</a>
               </p>
             </section>

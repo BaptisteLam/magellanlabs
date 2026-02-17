@@ -30,6 +30,7 @@ export function useSyncManager({
   const syncTimeoutRef = useRef<NodeJS.Timeout>();
   const syncInProgressRef = useRef(false);
   const queuedSyncRef = useRef(false);
+  const pendingFilesRef = useRef<Record<string, string>>({});
 
   /**
    * Synchronise les changements avec Supabase
@@ -99,17 +100,18 @@ export function useSyncManager({
       
       
       toast({
-        title: 'Sync error',
-        description: 'Changes saved locally. Will retry when online.',
+        title: 'Erreur de synchronisation',
+        description: 'Changements sauvegardés localement. Nouvelle tentative prochainement.',
         variant: 'destructive'
       });
     } finally {
       syncInProgressRef.current = false;
 
-      // Si un sync était en attente, le lancer maintenant
+      // Si un sync était en attente, le lancer avec les derniers fichiers du ref
       if (queuedSyncRef.current) {
         queuedSyncRef.current = false;
-        setTimeout(() => syncToSupabase(projectFiles, false), 500);
+        const latestFiles = pendingFilesRef.current;
+        setTimeout(() => syncToSupabase(latestFiles, false), 500);
       }
     }
   }, [sessionId, toast]);
@@ -122,6 +124,9 @@ export function useSyncManager({
     if (syncTimeoutRef.current) {
       clearTimeout(syncTimeoutRef.current);
     }
+
+    // Garder une référence aux derniers fichiers pour le re-sync
+    pendingFilesRef.current = projectFiles;
 
     // Sauvegarder immédiatement en local
     IndexedDBCache.saveProject(sessionId, projectFiles, 'synced');

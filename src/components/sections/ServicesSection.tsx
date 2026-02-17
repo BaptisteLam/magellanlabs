@@ -112,7 +112,7 @@ const ServicesSection = () => {
         <div className="bg-trinity-blue-soft rounded-3xl p-6 lg:p-8">
           <div className="text-center mb-8">
             <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-trinity-blue mb-4">
-              Pourquoi choisir Trinity Studio ?
+              Pourquoi choisir Magellan ?
             </h3>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Notre expertise et notre approche humaine font la différence dans chacun de nos projets.

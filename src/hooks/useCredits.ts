@@ -72,6 +72,35 @@ export function useCredits() {
       });
     } catch (err) {
       console.error('[useCredits] Error fetching usage:', err);
+      // Retry once after 2s on network error
+      try {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const { data: { session: retrySession } } = await supabase.auth.getSession();
+        if (retrySession?.access_token) {
+          const retryResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vibesdk-usage`, {
+            headers: { 'Authorization': `Bearer ${retrySession.access_token}` },
+          });
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json();
+            setUsage({
+              plan: (retryData.plan || 'free') as PlanId,
+              messagesUsed: retryData.messages_used || 0,
+              messagesLimit: retryData.messages_limit || 5,
+              remaining: retryData.remaining || 5,
+              canSend: retryData.can_send ?? true,
+              cycleReset: retryData.cycle_reset || null,
+              totalTokens: retryData.total_tokens || 0,
+              totalCostUsd: retryData.total_cost_usd || 0,
+              generationCount: retryData.generation_count_this_month || 0,
+              hasStripe: retryData.has_stripe || false,
+            });
+            setError(null);
+            return;
+          }
+        }
+      } catch (retryErr) {
+        console.error('[useCredits] Retry also failed:', retryErr);
+      }
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setIsLoading(false);

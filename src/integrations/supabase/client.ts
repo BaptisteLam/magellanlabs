@@ -20,7 +20,18 @@ if (supabaseMisconfigured) {
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase: SupabaseClient<Database> = supabaseMisconfigured
-  ? (null as unknown as SupabaseClient<Database>)
+  ? new Proxy({} as SupabaseClient<Database>, {
+      get(_target, prop) {
+        if (prop === 'auth') {
+          return new Proxy({}, {
+            get() {
+              return () => { throw new Error('Supabase non configuré. Vérifiez VITE_SUPABASE_URL et VITE_SUPABASE_PUBLISHABLE_KEY.'); };
+            }
+          });
+        }
+        throw new Error('Supabase non configuré. Vérifiez VITE_SUPABASE_URL et VITE_SUPABASE_PUBLISHABLE_KEY.');
+      }
+    })
   : createClient<Database>(
       SUPABASE_URL,
       SUPABASE_PUBLISHABLE_KEY,

@@ -1946,7 +1946,7 @@ export default function BuilderSession() {
             </Button>
           </div>
 
-          <Button onClick={toggleTheme} variant="iconOnly" size="icon" className="h-8 w-8">
+          <Button onClick={toggleTheme} variant="iconOnly" size="icon" className="h-8 w-8" aria-label={isDark ? "Passer en mode clair" : "Passer en mode sombre"}>
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
         </div>

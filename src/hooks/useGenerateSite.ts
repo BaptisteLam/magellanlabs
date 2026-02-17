@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 // ============= Types =============
@@ -73,9 +73,11 @@ function collectFilesViaWebSocket(
     const ws = new WebSocket(fullUrl);
 
     // 3-minute timeout for generation
+    let subTimeout: ReturnType<typeof setTimeout> | null = null;
     const timeout = setTimeout(() => {
       if (!resolved) {
         resolved = true;
+        if (subTimeout) clearTimeout(subTimeout);
         console.warn(`[useGenerateSite] WebSocket timeout, returning ${Object.keys(files).length} files`);
         try { ws.close(); } catch { /* ignore */ }
         resolve({ files, previewUrl, projectName });
@@ -88,6 +90,7 @@ function collectFilesViaWebSocket(
         if (!resolved) {
           resolved = true;
           clearTimeout(timeout);
+          if (subTimeout) clearTimeout(subTimeout);
           try { ws.close(); } catch { /* ignore */ }
           reject(new DOMException('Aborted', 'AbortError'));
         }
@@ -186,7 +189,7 @@ function collectFilesViaWebSocket(
                 ws.send(JSON.stringify({ type: 'preview' }));
                 console.log('[useGenerateSite] Sent preview request, waiting for deployment_completed...');
                 // Set a 30-second sub-timeout for the preview deployment
-                setTimeout(() => {
+                subTimeout = setTimeout(() => {
                   if (!resolved) {
                     resolved = true;
                     clearTimeout(timeout);
@@ -290,6 +293,16 @@ export function useGenerateSite() {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+  }, []);
+
+  // Cleanup: abort generation on component unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
   }, []);
 
   const generateSite = useCallback(async (

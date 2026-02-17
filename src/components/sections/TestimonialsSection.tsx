@@ -10,7 +10,7 @@ const TestimonialsSection = () => {
     {
       name: 'Marie D.',
       company: 'Restaurant Le Jardin',
-      content: 'Trinity Studio a transformé notre présence en ligne ! Notre chiffre d\'affaires a augmenté de 40% grâce à notre nouveau site.',
+      content: 'Magellan a transformé notre présence en ligne ! Notre chiffre d\'affaires a augmenté de 40% grâce à notre nouveau site.',
       rating: 5
     },
     {
@@ -46,7 +46,7 @@ const TestimonialsSection = () => {
     {
       name: 'Émilie K.',
       company: 'Fleurs & Co',
-      content: 'Service client exceptionnel et résultat au-delà de nos espérances. Trinity Studio comprend vraiment les artisans.',
+      content: 'Service client exceptionnel et résultat au-delà de nos espérances. Magellan comprend vraiment les artisans.',
       rating: 5
     },
     {

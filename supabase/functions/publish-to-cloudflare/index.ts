@@ -359,9 +359,8 @@ serve(async (req) => {
       if (!createResult.success) {
         if (createResult.errors?.[0]?.code !== 8000007) {
           console.error('❌ Failed to create Cloudflare Pages project:', createResult.errors);
-          return new Response(JSON.stringify({ 
-            error: 'Failed to create Cloudflare Pages project',
-            details: createResult.errors 
+          return new Response(JSON.stringify({
+            error: 'Erreur lors de la création du projet. Veuillez réessayer.',
           }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -408,9 +407,8 @@ serve(async (req) => {
     
     if (!deployResult.success) {
       console.error('❌ Failed to create deployment:', deployResult.errors);
-      return new Response(JSON.stringify({ 
-        error: 'Failed to create deployment',
-        details: deployResult.errors 
+      return new Response(JSON.stringify({
+        error: 'Erreur lors du déploiement. Veuillez réessayer.',
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -559,7 +557,7 @@ serve(async (req) => {
   } catch (error: any) {
     console.error('❌ publish-to-cloudflare error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ error: 'Une erreur interne est survenue lors de la publication. Veuillez réessayer.' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
