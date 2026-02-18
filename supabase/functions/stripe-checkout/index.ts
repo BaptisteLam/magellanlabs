@@ -11,6 +11,8 @@ const corsHeaders = {
  * stripe-checkout Edge Function
  *
  * Creates a Stripe Checkout Session for premium plan subscriptions.
+ * Uses Product IDs (STRIPE_PRODUCT_MONTHLY, STRIPE_PRODUCT_ANNUAL)
+ * and automatically looks up the active price for each product.
  *
  * POST /stripe-checkout
  * Body: { priceType: 'monthly' | 'annual', successUrl?: string, cancelUrl?: string }
@@ -24,19 +26,19 @@ serve(async (req) => {
   try {
     // ---- Validate Stripe config ----
     const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY');
-    const STRIPE_PRICE_MONTHLY = Deno.env.get('STRIPE_PRICE_MONTHLY');
-    const STRIPE_PRICE_ANNUAL = Deno.env.get('STRIPE_PRICE_ANNUAL');
+    const STRIPE_PRODUCT_MONTHLY = Deno.env.get('STRIPE_PRODUCT_MONTHLY');
+    const STRIPE_PRODUCT_ANNUAL = Deno.env.get('STRIPE_PRODUCT_ANNUAL');
 
     if (!STRIPE_SECRET_KEY) {
       return new Response(
-        JSON.stringify({ error: 'Stripe is not configured. Please set STRIPE_SECRET_KEY.' }),
+        JSON.stringify({ error: 'Stripe is not configured.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!STRIPE_PRICE_MONTHLY || !STRIPE_PRICE_ANNUAL) {
+    if (!STRIPE_PRODUCT_MONTHLY || !STRIPE_PRODUCT_ANNUAL) {
       return new Response(
-        JSON.stringify({ error: 'Stripe prices not configured. Please set STRIPE_PRICE_MONTHLY and STRIPE_PRICE_ANNUAL.' }),
+        JSON.stringify({ error: 'Stripe products not configured.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -79,13 +81,31 @@ serve(async (req) => {
       );
     }
 
-    const priceId = priceType === 'monthly' ? STRIPE_PRICE_MONTHLY : STRIPE_PRICE_ANNUAL;
+    const productId = priceType === 'monthly' ? STRIPE_PRODUCT_MONTHLY : STRIPE_PRODUCT_ANNUAL;
 
     // ---- Initialize Stripe ----
     const stripe = new Stripe(STRIPE_SECRET_KEY, {
       apiVersion: '2023-10-16',
       httpClient: Stripe.createFetchHttpClient(),
     });
+
+    // ---- Look up the active price for this product ----
+    const prices = await stripe.prices.list({
+      product: productId,
+      active: true,
+      limit: 1,
+    });
+
+    if (prices.data.length === 0) {
+      console.error(`❌ No active price found for product ${productId}`);
+      return new Response(
+        JSON.stringify({ error: 'No active price found for this plan.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const priceId = prices.data[0].id;
+    console.log(`💰 Using price ${priceId} for product ${productId} (${priceType})`);
 
     // ---- Check if user already has a Stripe customer ----
     const { data: billing } = await supabaseAdmin
@@ -104,11 +124,23 @@ serve(async (req) => {
       });
       customerId = customer.id;
 
-      // Save customer ID to billing table
-      await supabaseAdmin
-        .from('billing')
-        .update({ stripe_customer_id: customerId })
-        .eq('user_id', user.id);
+      // Save customer ID to billing table (upsert in case row doesn't exist)
+      if (billing) {
+        await supabaseAdmin
+          .from('billing')
+          .update({ stripe_customer_id: customerId })
+          .eq('user_id', user.id);
+      } else {
+        await supabaseAdmin
+          .from('billing')
+          .insert({
+            user_id: user.id,
+            stripe_customer_id: customerId,
+            plan: 'free',
+            messages_limit: 5,
+            messages_used_this_month: 0,
+          });
+      }
     }
 
     // ---- Check if user already has an active subscription ----
