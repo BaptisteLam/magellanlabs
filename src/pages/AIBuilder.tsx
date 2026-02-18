@@ -76,43 +76,43 @@ const AIBuilder = () => {
 
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white px-4 sm:px-0">
       {/* Grid background */}
-      <div className="absolute inset-0" 
-           style={{ 
+      <div className="absolute inset-0"
+           style={{
              backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
              backgroundSize: '80px 80px'
-           }} 
+           }}
       />
-      
+
       {/* Glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slow" 
+        <div className="absolute top-0 left-1/4 w-[400px] sm:w-[800px] h-[400px] sm:h-[800px] rounded-full blur-[100px] sm:blur-[150px] animate-pulse-slow"
              style={{ backgroundColor: 'rgba(91, 224, 229, 0.3)' }} />
-        <div className="absolute bottom-0 right-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slower" 
+        <div className="absolute bottom-0 right-1/4 w-[400px] sm:w-[800px] h-[400px] sm:h-[800px] rounded-full blur-[100px] sm:blur-[150px] animate-pulse-slower"
              style={{ backgroundColor: 'rgba(3, 165, 192, 0.3)' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[120px] animate-pulse" 
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] rounded-full blur-[80px] sm:blur-[120px] animate-pulse"
              style={{ backgroundColor: 'rgba(91, 224, 229, 0.25)' }} />
-        <div className="absolute top-1/3 right-1/3 w-[700px] h-[700px] rounded-full blur-[140px] animate-pulse-slow" 
+        <div className="absolute top-1/3 right-1/3 w-[350px] sm:w-[700px] h-[350px] sm:h-[700px] rounded-full blur-[90px] sm:blur-[140px] animate-pulse-slow"
              style={{ backgroundColor: 'rgba(3, 165, 192, 0.25)' }} />
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 w-full max-w-4xl px-4 text-center">
+      <div className="relative z-10 w-full max-w-4xl px-2 sm:px-4 text-center">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-sm mb-6"
+        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border backdrop-blur-sm mb-4 sm:mb-6"
              style={{ borderColor: 'rgba(1, 74, 173, 0.3)', backgroundColor: 'rgba(1, 74, 173, 0.1)' }}>
-          <Sparkles className="w-4 h-4" style={{ color: '#014AAD' }} />
-          <span className="text-sm font-light" style={{ color: '#014AAD' }}>Propulsé par Claude AI</span>
+          <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: '#014AAD' }} />
+          <span className="text-xs sm:text-sm font-light" style={{ color: '#014AAD' }}>Propulsé par Claude AI</span>
         </div>
 
         {/* Main title */}
-        <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 leading-tight">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-3 sm:mb-4 leading-tight">
           Crée ton site web en quelques secondes avec l'IA
         </h1>
 
         {/* Subtitle */}
-        <p className="text-lg md:text-xl text-slate-600 font-light mb-10">
+        <p className="text-sm sm:text-lg md:text-xl text-slate-600 font-light mb-6 sm:mb-10">
           Décris ton activité en une phrase... l'IA s'occupe du reste.
         </p>
 

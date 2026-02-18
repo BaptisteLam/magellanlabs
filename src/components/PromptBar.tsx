@@ -103,8 +103,8 @@ const PromptBar = ({
   };
 
   return (
-    <div 
-      className={`w-full rounded-xl p-3 border transition-colors ${modificationMode ? 'bg-card/80 backdrop-blur-sm' : ''}`}
+    <div
+      className={`w-full rounded-xl p-2 sm:p-3 border transition-colors ${modificationMode ? 'bg-card/80 backdrop-blur-sm' : ''}`}
       style={{
         backgroundColor: modificationMode ? undefined : (isDark ? 'hsl(var(--card))' : '#ffffff'),
         borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.8)',
@@ -161,14 +161,14 @@ const PromptBar = ({
             }
           }}
           placeholder={modificationMode ? "Décris les modifications à apporter..." : ""}
-          className="w-full min-h-[100px] resize-none border-0 p-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-          style={{ 
+          className="w-full min-h-[60px] sm:min-h-[100px] resize-none border-0 p-2 sm:p-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+          style={{
             fontSize: '14px',
             color: isDark ? 'hsl(var(--foreground))' : '#334155'
           }}
         />
         {!inputValue && showPlaceholderAnimation && !modificationMode && (
-          <div className="absolute top-3 left-3 right-3 pointer-events-none text-slate-400 whitespace-normal text-left" style={{ fontSize: '14px', textAlign: 'left' }}>
+          <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 pointer-events-none text-slate-400 whitespace-normal text-left" style={{ fontSize: '14px', textAlign: 'left' }}>
             <TextType
               text={[
                 "Je veux un site pour présenter mon activité d'artisan et faciliter la prise de contact.",

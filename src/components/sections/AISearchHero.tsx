@@ -193,41 +193,41 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center overflow-hidden pt-20" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff' }}>
+    <div className="relative min-h-screen flex flex-col items-center overflow-hidden pt-12 sm:pt-20" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff' }}>
       {/* Grid background */}
-      <div className="absolute inset-0" 
-           style={{ 
+      <div className="absolute inset-0"
+           style={{
              backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
              backgroundSize: '80px 80px'
-           }} 
+           }}
       />
       {/* Glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[200px] left-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slow" 
+        <div className="absolute -top-[200px] left-1/4 w-[400px] sm:w-[800px] h-[400px] sm:h-[800px] rounded-full blur-[100px] sm:blur-[150px] animate-pulse-slow"
              style={{ backgroundColor: 'rgba(91, 224, 229, 0.3)' }} />
-        <div className="absolute top-[100px] right-1/4 w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse-slower" 
+        <div className="absolute top-[100px] right-1/4 w-[400px] sm:w-[800px] h-[400px] sm:h-[800px] rounded-full blur-[100px] sm:blur-[150px] animate-pulse-slower"
              style={{ backgroundColor: 'rgba(3, 165, 192, 0.3)' }} />
-        <div className="absolute top-[50px] left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full blur-[120px] animate-pulse" 
+        <div className="absolute top-[50px] left-1/2 -translate-x-1/2 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] rounded-full blur-[80px] sm:blur-[120px] animate-pulse"
              style={{ backgroundColor: 'rgba(91, 224, 229, 0.25)' }} />
-        <div className="absolute top-0 right-1/3 w-[700px] h-[700px] rounded-full blur-[140px] animate-pulse-slow" 
+        <div className="absolute top-0 right-1/3 w-[350px] sm:w-[700px] h-[350px] sm:h-[700px] rounded-full blur-[90px] sm:blur-[140px] animate-pulse-slow"
              style={{ backgroundColor: 'rgba(3, 165, 192, 0.25)' }} />
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 w-full max-w-4xl px-4 text-center mt-16">
+      <div className="relative z-10 w-full max-w-4xl px-4 sm:px-6 text-center mt-8 sm:mt-16">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#4cc9f0] bg-transparent mb-6 leading-none cursor-pointer backdrop-blur-sm">
-          <Sparkles className="w-4 h-4 text-[#4cc9f0]" />
-          <span className="text-sm font-light text-[#4cc9f0]">Chat avec Magellan</span>
+        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full border border-[#4cc9f0] bg-transparent mb-4 sm:mb-6 leading-none cursor-pointer backdrop-blur-sm">
+          <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#4cc9f0]" />
+          <span className="text-xs sm:text-sm font-light text-[#4cc9f0]">Chat avec Magellan</span>
         </div>
 
         {/* Main title */}
-        <h1 className={`text-4xl md:text-5xl font-bold mb-4 leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+        <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
           Crée ton site web en quelques secondes avec l'IA
         </h1>
 
         {/* Subtitle */}
-        <p className={`text-lg md:text-xl font-light mb-10 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+        <p className={`text-sm sm:text-lg md:text-xl font-light mb-6 sm:mb-10 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
           Décris ton activité en une phrase... l'IA s'occupe du reste.
         </p>
 
@@ -249,17 +249,17 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       </div>
 
       {/* Templates Gallery */}
-      <div className="relative z-10 w-full max-w-7xl px-4 mt-32 mb-16">
+      <div className="relative z-10 w-full max-w-7xl px-4 sm:px-6 mt-16 sm:mt-32 mb-10 sm:mb-16">
         {/* Section Header */}
-        <div className="mb-8 text-center">
-          <h2 
-            className="text-2xl md:text-3xl font-bold mb-2"
+        <div className="mb-6 sm:mb-8 text-center">
+          <h2
+            className="text-xl sm:text-2xl md:text-3xl font-bold mb-2"
             style={{ color: isDark ? 'hsl(var(--foreground))' : '#1e293b' }}
           >
             Templates populaires
           </h2>
-          <p 
-            className="text-base"
+          <p
+            className="text-sm sm:text-base"
             style={{ color: isDark ? 'hsl(var(--muted-foreground))' : '#64748b' }}
           >
             Commence avec un template et personnalise-le en quelques clics
@@ -267,7 +267,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         </div>
 
         {/* Templates Grid - 3 columns responsive */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {templates.map((template, index) => (
             <TemplateCard
               key={index}

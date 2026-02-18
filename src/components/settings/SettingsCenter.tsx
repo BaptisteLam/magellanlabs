@@ -25,5 +25,5 @@ export function SettingsCenter({ section }: SettingsCenterProps) {
     }
   };
 
-  return <div className="p-6">{renderSection()}</div>;
+  return <div className="p-2 sm:p-6">{renderSection()}</div>;
 }
