@@ -592,25 +592,24 @@ const translations = {
   },
 };
 
-// Fonction pour détecter la langue du navigateur
-const detectBrowserLanguage = (): 'fr' | 'en' => {
-  if (typeof window === 'undefined') return 'fr';
-  
-  const language = navigator.language || navigator.languages[0];
-  const languageCode = language.split('-')[0].toLowerCase();
-  
-  // Si c'est français, retourner FR
-  if (languageCode === 'fr') {
-    return 'fr';
-  }
-  
-  // Pour toutes les autres langues, retourner EN
+// Detect language: check localStorage first, then browser, default to English
+const detectLanguage = (): 'fr' | 'en' => {
+  if (typeof window === 'undefined') return 'en';
+
+  // Check if user has explicitly set a language preference
+  const saved = localStorage.getItem('magellan-language');
+  if (saved === 'fr' || saved === 'en') return saved;
+
+  // Otherwise default to English
   return 'en';
 };
 
 export const useTranslation = create<TranslationStore>((set, get) => ({
-  language: detectBrowserLanguage(),
-  setLanguage: (lang: 'fr' | 'en') => set({ language: lang }),
+  language: detectLanguage(),
+  setLanguage: (lang: 'fr' | 'en') => {
+    localStorage.setItem('magellan-language', lang);
+    set({ language: lang });
+  },
   t: (key: string) => {
     const { language } = get();
     return translations[language][key] || key;

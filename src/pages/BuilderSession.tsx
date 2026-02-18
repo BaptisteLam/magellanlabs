@@ -2269,16 +2269,16 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
         cloudflareProjectName={cloudflareProjectName || undefined}
       />
 
-      {/* Dialog upgrade pour publier */}
+      {/* Upgrade dialog for publishing */}
       <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Crown className="h-5 w-5" style={{ color: '#03A5C0' }} />
-              Publication réservée aux abonnés Premium
+              Premium required to publish
             </DialogTitle>
             <DialogDescription>
-              La publication de votre site nécessite un abonnement Premium. Passez à l'offre Premium pour publier votre site en ligne et accéder à 50 messages par mois.
+              Publishing your site requires a Premium subscription. Upgrade to publish online and get 50 messages per month.
             </DialogDescription>
           </DialogHeader>
           <div
@@ -2291,11 +2291,11 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-foreground">Premium</p>
-                <p className="text-sm text-muted-foreground">50 messages/mois + publication illimitée</p>
+                <p className="text-sm text-muted-foreground">50 messages/month + unlimited publishing</p>
               </div>
               <div>
-                <span className="text-2xl font-bold text-foreground">12,99€</span>
-                <span className="text-sm text-muted-foreground">/mois</span>
+                <span className="text-2xl font-bold text-foreground">€12.99</span>
+                <span className="text-sm text-muted-foreground">/month</span>
               </div>
             </div>
           </div>
@@ -2305,7 +2305,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
               onClick={() => setShowUpgradeDialog(false)}
               className="rounded-full"
             >
-              Plus tard
+              Later
             </Button>
             <Button
               onClick={() => {
@@ -2316,7 +2316,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
               style={{ backgroundColor: '#03A5C0' }}
             >
               <Crown className="h-4 w-4 mr-2" />
-              Passer en Premium
+              Upgrade to Premium
             </Button>
           </DialogFooter>
         </DialogContent>

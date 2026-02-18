@@ -104,7 +104,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('[vibesdk-usage] Error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'An internal error occurred while checking usage.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

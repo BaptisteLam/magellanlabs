@@ -68,7 +68,8 @@ function AppContent() {
         <Route path="/p/:subdomain" element={<PublicProject />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/tarifs" element={<Pricing />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/tarifs" element={<Navigate to="/pricing" replace />} />
         <Route path="/politique-de-confidentialite" element={<PrivacyPolicy />} />
         <Route path="/cgv" element={<TermsOfService />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
