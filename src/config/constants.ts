@@ -13,7 +13,9 @@ export const PLANS = {
     messagesPerMonth: 5,
     costPerUserPerMonth: 0.175, // ~$0.175 en tokens
     features: {
-      deployment: false,
+      deployment: true,
+      maxPublishedSites: 1,
+      customDomain: false,
       previewDuration: '24h',
       prioritySupport: false,
     },
@@ -26,6 +28,8 @@ export const PLANS = {
     costPerUserPerMonth: 1.75, // ~$1.75 en tokens
     features: {
       deployment: true,
+      maxPublishedSites: -1, // unlimited
+      customDomain: true,
       previewDuration: 'unlimited',
       prioritySupport: true,
     },

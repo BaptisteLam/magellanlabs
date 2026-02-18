@@ -20,6 +20,7 @@ export interface UsageData {
   totalCostUsd: number;
   generationCount: number;
   hasStripe: boolean;
+  publishedSitesCount: number;
 }
 
 // ============= Hook =============
@@ -58,6 +59,22 @@ export function useCredits() {
 
       const data = await response.json();
 
+      // Count user's published sites
+      let publishedCount = 0;
+      try {
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        if (authSession) {
+          const { count } = await supabase
+            .from('build_sessions')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', authSession.user.id)
+            .not('public_url', 'is', null);
+          publishedCount = count || 0;
+        }
+      } catch {
+        // Ignore count errors
+      }
+
       setUsage({
         plan: (data.plan || 'free') as PlanId,
         messagesUsed: data.messages_used || 0,
@@ -69,6 +86,7 @@ export function useCredits() {
         totalCostUsd: data.total_cost_usd || 0,
         generationCount: data.generation_count_this_month || 0,
         hasStripe: data.has_stripe || false,
+        publishedSitesCount: publishedCount,
       });
     } catch (err) {
       console.error('[useCredits] Error fetching usage:', err);
@@ -93,6 +111,7 @@ export function useCredits() {
               totalCostUsd: retryData.total_cost_usd || 0,
               generationCount: retryData.generation_count_this_month || 0,
               hasStripe: retryData.has_stripe || false,
+              publishedSitesCount: 0,
             });
             setError(null);
             return;
@@ -127,6 +146,13 @@ export function useCredits() {
     ? !usage.canSend
     : false;
 
+  // Free users can deploy up to maxPublishedSites; premium is unlimited (-1)
+  const maxSites = planInfo.features.maxPublishedSites;
+  const publishedCount = usage?.publishedSitesCount ?? 0;
+  const canDeploy = planInfo.features.deployment && (maxSites === -1 || publishedCount < maxSites);
+  // Only premium users can add custom domains
+  const canAddDomain = planInfo.features.customDomain;
+
   return {
     usage,
     isLoading,
@@ -138,7 +164,9 @@ export function useCredits() {
     percentUsed,
     isNearLimit,
     isAtLimit,
-    canDeploy: planInfo.features.deployment,
+    canDeploy,
+    canAddDomain,
+    publishedCount,
   };
 }
 

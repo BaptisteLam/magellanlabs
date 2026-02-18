@@ -237,14 +237,25 @@ serve(async (req) => {
       .maybeSingle();
 
     const userPlan = (billing as any)?.plan || 'free';
+
+    // Free users can publish 1 site; check if they already have a published site for a DIFFERENT session
     if (userPlan === 'free') {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'La publication nécessite un abonnement Premium. Passez à l\'offre Premium pour publier votre site.',
-      }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      const { count: publishedCount } = await supabaseAdmin
+        .from('build_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .not('public_url', 'is', null)
+        .neq('id', sessionId);
+
+      if ((publishedCount || 0) >= 1) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Free plan allows publishing 1 site. Upgrade to Premium for unlimited publishing.',
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // === SI vibePreviewUrl FOURNI: Utiliser l'URL VibeSDK directement ===

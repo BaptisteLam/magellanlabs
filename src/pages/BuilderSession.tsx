@@ -107,7 +107,7 @@ export default function BuilderSession() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [showPublishSuccess, setShowPublishSuccess] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
-  const { usage, canDeploy, refetch: refetchCredits } = useCredits();
+  const { usage, canDeploy, canAddDomain, publishedCount, refetch: refetchCredits } = useCredits();
   const { language } = useTranslation();
   const isFr = language === 'fr';
   const [showVersionHistory, setShowVersionHistory] = useState(false);
@@ -1733,8 +1733,9 @@ export default function BuilderSession() {
       return;
     }
 
-    // Vérifier si le plan permet la publication
-    if (!canDeploy) {
+    // Check if user can publish - allow re-publishing same session even if at limit
+    const isRepublish = !!deployedUrl;
+    if (!canDeploy && !isRepublish) {
       setShowUpgradeDialog(true);
       return;
     }
@@ -2278,10 +2279,20 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Crown className="h-5 w-5" style={{ color: '#03A5C0' }} />
-              {isFr ? 'Premium requis pour publier' : 'Premium required to publish'}
+              {usage?.plan === 'free' && publishedCount >= 1
+                ? (isFr ? 'Limite de publication atteinte' : 'Publishing limit reached')
+                : (isFr ? 'Passez en Premium' : 'Upgrade to Premium')
+              }
             </DialogTitle>
             <DialogDescription>
-              {isFr ? 'La publication de votre site nécessite un abonnement Premium. Passez en Premium pour publier en ligne et obtenir 50 messages par mois.' : 'Publishing your site requires a Premium subscription. Upgrade to publish online and get 50 messages per month.'}
+              {usage?.plan === 'free' && publishedCount >= 1
+                ? (isFr
+                    ? 'Le plan gratuit permet de publier 1 site. Passez en Premium pour publier un nombre illimité de sites et connecter vos propres noms de domaine.'
+                    : 'The free plan allows publishing 1 site. Upgrade to Premium for unlimited publishing and custom domain connections.')
+                : (isFr
+                    ? 'Passez en Premium pour publier en ligne, connecter un nom de domaine, et obtenir 50 messages par mois.'
+                    : 'Upgrade to Premium to publish online, connect custom domains, and get 50 messages per month.')
+              }
             </DialogDescription>
           </DialogHeader>
           <div
@@ -2294,7 +2305,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-foreground">Premium</p>
-                <p className="text-sm text-muted-foreground">{isFr ? '50 messages/mois + publication illimitée' : '50 messages/month + unlimited publishing'}</p>
+                <p className="text-sm text-muted-foreground">{isFr ? '50 messages/mois + publication illimitée + domaine custom' : '50 messages/month + unlimited publishing + custom domain'}</p>
               </div>
               <div>
                 <span className="text-2xl font-bold text-foreground">{isFr ? '12,99€' : '€12.99'}</span>
