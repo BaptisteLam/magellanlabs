@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useThemeStore } from '@/stores/themeStore';
-import { Settings, Moon, Sun, Monitor, Zap, Crown, MessageSquare, Loader2 } from 'lucide-react';
+import { Settings, Moon, Sun, Monitor, Zap, Crown, MessageSquare, Loader2, Badge } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { useCredits } from '@/hooks/useCredits';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -336,6 +336,64 @@ export function Parametres() {
             </div>
             <Switch id="auto-save" checked={autoSave} onCheckedChange={setAutoSave} />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Badge "Built By Magellan" Card */}
+      <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Badge className="h-5 w-5" />
+            {isFr ? 'Badge "Built By Magellan"' : '"Built By Magellan" Badge'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="badge-toggle" className="text-foreground">
+                {isFr ? 'Afficher le badge sur vos sites publiés' : 'Show badge on your published sites'}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {isPremium
+                  ? (isFr ? 'En tant qu\'utilisateur Premium, le badge est désactivé.' : 'As a Premium user, the badge is disabled.')
+                  : (isFr ? 'Le badge est obligatoire avec le plan gratuit. Passez en Premium pour le retirer.' : 'The badge is required on the free plan. Upgrade to Premium to remove it.')
+                }
+              </p>
+            </div>
+            <Switch
+              id="badge-toggle"
+              checked={!isPremium}
+              disabled={isPremium}
+              onCheckedChange={(checked) => {
+                if (!checked && !isPremium) {
+                  navigate('/pricing');
+                }
+              }}
+            />
+          </div>
+          {!isPremium && (
+            <div
+              className="mt-4 rounded-lg p-3 flex items-center gap-3"
+              style={{
+                backgroundColor: 'rgba(3,165,192,0.06)',
+                border: '1px solid rgba(3,165,192,0.15)'
+              }}
+            >
+              <Crown className="h-4 w-4 flex-shrink-0" style={{ color: '#03A5C0' }} />
+              <p className="text-xs text-muted-foreground flex-1">
+                {isFr
+                  ? 'Passez en Premium pour supprimer le badge de vos sites.'
+                  : 'Upgrade to Premium to remove the badge from your sites.'}
+              </p>
+              <button
+                onClick={() => navigate('/pricing')}
+                className="text-xs font-medium whitespace-nowrap px-3 py-1 rounded-full"
+                style={{ backgroundColor: '#03A5C0', color: 'white' }}
+              >
+                {isFr ? 'Passer en Premium' : 'Upgrade'}
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

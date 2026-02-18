@@ -7,15 +7,15 @@ const corsHeaders = {
 };
 
 // Préparer les fichiers pour le déploiement
-function prepareDeployFiles(files: Record<string, string>): Record<string, string> {
+function prepareDeployFiles(files: Record<string, string>, injectBadge: boolean): Record<string, string> {
   const deployFiles: Record<string, string> = {};
 
   for (const [path, content] of Object.entries(files)) {
     let normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-    
+
     const skipFiles = ['package.json', 'vite.config.ts', 'tsconfig.json', 'node_modules'];
     if (skipFiles.some(skip => normalizedPath.includes(skip))) continue;
-    
+
     deployFiles[normalizedPath] = content;
   }
 
@@ -33,7 +33,32 @@ function prepareDeployFiles(files: Record<string, string>): Record<string, strin
     deployFiles['_redirects'] = '/*    /index.html   200';
   }
 
+  // Inject "Built By Magellan" badge for free users
+  if (injectBadge && deployFiles['index.html']) {
+    deployFiles['index.html'] = injectMagellanBadge(deployFiles['index.html']);
+  }
+
   return deployFiles;
+}
+
+// Inject the "Built By Magellan" badge into HTML
+function injectMagellanBadge(html: string): string {
+  const badgeHtml = `
+<!-- Built By Magellan Badge -->
+<div id="magellan-badge" style="position:fixed;bottom:12px;right:12px;z-index:999999;pointer-events:auto;">
+  <a href="https://magellan-studio.fr" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);border:1px solid rgba(3,165,192,0.3);border-radius:999px;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:12px;font-weight:500;text-decoration:none;box-shadow:0 2px 12px rgba(0,0,0,0.3);transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(3,165,192,0.6)';this.style.boxShadow='0 2px 16px rgba(3,165,192,0.2)'" onmouseout="this.style.borderColor='rgba(3,165,192,0.3)';this.style.boxShadow='0 2px 12px rgba(0,0,0,0.3)'">
+    <svg width="16" height="16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" stroke="#03A5C0" stroke-width="4"/><path d="M50 15L50 85M25 50H75M30 30L70 70M70 30L30 70" stroke="#03A5C0" stroke-width="3" stroke-linecap="round"/><circle cx="50" cy="50" r="12" fill="#03A5C0"/></svg>
+    <span>Built by <span style="color:#03A5C0;font-weight:600;">Magellan</span></span>
+  </a>
+</div>
+<style>#magellan-badge{animation:magellan-fade-in 0.5s ease-out 1s both}@keyframes magellan-fade-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}</style>
+<!-- End Built By Magellan Badge -->`;
+
+  // Inject before </body> or at end of file
+  if (html.includes('</body>')) {
+    return html.replace('</body>', `${badgeHtml}\n</body>`);
+  }
+  return html + badgeHtml;
 }
 
 // Générer un subdomain unique
@@ -338,7 +363,8 @@ serve(async (req) => {
 
     // === DÉPLOIEMENT CLOUDFLARE PAGES (fallback pour fichiers statiques) ===
     console.log('📦 Preparing files for Cloudflare Pages deployment...');
-    const deployFiles = prepareDeployFiles(projectFiles);
+    const shouldInjectBadge = userPlan === 'free';
+    const deployFiles = prepareDeployFiles(projectFiles, shouldInjectBadge);
     console.log(`📁 ${Object.keys(deployFiles).length} files prepared`);
 
     let projectName = session.cloudflare_project_name;

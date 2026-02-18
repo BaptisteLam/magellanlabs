@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useThemeStore } from '@/stores/themeStore';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Globe, Eye, BarChart3, Pencil, Copy, ExternalLink, Crown, CheckCircle2, XCircle, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Globe, Eye, BarChart3, Pencil, Copy, ExternalLink, Crown, CheckCircle2, XCircle, Loader2, AlertTriangle, RefreshCw, Edit3, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from '@/hooks/useTranslation';
 import { useCredits } from '@/hooks/useCredits';
+import CloudflareAnalytics from '@/components/CloudflareAnalytics';
 
 interface ProjectData {
   id: string;
@@ -39,6 +40,12 @@ export default function ProjectDashboard() {
   const { canAddDomain } = useCredits();
   const [project, setProject] = useState<ProjectData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Subdomain editing state
+  const [isEditingSubdomain, setIsEditingSubdomain] = useState(false);
+  const [subdomainInput, setSubdomainInput] = useState('');
+  const [isSavingSubdomain, setIsSavingSubdomain] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   // Custom domain state
   const [customDomain, setCustomDomain] = useState<CustomDomainData | null>(null);
@@ -216,6 +223,49 @@ export default function ProjectDashboard() {
     }
   };
 
+  const currentSubdomain = project?.public_url
+    ? new URL(project.public_url).hostname.replace('.builtbymagellan.com', '')
+    : '';
+
+  const handleStartEditSubdomain = () => {
+    setSubdomainInput(currentSubdomain);
+    setIsEditingSubdomain(true);
+  };
+
+  const handleSaveSubdomain = async () => {
+    const clean = subdomainInput.trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (!clean) return;
+
+    setIsSavingSubdomain(true);
+    try {
+      // Update published_projects subdomain
+      const { error: updateError } = await supabase
+        .from('published_projects')
+        .update({ subdomain: clean, last_updated: new Date().toISOString() })
+        .eq('build_session_id', projectId);
+      if (updateError) throw updateError;
+
+      const newUrl = `https://${clean}.builtbymagellan.com`;
+      await supabase.from('build_sessions').update({ public_url: newUrl }).eq('id', projectId);
+
+      // Update KV proxy
+      await supabase.functions.invoke('update-subdomain-kv', {
+        body: { oldSubdomain: currentSubdomain, newSubdomain: clean, sessionId: projectId }
+      });
+
+      setProject(prev => prev ? { ...prev, public_url: newUrl } : prev);
+      setIsEditingSubdomain(false);
+      toast({ title: isFr ? 'Sous-domaine mis à jour !' : 'Subdomain updated!' });
+    } catch (err: any) {
+      console.error('Error updating subdomain:', err);
+      toast({ variant: 'destructive', title: isFr ? 'Erreur' : 'Error', description: err.message || (isFr ? 'Impossible de mettre à jour' : 'Unable to update') });
+    } finally {
+      setIsSavingSubdomain(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center">
@@ -292,27 +342,66 @@ export default function ProjectDashboard() {
             <Globe className="h-6 w-6" />
             <span>{isFr ? 'Prévisualiser' : 'Preview'}</span>
           </Button>
-          <Button onClick={() => toast({ title: isFr ? 'Bientôt disponible' : 'Coming soon', description: isFr ? 'Les analytics seront disponibles prochainement.' : 'Analytics will be available soon.' })} className="h-24 flex flex-col items-center justify-center gap-2" style={{ borderColor: 'rgb(3,165,192)', backgroundColor: 'rgba(3,165,192,0.1)', color: 'rgb(3,165,192)' }} variant="outline">
+          <Button onClick={() => project.public_url ? setShowAnalytics(!showAnalytics) : toast({ title: isFr ? 'Publiez d\'abord' : 'Publish first', description: isFr ? 'Publiez votre site pour accéder aux analytics.' : 'Publish your site to access analytics.' })} className="h-24 flex flex-col items-center justify-center gap-2" style={{ borderColor: showAnalytics ? '#03A5C0' : 'rgb(3,165,192)', backgroundColor: showAnalytics ? 'rgba(3,165,192,0.2)' : 'rgba(3,165,192,0.1)', color: 'rgb(3,165,192)' }} variant="outline">
             <BarChart3 className="h-6 w-6" />
             <span>Analytics</span>
           </Button>
         </div>
 
-        {/* Published URL section */}
+        {/* Analytics Section */}
+        {showAnalytics && project.public_url && (
+          <div className="mb-6 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl overflow-hidden">
+            <CloudflareAnalytics sessionId={projectId!} isDark={isDark} />
+          </div>
+        )}
+
+        {/* Published URL section with subdomain editor */}
         {project.public_url && (
           <div className="mb-6 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Globe className="h-5 w-5" style={{ color: '#03A5C0' }} />
               {isFr ? 'URL publique' : 'Public URL'}
             </h2>
-            <div className="flex items-center gap-2 p-3 rounded-lg border border-border/50 bg-muted/20">
-              <span className="text-sm font-mono text-foreground truncate flex-1">{project.public_url}</span>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0" onClick={() => copyToClipboard(project.public_url!)}>
-                <Copy className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0" onClick={() => window.open(project.public_url!, '_blank')}>
-                <ExternalLink className="w-4 h-4" />
-              </Button>
+
+            {/* Subdomain editor */}
+            <div className="mb-3">
+              <p className="text-xs text-muted-foreground mb-2">{isFr ? 'Nom de votre site' : 'Your site name'}</p>
+              {isEditingSubdomain ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-0 flex-1 p-2 rounded-lg border border-border/50 bg-muted/20">
+                    <Input
+                      value={subdomainInput}
+                      onChange={(e) => setSubdomainInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSaveSubdomain()}
+                      className="border-0 bg-transparent p-0 h-auto text-sm font-mono focus-visible:ring-0"
+                      autoFocus
+                    />
+                    <span className="text-sm font-mono text-muted-foreground whitespace-nowrap">.builtbymagellan.com</span>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleSaveSubdomain} disabled={isSavingSubdomain}>
+                    {isSavingSubdomain ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4 text-green-500" />}
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setIsEditingSubdomain(false)}>
+                    <XCircle className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-3 rounded-lg border border-border/50 bg-muted/20">
+                  <span className="text-sm font-mono text-foreground truncate flex-1">
+                    <span style={{ color: '#03A5C0' }}>{currentSubdomain}</span>
+                    <span className="text-muted-foreground">.builtbymagellan.com</span>
+                  </span>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0" onClick={handleStartEditSubdomain}>
+                    <Edit3 className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0" onClick={() => copyToClipboard(project.public_url!)}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0" onClick={() => window.open(project.public_url!, '_blank')}>
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}
