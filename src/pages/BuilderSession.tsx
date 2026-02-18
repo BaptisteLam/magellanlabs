@@ -44,6 +44,7 @@ import { IndexedDBCache } from '@/services/indexedDBCache';
 import { parseProjectFiles } from '@/lib/projectFilesParser';
 import { useCredits } from '@/hooks/useCredits';
 import { Crown } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -107,6 +108,8 @@ export default function BuilderSession() {
   const [showPublishSuccess, setShowPublishSuccess] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const { usage, canDeploy, refetch: refetchCredits } = useCredits();
+  const { language } = useTranslation();
+  const isFr = language === 'fr';
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [lastPublishResult, setLastPublishResult] = useState<{
     publicUrl: string;
@@ -738,7 +741,7 @@ export default function BuilderSession() {
       }
     } catch (error) {
       console.error('Error uploading favicon:', error);
-      sonnerToast.error("Erreur lors de l'upload du favicon");
+      sonnerToast.error(isFr ? "Erreur lors de l'upload du favicon" : "Error uploading favicon");
     }
   };
 
@@ -943,12 +946,12 @@ export default function BuilderSession() {
         onError: (error) => {
           console.error('❌ Generate site error:', error);
 
-          // Messages d'erreur clairs
-          let userMessage = 'Une erreur est survenue lors de la génération du site.';
+          // Clear error messages
+          let userMessage = isFr ? 'Une erreur est survenue lors de la génération du site.' : 'An error occurred while generating the site.';
           if (error.includes('timeout')) {
-            userMessage = 'La génération a pris trop de temps. Essayez avec une demande plus simple.';
+            userMessage = isFr ? 'La génération a pris trop de temps. Essayez avec une demande plus simple.' : 'Generation took too long. Try a simpler request.';
           } else if (error.includes('No modifications generated')) {
-            userMessage = 'Impossible de générer le site. Essayez de reformuler votre demande de manière plus précise.';
+            userMessage = isFr ? 'Impossible de générer le site. Essayez de reformuler votre demande de manière plus précise.' : 'Unable to generate the site. Try rephrasing your request more precisely.';
           }
 
           sonnerToast.error(userMessage);
@@ -1394,16 +1397,16 @@ export default function BuilderSession() {
             }
           }
 
-          // ✅ Messages d'erreur clairs et spécifiques
-          let userMessage = 'Une erreur est survenue lors du traitement.';
+          // Clear and specific error messages
+          let userMessage = isFr ? 'Une erreur est survenue lors du traitement.' : 'An error occurred during processing.';
           if (error.includes('No modifications generated')) {
-            userMessage = 'Aucune modification générée. Essayez de reformuler votre demande de manière plus précise.';
+            userMessage = isFr ? 'Aucune modification générée. Essayez de reformuler votre demande de manière plus précise.' : 'No modifications generated. Try rephrasing your request more precisely.';
           } else if (error.includes('timeout')) {
-            userMessage = 'Le traitement a pris trop de temps. Essayez avec une demande plus simple.';
+            userMessage = isFr ? 'Le traitement a pris trop de temps. Essayez avec une demande plus simple.' : 'Processing took too long. Try a simpler request.';
           } else if (error.includes('validation')) {
-            userMessage = 'Erreur de validation des modifications. Veuillez réessayer.';
+            userMessage = isFr ? 'Erreur de validation des modifications. Veuillez réessayer.' : 'Modification validation error. Please try again.';
           } else {
-            userMessage = error || 'Échec du traitement de la demande.';
+            userMessage = error || (isFr ? 'Échec du traitement de la demande.' : 'Failed to process request.');
           }
 
           sonnerToast.error(userMessage);
@@ -1604,7 +1607,7 @@ export default function BuilderSession() {
         }
       } catch (error) {
         console.error('Chat error:', error);
-        sonnerToast.error('Erreur lors de la conversation');
+        sonnerToast.error(isFr ? 'Erreur lors de la conversation' : 'Error during conversation');
         // Supprimer le message de chargement
         setMessages(prev => prev.slice(0, -1));
       }
@@ -1642,10 +1645,10 @@ export default function BuilderSession() {
       setIsSaving(true);
       try {
         await saveSession();
-        sonnerToast.success("Projet enregistré !");
+        sonnerToast.success(isFr ? "Projet enregistré !" : "Project saved!");
       } catch (error: any) {
         console.error('Error saving:', error);
-        sonnerToast.error(error.message || "Erreur lors de la sauvegarde");
+        sonnerToast.error(error.message || (isFr ? "Erreur lors de la sauvegarde" : "Error saving project"));
       } finally {
         setIsSaving(false);
       }
@@ -1657,17 +1660,17 @@ export default function BuilderSession() {
   };
   const confirmSave = async () => {
     if (!websiteTitle.trim()) {
-      sonnerToast.error("Veuillez entrer un titre pour votre site");
+      sonnerToast.error(isFr ? "Veuillez entrer un titre pour votre site" : "Please enter a title for your site");
       return;
     }
     setIsSaving(true);
     try {
       await saveSession();
-      sonnerToast.success("Projet enregistré !");
+      sonnerToast.success(isFr ? "Projet enregistré !" : "Project saved!");
       setShowSaveDialog(false);
     } catch (error: any) {
       console.error('Error saving:', error);
-      sonnerToast.error(error.message || "Erreur lors de la sauvegarde");
+      sonnerToast.error(error.message || (isFr ? "Erreur lors de la sauvegarde" : "Error saving project"));
     } finally {
       setIsSaving(false);
     }
@@ -1717,10 +1720,10 @@ export default function BuilderSession() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      sonnerToast.success("✅ ZIP téléchargé avec succès !");
+      sonnerToast.success(isFr ? "ZIP téléchargé avec succès !" : "ZIP downloaded successfully!");
     } catch (error: any) {
       console.error('Error downloading ZIP:', error);
-      sonnerToast.error(error.message || "❌ Erreur lors du téléchargement");
+      sonnerToast.error(error.message || (isFr ? "Erreur lors du téléchargement" : "Error downloading file"));
     }
   };
   const handlePublish = async () => {
@@ -1831,14 +1834,14 @@ export default function BuilderSession() {
       }
     } catch (error: any) {
       console.error('Error publishing:', error);
-      sonnerToast.error(error.message || "❌ Erreur lors de la publication");
+      sonnerToast.error(error.message || (isFr ? "Erreur lors de la publication" : "Error publishing project"));
     } finally {
       setIsPublishing(false);
     }
   };
   if (sessionLoading) {
     return <div className="min-h-screen flex items-center justify-center">
-        <p className="text-slate-600">Chargement...</p>
+        <p className="text-slate-600">{isFr ? 'Chargement...' : 'Loading...'}</p>
       </div>;
   }
   return <div className={`h-screen flex flex-col`} style={{
@@ -1885,7 +1888,7 @@ export default function BuilderSession() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  <p>{previewMode === 'desktop' ? 'Mode mobile' : 'Mode desktop'}</p>
+                  <p>{previewMode === 'desktop' ? (isFr ? 'Mode mobile' : 'Mobile mode') : (isFr ? 'Mode desktop' : 'Desktop mode')}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -1902,7 +1905,7 @@ export default function BuilderSession() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  <p>{inspectMode ? 'Désactiver le mode édition' : 'Activer le mode édition'}</p>
+                  <p>{inspectMode ? (isFr ? 'Désactiver le mode édition' : 'Disable edit mode') : (isFr ? 'Activer le mode édition' : 'Enable edit mode')}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -1919,14 +1922,14 @@ export default function BuilderSession() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  <p>Historique des versions</p>
+                  <p>{isFr ? 'Historique des versions' : 'Version history'}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
             <Button onClick={handleSave} disabled={isSaving} variant="iconOnly" size="sm" className="h-8 text-xs">
               <Save className="w-3.5 h-3.5 mr-1.5" />
-              Enregistrer
+              {isFr ? 'Enregistrer' : 'Save'}
             </Button>
           </div>
 
@@ -1942,11 +1945,11 @@ export default function BuilderSession() {
           }} onMouseLeave={e => {
             e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
           }}>
-              {isPublishing ? 'Publication...' : 'Publier'}
+              {isPublishing ? (isFr ? 'Publication...' : 'Publishing...') : (isFr ? 'Publier' : 'Publish')}
             </Button>
           </div>
 
-          <Button onClick={toggleTheme} variant="iconOnly" size="icon" className="h-8 w-8" aria-label={isDark ? "Passer en mode clair" : "Passer en mode sombre"}>
+          <Button onClick={toggleTheme} variant="iconOnly" size="icon" className="h-8 w-8" aria-label={isDark ? (isFr ? "Passer en mode clair" : "Switch to light mode") : (isFr ? "Passer en mode sombre" : "Switch to dark mode")}>
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
         </div>
@@ -2008,7 +2011,7 @@ export default function BuilderSession() {
                     sonnerToast.success('Version restaurée');
                   } else {
                     console.error('❌ No project_files found in message metadata');
-                    sonnerToast.error('Impossible de restaurer cette version');
+                    sonnerToast.error(isFr ? 'Impossible de restaurer cette version' : 'Unable to restore this version');
                   }
                 }} onGoToPrevious={async () => {
                   // Utiliser le système de versioning Cloudflare
@@ -2222,7 +2225,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                   });
                 } catch (error) {
                   console.error('❌ Inspect mode error:', error);
-                  sonnerToast.error('Erreur lors de la modification');
+                  sonnerToast.error(isFr ? 'Erreur lors de la modification' : 'Error applying modification');
                 }
               }} />
                       )}
@@ -2236,23 +2239,23 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Enregistrer le projet</DialogTitle>
+            <DialogTitle>{isFr ? 'Enregistrer le projet' : 'Save project'}</DialogTitle>
             <DialogDescription>
-              Donnez un titre à votre site web pour le retrouver facilement.
+              {isFr ? 'Donnez un titre à votre site web pour le retrouver facilement.' : 'Give your website a title so you can find it easily.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Titre du site</Label>
-              <Input id="title" value={websiteTitle} onChange={e => setWebsiteTitle(e.target.value)} placeholder="Mon site web" />
+              <Label htmlFor="title">{isFr ? 'Titre du site' : 'Site title'}</Label>
+              <Input id="title" value={websiteTitle} onChange={e => setWebsiteTitle(e.target.value)} placeholder={isFr ? 'Mon site web' : 'My website'} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowSaveDialog(false)}>
-              Annuler
+              {isFr ? 'Annuler' : 'Cancel'}
             </Button>
             <Button onClick={confirmSave} disabled={isSaving} className="bg-[hsl(var(--magellan-cyan))] hover:bg-[hsl(var(--magellan-cyan-light))] text-white">
-              Enregistrer
+              {isFr ? 'Enregistrer' : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2275,10 +2278,10 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Crown className="h-5 w-5" style={{ color: '#03A5C0' }} />
-              Premium required to publish
+              {isFr ? 'Premium requis pour publier' : 'Premium required to publish'}
             </DialogTitle>
             <DialogDescription>
-              Publishing your site requires a Premium subscription. Upgrade to publish online and get 50 messages per month.
+              {isFr ? 'La publication de votre site nécessite un abonnement Premium. Passez en Premium pour publier en ligne et obtenir 50 messages par mois.' : 'Publishing your site requires a Premium subscription. Upgrade to publish online and get 50 messages per month.'}
             </DialogDescription>
           </DialogHeader>
           <div
@@ -2291,11 +2294,11 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-foreground">Premium</p>
-                <p className="text-sm text-muted-foreground">50 messages/month + unlimited publishing</p>
+                <p className="text-sm text-muted-foreground">{isFr ? '50 messages/mois + publication illimitée' : '50 messages/month + unlimited publishing'}</p>
               </div>
               <div>
-                <span className="text-2xl font-bold text-foreground">€12.99</span>
-                <span className="text-sm text-muted-foreground">/month</span>
+                <span className="text-2xl font-bold text-foreground">{isFr ? '12,99€' : '€12.99'}</span>
+                <span className="text-sm text-muted-foreground">/{isFr ? 'mois' : 'month'}</span>
               </div>
             </div>
           </div>
@@ -2305,7 +2308,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
               onClick={() => setShowUpgradeDialog(false)}
               className="rounded-full"
             >
-              Later
+              {isFr ? 'Plus tard' : 'Later'}
             </Button>
             <Button
               onClick={() => {
@@ -2316,7 +2319,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
               style={{ backgroundColor: '#03A5C0' }}
             >
               <Crown className="h-4 w-4 mr-2" />
-              Upgrade to Premium
+              {isFr ? 'Passer en Premium' : 'Upgrade to Premium'}
             </Button>
           </DialogFooter>
         </DialogContent>

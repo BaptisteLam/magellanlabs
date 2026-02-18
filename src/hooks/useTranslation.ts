@@ -413,11 +413,11 @@ const translations = {
     // Portfolio
     'portfolio.title': 'Our Portfolio',
     'portfolio.subtitle': 'Explore our latest projects and get inspired',
-    'portfolio.filters.all': 'All',
-    'portfolio.filters.vitrine': 'Business Sites',
-    'portfolio.filters.reservation': 'Booking Systems',
-    'portfolio.filters.ecommerce': 'E-commerce',
-    'portfolio.filters.crm': 'CRM',
+    'portfolio.filter.all': 'All',
+    'portfolio.filter.vitrine': 'Business Sites',
+    'portfolio.filter.reservation': 'Booking Systems',
+    'portfolio.filter.ecommerce': 'E-commerce',
+    'portfolio.filter.crm': 'CRM',
 
     // Contact Page
     'contact.title': 'Get in Touch',
@@ -535,6 +535,8 @@ const translations = {
     'services.cta.portfolio': 'View Our Work',
 
     // Portfolio Page
+    'portfolio.stats.projects': 'Projects Delivered',
+    'portfolio.stats.satisfaction': 'Client Satisfaction',
     'portfolio.stats.experience': 'Experience',
     'portfolio.stats.response': 'Response Time',
     'portfolio.project.view': 'View Project',

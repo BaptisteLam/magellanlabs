@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useThemeStore } from '@/stores/themeStore';
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Globe, Eye, Settings, BarChart3, Code, Pencil } from "lucide-react";
+import { ArrowLeft, Globe, Eye, BarChart3, Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ProjectData {
   id: string;
@@ -22,6 +22,8 @@ export default function ProjectDashboard() {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const { isDark } = useThemeStore();
+  const { language } = useTranslation();
+  const isFr = language === 'fr';
   const [project, setProject] = useState<ProjectData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -52,8 +54,8 @@ export default function ProjectDashboard() {
       console.error('Error fetching project:', error);
       toast({
         variant: 'destructive',
-        title: 'Erreur',
-        description: 'Impossible de charger le projet',
+        title: isFr ? 'Erreur' : 'Error',
+        description: isFr ? 'Impossible de charger le projet' : 'Unable to load project',
       });
       navigate('/dashboard');
     } finally {
@@ -76,8 +78,8 @@ export default function ProjectDashboard() {
       window.open(project.cloudflare_deployment_url, '_blank');
     } else {
       toast({
-        title: 'Projet non publié',
-        description: 'Ce projet n\'a pas encore été publié.',
+        title: isFr ? 'Projet non publié' : 'Project not published',
+        description: isFr ? "Ce projet n'a pas encore été publié." : 'This project has not been published yet.',
       });
     }
   };
@@ -85,7 +87,7 @@ export default function ProjectDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center">
-        <div className="text-muted-foreground">Chargement...</div>
+        <div className="text-muted-foreground">{isFr ? 'Chargement...' : 'Loading...'}</div>
       </div>
     );
   }
@@ -94,7 +96,7 @@ export default function ProjectDashboard() {
     return (
       <div className="min-h-screen w-full flex items-center justify-center">
         <div className="text-center space-y-4">
-          <p className="text-muted-foreground">Projet introuvable</p>
+          <p className="text-muted-foreground">{isFr ? 'Projet introuvable' : 'Project not found'}</p>
           <Button
             onClick={() => navigate('/dashboard')}
             variant="outline"
@@ -104,7 +106,7 @@ export default function ProjectDashboard() {
               color: 'rgb(3,165,192)',
             }}
           >
-            Retour au tableau de bord
+            {isFr ? 'Retour au tableau de bord' : 'Back to dashboard'}
           </Button>
         </div>
       </div>
@@ -113,8 +115,7 @@ export default function ProjectDashboard() {
 
   return (
     <div className="min-h-screen w-full relative">
-      {/* Background avec cadrillage */}
-      <div 
+      <div
         className="fixed inset-0 -z-10"
         style={{
           backgroundImage: isDark
@@ -125,28 +126,26 @@ export default function ProjectDashboard() {
       />
 
       <div className="p-8">
-        {/* Header avec retour */}
         <div className="flex items-center gap-4 mb-8">
           <Button
             onClick={() => navigate('/dashboard')}
             variant="ghost"
             size="icon"
             className="hover:text-[#03A5C0]"
-            aria-label="Retour au tableau de bord"
+            aria-label={isFr ? 'Retour au tableau de bord' : 'Back to dashboard'}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
             <h1 className="text-2xl font-semibold text-foreground">
-              {project.title || 'Sans titre'}
+              {project.title || (isFr ? 'Sans titre' : 'Untitled')}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Créé le {new Date(project.created_at).toLocaleDateString('fr-FR')}
+              {isFr ? 'Créé le' : 'Created on'} {new Date(project.created_at).toLocaleDateString(isFr ? 'fr-FR' : 'en-US')}
             </p>
           </div>
         </div>
 
-        {/* Actions principales */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Button
             onClick={handleEditProject}
@@ -159,7 +158,7 @@ export default function ProjectDashboard() {
             variant="outline"
           >
             <Pencil className="h-6 w-6" />
-            <span>Modifier le projet</span>
+            <span>{isFr ? 'Modifier le projet' : 'Edit project'}</span>
           </Button>
 
           <Button
@@ -173,7 +172,7 @@ export default function ProjectDashboard() {
             variant="outline"
           >
             <Eye className="h-6 w-6" />
-            <span>Voir en ligne</span>
+            <span>{isFr ? 'Voir en ligne' : 'View live'}</span>
           </Button>
 
           <Button
@@ -187,11 +186,11 @@ export default function ProjectDashboard() {
             variant="outline"
           >
             <Globe className="h-6 w-6" />
-            <span>Prévisualiser</span>
+            <span>{isFr ? 'Prévisualiser' : 'Preview'}</span>
           </Button>
 
           <Button
-            onClick={() => toast({ title: 'Bientôt disponible', description: 'Les analytics seront disponibles prochainement.' })}
+            onClick={() => toast({ title: isFr ? 'Bientôt disponible' : 'Coming soon', description: isFr ? 'Les analytics seront disponibles prochainement.' : 'Analytics will be available soon.' })}
             className="h-24 flex flex-col items-center justify-center gap-2"
             style={{
               borderColor: 'rgb(3,165,192)',
@@ -205,44 +204,42 @@ export default function ProjectDashboard() {
           </Button>
         </div>
 
-        {/* Aperçu du projet */}
         <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-4">Aperçu</h2>
+          <h2 className="text-lg font-semibold mb-4">{isFr ? 'Aperçu' : 'Preview'}</h2>
           {project.thumbnail_url ? (
-            <img 
-              src={project.thumbnail_url} 
-              alt={project.title || 'Aperçu'} 
+            <img
+              src={project.thumbnail_url}
+              alt={project.title || (isFr ? 'Aperçu' : 'Preview')}
               className="w-full max-w-2xl rounded-lg border border-border/50"
             />
           ) : (
             <div className="w-full max-w-2xl h-48 bg-muted/30 rounded-lg border border-border/50 flex items-center justify-center">
-              <span className="text-muted-foreground">Aucun aperçu disponible</span>
+              <span className="text-muted-foreground">{isFr ? 'Aucun aperçu disponible' : 'No preview available'}</span>
             </div>
           )}
         </div>
 
-        {/* Informations du projet */}
         <div className="mt-6 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-4">Informations</h2>
+          <h2 className="text-lg font-semibold mb-4">{isFr ? 'Informations' : 'Information'}</h2>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Type:</span>
               <span className="ml-2 text-foreground">
-                {project.project_type === 'webapp' ? 'Application Web' : 'Site Web'}
+                {project.project_type === 'webapp' ? (isFr ? 'Application Web' : 'Web App') : (isFr ? 'Site Web' : 'Website')}
               </span>
             </div>
             <div>
-              <span className="text-muted-foreground">Dernière modification:</span>
+              <span className="text-muted-foreground">{isFr ? 'Dernière modification:' : 'Last modified:'}</span>
               <span className="ml-2 text-foreground">
-                {new Date(project.updated_at).toLocaleDateString('fr-FR')}
+                {new Date(project.updated_at).toLocaleDateString(isFr ? 'fr-FR' : 'en-US')}
               </span>
             </div>
             {project.public_url && (
               <div className="col-span-2">
-                <span className="text-muted-foreground">URL publique:</span>
-                <a 
-                  href={project.public_url} 
-                  target="_blank" 
+                <span className="text-muted-foreground">{isFr ? 'URL publique:' : 'Public URL:'}</span>
+                <a
+                  href={project.public_url}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="ml-2 text-[#03A5C0] hover:underline"
                 >

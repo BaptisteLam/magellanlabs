@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function SessionPreview() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
+  const { language } = useTranslation();
+  const isFr = language === 'fr';
   const [html, setHtml] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
@@ -13,7 +16,6 @@ export default function SessionPreview() {
       if (!sessionId) return;
 
       try {
-        // Vérifier que l'utilisateur est propriétaire de la session
         const { data: { session: authSession } } = await supabase.auth.getSession();
         if (!authSession) {
           navigate('/auth');
@@ -31,34 +33,29 @@ export default function SessionPreview() {
 
         if (data) {
           const projectFilesData = data.project_files as any;
-          
-          // Support des deux formats: array ET object
+
           let files: any[] = [];
           if (Array.isArray(projectFilesData)) {
             files = projectFilesData;
           } else if (typeof projectFilesData === 'object' && projectFilesData !== null) {
-            // Convertir object en array
             files = Object.entries(projectFilesData).map(([path, content]) => ({
               path,
               content
             }));
           }
-          
-          // Pour les sites web statiques, trouver index.html
+
           if (data.project_type === 'website') {
             const indexFile = files.find(f => f.path === 'index.html');
             if (indexFile) {
               setHtml(indexFile.content);
             }
           } else {
-            // Pour les webapps React, on ne peut pas les afficher directement
-            // Afficher un message d'erreur
-            setHtml('<html><body><h1>Les applications React ne peuvent pas être prévisualisées directement</h1></body></html>');
+            setHtml(`<html><body><h1>${isFr ? 'Les applications React ne peuvent pas être prévisualisées directement' : 'React apps cannot be previewed directly'}</h1></body></html>`);
           }
         }
       } catch (error) {
         console.error('Error loading session:', error);
-        setHtml('<html><body><h1>Erreur lors du chargement de la session</h1></body></html>');
+        setHtml(`<html><body><h1>${isFr ? 'Erreur lors du chargement de la session' : 'Error loading session'}</h1></body></html>`);
       } finally {
         setLoading(false);
       }
@@ -68,7 +65,7 @@ export default function SessionPreview() {
   }, [sessionId]);
 
   if (loading) {
-    return <div>Chargement...</div>;
+    return <div>{isFr ? 'Chargement...' : 'Loading...'}</div>;
   }
 
   return (
