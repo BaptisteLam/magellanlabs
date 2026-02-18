@@ -3,7 +3,8 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, Home, X, Moon, Sun, Pencil, Download, Paperclip, Lightbulb, FileText, Edit, Loader, Smartphone, Monitor, History } from "lucide-react";
+import { Save, Eye, Home, X, Moon, Sun, Pencil, Download, Paperclip, Lightbulb, FileText, Edit, Loader, Smartphone, Monitor, History, MessageSquareText, MonitorPlay } from "lucide-react";
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useThemeStore } from '@/stores/themeStore';
 import { toast as sonnerToast } from "sonner";
 import JSZip from "jszip";
@@ -190,6 +191,10 @@ export default function BuilderSession() {
 
   // Mode d'affichage de la preview (desktop/mobile)
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+
+  // Mobile responsive: toggle between chat and preview
+  const isMobile = useIsMobile();
+  const [mobileView, setMobileView] = useState<'chat' | 'preview'>('chat');
 
   // Fonction pour scroller automatiquement vers le bas du chat
   const scrollToBottom = () => {
@@ -1834,67 +1839,104 @@ export default function BuilderSession() {
     backgroundColor: isDark ? '#1F1F20' : '#ffffff'
   }}>
       {/* Barre d'action */}
-      <div className="h-12 backdrop-blur-sm flex items-center justify-between px-4 bg-background">
-        <div className="flex items-center gap-3">
+      <div className="h-12 backdrop-blur-sm flex items-center justify-between px-2 md:px-4 bg-background">
+        <div className="flex items-center gap-2 md:gap-3">
           <button onClick={() => navigate('/dashboard')} className="h-8 w-8 flex items-center justify-center transition-colors group" title="Dashboard">
             <Home className="w-4 h-4 transition-colors" style={{
             color: isDark ? '#fff' : '#9CA3AF'
           }} onMouseEnter={e => e.currentTarget.style.color = '#03A5C0'} onMouseLeave={e => e.currentTarget.style.color = isDark ? '#fff' : '#9CA3AF'} />
           </button>
 
-          <MessageCounter isDark={isDark} userId={user?.id} />
+          {/* Mobile toggle: Chat / Preview */}
+          {isMobile && (
+            <div className="flex items-center gap-1 rounded-md border p-0.5" style={{
+              backgroundColor: isDark ? '#181818' : '#ffffff',
+              borderColor: isDark ? '#1F1F20' : 'rgba(203, 213, 225, 1)'
+            }}>
+              <Button
+                variant="iconOnly"
+                size="sm"
+                onClick={() => setMobileView('chat')}
+                className={`h-7 px-2 text-xs ${mobileView === 'chat' ? 'text-[#03A5C0]' : 'text-muted-foreground'}`}
+                style={{ backgroundColor: mobileView === 'chat' ? 'rgba(3, 165, 192, 0.1)' : 'transparent' }}
+              >
+                <MessageSquareText className="w-3 h-3 mr-1" />
+                Chat
+              </Button>
+              <Button
+                variant="iconOnly"
+                size="sm"
+                onClick={() => setMobileView('preview')}
+                className={`h-7 px-2 text-xs ${mobileView === 'preview' ? 'text-[#03A5C0]' : 'text-muted-foreground'}`}
+                style={{ backgroundColor: mobileView === 'preview' ? 'rgba(3, 165, 192, 0.1)' : 'transparent' }}
+              >
+                <MonitorPlay className="w-3 h-3 mr-1" />
+                Preview
+              </Button>
+            </div>
+          )}
+
+          {!isMobile && <MessageCounter isDark={isDark} userId={user?.id} />}
         </div>
 
         {/* Input caché pour le favicon */}
         <input type="file" ref={faviconInputRef} onChange={handleFaviconUpload} accept="image/*" className="hidden" />
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 rounded-md border p-0.5" style={{
-          backgroundColor: isDark ? '#181818' : '#ffffff',
-          borderColor: isDark ? '#1F1F20' : 'rgba(203, 213, 225, 1)'
-        }}>
-            <Button variant="iconOnly" size="sm" disabled className="h-7 px-2 text-xs text-[#03A5C0]">
-              <Eye className="w-3 h-3 mr-1" />
-              Preview
-            </Button>
-          </div>
+        <div className="flex items-center gap-1.5 md:gap-3">
+          {/* Preview mode badge - desktop only */}
+          {!isMobile && (
+            <>
+              <div className="flex items-center gap-1 rounded-md border p-0.5" style={{
+                backgroundColor: isDark ? '#181818' : '#ffffff',
+                borderColor: isDark ? '#1F1F20' : 'rgba(203, 213, 225, 1)'
+              }}>
+                <Button variant="iconOnly" size="sm" disabled className="h-7 px-2 text-xs text-[#03A5C0]">
+                  <Eye className="w-3 h-3 mr-1" />
+                  Preview
+                </Button>
+              </div>
+              <div className="h-6 w-px bg-slate-300" />
+            </>
+          )}
 
-          <div className="h-6 w-px bg-slate-300" />
+          <div className="flex items-center gap-1 md:gap-2">
+            {!isMobile && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')} variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
+                    borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
+                    backgroundColor: 'transparent',
+                    color: isDark ? 'hsl(var(--foreground))' : '#64748b'
+                  }}>
+                      {previewMode === 'desktop' ? <Smartphone className="w-3.5 h-3.5" /> : <Monitor className="w-3.5 h-3.5" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>{previewMode === 'desktop' ? 'Mode mobile' : 'Mode desktop'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
 
-          <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')} variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
-                  borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
-                  backgroundColor: 'transparent',
-                  color: isDark ? 'hsl(var(--foreground))' : '#64748b'
-                }}>
-                    {previewMode === 'desktop' ? <Smartphone className="w-3.5 h-3.5" /> : <Monitor className="w-3.5 h-3.5" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p>{previewMode === 'desktop' ? 'Mode mobile' : 'Mode desktop'}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button onClick={() => setInspectMode(!inspectMode)} type="button" variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
-                  borderColor: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
-                  backgroundColor: inspectMode ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
-                  color: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--foreground))' : '#64748b'
-                }}>
-                    <Edit className="w-3.5 h-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p>{inspectMode ? 'Désactiver le mode édition' : 'Activer le mode édition'}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {!isMobile && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button onClick={() => setInspectMode(!inspectMode)} type="button" variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
+                    borderColor: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
+                    backgroundColor: inspectMode ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
+                    color: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--foreground))' : '#64748b'
+                  }}>
+                      <Edit className="w-3.5 h-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>{inspectMode ? 'Désactiver le mode édition' : 'Activer le mode édition'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
 
             <TooltipProvider>
               <Tooltip>
@@ -1914,15 +1956,15 @@ export default function BuilderSession() {
             </TooltipProvider>
 
             <Button onClick={handleSave} disabled={isSaving} variant="iconOnly" size="sm" className="h-8 text-xs">
-              <Save className="w-3.5 h-3.5 mr-1.5" />
-              Enregistrer
+              <Save className="w-3.5 h-3.5 md:mr-1.5" />
+              <span className="hidden md:inline">Enregistrer</span>
             </Button>
           </div>
 
-          <div className="h-6 w-px bg-slate-300" />
+          {!isMobile && <div className="h-6 w-px bg-slate-300" />}
 
-          <div className="flex items-center gap-2">
-            <Button onClick={handlePublish} disabled={isPublishing} size="minimal" className="text-sm gap-2 transition-all border rounded-full px-6" style={{
+          <div className="flex items-center gap-1 md:gap-2">
+            <Button onClick={handlePublish} disabled={isPublishing} size="minimal" className="text-xs md:text-sm gap-1 md:gap-2 transition-all border rounded-full px-3 md:px-6" style={{
             borderColor: '#03A5C0',
             backgroundColor: 'rgba(3, 165, 192, 0.1)',
             color: '#03A5C0'
@@ -1931,7 +1973,7 @@ export default function BuilderSession() {
           }} onMouseLeave={e => {
             e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
           }}>
-              {isPublishing ? 'Publication...' : 'Publier'}
+              {isPublishing ? '...' : 'Publier'}
             </Button>
           </div>
 
@@ -1942,6 +1984,107 @@ export default function BuilderSession() {
       </div>
 
       {/* Panneau principal */}
+      {isMobile ? (
+        /* Mobile: afficher soit le chat, soit la preview */
+        <div className="flex-1 overflow-hidden">
+          {mobileView === 'chat' ? (
+            <div className="h-full flex flex-col bg-background">
+              {/* Chat history - Mobile */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {messages.map((msg, idx) => {
+                const isInactive = currentVersionIndex !== null && idx > currentVersionIndex;
+                return <div key={idx} className={isInactive ? 'opacity-40' : ''}>
+                    {msg.role === 'user' ? <div className="flex justify-end">
+                        <div className="max-w-[85%] rounded-2xl px-4 py-2.5 border border-[#03A5C0] bg-[#03A5C0]/10">
+                          {typeof msg.content === 'string' ? <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{msg.content}</p> : <div className="space-y-2">
+                              {msg.content.map((item, i) => item.type === 'text' ? <p key={i} className={`text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{item.text}</p> : <img key={i} src={item.image_url?.url} alt="Attaché" className="max-w-[200px] rounded border" />)}
+                            </div>}
+                        </div>
+                      </div> : msg.metadata?.type === 'generation' ?
+                  <AiGenerationMessage
+                    message={msg}
+                    messageIndex={idx}
+                    isLatestMessage={idx === messages.length - 1}
+                    isDark={isDark}
+                    isLoading={idx === messages.length - 1 && (generateSiteHook.isGenerating || unifiedModify.isLoading || isQuickModLoading)}
+                    isFirstGeneration={isInitialGeneration && idx === messages.length - 1}
+                    generationStartTime={idx === messages.length - 1 && (generateSiteHook.isGenerating || unifiedModify.isLoading || isQuickModLoading) ? generationStartTimeRef.current : undefined}
+                    onRestore={async messageIdx => {
+                    const targetMessage = messages[messageIdx];
+                    if (!targetMessage.id || !sessionId) return;
+                    const { data: chatMessage } = await supabase.from('chat_messages').select('metadata').eq('id', targetMessage.id).single();
+                    if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
+                      const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
+                      updateFiles(restoredFiles, false);
+                      setGeneratedHtml(restoredFiles['index.html'] || '');
+                      if (selectedFile && restoredFiles[selectedFile]) {
+                        setSelectedFileContent(restoredFiles[selectedFile]);
+                      } else {
+                        const firstFile = Object.keys(restoredFiles)[0];
+                        if (firstFile) { setSelectedFile(firstFile); setSelectedFileContent(restoredFiles[firstFile]); }
+                      }
+                      setCurrentVersionIndex(messageIdx);
+                      await supabase.from('build_sessions').update({ project_files: convertFilesToArray(restoredFiles), updated_at: new Date().toISOString() }).eq('id', sessionId);
+                      sonnerToast.success('Version restaurée');
+                    } else {
+                      sonnerToast.error('Impossible de restaurer cette version');
+                    }
+                  }} onGoToPrevious={async () => {
+                    if (versions.length < 2) { sonnerToast.error('Aucune version précédente disponible'); return; }
+                    const previousVersion = versions[1];
+                    const success = await rollbackToVersion(previousVersion.id);
+                    if (success) { await fetchVersions(); sonnerToast.success('Version précédente restaurée'); }
+                  }} /> : msg.metadata?.type === 'message' ?
+                  <ChatOnlyMessage message={msg} messageIndex={idx} isLatestMessage={idx === messages.length - 1} isDark={isDark} showImplementButton={chatMode} onRestore={async () => {
+                    sonnerToast.info('Les messages de conversation ne modifient pas les fichiers');
+                  }} onGoToPrevious={() => {
+                    sonnerToast.info('Les messages de conversation ne sont pas versionnés');
+                  }} onImplementPlan={plan => {
+                    setChatMode(false);
+                    setInputValue(plan);
+                    setTimeout(() => { handleSubmit(); }, 100);
+                  }} /> : <div className="space-y-3">
+                        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
+                          {typeof msg.content === 'string' ? msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content : 'Contenu généré'}
+                        </p>
+                      </div>}
+                  </div>;
+              })}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Chat input - Mobile */}
+              <div className="p-3 backdrop-blur-sm bg-background">
+                <PromptBar inputValue={inputValue} setInputValue={setInputValue} onSubmit={handleSubmit} isLoading={unifiedModify.isLoading} onStop={() => unifiedModify.abort()} showPlaceholderAnimation={false} showConfigButtons={false} modificationMode={true} inspectMode={inspectMode} onInspectToggle={() => setInspectMode(!inspectMode)} chatMode={chatMode} onChatToggle={() => setChatMode(!chatMode)} projectType={projectType} onProjectTypeChange={setProjectType} attachedFiles={attachedFiles} onRemoveFile={removeFile} onFileSelect={async files => {
+                const newFiles: Array<{ name: string; base64: string; type: string }> = [];
+                for (let i = 0; i < files.length; i++) {
+                  const file = files[i];
+                  if (!file.type.startsWith('image/')) { sonnerToast.error(`${file.name} n'est pas une image`); continue; }
+                  const reader = new FileReader();
+                  const base64Promise = new Promise<string>(resolve => { reader.onloadend = () => resolve(reader.result as string); reader.readAsDataURL(file); });
+                  const base64 = await base64Promise;
+                  newFiles.push({ name: file.name, base64, type: file.type });
+                }
+                setAttachedFiles([...attachedFiles, ...newFiles]);
+              }} />
+              </div>
+            </div>
+          ) : (
+            /* Mobile Preview */
+            <div className="h-full w-full flex flex-col overflow-hidden" style={{ backgroundColor: isDark ? 'hsl(var(--background))' : 'hsl(var(--background))' }}>
+              {Object.keys(projectFiles).length === 0 && !vibePreviewUrl ? <GeneratingPreview /> : <>
+                <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
+                {vibePreviewUrl ? (
+                  <iframe src={vibePreviewUrl} title="Preview" className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" />
+                ) : (
+                  <InteractiveCodeSandboxPreview projectFiles={projectFiles} previewMode="mobile" inspectMode={false} onInspectModeChange={() => {}} />
+                )}
+              </>}
+            </div>
+          )}
+        </div>
+      ) : (
+      /* Desktop: ResizablePanelGroup */
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         <ResizablePanel defaultSize={30} minSize={25}>
           <div className="h-full flex flex-col bg-background">
@@ -2050,7 +2193,7 @@ export default function BuilderSession() {
               <div ref={chatEndRef} />
             </div>
             
-            {/* Chat input */}
+            {/* Chat input - Desktop */}
             <div className="p-4 backdrop-blur-sm bg-background">
               <PromptBar inputValue={inputValue} setInputValue={setInputValue} onSubmit={handleSubmit} isLoading={unifiedModify.isLoading} onStop={() => unifiedModify.abort()} showPlaceholderAnimation={false} showConfigButtons={false} modificationMode={true} inspectMode={inspectMode} onInspectToggle={() => setInspectMode(!inspectMode)} chatMode={chatMode} onChatToggle={() => setChatMode(!chatMode)} projectType={projectType} onProjectTypeChange={setProjectType} attachedFiles={attachedFiles} onRemoveFile={removeFile} onFileSelect={async files => {
               const newFiles: Array<{
@@ -2220,6 +2363,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
             </div>
           </ResizablePanel>
       </ResizablePanelGroup>
+      )}
 
       {/* Dialog pour sauvegarder */}
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
