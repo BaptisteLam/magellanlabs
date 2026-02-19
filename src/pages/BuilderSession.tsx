@@ -112,6 +112,8 @@ export default function BuilderSession() {
   }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publishStep, setPublishStep] = useState(0);
+  const publishIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [showPublishSuccess, setShowPublishSuccess] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [lastPublishResult, setLastPublishResult] = useState<{
@@ -168,7 +170,7 @@ export default function BuilderSession() {
   const generateSiteHook = useGenerateSite();
 
   // Hook pour vérifier le quota de messages
-  const { isAtLimit, usage, refetch: refetchCredits } = useCredits();
+  const { isAtLimit, isNearLimit, usage, refetch: refetchCredits } = useCredits();
 
   // Hook pour versioning R2
   const { versions, isLoading: isVersionsLoading, isRollingBack, fetchVersions, rollbackToVersion } = useProjectVersions(sessionId);
@@ -1775,6 +1777,13 @@ export default function BuilderSession() {
       sonnerToast.error(error.message || "❌ Erreur lors du téléchargement");
     }
   };
+  const PUBLISH_STEPS = [
+    'Préparation des fichiers...',
+    'Déploiement sur Cloudflare...',
+    'Configuration DNS...',
+    'Mise en ligne...',
+  ];
+
   const handlePublish = async () => {
     if (!user) {
       localStorage.setItem('redirectAfterAuth', `/builder/${sessionId}`);
@@ -1792,7 +1801,16 @@ export default function BuilderSession() {
       setShowSaveDialog(true);
       return;
     }
+    setPublishStep(0);
     setIsPublishing(true);
+    // Animate through publish steps
+    let step = 0;
+    publishIntervalRef.current = setInterval(() => {
+      step += 1;
+      if (step < PUBLISH_STEPS.length - 1) {
+        setPublishStep(step);
+      }
+    }, 2500);
     try {
       const {
         data: {
@@ -1878,7 +1896,12 @@ export default function BuilderSession() {
       console.error('Error publishing:', error);
       sonnerToast.error(error.message || "❌ Erreur lors de la publication");
     } finally {
+      if (publishIntervalRef.current) {
+        clearInterval(publishIntervalRef.current);
+        publishIntervalRef.current = null;
+      }
       setIsPublishing(false);
+      setPublishStep(0);
     }
   };
   if (sessionLoading) {
@@ -2020,11 +2043,17 @@ export default function BuilderSession() {
             backgroundColor: 'rgba(3, 165, 192, 0.1)',
             color: '#03A5C0'
           }} onMouseEnter={e => {
-            e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.2)';
+            if (!isPublishing) e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.2)';
           }} onMouseLeave={e => {
             e.currentTarget.style.backgroundColor = 'rgba(3, 165, 192, 0.1)';
           }}>
-              {isPublishing ? '...' : 'Publier'}
+              {isPublishing ? (
+                <span className="flex items-center gap-1.5">
+                  <Loader className="w-3 h-3 animate-spin" />
+                  <span className="hidden md:inline">{PUBLISH_STEPS[publishStep]}</span>
+                  <span className="md:hidden">Publication...</span>
+                </span>
+              ) : 'Publier'}
             </Button>
           </div>
 
@@ -2033,6 +2062,53 @@ export default function BuilderSession() {
           </Button>
         </div>
       </div>
+
+      {/* Barre de progression de publication */}
+      {isPublishing && (
+        <div
+          className="px-4 py-2 flex items-center gap-3 border-b"
+          style={{
+            backgroundColor: isDark ? 'rgba(3,165,192,0.08)' : 'rgba(3,165,192,0.06)',
+            borderColor: 'rgba(3,165,192,0.2)'
+          }}
+        >
+          <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: isDark ? '#2a2a2a' : '#e2e8f0' }}>
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${((publishStep + 1) / PUBLISH_STEPS.length) * 100}%`,
+                backgroundColor: '#03A5C0'
+              }}
+            />
+          </div>
+          <span className="text-xs font-medium flex-shrink-0" style={{ color: '#03A5C0' }}>
+            {publishStep + 1}/{PUBLISH_STEPS.length} — {PUBLISH_STEPS[publishStep]}
+          </span>
+        </div>
+      )}
+
+      {/* Avertissement quota faible */}
+      {isNearLimit && !isPublishing && (
+        <div
+          className="px-4 py-2 flex items-center gap-2 border-b text-sm"
+          style={{
+            backgroundColor: isDark ? 'rgba(234,179,8,0.08)' : 'rgba(254,249,195,0.9)',
+            borderColor: 'rgba(234,179,8,0.3)',
+            color: isDark ? '#fcd34d' : '#92400e'
+          }}
+        >
+          <span>⚠️</span>
+          <span>
+            Il vous reste seulement <strong>{usage?.remaining ?? '?'} message{(usage?.remaining ?? 0) > 1 ? 's' : ''}</strong> ce mois-ci.{' '}
+            <button
+              onClick={() => navigate('/tarifs')}
+              className="underline font-semibold hover:opacity-80 transition-opacity"
+            >
+              Passer en Premium
+            </button>
+          </span>
+        </div>
+      )}
 
       {/* Panneau principal */}
       {isMobile ? (
@@ -2062,7 +2138,26 @@ export default function BuilderSession() {
                     generationStartTime={idx === messages.length - 1 && (generateSiteHook.isGenerating || unifiedModify.isLoading || isQuickModLoading) ? generationStartTimeRef.current : undefined}
                     onRestore={async messageIdx => {
                     const targetMessage = messages[messageIdx];
-                    if (!targetMessage.id || !sessionId) return;
+                    if (!sessionId) return;
+                    // Priority 1: use in-memory message metadata (fastest, no DB call)
+                    const inMemoryFiles = targetMessage.metadata?.project_files;
+                    if (inMemoryFiles && Object.keys(inMemoryFiles).length > 0) {
+                      const restoredFiles = inMemoryFiles as Record<string, string>;
+                      updateFiles(restoredFiles, false);
+                      setGeneratedHtml(restoredFiles['index.html'] || '');
+                      if (selectedFile && restoredFiles[selectedFile]) {
+                        setSelectedFileContent(restoredFiles[selectedFile]);
+                      } else {
+                        const firstFile = Object.keys(restoredFiles)[0];
+                        if (firstFile) { setSelectedFile(firstFile); setSelectedFileContent(restoredFiles[firstFile]); }
+                      }
+                      setCurrentVersionIndex(messageIdx);
+                      await supabase.from('build_sessions').update({ project_files: convertFilesToArray(restoredFiles), updated_at: new Date().toISOString() }).eq('id', sessionId);
+                      sonnerToast.success('Version restaurée');
+                      return;
+                    }
+                    // Fallback: query chat_messages table if message has an ID
+                    if (!targetMessage.id) { sonnerToast.error('Impossible de restaurer cette version'); return; }
                     const { data: chatMessage } = await supabase.from('chat_messages').select('metadata').eq('id', targetMessage.id).single();
                     if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
                       const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
@@ -2106,7 +2201,7 @@ export default function BuilderSession() {
 
               {/* Chat input - Mobile */}
               <div className="p-3 backdrop-blur-sm bg-background">
-                <PromptBar inputValue={inputValue} setInputValue={setInputValue} onSubmit={handleSubmit} isLoading={unifiedModify.isLoading} onStop={() => unifiedModify.abort()} showPlaceholderAnimation={false} showConfigButtons={false} modificationMode={true} inspectMode={inspectMode} onInspectToggle={() => setInspectMode(!inspectMode)} chatMode={chatMode} onChatToggle={() => setChatMode(!chatMode)} projectType={projectType} onProjectTypeChange={setProjectType} attachedFiles={attachedFiles} onRemoveFile={removeFile} onFileSelect={async files => {
+                <PromptBar inputValue={inputValue} setInputValue={setInputValue} onSubmit={handleSubmit} isLoading={generateSiteHook.isGenerating || unifiedModify.isLoading || isQuickModLoading} onStop={() => { generateSiteHook.abort(); unifiedModify.abort(); }} showPlaceholderAnimation={false} showConfigButtons={false} modificationMode={true} inspectMode={inspectMode} onInspectToggle={() => setInspectMode(!inspectMode)} chatMode={chatMode} onChatToggle={() => setChatMode(!chatMode)} projectType={projectType} onProjectTypeChange={setProjectType} attachedFiles={attachedFiles} onRemoveFile={removeFile} onFileSelect={async files => {
                 const newFiles: Array<{ name: string; base64: string; type: string }> = [];
                 for (let i = 0; i < files.length; i++) {
                   const file = files[i];
@@ -2163,14 +2258,29 @@ export default function BuilderSession() {
                   generationStartTime={idx === messages.length - 1 && (generateSiteHook.isGenerating || unifiedModify.isLoading || isQuickModLoading) ? generationStartTimeRef.current : undefined} 
                   onRestore={async messageIdx => {
                   const targetMessage = messages[messageIdx];
-                  if (!targetMessage.id || !sessionId) return;
-                  console.log('🔄 RESTORING VERSION FROM MESSAGE', messageIdx);
-                  const {
-                    data: chatMessage
-                  } = await supabase.from('chat_messages').select('metadata').eq('id', targetMessage.id).single();
+                  if (!sessionId) return;
+                  // Priority 1: use in-memory message metadata (fastest, no DB call)
+                  const inMemoryFiles = targetMessage.metadata?.project_files;
+                  if (inMemoryFiles && Object.keys(inMemoryFiles).length > 0) {
+                    const restoredFiles = inMemoryFiles as Record<string, string>;
+                    updateFiles(restoredFiles, false);
+                    setGeneratedHtml(restoredFiles['index.html'] || '');
+                    if (selectedFile && restoredFiles[selectedFile]) {
+                      setSelectedFileContent(restoredFiles[selectedFile]);
+                    } else {
+                      const firstFile = Object.keys(restoredFiles)[0];
+                      if (firstFile) { setSelectedFile(firstFile); setSelectedFileContent(restoredFiles[firstFile]); }
+                    }
+                    setCurrentVersionIndex(messageIdx);
+                    await supabase.from('build_sessions').update({ project_files: convertFilesToArray(restoredFiles), updated_at: new Date().toISOString() }).eq('id', sessionId);
+                    sonnerToast.success('Version restaurée');
+                    return;
+                  }
+                  // Fallback: query chat_messages table
+                  if (!targetMessage.id) { sonnerToast.error('Impossible de restaurer cette version'); return; }
+                  const { data: chatMessage } = await supabase.from('chat_messages').select('metadata').eq('id', targetMessage.id).single();
                   if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
                     const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
-                    console.log('✅ Files to restore:', Object.keys(restoredFiles).length);
                     updateFiles(restoredFiles, false);
                     setGeneratedHtml(restoredFiles['index.html'] || '');
                     if (selectedFile && restoredFiles[selectedFile]) {
@@ -2187,7 +2297,6 @@ export default function BuilderSession() {
                       project_files: convertFilesToArray(restoredFiles),
                       updated_at: new Date().toISOString()
                     }).eq('id', sessionId);
-                    console.log('✅ Version restored successfully');
                     sonnerToast.success('Version restaurée');
                   } else {
                     console.error('❌ No project_files found in message metadata');
@@ -2246,7 +2355,7 @@ export default function BuilderSession() {
             
             {/* Chat input - Desktop */}
             <div className="p-4 backdrop-blur-sm bg-background">
-              <PromptBar inputValue={inputValue} setInputValue={setInputValue} onSubmit={handleSubmit} isLoading={unifiedModify.isLoading} onStop={() => unifiedModify.abort()} showPlaceholderAnimation={false} showConfigButtons={false} modificationMode={true} inspectMode={inspectMode} onInspectToggle={() => setInspectMode(!inspectMode)} chatMode={chatMode} onChatToggle={() => setChatMode(!chatMode)} projectType={projectType} onProjectTypeChange={setProjectType} attachedFiles={attachedFiles} onRemoveFile={removeFile} onFileSelect={async files => {
+              <PromptBar inputValue={inputValue} setInputValue={setInputValue} onSubmit={handleSubmit} isLoading={generateSiteHook.isGenerating || unifiedModify.isLoading || isQuickModLoading} onStop={() => { generateSiteHook.abort(); unifiedModify.abort(); }} showPlaceholderAnimation={false} showConfigButtons={false} modificationMode={true} inspectMode={inspectMode} onInspectToggle={() => setInspectMode(!inspectMode)} chatMode={chatMode} onChatToggle={() => setChatMode(!chatMode)} projectType={projectType} onProjectTypeChange={setProjectType} attachedFiles={attachedFiles} onRemoveFile={removeFile} onFileSelect={async files => {
               const newFiles: Array<{
                 name: string;
                 base64: string;
