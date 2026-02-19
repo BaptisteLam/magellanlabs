@@ -19,6 +19,7 @@ interface Project {
   cloudflare_deployment_url: string | null;
   thumbnail_url: string | null;
   cloudflare_project_name?: string | null;
+  seo_descriptions?: Record<string, string> | null;
 }
 
 interface PageSEO {
@@ -54,7 +55,7 @@ export function SiteWeb() {
 
       let query = supabase
         .from('build_sessions')
-        .select('id, title, public_url, project_files, cloudflare_deployment_url, thumbnail_url, cloudflare_project_name')
+        .select('id, title, public_url, project_files, cloudflare_deployment_url, thumbnail_url, cloudflare_project_name, seo_descriptions')
         .eq('user_id', session.user.id);
 
       if (projectId) {
@@ -75,14 +76,15 @@ export function SiteWeb() {
           setCloudflareProjectName(data.cloudflare_project_name);
         }
 
-        // Extract HTML pages for SEO
+        // Extract HTML pages for SEO, loading saved descriptions from DB
         const files = data.project_files as Record<string, string> | null;
+        const savedSEO = (data.seo_descriptions as Record<string, string>) || {};
         if (files) {
           const htmlPages = Object.keys(files)
             .filter(path => path.endsWith('.html'))
             .map(path => ({
               path,
-              description: '' // TODO: Load from database if stored
+              description: savedSEO[path] || ''
             }));
           setPageSEO(htmlPages);
         }
@@ -151,9 +153,21 @@ export function SiteWeb() {
   };
 
   const handleSaveSEO = async () => {
+    if (!project) return;
     setIsSavingSEO(true);
     try {
-      // TODO: Save SEO descriptions to database
+      // Build a map of path -> description
+      const seoMap: Record<string, string> = {};
+      pageSEO.forEach(page => {
+        if (page.description) seoMap[page.path] = page.description;
+      });
+
+      const { error } = await supabase
+        .from('build_sessions')
+        .update({ seo_descriptions: seoMap })
+        .eq('id', project.id);
+
+      if (error) throw error;
       toast.success('Descriptions SEO enregistrées');
     } catch (error) {
       toast.error('Erreur lors de l\'enregistrement');

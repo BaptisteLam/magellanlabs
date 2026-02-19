@@ -5,19 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import { toast as sonnerToast } from 'sonner';
 import { useThemeStore } from '@/stores/themeStore';
 import PromptBar from '@/components/PromptBar';
-import TemplateCard from '@/components/TemplateCard';
-
-// Import template images
-import agenceImg from '@/assets/templates/agence.jpeg';
-import centreActiviteImg from '@/assets/templates/centre-activite.jpeg';
-import immobilierImg from '@/assets/templates/immobilier.jpeg';
-import pagePersoImg from '@/assets/templates/page-perso.jpeg';
-import webinaireImg from '@/assets/templates/webinaire.jpeg';
-import mariageImg from '@/assets/templates/mariage.jpeg';
-import logicielImg from '@/assets/templates/logiciel.jpeg';
-import restaurantImg from '@/assets/templates/restaurant.jpeg';
-import hotelImg from '@/assets/templates/hotel.jpeg';
-import systemeNumeriqueImg from '@/assets/templates/systeme-numerique.jpeg';
 interface AISearchHeroProps {
   onGeneratedChange?: (hasGenerated: boolean) => void;
 }
@@ -120,78 +107,6 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
     }
   };
 
-  const templates = [
-    {
-      title: "Agence Marketing",
-      description: "Landing page professionnelle pour agence de marketing digital avec services et portfolio.",
-      imageUrl: agenceImg,
-      messagesSaved: 15
-    },
-    {
-      title: "Centre de Fitness",
-      description: "Site complet pour salle de sport avec abonnements, équipements et planning des cours.",
-      imageUrl: centreActiviteImg,
-      messagesSaved: 18
-    },
-    {
-      title: "Agence Immobilière",
-      description: "Plateforme immobilière élégante avec listings de propriétés et estimations.",
-      imageUrl: immobilierImg,
-      messagesSaved: 20
-    },
-    {
-      title: "Page Personnelle",
-      description: "Portfolio professionnel pour consultant ou freelance avec parcours et services.",
-      imageUrl: pagePersoImg,
-      messagesSaved: 12
-    },
-    {
-      title: "Webinaire & Formation",
-      description: "Landing page de conversion pour webinaire avec inscription et témoignages.",
-      imageUrl: webinaireImg,
-      messagesSaved: 14
-    },
-    {
-      title: "Mariage & Événement",
-      description: "Site élégant pour mariage avec galerie photos, programme et RSVP.",
-      imageUrl: mariageImg,
-      messagesSaved: 16
-    },
-    {
-      title: "Logiciel SaaS",
-      description: "Landing page moderne pour produit SaaS avec fonctionnalités et pricing.",
-      imageUrl: logicielImg,
-      messagesSaved: 22
-    },
-    {
-      title: "Restaurant",
-      description: "Site gastronomique avec menu, réservations et ambiance culinaire.",
-      imageUrl: restaurantImg,
-      messagesSaved: 17
-    },
-    {
-      title: "Hôtel & Hébergement",
-      description: "Site hôtelier de luxe avec chambres, services et réservation en ligne.",
-      imageUrl: hotelImg,
-      messagesSaved: 19
-    },
-    {
-      title: "Produit Numérique",
-      description: "Page de vente pour cours en ligne ou produit digital avec témoignages.",
-      imageUrl: systemeNumeriqueImg,
-      messagesSaved: 21
-    }
-  ];
-
-  const handleTemplateView = (template: typeof templates[0]) => {
-    sonnerToast.info(`Aperçu du template "${template.title}"`);
-  };
-
-  const handleTemplateUse = (template: typeof templates[0]) => {
-    setInputValue(`Crée un site web pour ${template.title.toLowerCase()} : ${template.description}`);
-    sonnerToast.success(`Template "${template.title}" sélectionné`);
-  };
-
   return (
     <div className="relative min-h-screen flex flex-col items-center overflow-hidden pt-12 sm:pt-20" style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff' }}>
       {/* Grid background */}
@@ -248,39 +163,6 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         </div>
       </div>
 
-      {/* Templates Gallery */}
-      <div className="relative z-10 w-full max-w-7xl px-4 sm:px-6 mt-16 sm:mt-32 mb-10 sm:mb-16">
-        {/* Section Header */}
-        <div className="mb-6 sm:mb-8 text-center">
-          <h2
-            className="text-xl sm:text-2xl md:text-3xl font-bold mb-2"
-            style={{ color: isDark ? 'hsl(var(--foreground))' : '#1e293b' }}
-          >
-            Templates populaires
-          </h2>
-          <p
-            className="text-sm sm:text-base"
-            style={{ color: isDark ? 'hsl(var(--muted-foreground))' : '#64748b' }}
-          >
-            Commence avec un template et personnalise-le en quelques clics
-          </p>
-        </div>
-
-        {/* Templates Grid - 3 columns responsive */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {templates.map((template, index) => (
-            <TemplateCard
-              key={index}
-              title={template.title}
-              description={template.description}
-              imageUrl={template.imageUrl}
-              messagesSaved={template.messagesSaved}
-              onView={() => handleTemplateView(template)}
-              onUse={() => handleTemplateUse(template)}
-            />
-          ))}
-        </div>
-      </div>
     </div>
   );
 };

@@ -91,7 +91,7 @@ export function useCredits() {
     : 0;
 
   const isNearLimit = usage
-    ? usage.remaining <= 1 && usage.remaining > 0
+    ? usage.remaining <= 2 && usage.remaining > 0
     : false;
 
   const isAtLimit = usage

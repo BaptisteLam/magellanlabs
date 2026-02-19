@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Globe, BarChart3, Mail, Settings, ChevronDown, FileCode, Smartphone, Plus, FolderOpen, Upload, Building2 } from 'lucide-react';
+import { Globe, BarChart3, Mail, Settings, ChevronDown, FileCode, Smartphone, Plus, FolderOpen, Upload, Building2, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-export type SettingsSection = 'siteweb' | 'analytiques' | 'contact' | 'parametres';
+export type SettingsSection = 'siteweb' | 'analytiques' | 'contact' | 'parametres' | 'profil';
 
 interface Project {
   id: string;
@@ -322,6 +322,19 @@ export function SettingsSidebar({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Profile button */}
+        <button
+          onClick={() => setSection('profil')}
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+            currentSection === 'profil' ? "text-[#03A5C0]" : "text-foreground/80 hover:text-[#03A5C0]",
+            "focus:outline-none"
+          )}
+        >
+          <User className="h-5 w-5" />
+          <span>Profil</span>
+        </button>
 
         {/* Settings button */}
         <button
