@@ -428,6 +428,12 @@ export default function BuilderSession() {
           setCloudflareProjectName(data.cloudflare_project_name);
         }
 
+        // Restaurer l'URL de preview VibeSDK
+        if (data.cloudflare_deployment_url) {
+          console.log('🌐 Restoring VibeSDK preview URL:', data.cloudflare_deployment_url);
+          setVibePreviewUrl(data.cloudflare_deployment_url);
+        }
+
         // Charger le type de projet
         if (data.project_type) {
           setProjectType(data.project_type as 'website' | 'webapp' | 'mobile');
@@ -547,6 +553,7 @@ export default function BuilderSession() {
         project_type: projectType,
         thumbnail_url: existingSession?.thumbnail_url || null,
         // Garder le thumbnail existant
+        ...(vibePreviewUrl && { cloudflare_deployment_url: vibePreviewUrl }),
         updated_at: new Date().toISOString()
       }).eq('id', sessionId);
       if (error) throw error;
