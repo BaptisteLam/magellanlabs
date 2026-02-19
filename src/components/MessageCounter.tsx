@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
 import { MessageSquare } from 'lucide-react';
+import { PLANS, type PlanId } from '@/config/constants';
 
 interface MessageCounterProps {
   isDark: boolean;
@@ -10,7 +11,7 @@ interface MessageCounterProps {
 
 export function MessageCounter({ isDark, userId }: MessageCounterProps) {
   const [messagesUsed, setMessagesUsed] = useState(0);
-  const [messagesQuota] = useState(100); // 100 messages par mois fixe
+  const [messagesQuota, setMessagesQuota] = useState(5); // default free plan
 
   useEffect(() => {
     if (!userId) return;
@@ -20,7 +21,7 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('messages_used')
+        .select('messages_used, plan')
         .eq('id', userId)
         .maybeSingle();
 
@@ -28,11 +29,15 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
         console.error('💬 MessageCounter: Erreur récupération messages:', error);
       } else if (data) {
         const used = (data as any).messages_used || 0;
+        const plan = ((data as any).plan || 'free') as PlanId;
+        const quota = PLANS[plan]?.messagesPerMonth ?? 5;
         console.log('💬 MessageCounter: Messages utilisés -', {
           messages_used: used,
-          messages_quota: messagesQuota
+          plan,
+          messages_quota: quota
         });
-        setMessagesUsed(Math.min(used, messagesQuota));
+        setMessagesUsed(Math.min(used, quota));
+        setMessagesQuota(quota);
       } else {
         console.warn('💬 MessageCounter: Aucune donnée de profil trouvée');
       }
@@ -56,10 +61,15 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
           console.log('💬 MessageCounter: Mise à jour en temps réel reçue:', payload.new);
           if (payload.new) {
             const used = (payload.new as any).messages_used || 0;
+            const plan = ((payload.new as any).plan || 'free') as PlanId;
+            const quota = PLANS[plan]?.messagesPerMonth ?? 5;
             console.log('💬 MessageCounter: Nouveaux messages utilisés -', {
-              messages_used: used
+              messages_used: used,
+              plan,
+              messages_quota: quota
             });
-            setMessagesUsed(Math.min(used, messagesQuota));
+            setMessagesUsed(Math.min(used, quota));
+            setMessagesQuota(quota);
           }
         }
       )
@@ -69,7 +79,7 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
       console.log('💬 MessageCounter: Désinscription des mises à jour');
       supabase.removeChannel(channel);
     };
-  }, [userId, messagesQuota]);
+  }, [userId]);
 
   const messagesRemaining = messagesQuota - messagesUsed;
   const progressPercentage = (messagesRemaining / messagesQuota) * 100;

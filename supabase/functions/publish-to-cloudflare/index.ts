@@ -186,17 +186,10 @@ serve(async (req) => {
       });
     }
 
-    // Get Cloudflare credentials
+    // Get Cloudflare credentials (optional for VibeSDK path, required for Pages path)
     const CLOUDFLARE_ACCOUNT_ID = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
     const CLOUDFLARE_API_TOKEN = Deno.env.get('CLOUDFLARE_API_TOKEN');
     const CLOUDFLARE_KV_NAMESPACE_ID = Deno.env.get('CLOUDFLARE_KV_NAMESPACE_ID');
-    
-    if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
-      return new Response(JSON.stringify({ error: 'Cloudflare credentials not configured' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     // Parse request body
     const { sessionId, projectFiles, siteName, vibePreviewUrl } = await req.json();
@@ -282,15 +275,21 @@ serve(async (req) => {
         }
       }
 
-      // Mettre à jour la session
-      await supabase
-        .from('build_sessions')
-        .update({
-          cloudflare_deployment_url: vibePreviewUrl,
-          public_url: publicUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', sessionId);
+      // Mettre à jour la session (best-effort, ne bloque pas le succès)
+      try {
+        const { error: updateErr } = await supabaseAdmin
+          .from('build_sessions')
+          .update({
+            cloudflare_deployment_url: vibePreviewUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', sessionId);
+        if (updateErr) {
+          console.warn('⚠️ Failed to update build_sessions:', updateErr.message);
+        }
+      } catch (updateEx) {
+        console.warn('⚠️ Exception updating build_sessions:', updateEx);
+      }
 
       console.log('✅ Publication complete (via VibeSDK URL)!');
 
@@ -308,6 +307,15 @@ serve(async (req) => {
     }
 
     // === DÉPLOIEMENT CLOUDFLARE PAGES (fallback pour fichiers statiques) ===
+    // Vérifier les credentials Cloudflare pour ce path (requis pour Pages)
+    if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
+      console.error('❌ Cloudflare credentials missing for Pages deployment');
+      return new Response(JSON.stringify({ error: 'Cloudflare credentials not configured. Please contact support.' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     console.log('📦 Preparing files for Cloudflare Pages deployment...');
     const deployFiles = prepareDeployFiles(projectFiles);
     console.log(`📁 ${Object.keys(deployFiles).length} files prepared`);
