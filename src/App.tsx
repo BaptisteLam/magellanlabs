@@ -11,6 +11,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import AIBuilder from "./pages/AIBuilder";
 import BuilderSession from "./pages/BuilderSession";
@@ -60,6 +61,7 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/builder" element={<ProtectedRoute><AIBuilder /></ProtectedRoute>} />
         <Route path="/builder/:sessionId" element={<ProtectedRoute><BuilderSession /></ProtectedRoute>} />
