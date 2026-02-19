@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail, ArrowLeft } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { Separator } from "@/components/ui/separator";
 import Header from "@/components/layout/Header";
@@ -16,9 +16,12 @@ export default function Auth() {
   const [searchParams] = useSearchParams();
   const { isDark } = useThemeStore();
   const [isLogin, setIsLogin] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [forgotEmail, setForgotEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
 
   useEffect(() => {
@@ -194,6 +197,28 @@ export default function Auth() {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) {
+      toast.error("Veuillez entrer votre adresse email");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Un lien de réinitialisation a été envoyé à votre adresse email. Vérifiez votre boîte mail.");
+      setIsForgotPassword(false);
+    } catch (error: any) {
+      console.error('❌ Forgot password error:', error);
+      toast.error(error.message?.includes('rate limit') ? "Trop de tentatives. Réessayez dans quelques minutes." : "Erreur lors de l'envoi de l'email. Vérifiez l'adresse saisie.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -310,16 +335,65 @@ export default function Auth() {
       <Card className={`w-full max-w-md backdrop-blur-sm border-white/20 shadow-2xl ${isDark ? 'bg-[#1F1F20]/95' : 'bg-white/95'}`}>
         <CardHeader>
           <CardTitle className="text-2xl">
-            {isLogin ? "Connexion" : "Inscription"}
+            {isForgotPassword ? "Mot de passe oublié" : isLogin ? "Connexion" : "Inscription"}
           </CardTitle>
           <CardDescription>
-            {isLogin
+            {isForgotPassword
+              ? "Entrez votre email pour recevoir un lien de réinitialisation"
+              : isLogin
               ? "Connectez-vous pour enregistrer vos sites web"
               : "Créez un compte pour commencer"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {/* Forgot Password Form */}
+            {isForgotPassword ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="forgot-email">Email</Label>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    placeholder="votre@email.com"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                    disabled={forgotLoading}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  variant="magellan"
+                  className="w-full"
+                  disabled={forgotLoading}
+                >
+                  {forgotLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Envoi en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4" />
+                      Envoyer le lien de réinitialisation
+                    </>
+                  )}
+                </Button>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPassword(false)}
+                    className="flex items-center gap-1.5 text-sm text-primary hover:underline mx-auto"
+                    disabled={forgotLoading}
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Retour à la connexion
+                  </button>
+                </div>
+              </form>
+            ) : (
+            <>
             {/* OAuth Buttons */}
             <div className="space-y-3">
               <Button
@@ -398,7 +472,19 @@ export default function Auth() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Mot de passe</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Mot de passe</Label>
+                  {isLogin && (
+                    <button
+                      type="button"
+                      onClick={() => { setIsForgotPassword(true); setForgotEmail(email); }}
+                      className="text-xs text-primary hover:underline"
+                      disabled={isButtonDisabled}
+                    >
+                      Mot de passe oublié ?
+                    </button>
+                  )}
+                </div>
                 <Input
                   id="password"
                   type="password"
@@ -442,6 +528,8 @@ export default function Auth() {
                   : "Déjà un compte ? Se connecter"}
               </button>
             </div>
+            </>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -43,6 +43,7 @@ import { VersionHistory } from '@/components/VersionHistory';
 import type { ElementInfo } from '@/types/elementInfo';
 import { IndexedDBCache } from '@/services/indexedDBCache';
 import { parseProjectFiles } from '@/lib/projectFilesParser';
+import { useCredits } from '@/hooks/useCredits';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -165,6 +166,9 @@ export default function BuilderSession() {
 
   // Hook pour génération de nouveaux sites complets
   const generateSiteHook = useGenerateSite();
+
+  // Hook pour vérifier le quota de messages
+  const { isAtLimit, usage, refetch: refetchCredits } = useCredits();
 
   // Hook pour versioning R2
   const { versions, isLoading: isVersionsLoading, isRollingBack, fetchVersions, rollbackToVersion } = useProjectVersions(sessionId);
@@ -1574,6 +1578,21 @@ export default function BuilderSession() {
       throw new Error('Authentication required');
     }
 
+    // Vérification du quota de messages (sauf en mode chat simple)
+    if (!chatMode && isAtLimit) {
+      sonnerToast.error(
+        `Quota atteint (${usage?.messagesUsed}/${usage?.messagesLimit} messages ce mois-ci). Passez en Premium pour continuer.`,
+        {
+          action: {
+            label: 'Passer en Premium',
+            onClick: () => navigate('/tarifs'),
+          },
+          duration: 7000,
+        }
+      );
+      return;
+    }
+
     // MODE CHAT - Simple conversation sans génération de code
     if (chatMode) {
       const userMessage: Message = {
@@ -1658,6 +1677,9 @@ export default function BuilderSession() {
       console.log('🔄 Routing vers UNIFIED-MODIFY (modification de site existant)');
       await handleUnifiedModification(prompt);
     }
+
+    // Mettre à jour le compteur de messages après génération
+    refetchCredits();
   };
   const handleSave = async () => {
     if (!user) {
