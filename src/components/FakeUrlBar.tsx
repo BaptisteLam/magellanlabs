@@ -15,19 +15,21 @@ interface FakeUrlBarProps {
   currentRoute?: string;
   onNavigate?: (path: string) => void;
   iframeRef?: React.RefObject<HTMLIFrameElement>;
+  previewMode?: 'desktop' | 'mobile';
 }
 
-export function FakeUrlBar({ 
-  projectTitle, 
-  isDark = false, 
-  sessionId, 
-  onTitleChange, 
-  currentFavicon, 
-  onFaviconChange, 
+export function FakeUrlBar({
+  projectTitle,
+  isDark = false,
+  sessionId,
+  onTitleChange,
+  currentFavicon,
+  onFaviconChange,
   cloudflareProjectName,
   currentRoute = '/',
   onNavigate,
-  iframeRef
+  iframeRef,
+  previewMode = 'desktop'
 }: FakeUrlBarProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(projectTitle);
@@ -332,9 +334,9 @@ export function FakeUrlBar({
   };
 
   return (
-    <div 
-      className="h-10 border-b flex items-center px-4 gap-3 w-full rounded-t-xl"
-      style={{ 
+    <div
+      className="h-10 border-b flex items-center px-4 gap-3 w-full rounded-t-xl overflow-hidden min-w-0"
+      style={{
         backgroundColor: isDark ? '#2A2A2B' : '#F8F9FA',
         borderBottomColor: isDark ? '#3A3A3B' : '#E5E7EB'
       }}
@@ -407,9 +409,9 @@ export function FakeUrlBar({
       </div>
 
       {/* Barre d'URL */}
-      <div 
-        className="flex-1 h-7 px-3 flex items-center gap-2 min-w-0"
-        style={{ 
+      <div
+        className="flex-1 h-7 px-3 flex items-center gap-2 min-w-0 overflow-hidden"
+        style={{
           backgroundColor: isDark ? '#1F1F20' : '#FFFFFF',
           border: `1px solid ${isDark ? '#3A3A3B' : '#E5E7EB'}`,
           borderRadius: '9999px'
@@ -495,59 +497,61 @@ export function FakeUrlBar({
         )}
       </div>
 
-      {/* Icônes d'actions */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <button
-          onClick={handleCopyUrl}
-          className="w-6 h-6 rounded flex items-center justify-center hover:bg-opacity-80 transition-colors"
-          style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
-          title="Copier l'URL"
-        >
-          {copied ? (
-            <Check 
-              className="w-3.5 h-3.5"
-              style={{ color: '#03A5C0' }}
-            />
-          ) : (
-            <Copy 
+      {/* Icônes d'actions — masquées en mode mobile */}
+      {previewMode !== 'mobile' && (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={handleCopyUrl}
+            className="w-6 h-6 rounded flex items-center justify-center hover:bg-opacity-80 transition-colors"
+            style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
+            title="Copier l'URL"
+          >
+            {copied ? (
+              <Check
+                className="w-3.5 h-3.5"
+                style={{ color: '#03A5C0' }}
+              />
+            ) : (
+              <Copy
+                className="w-3.5 h-3.5"
+                style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
+              />
+            )}
+          </button>
+
+          <button
+            onClick={() => setIsEditing(true)}
+            className="w-6 h-6 rounded flex items-center justify-center hover:bg-opacity-80 transition-colors"
+            style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
+            title="Modifier le nom"
+          >
+            <Pencil
               className="w-3.5 h-3.5"
               style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
             />
-          )}
-        </button>
+          </button>
 
-        <button
-          onClick={() => setIsEditing(true)}
-          className="w-6 h-6 rounded flex items-center justify-center hover:bg-opacity-80 transition-colors"
-          style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
-          title="Modifier le nom"
-        >
-          <Pencil 
-            className="w-3.5 h-3.5"
-            style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
-          />
-        </button>
-        
-        <button
-          onClick={handleSearchClick}
-          className="w-6 h-6 rounded flex items-center justify-center transition-colors"
-          style={{ 
-            backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB',
-          }}
-          title="Voir le site publié"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#03A5C0';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = isDark ? '#3A3A3B' : '#E5E7EB';
-          }}
-        >
-          <Search 
-            className="w-3.5 h-3.5"
-            style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
-          />
-        </button>
-      </div>
+          <button
+            onClick={handleSearchClick}
+            className="w-6 h-6 rounded flex items-center justify-center transition-colors"
+            style={{
+              backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB',
+            }}
+            title="Voir le site publié"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#03A5C0';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = isDark ? '#3A3A3B' : '#E5E7EB';
+            }}
+          >
+            <Search
+              className="w-3.5 h-3.5"
+              style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
+            />
+          </button>
+        </div>
+      )}
 
       <CustomDomainDialog
         open={showCustomDomain}

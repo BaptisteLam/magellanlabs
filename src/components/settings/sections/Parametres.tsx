@@ -5,8 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useThemeStore } from '@/stores/themeStore';
-import { Settings, Moon, Sun, Monitor, Zap, Crown, MessageSquare } from 'lucide-react';
+import { Settings, Moon, Sun, Monitor, Zap, Crown, MessageSquare, LogOut } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { useCredits } from '@/hooks/useCredits';
+import { supabase } from '@/integrations/supabase/client';
 
 export function Parametres() {
   const navigate = useNavigate();
@@ -14,11 +16,13 @@ export function Parametres() {
   const [themeMode, setThemeMode] = useState(isDark ? 'dark' : 'light');
   const [language, setLanguage] = useState('fr');
   const [autoSave, setAutoSave] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Subscription state (mock data - would come from profile in real app)
-  const messagesUsed = 3;
-  const messagesLimit = 5;
-  const isPremium = false;
+  const { usage, isLoading: creditsLoading } = useCredits();
+
+  const messagesUsed = usage?.messagesUsed ?? 0;
+  const messagesLimit = usage?.messagesLimit ?? 5;
+  const isPremium = usage?.plan === 'premium';
 
   const handleThemeChange = (mode: string) => {
     setThemeMode(mode as 'light' | 'dark');
@@ -31,7 +35,19 @@ export function Parametres() {
     navigate('/pricing');
   };
 
-  const progressPercentage = (messagesUsed / messagesLimit) * 100;
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await supabase.auth.signOut();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  const progressPercentage = messagesLimit > 0 ? (messagesUsed / messagesLimit) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -42,7 +58,7 @@ export function Parametres() {
 
       {/* Subscription Card */}
       <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm overflow-hidden">
-        <div 
+        <div
           className="absolute inset-0 opacity-10"
           style={{
             background: 'linear-gradient(135deg, rgba(3,165,192,0.3) 0%, transparent 50%)'
@@ -60,14 +76,14 @@ export function Parametres() {
             <div>
               <p className="text-sm text-muted-foreground">Plan actuel</p>
               <p className="text-lg font-semibold text-foreground">
-                {isPremium ? 'Premium' : 'Gratuit'}
+                {creditsLoading ? '...' : isPremium ? 'Premium' : 'Gratuit'}
               </p>
             </div>
             {!isPremium && (
-              <div 
+              <div
                 className="px-3 py-1 rounded-full text-xs font-medium"
-                style={{ 
-                  backgroundColor: 'rgba(3,165,192,0.15)', 
+                style={{
+                  backgroundColor: 'rgba(3,165,192,0.15)',
                   color: '#03A5C0',
                   border: '1px solid rgba(3,165,192,0.3)'
                 }}
@@ -85,16 +101,16 @@ export function Parametres() {
                 <span className="text-sm text-muted-foreground">Messages utilisés</span>
               </div>
               <span className="text-sm font-medium text-foreground">
-                {messagesUsed} / {messagesLimit}
+                {creditsLoading ? '...' : `${messagesUsed} / ${messagesLimit}`}
               </span>
             </div>
-            
+
             <div className="relative">
-              <Progress 
-                value={progressPercentage} 
+              <Progress
+                value={progressPercentage}
                 className="h-3 bg-muted/50"
               />
-              <div 
+              <div
                 className="absolute inset-0 h-3 rounded-full overflow-hidden"
                 style={{
                   background: `linear-gradient(90deg, #03A5C0 0%, #03A5C0 ${progressPercentage}%, transparent ${progressPercentage}%)`,
@@ -104,13 +120,13 @@ export function Parametres() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              {messagesLimit - messagesUsed} messages restants ce mois-ci
+              {creditsLoading ? '...' : `${messagesLimit - messagesUsed} messages restants ce mois-ci`}
             </p>
           </div>
 
           {/* Upgrade Section */}
           {!isPremium && (
-            <div 
+            <div
               className="rounded-xl p-4 space-y-4"
               style={{
                 background: 'linear-gradient(135deg, rgba(3,165,192,0.1) 0%, rgba(3,165,192,0.05) 100%)',
@@ -118,7 +134,7 @@ export function Parametres() {
               }}
             >
               <div className="flex items-start gap-3">
-                <div 
+                <div
                   className="p-2 rounded-lg"
                   style={{ backgroundColor: 'rgba(3,165,192,0.15)' }}
                 >
@@ -127,7 +143,7 @@ export function Parametres() {
                 <div className="flex-1">
                   <h4 className="font-semibold text-foreground">Passez en Premium</h4>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Débloquez <span className="font-semibold" style={{ color: '#03A5C0' }}>100 messages/mois</span> et accédez à toutes les fonctionnalités avancées.
+                    Débloquez <span className="font-semibold" style={{ color: '#03A5C0' }}>50 messages/mois</span> et accédez à toutes les fonctionnalités avancées.
                   </p>
                 </div>
               </div>
@@ -240,6 +256,46 @@ export function Parametres() {
               </p>
             </div>
             <Switch id="auto-save" checked={autoSave} onCheckedChange={setAutoSave} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Logout Card */}
+      <Card className="rounded-[8px] border border-red-500/20 bg-background/50 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-red-500">
+            <LogOut className="h-5 w-5" />
+            Déconnexion
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <p className="text-sm text-foreground font-medium">Se déconnecter du compte</p>
+              <p className="text-sm text-muted-foreground">
+                Vous serez redirigé vers la page d'inscription
+              </p>
+            </div>
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all rounded-full px-6 py-2 gap-2 disabled:opacity-50"
+              style={{
+                borderColor: 'rgb(239,68,68)',
+                backgroundColor: 'transparent',
+                color: 'rgb(239,68,68)',
+                border: '1px solid rgb(239,68,68)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+              {isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
+            </button>
           </div>
         </CardContent>
       </Card>

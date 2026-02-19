@@ -88,7 +88,15 @@ export default function BuilderSession() {
   } = useThemeStore();
   const [inputValue, setInputValue] = useState('');
   const [generatedHtml, setGeneratedHtml] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (sessionId) {
+      try {
+        const cached = sessionStorage.getItem(`chat_messages_${sessionId}`);
+        if (cached) return JSON.parse(cached) as Message[];
+      } catch {}
+    }
+    return [];
+  });
   const [user, setUser] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -207,6 +215,15 @@ export default function BuilderSession() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Mettre en cache les messages dans sessionStorage pour éviter le flash au rechargement
+  useEffect(() => {
+    if (sessionId && messages.length > 0) {
+      try {
+        sessionStorage.setItem(`chat_messages_${sessionId}`, JSON.stringify(messages));
+      } catch {}
+    }
+  }, [messages, sessionId]);
 
   // Fonction pour générer automatiquement un nom de projet
   const generateProjectName = async (prompt: string) => {
@@ -473,6 +490,11 @@ export default function BuilderSession() {
             };
           });
           setMessages(loadedMessages);
+
+          // Mettre en cache dans sessionStorage pour éviter le flash au rechargement
+          try {
+            sessionStorage.setItem(`chat_messages_${sessionId}`, JSON.stringify(loadedMessages));
+          } catch {}
 
           // Extraire les images attachées du premier message utilisateur s'il y en a
           const firstUserMessage = loadedMessages.find(m => m.role === 'user');
@@ -2072,8 +2094,8 @@ export default function BuilderSession() {
           ) : (
             /* Mobile Preview */
             <div className="h-full w-full flex flex-col overflow-hidden" style={{ backgroundColor: isDark ? 'hsl(var(--background))' : 'hsl(var(--background))' }}>
-              {Object.keys(projectFiles).length === 0 && !vibePreviewUrl ? <GeneratingPreview /> : <>
-                <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
+              {(Object.keys(projectFiles).length === 0 && !vibePreviewUrl) || generateSiteHook.isGenerating ? <GeneratingPreview /> : <>
+                <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} previewMode="mobile" />
                 {vibePreviewUrl ? (
                   <iframe src={vibePreviewUrl} title="Preview" className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" />
                 ) : (
@@ -2235,8 +2257,8 @@ export default function BuilderSession() {
             backgroundColor: isDark ? 'hsl(var(--background))' : 'hsl(var(--background))',
             borderColor: isDark ? 'hsl(var(--border))' : 'hsl(var(--border))'
           }}>
-                  {Object.keys(projectFiles).length === 0 && !vibePreviewUrl ? <GeneratingPreview /> : <>
-                      <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} />
+                  {(Object.keys(projectFiles).length === 0 && !vibePreviewUrl) || generateSiteHook.isGenerating ? <GeneratingPreview /> : <>
+                      <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} previewMode="mobile" />
                       {vibePreviewUrl ? (
                         <iframe
                           src={vibePreviewUrl}
@@ -2271,8 +2293,8 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                       )}
                     </>}
                 </div> : <>
-                  {Object.keys(projectFiles).length === 0 && !vibePreviewUrl ? <GeneratingPreview /> : <>
-                      <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} />
+                  {(Object.keys(projectFiles).length === 0 && !vibePreviewUrl) || generateSiteHook.isGenerating ? <GeneratingPreview /> : <>
+                      <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} previewMode={previewMode} />
                       {vibePreviewUrl ? (
                         <iframe
                           src={vibePreviewUrl}
