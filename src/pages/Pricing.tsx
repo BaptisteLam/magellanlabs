@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Check, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -11,7 +11,15 @@ import { toast } from 'sonner';
 
 const Pricing = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loadingPlan, setLoadingPlan] = useState<'monthly' | 'annual' | null>(null);
+
+  // Handle checkout cancellation redirect
+  useEffect(() => {
+    if (searchParams.get('checkout') === 'cancelled') {
+      toast.info('Paiement annulé. Vous pouvez réessayer quand vous le souhaitez.');
+    }
+  }, [searchParams]);
 
   const monthlyFeatures = [
     "Création instantanée de votre site par intelligence artificielle",
@@ -66,7 +74,7 @@ const Pricing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <SEOHead
         title="Tarifs - Magellan | Abonnement Site Web IA dès 12,99€/mois"
         description="Créez votre site professionnel avec l'IA dès 12,99€/mois. Sans engagement, hébergement inclus, 50 messages IA/mois. Offre annuelle à 119,99€/an avec 2 mois offerts."
@@ -80,7 +88,7 @@ const Pricing = () => {
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: 'linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
+            backgroundImage: 'linear-gradient(rgba(3, 165, 192, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(3, 165, 192, 0.08) 1px, transparent 1px)',
             backgroundSize: '80px 80px'
           }}
         />
@@ -98,10 +106,10 @@ const Pricing = () => {
         <div className="relative container mx-auto px-4 sm:px-6">
           {/* Header Section */}
           <div className="text-center mb-10 sm:mb-16">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-3 sm:mb-4">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-3 sm:mb-4">
               Tarifs simples et transparents
             </h1>
-            <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto px-2">
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-2">
               Choisissez l'offre qui correspond à vos besoins. Création instantanée par IA, hébergement inclus, sans surprise.
             </p>
           </div>
@@ -109,27 +117,27 @@ const Pricing = () => {
           {/* Pricing Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto">
             {/* Monthly Plan */}
-            <Card className="p-5 sm:p-8 bg-white/40 backdrop-blur-md border border-slate-200/50 hover:bg-white/50 transition-all flex flex-col">
+            <Card className="p-5 sm:p-8 bg-card/40 backdrop-blur-md border border-border/50 hover:bg-card/60 transition-all flex flex-col">
               <div className="mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">Offre Mensuelle</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Offre Mensuelle</h2>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl sm:text-5xl font-bold text-slate-900">12,99€</span>
-                  <span className="text-slate-600">/ mois</span>
+                  <span className="text-4xl sm:text-5xl font-bold text-foreground">12,99€</span>
+                  <span className="text-muted-foreground">/ mois</span>
                 </div>
               </div>
 
               <ul className="space-y-3 mb-8 flex-grow">
                 {monthlyFeatures.map((feature, index) => (
                   <li key={index} className="flex items-start gap-3">
-                    <Check className="w-4 h-4 flex-shrink-0 mt-1 text-slate-700" />
-                    <span className="text-sm text-slate-700">{feature}</span>
+                    <Check className="w-4 h-4 flex-shrink-0 mt-1" style={{ color: '#03A5C0' }} />
+                    <span className="text-sm text-muted-foreground">{feature}</span>
                   </li>
                 ))}
               </ul>
 
               <Button
                 className="w-full text-white hover:opacity-90 transition-opacity border-0"
-                style={{ backgroundColor: '#014AAD' }}
+                style={{ backgroundColor: '#03A5C0' }}
                 size="lg"
                 onClick={() => handleCheckout('monthly')}
                 disabled={loadingPlan !== null}
@@ -146,33 +154,36 @@ const Pricing = () => {
             </Card>
 
             {/* Annual Plan - Popular */}
-            <Card className="p-5 sm:p-8 bg-white/40 backdrop-blur-md border border-slate-200/50 hover:bg-white/50 transition-all relative overflow-hidden flex flex-col">
+            <Card className="p-5 sm:p-8 bg-card/40 backdrop-blur-md border border-border/50 hover:bg-card/60 transition-all relative overflow-hidden flex flex-col">
               {/* Popular Badge */}
-              <div className="absolute top-0 right-0 bg-slate-900 text-white text-xs font-semibold px-3 py-1.5">
+              <div
+                className="absolute top-0 right-0 text-white text-xs font-semibold px-3 py-1.5"
+                style={{ backgroundColor: '#03A5C0' }}
+              >
                 2 MOIS OFFERTS
               </div>
 
               <div className="mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">Offre Annuelle</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Offre Annuelle</h2>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl sm:text-5xl font-bold text-slate-900">119,99€</span>
-                  <span className="text-slate-600">/ an</span>
+                  <span className="text-4xl sm:text-5xl font-bold text-foreground">119,99€</span>
+                  <span className="text-muted-foreground">/ an</span>
                 </div>
-                <p className="text-sm text-slate-500 mt-1">soit ~10€/mois</p>
+                <p className="text-sm text-muted-foreground mt-1">soit ~10€/mois</p>
               </div>
 
               <ul className="space-y-3 mb-8 flex-grow">
                 {annualFeatures.map((feature, index) => (
                   <li key={index} className="flex items-start gap-3">
-                    <Check className="w-4 h-4 flex-shrink-0 mt-1 text-slate-700" />
-                    <span className="text-sm text-slate-700">{feature}</span>
+                    <Check className="w-4 h-4 flex-shrink-0 mt-1" style={{ color: '#03A5C0' }} />
+                    <span className="text-sm text-muted-foreground">{feature}</span>
                   </li>
                 ))}
               </ul>
 
               <Button
                 className="w-full text-white hover:opacity-90 transition-opacity border-0"
-                style={{ backgroundColor: '#014AAD' }}
+                style={{ backgroundColor: '#03A5C0' }}
                 size="lg"
                 onClick={() => handleCheckout('annual')}
                 disabled={loadingPlan !== null}
@@ -191,19 +202,19 @@ const Pricing = () => {
 
           {/* FAQ */}
           <div className="mt-10 sm:mt-16 text-center max-w-3xl mx-auto">
-            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4">Questions fréquentes</h3>
+            <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-4">Questions fréquentes</h3>
             <div className="space-y-3 sm:space-y-4 text-left">
-              <div className="p-4 sm:p-6 bg-white/40 backdrop-blur-md border border-slate-200/50 rounded-lg">
-                <h4 className="font-semibold text-slate-900 mb-2">Puis-je changer d'offre en cours d'abonnement ?</h4>
-                <p className="text-slate-600">Oui, vous pouvez passer de l'offre mensuelle à l'offre annuelle à tout moment. La différence sera calculée au prorata.</p>
+              <div className="p-4 sm:p-6 bg-card/40 backdrop-blur-md border border-border/50 rounded-lg">
+                <h4 className="font-semibold text-foreground mb-2">Puis-je changer d'offre en cours d'abonnement ?</h4>
+                <p className="text-muted-foreground">Oui, vous pouvez passer de l'offre mensuelle à l'offre annuelle à tout moment. La différence sera calculée au prorata.</p>
               </div>
-              <div className="p-4 sm:p-6 bg-white/40 backdrop-blur-md border border-slate-200/50 rounded-lg">
-                <h4 className="font-semibold text-slate-900 mb-2">Comment résilier mon abonnement ?</h4>
-                <p className="text-slate-600">L'offre mensuelle est sans engagement. Vous pouvez résilier à tout moment depuis votre espace client, sans frais.</p>
+              <div className="p-4 sm:p-6 bg-card/40 backdrop-blur-md border border-border/50 rounded-lg">
+                <h4 className="font-semibold text-foreground mb-2">Comment résilier mon abonnement ?</h4>
+                <p className="text-muted-foreground">L'offre mensuelle est sans engagement. Vous pouvez résilier à tout moment depuis votre espace client, sans frais.</p>
               </div>
-              <div className="p-4 sm:p-6 bg-white/40 backdrop-blur-md border border-slate-200/50 rounded-lg">
-                <h4 className="font-semibold text-slate-900 mb-2">Que se passe-t-il après l'abonnement ?</h4>
-                <p className="text-slate-600">Votre site reste en ligne tant que votre abonnement est actif. Si vous résiliez, vous aurez accès à une sauvegarde complète de votre site.</p>
+              <div className="p-4 sm:p-6 bg-card/40 backdrop-blur-md border border-border/50 rounded-lg">
+                <h4 className="font-semibold text-foreground mb-2">Que se passe-t-il après l'abonnement ?</h4>
+                <p className="text-muted-foreground">Votre site reste en ligne tant que votre abonnement est actif. Si vous résiliez, vous aurez accès à une sauvegarde complète de votre site.</p>
               </div>
             </div>
           </div>

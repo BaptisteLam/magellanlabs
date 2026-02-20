@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -22,6 +23,18 @@ export default function Dashboard() {
     searchParams.get('projectId')
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Handle checkout success/cancel redirect from Stripe
+  useEffect(() => {
+    const checkoutStatus = searchParams.get('checkout');
+    if (checkoutStatus === 'success') {
+      toast.success('Paiement réussi ! Votre abonnement Premium est maintenant actif.');
+      // Clean the URL parameter
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('checkout');
+      setSearchParams(newParams);
+    }
+  }, []);
 
   // Synchroniser l'URL avec l'état
   useEffect(() => {

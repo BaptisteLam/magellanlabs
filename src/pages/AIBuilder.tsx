@@ -101,9 +101,9 @@ const AIBuilder = () => {
       <div className="relative z-10 w-full max-w-4xl px-2 sm:px-4 text-center">
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border backdrop-blur-sm mb-4 sm:mb-6"
-             style={{ borderColor: 'rgba(1, 74, 173, 0.3)', backgroundColor: 'rgba(1, 74, 173, 0.1)' }}>
-          <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: '#014AAD' }} />
-          <span className="text-xs sm:text-sm font-light" style={{ color: '#014AAD' }}>Propulsé par Claude AI</span>
+             style={{ borderColor: 'rgba(3, 165, 192, 0.3)', backgroundColor: 'rgba(3, 165, 192, 0.1)' }}>
+          <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: '#03A5C0' }} />
+          <span className="text-xs sm:text-sm font-light" style={{ color: '#03A5C0' }}>Propulsé par Claude AI</span>
         </div>
 
         {/* Main title */}

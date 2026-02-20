@@ -32,7 +32,7 @@ export function Parametres() {
   };
 
   const handleUpgradeClick = () => {
-    navigate('/pricing');
+    navigate('/tarifs');
   };
 
   const handleLogout = async () => {
@@ -150,7 +150,7 @@ export function Parametres() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-2xl font-bold text-foreground">20€</span>
+                  <span className="text-2xl font-bold text-foreground">12,99€</span>
                   <span className="text-sm text-muted-foreground">/mois</span>
                 </div>
                 <button
