@@ -3,8 +3,9 @@ import { Analytiques } from './sections/Analytiques';
 import { Contact } from './sections/Contact';
 import { Parametres } from './sections/Parametres';
 import { Profil } from './sections/Profil';
+import { Facturation } from './sections/Facturation';
 
-export type SettingsSection = 'siteweb' | 'analytiques' | 'contact' | 'parametres' | 'profil';
+export type SettingsSection = 'siteweb' | 'analytiques' | 'contact' | 'parametres' | 'profil' | 'facturation';
 
 interface SettingsCenterProps {
   section: SettingsSection;
@@ -23,6 +24,8 @@ export function SettingsCenter({ section }: SettingsCenterProps) {
         return <Parametres />;
       case 'profil':
         return <Profil />;
+      case 'facturation':
+        return <Facturation />;
       default:
         return <SiteWeb />;
     }
