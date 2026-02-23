@@ -44,6 +44,7 @@ import type { ElementInfo } from '@/types/elementInfo';
 import { IndexedDBCache } from '@/services/indexedDBCache';
 import { parseProjectFiles } from '@/lib/projectFilesParser';
 import { useCredits } from '@/hooks/useCredits';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -170,7 +171,11 @@ export default function BuilderSession() {
   const generateSiteHook = useGenerateSite();
 
   // Hook pour vérifier le quota de messages
-  const { isAtLimit, isNearLimit, usage, refetch: refetchCredits } = useCredits();
+  const { isAtLimit, isNearLimit, usage, canDeploy, refetch: refetchCredits } = useCredits();
+
+  // État du modal d'upgrade
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeContext, setUpgradeContext] = useState<'message' | 'publish'>('message');
 
   // Hook pour versioning R2
   const { versions, isLoading: isVersionsLoading, isRollingBack, fetchVersions, rollbackToVersion } = useProjectVersions(sessionId);
@@ -1582,16 +1587,8 @@ export default function BuilderSession() {
 
     // Vérification du quota de messages (sauf en mode chat simple)
     if (!chatMode && isAtLimit) {
-      sonnerToast.error(
-        `Quota atteint (${usage?.messagesUsed}/${usage?.messagesLimit} messages ce mois-ci). Passez en Premium pour continuer.`,
-        {
-          action: {
-            label: 'Passer en Premium',
-            onClick: () => navigate('/tarifs'),
-          },
-          duration: 7000,
-        }
-      );
+      setUpgradeContext('message');
+      setShowUpgradeModal(true);
       return;
     }
 
@@ -1792,6 +1789,13 @@ export default function BuilderSession() {
     }
     if (!projectFiles || Object.keys(projectFiles).length === 0) {
       sonnerToast.error("Aucun contenu à publier");
+      return;
+    }
+
+    // Vérification du plan pour la publication
+    if (!canDeploy) {
+      setUpgradeContext('publish');
+      setShowUpgradeModal(true);
       return;
     }
 
@@ -2572,6 +2576,13 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
           loadSession();
           sonnerToast.success('Version restaurée');
         }}
+      />
+
+      {/* Modal d'upgrade (limite messages / publication) */}
+      <UpgradeModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        context={upgradeContext}
       />
     </div>;
 }

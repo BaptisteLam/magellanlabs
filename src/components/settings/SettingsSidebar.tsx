@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Globe, BarChart3, Mail, Settings, ChevronDown, FileCode, Smartphone, Plus, FolderOpen, Upload, Building2, User } from 'lucide-react';
+import { Globe, BarChart3, Mail, Settings, ChevronDown, FileCode, Smartphone, Plus, FolderOpen, Upload, Building2, User, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-export type SettingsSection = 'siteweb' | 'analytiques' | 'contact' | 'parametres' | 'profil';
+export type SettingsSection = 'siteweb' | 'analytiques' | 'contact' | 'parametres' | 'profil' | 'facturation';
 
 interface Project {
   id: string;
@@ -37,6 +37,10 @@ const menuItems: {
   id: 'contact',
   label: 'Leads',
   icon: Mail
+}, {
+  id: 'facturation',
+  label: 'Facturation',
+  icon: CreditCard
 }];
 
 interface SettingsSidebarProps {
