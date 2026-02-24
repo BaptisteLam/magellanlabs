@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast as sonnerToast } from 'sonner';
 import PromptBar from '@/components/PromptBar';
+import { useCredits } from '@/hooks/useCredits';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 const AIBuilder = () => {
   const [inputValue, setInputValue] = useState('');
@@ -11,7 +13,9 @@ const AIBuilder = () => {
   const [user, setUser] = useState<any>(null);
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; base64: string; type: string }>>([]);
   const [projectType, setProjectType] = useState<'website' | 'webapp' | 'mobile'>('website');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const navigate = useNavigate();
+  const { isAtLimit } = useCredits();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -39,6 +43,12 @@ const AIBuilder = () => {
     if (!user) {
       sonnerToast.error("Vous devez être connecté pour créer un projet");
       navigate('/auth');
+      return;
+    }
+
+    // Vérification du quota de messages avant de créer une session
+    if (isAtLimit) {
+      setShowUpgradeModal(true);
       return;
     }
 
@@ -149,6 +159,13 @@ const AIBuilder = () => {
           />
         </div>
       </div>
+
+      {/* Modal d'upgrade (limite messages) */}
+      <UpgradeModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        context="message"
+      />
     </div>
   );
 };

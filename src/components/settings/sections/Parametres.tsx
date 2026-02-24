@@ -9,13 +9,12 @@ import { Settings, Moon, Sun, Monitor, Zap, Crown, MessageSquare, LogOut } from 
 import { Progress } from '@/components/ui/progress';
 import { useCredits } from '@/hooks/useCredits';
 import { supabase } from '@/integrations/supabase/client';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 export function Parametres() {
   const navigate = useNavigate();
-  const { isDark, toggleTheme } = useThemeStore();
-  const [themeMode, setThemeMode] = useState(isDark ? 'dark' : 'light');
-  const [language, setLanguage] = useState('fr');
-  const [autoSave, setAutoSave] = useState(true);
+  const { isDark, mode, setMode } = useThemeStore();
+  const { language, autoSave, setLanguage, setAutoSave } = useSettingsStore();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const { usage, isLoading: creditsLoading } = useCredits();
@@ -24,11 +23,8 @@ export function Parametres() {
   const messagesLimit = usage?.messagesLimit ?? 5;
   const isPremium = usage?.plan === 'premium';
 
-  const handleThemeChange = (mode: string) => {
-    setThemeMode(mode as 'light' | 'dark');
-    if ((mode === 'dark' && !isDark) || (mode === 'light' && isDark)) {
-      toggleTheme();
-    }
+  const handleThemeChange = (newMode: string) => {
+    setMode(newMode as 'light' | 'dark' | 'system');
   };
 
   const handleUpgradeClick = () => {
@@ -150,7 +146,7 @@ export function Parametres() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-2xl font-bold text-foreground">20€</span>
+                  <span className="text-2xl font-bold text-foreground">12,99€</span>
                   <span className="text-sm text-muted-foreground">/mois</span>
                 </div>
                 <button
@@ -190,7 +186,7 @@ export function Parametres() {
             <Label htmlFor="theme" className="text-foreground">
               Thème
             </Label>
-            <Select value={themeMode} onValueChange={handleThemeChange}>
+            <Select value={mode} onValueChange={handleThemeChange}>
               <SelectTrigger className="w-[180px] rounded-[8px]">
                 <SelectValue placeholder="Sélectionner un thème" />
               </SelectTrigger>
