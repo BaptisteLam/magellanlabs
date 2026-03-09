@@ -1922,8 +1922,8 @@ export default function BuilderSession() {
         <div className="flex items-center gap-2 md:gap-3">
           <button onClick={() => navigate('/dashboard')} className="h-8 w-8 flex items-center justify-center transition-colors group" title="Dashboard">
             <Home className="w-4 h-4 transition-colors" style={{
-            color: isDark ? '#fff' : '#9CA3AF'
-          }} onMouseEnter={e => e.currentTarget.style.color = '#03A5C0'} onMouseLeave={e => e.currentTarget.style.color = isDark ? '#fff' : '#9CA3AF'} />
+            color: isDark ? '#fff' : '#1F2937'
+          }} onMouseEnter={e => e.currentTarget.style.color = '#03A5C0'} onMouseLeave={e => e.currentTarget.style.color = isDark ? '#fff' : '#1F2937'} />
           </button>
 
           {/* Mobile toggle: Chat / Preview */}
@@ -1986,7 +1986,7 @@ export default function BuilderSession() {
                     <Button onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')} variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
                     borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
                     backgroundColor: 'transparent',
-                    color: isDark ? 'hsl(var(--foreground))' : '#64748b'
+                    color: isDark ? 'hsl(var(--foreground))' : '#1F2937'
                   }}>
                       {previewMode === 'desktop' ? <Smartphone className="w-3.5 h-3.5" /> : <Monitor className="w-3.5 h-3.5" />}
                     </Button>
@@ -2005,7 +2005,7 @@ export default function BuilderSession() {
                     <Button onClick={() => setInspectMode(!inspectMode)} type="button" variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
                     borderColor: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
                     backgroundColor: inspectMode ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
-                    color: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--foreground))' : '#64748b'
+                    color: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--foreground))' : '#1F2937'
                   }}>
                       <Edit className="w-3.5 h-3.5" />
                     </Button>
@@ -2023,7 +2023,7 @@ export default function BuilderSession() {
                   <Button onClick={() => setShowVersionHistory(true)} variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
                     borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
                     backgroundColor: 'transparent',
-                    color: isDark ? 'hsl(var(--foreground))' : '#64748b'
+                    color: isDark ? 'hsl(var(--foreground))' : '#1F2937'
                   }}>
                     <History className="w-3.5 h-3.5" />
                   </Button>

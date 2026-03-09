@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Mail, ArrowLeft } from "lucide-react";
+import { Loader2, Mail, ArrowLeft, CheckCircle, X } from "lucide-react";
 import { useThemeStore } from '@/stores/themeStore';
 import { Separator } from "@/components/ui/separator";
 import Header from "@/components/layout/Header";
@@ -23,6 +23,8 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [signupEmail, setSignupEmail] = useState("");
 
   useEffect(() => {
     // Check Supabase configuration on startup
@@ -237,7 +239,7 @@ export default function Auth() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth`,
+            emailRedirectTo: `${window.location.origin}/`,
           },
         });
 
@@ -254,7 +256,10 @@ export default function Auth() {
         if (data.session) {
           toast.success("Account created successfully! You are now logged in.");
         } else if (data.user && !data.user.email_confirmed_at) {
-          toast.success("Account created! Check your inbox to confirm your registration.");
+          // Email confirmation required: show popup and switch to login mode
+          setSignupEmail(email);
+          setShowEmailVerification(true);
+          setIsLogin(true);
         } else {
           toast.success("Account created!");
         }
@@ -308,6 +313,49 @@ export default function Auth() {
   return (
     <>
       <Header />
+
+      {/* Email Verification Popup */}
+      {showEmailVerification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+          <div
+            className="relative w-full max-w-md rounded-2xl shadow-2xl p-8 flex flex-col items-center text-center"
+            style={{ backgroundColor: isDark ? '#1F1F20' : '#ffffff', border: '1px solid rgba(3,165,192,0.3)' }}
+          >
+            <button
+              onClick={() => setShowEmailVerification(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mb-5" style={{ backgroundColor: 'rgba(3,165,192,0.12)' }}>
+              <Mail className="h-8 w-8" style={{ color: '#03A5C0' }} />
+            </div>
+
+            <h2 className="text-2xl font-bold text-foreground mb-2">Vérifiez votre boîte mail</h2>
+            <p className="text-muted-foreground mb-1">
+              Un lien de confirmation a été envoyé à
+            </p>
+            <p className="font-semibold text-foreground mb-4 break-all">{signupEmail}</p>
+
+            <div className="w-full rounded-xl p-4 mb-6 flex items-start gap-3 text-left" style={{ backgroundColor: 'rgba(3,165,192,0.08)', border: '1px solid rgba(3,165,192,0.2)' }}>
+              <CheckCircle className="h-5 w-5 flex-shrink-0 mt-0.5" style={{ color: '#03A5C0' }} />
+              <p className="text-sm text-muted-foreground">
+                N'oubliez pas de vérifier vos <strong className="text-foreground">spams</strong> si vous ne trouvez pas l'email. Cliquez sur le lien pour activer votre compte — vous serez redirigé directement vers le site.
+              </p>
+            </div>
+
+            <Button
+              variant="magellan"
+              className="w-full"
+              onClick={() => setShowEmailVerification(false)}
+            >
+              <Mail className="h-4 w-4" />
+              J'ai compris, me connecter
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden pt-20">
       {/* Grid background - adapted to theme */}
       <div className="absolute inset-0"

@@ -1,6 +1,21 @@
 import { useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+// ============= JSX Sanitizer =============
+
+/**
+ * Escapes raw `>` characters found in JSX text content (between tags).
+ * This prevents esbuild errors like "The character '>' is not valid inside a JSX element"
+ * when the AI generates code like <span>C:\></span>.
+ */
+function sanitizeJSXContent(content: string): string {
+  // Replace > in JSX text nodes: after closing `>` of a tag, before opening `<` of the next tag
+  // Pattern: >textWith> → >textWith&gt;
+  return content.replace(/>([^<>{}]*>)/g, (_match, textPart: string) => {
+    return '>' + textPart.replace(/>/g, '&gt;');
+  });
+}
+
 // ============= Types =============
 
 export interface GenerateSiteParams {
@@ -116,7 +131,8 @@ function collectFilesViaWebSocket(
                   : (fileObj as any)?.fileContents || '';
                 if (content) {
                   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-                  files[normalizedPath] = content;
+                  const isJSX = /\.(tsx|jsx)$/i.test(normalizedPath);
+                  files[normalizedPath] = isJSX ? sanitizeJSXContent(content) : content;
                 }
               }
               console.log(`[useGenerateSite] agent_connected: ${Object.keys(state.generatedFilesMap).length} existing files`);
@@ -151,7 +167,8 @@ function collectFilesViaWebSocket(
             const file = msg.file;
             if (file?.filePath && file?.fileContents) {
               const normalizedPath = file.filePath.startsWith('/') ? file.filePath : `/${file.filePath}`;
-              files[normalizedPath] = file.fileContents;
+              const isJSX = /\.(tsx|jsx)$/i.test(normalizedPath);
+              files[normalizedPath] = isJSX ? sanitizeJSXContent(file.fileContents) : file.fileContents;
               console.log(`[useGenerateSite] File ready: ${normalizedPath} (${file.fileContents.length} chars)`);
               onFileGenerated?.(normalizedPath);
               onGenerationEvent?.({
