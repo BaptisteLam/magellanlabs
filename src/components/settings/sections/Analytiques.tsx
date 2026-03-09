@@ -42,12 +42,12 @@ export function Analytiques() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Analytiques</h2>
-          <p className="text-muted-foreground">Sélectionnez un projet pour voir les statistiques</p>
+          <h2 className="text-2xl font-bold text-foreground">Analytics</h2>
+          <p className="text-muted-foreground">Select a project to view statistics</p>
         </div>
         <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
           <CardContent className="py-8 text-center text-muted-foreground">
-            Aucun projet sélectionné
+            No project selected
           </CardContent>
         </Card>
       </div>
@@ -58,8 +58,8 @@ export function Analytiques() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Analytiques</h2>
-          <p className="text-muted-foreground">Chargement des données...</p>
+          <h2 className="text-2xl font-bold text-foreground">Analytics</h2>
+          <p className="text-muted-foreground">Loading data...</p>
         </div>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -72,14 +72,14 @@ export function Analytiques() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Analytiques</h2>
-          <p className="text-muted-foreground">{project?.title || 'Projet'}</p>
+          <h2 className="text-2xl font-bold text-foreground">Analytics</h2>
+          <p className="text-muted-foreground">{project?.title || 'Project'}</p>
         </div>
         <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
           <CardContent className="py-8 text-center text-muted-foreground">
             <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Analytiques non configurées</p>
-            <p className="text-sm mt-2">Publiez votre site pour activer les analytiques</p>
+            <p>Analytics not configured</p>
+            <p className="text-sm mt-2">Publish your site to enable analytics</p>
           </CardContent>
         </Card>
       </div>
@@ -89,8 +89,8 @@ export function Analytiques() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Analytiques</h2>
-        <p className="text-muted-foreground">{project?.title || 'Projet'}</p>
+        <h2 className="text-2xl font-bold text-foreground">Analytics</h2>
+        <p className="text-muted-foreground">{project?.title || 'Project'}</p>
       </div>
       
       <div className="rounded-xl overflow-hidden border border-border/50">

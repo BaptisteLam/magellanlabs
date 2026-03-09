@@ -41,8 +41,8 @@ const Header = () => {
   };
   
   const navigation = [
-    { name: 'Entreprise', href: '/about' },
-    { name: 'Tarifs', href: '/tarifs' },
+    { name: 'Company', href: '/about' },
+    { name: 'Pricing', href: '/pricing' },
     { name: 'Support', href: '/contact' },
   ];
 
@@ -133,7 +133,7 @@ const Header = () => {
                       e.currentTarget.style.color = '';
                     }}
                   >
-                    Connexion
+                    Sign in
                   </Button>
                   
                   <button
@@ -218,7 +218,7 @@ const Header = () => {
                         e.currentTarget.style.color = '';
                       }}
                     >
-                      Connexion
+                      Sign in
                     </Button>
                   )}
 
@@ -229,7 +229,7 @@ const Header = () => {
                     className="justify-start text-sm gap-2 rounded-full px-4 py-2 text-foreground/70 hover:text-[#03A5C0] transition-colors"
                   >
                     {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                    <span>{isDark ? 'Mode clair' : 'Mode sombre'}</span>
+                    <span>{isDark ? 'Light mode' : 'Dark mode'}</span>
                   </Button>
                 </div>
               </SheetContent>

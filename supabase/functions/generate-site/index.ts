@@ -533,7 +533,7 @@ function validateCSS(css: string): ValidationResult {
   if (css.includes('@media')) {
     score += 2;
   } else {
-    issues.push('Pas de media queries (responsive manquant)');
+    issues.push('No media queries (missing responsive)');
   }
   
   if (css.includes('.navbar') || css.includes('.nav-')) {
@@ -555,14 +555,14 @@ function validateCSS(css: string): ValidationResult {
   };
 }
 
-// ============= EXTRACTION ASSETS INLINE =============
+// ============= INLINE ASSET EXTRACTION =============
 
 function extractInlineAssets(html: string): { html: string; css: string; js: string } {
   let css = '';
   let js = '';
   let cleanedHtml = html;
   
-  // Extraire tous les <style>
+  // Extract all <style>
   const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi;
   let styleMatch;
   while ((styleMatch = styleRegex.exec(html)) !== null) {
@@ -570,7 +570,7 @@ function extractInlineAssets(html: string): { html: string; css: string; js: str
   }
   cleanedHtml = cleanedHtml.replace(styleRegex, '');
   
-  // Extraire tous les <script> inline (pas les externes)
+  // Extract all inline <script> (not external ones)
   const scriptRegex = /<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi;
   let scriptMatch;
   while ((scriptMatch = scriptRegex.exec(html)) !== null) {
@@ -581,11 +581,11 @@ function extractInlineAssets(html: string): { html: string; css: string; js: str
   }
   cleanedHtml = cleanedHtml.replace(scriptRegex, '');
   
-  // Supprimer les scripts Tailwind CDN
+  // Remove Tailwind CDN scripts
   cleanedHtml = cleanedHtml.replace(/<script[^>]*cdn\.tailwindcss\.com[^>]*><\/script>/gi, '');
   cleanedHtml = cleanedHtml.replace(/<script[^>]*tailwindcss[^>]*>[\s\S]*?<\/script>/gi, '');
   
-  // S'assurer que les liens CSS/JS sont présents
+  // Ensure CSS/JS links are present
   if (!cleanedHtml.includes('href="styles.css"') && !cleanedHtml.includes("href='styles.css'")) {
     cleanedHtml = cleanedHtml.replace('</head>', '  <link rel="stylesheet" href="styles.css">\n</head>');
   }
@@ -596,7 +596,7 @@ function extractInlineAssets(html: string): { html: string; css: string; js: str
   return { html: cleanedHtml.trim(), css: css.trim(), js: js.trim() };
 }
 
-// ============= PARSING MULTI-FORMAT =============
+// ============= MULTI-FORMAT PARSING =============
 
 function parseGeneratedCode(code: string, sector: string = 'neutral'): { files: ProjectFile[] } {
   let files: ProjectFile[] = [];
@@ -605,12 +605,12 @@ function parseGeneratedCode(code: string, sector: string = 'neutral'): { files: 
   
   let cleanedCode = code.trim();
   
-  // Nettoyer les marqueurs markdown globaux
+  // Clean global markdown markers
   if (cleanedCode.startsWith('```')) {
     cleanedCode = cleanedCode.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '');
   }
   
-  // Support multi-format pour les marqueurs de fichiers
+  // Multi-format support for file markers
   const filePatterns = [
     /\/\/\s*FILE:\s*([^\n]+)/g,           // // FILE: path
     /\/\*\s*FILE:\s*([^\s*]+)\s*\*\//g,   // /* FILE: path */

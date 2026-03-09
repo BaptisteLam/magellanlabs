@@ -429,7 +429,7 @@ export default function BuilderSession() {
       }
       if (error) {
         console.error('Error loading session:', error);
-        sonnerToast.error("Session introuvable");
+        sonnerToast.error("Session not found");
         navigate('/builder');
         return;
       }
@@ -699,7 +699,7 @@ export default function BuilderSession() {
 
       // Vérifier que c'est une image
       if (!file.type.startsWith('image/')) {
-        sonnerToast.error(`${file.name} n'est pas une image`);
+        sonnerToast.error(`${file.name} is not an image`);
         continue;
       }
 
@@ -732,7 +732,7 @@ export default function BuilderSession() {
 
     // Vérifier que c'est une image
     if (!file.type.startsWith('image/')) {
-      sonnerToast.error("Veuillez sélectionner une image");
+      sonnerToast.error("Please select an image");
       return;
     }
     try {
@@ -773,13 +773,13 @@ export default function BuilderSession() {
           }
         }).eq('id', sessionId);
       }
-      sonnerToast.success("Favicon mis à jour avec succès");
+      sonnerToast.success("Favicon updated successfully");
       if (faviconInputRef.current) {
         faviconInputRef.current.value = '';
       }
     } catch (error) {
       console.error('Error uploading favicon:', error);
-      sonnerToast.error("Erreur lors de l'upload du favicon");
+      sonnerToast.error("Error uploading favicon");
     }
   };
 
@@ -985,11 +985,11 @@ export default function BuilderSession() {
           console.error('❌ Generate site error:', error);
 
           // Messages d'erreur clairs
-          let userMessage = 'Une erreur est survenue lors de la génération du site.';
+          let userMessage = 'An error occurred while generating the site.';
           if (error.includes('timeout')) {
-            userMessage = 'La génération a pris trop de temps. Essayez avec une demande plus simple.';
+            userMessage = 'Generation took too long. Try a simpler request.';
           } else if (error.includes('No modifications generated')) {
-            userMessage = 'Impossible de générer le site. Essayez de reformuler votre demande de manière plus précise.';
+            userMessage = 'Unable to generate the site. Try rephrasing your request more precisely.';
           }
 
           sonnerToast.error(userMessage);
@@ -1076,7 +1076,7 @@ export default function BuilderSession() {
           };
           setMessages(prev => [...prev, summaryMessage]);
 
-          sonnerToast.success(`Site créé avec succès ! (${fileCount} fichiers)`);
+          sonnerToast.success(`Site created successfully! (${fileCount} files)`);
 
           // ✅ SAUVEGARDER LES MESSAGES EN BASE DE DONNÉES
           if (sessionId) {
@@ -1165,7 +1165,7 @@ export default function BuilderSession() {
       await fetchVersions();
     } catch (error) {
       console.error('❌ GENERATE SITE - Error:', error);
-      sonnerToast.error('Échec de la génération du site');
+      sonnerToast.error('Website generation failed');
 
       // ✅ FIX BUG #2: Reset isInitialGeneration en cas d'erreur
       setIsInitialGeneration(false);
@@ -1414,7 +1414,7 @@ export default function BuilderSession() {
           // 🔄 FALLBACK AUTOMATIQUE : Si unified-modify échoue sur première génération, utiliser generate-site
           if (!skipFallback && isFirstGeneration && error.includes('No modifications generated')) {
             console.log('🔄 FALLBACK: unified-modify failed on first generation, trying generate-site...');
-            sonnerToast.info('Tentative avec le générateur complet...');
+            sonnerToast.info('Trying with full generator...');
 
             // Reset l'état avant le fallback
             setIsInitialGeneration(false);
@@ -1430,21 +1430,21 @@ export default function BuilderSession() {
               return; // Succès, on sort
             } catch (fallbackError) {
               console.error('❌ Fallback also failed:', fallbackError);
-              sonnerToast.error('Échec de la génération même avec le générateur complet');
+              sonnerToast.error('Generation failed even with full generator');
               return;
             }
           }
 
           // ✅ Messages d'erreur clairs et spécifiques
-          let userMessage = 'Une erreur est survenue lors du traitement.';
+          let userMessage = 'An error occurred while processing.';
           if (error.includes('No modifications generated')) {
-            userMessage = 'Aucune modification générée. Essayez de reformuler votre demande de manière plus précise.';
+            userMessage = 'No modifications generated. Try rephrasing your request more precisely.';
           } else if (error.includes('timeout')) {
-            userMessage = 'Le traitement a pris trop de temps. Essayez avec une demande plus simple.';
+            userMessage = 'Processing took too long. Try a simpler request.';
           } else if (error.includes('validation')) {
-            userMessage = 'Erreur de validation des modifications. Veuillez réessayer.';
+            userMessage = 'Modification validation error. Please try again.';
           } else {
-            userMessage = error || 'Échec du traitement de la demande.';
+            userMessage = error || 'Request processing failed.';
           }
 
           sonnerToast.error(userMessage);
@@ -1556,7 +1556,7 @@ export default function BuilderSession() {
       await fetchVersions();
     } catch (error) {
       console.error('❌ UNIFIED MODIFY - Error:', error);
-      sonnerToast.error('Échec du traitement de la demande');
+      sonnerToast.error('Request processing failed');
 
       // ✅ FIX BUG #2: Reset isInitialGeneration en cas d'erreur catch
       setIsInitialGeneration(false);
@@ -1577,7 +1577,7 @@ export default function BuilderSession() {
   const handleSubmit = async () => {
     const prompt = inputValue.trim() || (messages.length === 1 && typeof messages[0].content === 'string' ? messages[0].content : '');
     if (!prompt && attachedFiles.length === 0) {
-      sonnerToast.error("Veuillez entrer votre message ou joindre un fichier");
+      sonnerToast.error("Please enter your message or attach a file");
       return;
     }
     if (!user) {
@@ -1652,7 +1652,7 @@ export default function BuilderSession() {
         }
       } catch (error) {
         console.error('Chat error:', error);
-        sonnerToast.error('Erreur lors de la conversation');
+        sonnerToast.error('Error during conversation');
         // Supprimer le message de chargement
         setMessages(prev => prev.slice(0, -1));
       }
@@ -1693,10 +1693,10 @@ export default function BuilderSession() {
       setIsSaving(true);
       try {
         await saveSession();
-        sonnerToast.success("Projet enregistré !");
+        sonnerToast.success("Project saved!");
       } catch (error: any) {
         console.error('Error saving:', error);
-        sonnerToast.error(error.message || "Erreur lors de la sauvegarde");
+        sonnerToast.error(error.message || "Error saving");
       } finally {
         setIsSaving(false);
       }
@@ -1708,7 +1708,7 @@ export default function BuilderSession() {
   };
   const confirmSave = async () => {
     if (!websiteTitle.trim()) {
-      sonnerToast.error("Veuillez entrer un titre pour votre site");
+      sonnerToast.error("Please enter a title for your site");
       return;
     }
     setIsSaving(true);
@@ -1725,7 +1725,7 @@ export default function BuilderSession() {
   };
   const handleDownloadZip = async () => {
     if (!generatedHtml) {
-      sonnerToast.error("Aucun contenu à télécharger");
+      sonnerToast.error("No content to download");
       return;
     }
     try {
@@ -1768,17 +1768,17 @@ export default function BuilderSession() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      sonnerToast.success("✅ ZIP téléchargé avec succès !");
+      sonnerToast.success("ZIP downloaded successfully!");
     } catch (error: any) {
       console.error('Error downloading ZIP:', error);
-      sonnerToast.error(error.message || "❌ Erreur lors du téléchargement");
+      sonnerToast.error(error.message || "Error downloading");
     }
   };
   const PUBLISH_STEPS = [
-    'Préparation des fichiers...',
-    'Déploiement sur Cloudflare...',
-    'Configuration DNS...',
-    'Mise en ligne...',
+    'Preparing files...',
+    'Deploying to Cloudflare...',
+    'Configuring DNS...',
+    'Going live...',
   ];
 
   const handlePublish = async () => {
@@ -1788,7 +1788,7 @@ export default function BuilderSession() {
       return;
     }
     if (!projectFiles || Object.keys(projectFiles).length === 0) {
-      sonnerToast.error("Aucun contenu à publier");
+      sonnerToast.error("No content to publish");
       return;
     }
 
@@ -1801,7 +1801,7 @@ export default function BuilderSession() {
 
     // Si pas de titre, demander d'abord
     if (!websiteTitle.trim()) {
-      sonnerToast.error("Veuillez d'abord enregistrer votre projet avec un titre");
+      sonnerToast.error("Please save your project with a title first");
       setShowSaveDialog(true);
       return;
     }
@@ -1837,7 +1837,7 @@ export default function BuilderSession() {
         .substring(0, 50);
 
       console.log('🚀 Publishing to Cloudflare Pages with siteName:', siteName);
-      sonnerToast.info("🚀 Déploiement sur Cloudflare Pages en cours...");
+      sonnerToast.info("Deploying to Cloudflare Pages...");
 
       // Appel à publish-to-cloudflare
       // Si on a un vibePreviewUrl, on le passe pour éviter un redéploiement inutile
@@ -1851,11 +1851,11 @@ export default function BuilderSession() {
       });
 
       if (publishError) {
-        throw new Error(publishError.message || 'Erreur de publication');
+        throw new Error(publishError.message || 'Publishing error');
       }
 
       if (!result?.success) {
-        throw new Error(result?.error || 'Erreur de publication');
+        throw new Error(result?.error || 'Publishing error');
       }
 
       if (result.url) {
@@ -1894,11 +1894,11 @@ export default function BuilderSession() {
 
         // Ouvrir la modale de succès
         setShowPublishSuccess(true);
-        sonnerToast.success("✅ Site publié avec succès !");
+        sonnerToast.success("Site published successfully!");
       }
     } catch (error: any) {
       console.error('Error publishing:', error);
-      sonnerToast.error(error.message || "❌ Erreur lors de la publication");
+      sonnerToast.error(error.message || "Error publishing");
     } finally {
       if (publishIntervalRef.current) {
         clearInterval(publishIntervalRef.current);
@@ -1910,7 +1910,7 @@ export default function BuilderSession() {
   };
   if (sessionLoading) {
     return <div className="min-h-screen flex items-center justify-center">
-        <p className="text-slate-600">Chargement...</p>
+        <p className="text-slate-600">Loading...</p>
       </div>;
   }
   return <div className={`h-screen flex flex-col`} style={{
@@ -2035,7 +2035,7 @@ export default function BuilderSession() {
 
             <Button onClick={handleSave} disabled={isSaving} variant="iconOnly" size="sm" className="h-8 text-xs">
               <Save className="w-3.5 h-3.5 md:mr-1.5" />
-              <span className="hidden md:inline">Enregistrer</span>
+              <span className="hidden md:inline">Save</span>
             </Button>
           </div>
 
@@ -2103,12 +2103,12 @@ export default function BuilderSession() {
         >
           <span>⚠️</span>
           <span>
-            Il vous reste seulement <strong>{usage?.remaining ?? '?'} message{(usage?.remaining ?? 0) > 1 ? 's' : ''}</strong> ce mois-ci.{' '}
+            You only have <strong>{usage?.remaining ?? '?'} message{(usage?.remaining ?? 0) > 1 ? 's' : ''}</strong> left this month.{' '}
             <button
-              onClick={() => navigate('/tarifs')}
+              onClick={() => navigate('/pricing')}
               className="underline font-semibold hover:opacity-80 transition-opacity"
             >
-              Passer en Premium
+              Upgrade to Premium
             </button>
           </span>
         </div>
@@ -2157,11 +2157,11 @@ export default function BuilderSession() {
                       }
                       setCurrentVersionIndex(messageIdx);
                       await supabase.from('build_sessions').update({ project_files: convertFilesToArray(restoredFiles), updated_at: new Date().toISOString() }).eq('id', sessionId);
-                      sonnerToast.success('Version restaurée');
+                      sonnerToast.success('Version restored');
                       return;
                     }
                     // Fallback: query chat_messages table if message has an ID
-                    if (!targetMessage.id) { sonnerToast.error('Impossible de restaurer cette version'); return; }
+                    if (!targetMessage.id) { sonnerToast.error('Unable to restore this version'); return; }
                     const { data: chatMessage } = await supabase.from('chat_messages').select('metadata').eq('id', targetMessage.id).single();
                     if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
                       const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
@@ -2175,27 +2175,27 @@ export default function BuilderSession() {
                       }
                       setCurrentVersionIndex(messageIdx);
                       await supabase.from('build_sessions').update({ project_files: convertFilesToArray(restoredFiles), updated_at: new Date().toISOString() }).eq('id', sessionId);
-                      sonnerToast.success('Version restaurée');
+                      sonnerToast.success('Version restored');
                     } else {
-                      sonnerToast.error('Impossible de restaurer cette version');
+                      sonnerToast.error('Unable to restore this version');
                     }
                   }} onGoToPrevious={async () => {
-                    if (versions.length < 2) { sonnerToast.error('Aucune version précédente disponible'); return; }
+                    if (versions.length < 2) { sonnerToast.error('No previous version available'); return; }
                     const previousVersion = versions[1];
                     const success = await rollbackToVersion(previousVersion.id);
-                    if (success) { await fetchVersions(); sonnerToast.success('Version précédente restaurée'); }
+                    if (success) { await fetchVersions(); sonnerToast.success('Previous version restored'); }
                   }} /> : msg.metadata?.type === 'message' ?
                   <ChatOnlyMessage message={msg} messageIndex={idx} isLatestMessage={idx === messages.length - 1} isDark={isDark} showImplementButton={chatMode} onRestore={async () => {
-                    sonnerToast.info('Les messages de conversation ne modifient pas les fichiers');
+                    sonnerToast.info('Chat messages do not modify files');
                   }} onGoToPrevious={() => {
-                    sonnerToast.info('Les messages de conversation ne sont pas versionnés');
+                    sonnerToast.info('Chat messages are not versioned');
                   }} onImplementPlan={plan => {
                     setChatMode(false);
                     setInputValue(plan);
                     setTimeout(() => { handleSubmit(); }, 100);
                   }} /> : <div className="space-y-3">
                         <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
-                          {typeof msg.content === 'string' ? msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content : 'Contenu généré'}
+                          {typeof msg.content === 'string' ? msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content : 'Generated content'}
                         </p>
                       </div>}
                   </div>;
@@ -2209,7 +2209,7 @@ export default function BuilderSession() {
                 const newFiles: Array<{ name: string; base64: string; type: string }> = [];
                 for (let i = 0; i < files.length; i++) {
                   const file = files[i];
-                  if (!file.type.startsWith('image/')) { sonnerToast.error(`${file.name} n'est pas une image`); continue; }
+                  if (!file.type.startsWith('image/')) { sonnerToast.error(`${file.name} is not an image`); continue; }
                   const reader = new FileReader();
                   const base64Promise = new Promise<string>(resolve => { reader.onloadend = () => resolve(reader.result as string); reader.readAsDataURL(file); });
                   const base64 = await base64Promise;
@@ -2277,11 +2277,11 @@ export default function BuilderSession() {
                     }
                     setCurrentVersionIndex(messageIdx);
                     await supabase.from('build_sessions').update({ project_files: convertFilesToArray(restoredFiles), updated_at: new Date().toISOString() }).eq('id', sessionId);
-                    sonnerToast.success('Version restaurée');
+                    sonnerToast.success('Version restored');
                     return;
                   }
                   // Fallback: query chat_messages table
-                  if (!targetMessage.id) { sonnerToast.error('Impossible de restaurer cette version'); return; }
+                  if (!targetMessage.id) { sonnerToast.error('Unable to restore this version'); return; }
                   const { data: chatMessage } = await supabase.from('chat_messages').select('metadata').eq('id', targetMessage.id).single();
                   if (chatMessage?.metadata && typeof chatMessage.metadata === 'object' && 'project_files' in chatMessage.metadata) {
                     const restoredFiles = chatMessage.metadata.project_files as Record<string, string>;
@@ -2301,15 +2301,15 @@ export default function BuilderSession() {
                       project_files: convertFilesToArray(restoredFiles),
                       updated_at: new Date().toISOString()
                     }).eq('id', sessionId);
-                    sonnerToast.success('Version restaurée');
+                    sonnerToast.success('Version restored');
                   } else {
                     console.error('❌ No project_files found in message metadata');
-                    sonnerToast.error('Impossible de restaurer cette version');
+                    sonnerToast.error('Unable to restore this version');
                   }
                 }} onGoToPrevious={async () => {
                   // Utiliser le système de versioning Cloudflare
                   if (versions.length < 2) {
-                    sonnerToast.error('Aucune version précédente disponible');
+                    sonnerToast.error('No previous version available');
                     return;
                   }
                   
@@ -2323,16 +2323,16 @@ export default function BuilderSession() {
                     // Recharger les versions après rollback
                     await fetchVersions();
                     // Notifier l'utilisateur
-                    sonnerToast.success('Version précédente restaurée');
+                    sonnerToast.success('Previous version restored');
                   }
                 }} /> : msg.metadata?.type === 'message' ?
                 // Message chat uniquement (plan d'action)
                 <ChatOnlyMessage message={msg} messageIndex={idx} isLatestMessage={idx === messages.length - 1} isDark={isDark} showImplementButton={chatMode} onRestore={async messageIdx => {
                   // Pas de restauration pour les messages chat
-                  sonnerToast.info('Les messages de conversation ne modifient pas les fichiers');
+                  sonnerToast.info('Chat messages do not modify files');
                 }} onGoToPrevious={() => {
                   // Pas de version précédente pour les messages chat
-                  sonnerToast.info('Les messages de conversation ne sont pas versionnés');
+                  sonnerToast.info('Chat messages are not versioned');
                 }} onImplementPlan={plan => {
                   // Passer en mode génération avec le plan
                   setChatMode(false);
@@ -2344,7 +2344,7 @@ export default function BuilderSession() {
                 }} /> : <div className="space-y-3">
                       {/* Message simple (ancien format) - pour compatibilité */}
                       <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} whitespace-pre-wrap`}>
-                        {typeof msg.content === 'string' ? msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content : 'Contenu généré'}
+                        {typeof msg.content === 'string' ? msg.content.match(/\[EXPLANATION\](.*?)\[\/EXPLANATION\]/s)?.[1]?.trim() || msg.content : 'Generated content'}
                       </p>
                     </div>}
                 </div>;
@@ -2368,7 +2368,7 @@ export default function BuilderSession() {
               for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 if (!file.type.startsWith('image/')) {
-                  sonnerToast.error(`${file.name} n'est pas une image`);
+                  sonnerToast.error(`${file.name} is not an image`);
                   continue;
                 }
                 const reader = new FileReader();
@@ -2499,7 +2499,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                     onComplete: async result => {
                       console.log('✅ Complete:', result);
                       if (result?.success) {
-                        sonnerToast.success('Modification appliquée');
+                        sonnerToast.success('Modification applied');
                         await supabase.from('chat_messages').insert({
                           session_id: sessionId,
                           role: 'assistant',
@@ -2518,7 +2518,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                   });
                 } catch (error) {
                   console.error('❌ Inspect mode error:', error);
-                  sonnerToast.error('Erreur lors de la modification');
+                  sonnerToast.error('Error applying modification');
                 }
               }} />
                       )}
@@ -2533,23 +2533,23 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Enregistrer le projet</DialogTitle>
+            <DialogTitle>Save project</DialogTitle>
             <DialogDescription>
-              Donnez un titre à votre site web pour le retrouver facilement.
+              Give your website a title so you can find it easily.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Titre du site</Label>
-              <Input id="title" value={websiteTitle} onChange={e => setWebsiteTitle(e.target.value)} placeholder="Mon site web" />
+              <Label htmlFor="title">Website title</Label>
+              <Input id="title" value={websiteTitle} onChange={e => setWebsiteTitle(e.target.value)} placeholder="My website" />
             </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowSaveDialog(false)}>
-              Annuler
+              Cancel
             </Button>
             <Button onClick={confirmSave} disabled={isSaving} className="bg-[hsl(var(--magellan-cyan))] hover:bg-[hsl(var(--magellan-cyan-light))] text-white">
-              Enregistrer
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2574,7 +2574,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
         onRollback={() => {
           // Recharger les fichiers après rollback
           loadSession();
-          sonnerToast.success('Version restaurée');
+          sonnerToast.success('Version restored');
         }}
       />
 

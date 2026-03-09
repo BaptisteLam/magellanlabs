@@ -143,7 +143,7 @@ export function ModificationPreview({
             )}
           >
             <X className="w-3.5 h-3.5" />
-            Annuler
+            Cancel
           </button>
           <button
             onClick={onApprove}

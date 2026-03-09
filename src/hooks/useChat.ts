@@ -59,7 +59,7 @@ export function useChat(sessionId?: string) {
         }));
         setMessages(loadedMessages);
 
-        // Extraire les images attachées du premier message
+        // Extract attached images from the first message
         const firstUserMessage = loadedMessages.find(m => m.role === 'user');
         if (firstUserMessage?.metadata?.attachedFiles) {
           setAttachedFiles(firstUserMessage.metadata.attachedFiles);
@@ -89,13 +89,13 @@ export function useChat(sessionId?: string) {
     if (!sessionId) return;
 
     try {
-      // Supprimer les anciens messages
+      // Delete old messages
       await supabase
         .from('chat_messages')
         .delete()
         .eq('session_id', sessionId);
 
-      // Insérer les nouveaux messages
+      // Insert new messages
       const messagesData = messages.map(msg => ({
         session_id: sessionId,
         role: msg.role,

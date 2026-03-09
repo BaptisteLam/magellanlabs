@@ -5,8 +5,8 @@ import { useThemeStore } from '@/stores/themeStore';
 const Footer = () => {
   const { isDark } = useThemeStore();
   const navigation = [
-    { name: 'Entreprise', href: '/about' },
-    { name: 'Tarif', href: '/tarifs' },
+    { name: 'Company', href: '/about' },
+    { name: 'Pricing', href: '/pricing' },
     { name: 'Support', href: '/contact' },
   ];
 
@@ -29,18 +29,18 @@ const Footer = () => {
 
       <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Logo et description */}
+          {/* Logo and description */}
           <div className="md:col-span-2">
             <div className="flex items-center space-x-3 mb-4">
-              <img 
+              <img
                 src={isDark ? "/assets/magellan-logo-dark.png" : "/assets/magellan-logo-light.png"}
-                alt="Magellan - Agence Web"
+                alt="Magellan - Web Agency"
                 className="h-16 w-auto"
               />
             </div>
             <p className="text-foreground/70 max-w-md text-sm">
-              Chez Magellan, notre mission est simple : rendre la création de site web aussi rapide qu'une recherche Google.
-              Plus besoin de coder, de payer une agence ou d'attendre : l'IA vous génère un site professionnel, en temps réel.
+              At Magellan, our mission is simple: make website creation as fast as a Google search.
+              No need to code, hire an agency, or wait — AI generates a professional website for you, in real time.
             </p>
           </div>
 
@@ -91,7 +91,7 @@ const Footer = () => {
         </div>
         
         <div className="mt-8 pt-8 border-t border-border text-center text-sm text-foreground/60">
-          <p>&copy; {new Date().getFullYear()} Built by Magellan. Tous droits réservés.</p>
+          <p>&copy; {new Date().getFullYear()} Built by Magellan. All rights reserved.</p>
         </div>
       </div>
     </footer>

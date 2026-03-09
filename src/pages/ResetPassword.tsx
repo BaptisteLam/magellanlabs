@@ -38,11 +38,11 @@ export default function ResetPassword() {
     e.preventDefault();
 
     if (newPassword.length < 6) {
-      toast.error("Le mot de passe doit contenir au moins 6 caractères");
+      toast.error("Password must be at least 6 characters");
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error("Les mots de passe ne correspondent pas");
+      toast.error("Passwords do not match");
       return;
     }
 
@@ -50,14 +50,14 @@ export default function ResetPassword() {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      toast.success("Mot de passe mis à jour avec succès !");
+      toast.success("Password updated successfully!");
       navigate('/dashboard');
     } catch (error: any) {
       console.error('❌ Reset password error:', error);
       if (error.message?.includes('New password should be different')) {
-        toast.error("Le nouveau mot de passe doit être différent de l'ancien");
+        toast.error("New password must be different from the old one");
       } else {
-        toast.error("Erreur lors de la mise à jour du mot de passe. Réessayez.");
+        toast.error("Error updating password. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -92,11 +92,11 @@ export default function ResetPassword() {
 
         <Card className={`w-full max-w-md backdrop-blur-sm border-white/20 shadow-2xl ${isDark ? 'bg-[#1F1F20]/95' : 'bg-white/95'}`}>
           <CardHeader>
-            <CardTitle className="text-2xl">Nouveau mot de passe</CardTitle>
+            <CardTitle className="text-2xl">New password</CardTitle>
             <CardDescription>
               {isReady
-                ? "Choisissez votre nouveau mot de passe"
-                : "Chargement du lien de réinitialisation..."}
+                ? "Choose your new password"
+                : "Loading reset link..."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -107,11 +107,11 @@ export default function ResetPassword() {
             ) : (
               <form onSubmit={handleResetPassword} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="new-password">Nouveau mot de passe</Label>
+                  <Label htmlFor="new-password">New password</Label>
                   <Input
                     id="new-password"
                     type="password"
-                    placeholder="Au moins 6 caractères"
+                    placeholder="At least 6 characters"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
@@ -120,11 +120,11 @@ export default function ResetPassword() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+                  <Label htmlFor="confirm-password">Confirm password</Label>
                   <Input
                     id="confirm-password"
                     type="password"
-                    placeholder="Répétez votre mot de passe"
+                    placeholder="Repeat your password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
@@ -141,12 +141,12 @@ export default function ResetPassword() {
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Mise à jour...
+                      Updating...
                     </>
                   ) : (
                     <>
                       <KeyRound className="h-4 w-4" />
-                      Mettre à jour le mot de passe
+                      Update password
                     </>
                   )}
                 </Button>

@@ -28,7 +28,7 @@ import {
 import { useProjectData, ProjectContact } from '@/hooks/useProjectData';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 import {
   Dialog,
   DialogContent,
@@ -52,9 +52,9 @@ export function Contact() {
     setUpdatingId(contact.id);
     try {
       await update(contact.id, { status: newStatus });
-      toast.success('Statut mis à jour');
+      toast.success('Status updated');
     } catch {
-      toast.error('Erreur lors de la mise à jour');
+      toast.error('Error updating');
     } finally {
       setUpdatingId(null);
     }
@@ -62,7 +62,7 @@ export function Contact() {
 
   const handleCreateContact = async () => {
     if (!newContact.name || !newContact.email) {
-      toast.error('Nom et email requis');
+      toast.error('Name and email required');
       return;
     }
     setIsCreating(true);
@@ -75,11 +75,11 @@ export function Contact() {
         message: newContact.message || null,
         status: 'new'
       });
-      toast.success('Contact créé');
+      toast.success('Contact created');
       setShowNewContactDialog(false);
       setNewContact({ name: '', email: '', phone: '', message: '' });
     } catch {
-      toast.error('Erreur lors de la création');
+      toast.error('Error creating contact');
     } finally {
       setIsCreating(false);
     }
@@ -88,29 +88,29 @@ export function Contact() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'new':
-        return <Badge variant="default" className="bg-[#03A5C0]/20 text-[#03A5C0] border-[#03A5C0]">Nouveau</Badge>;
+        return <Badge variant="default" className="bg-[#03A5C0]/20 text-[#03A5C0] border-[#03A5C0]">New</Badge>;
       case 'read':
-        return <Badge variant="secondary">Lu</Badge>;
+        return <Badge variant="secondary">Read</Badge>;
       case 'replied':
-        return <Badge variant="outline" className="border-green-500 text-green-500">Répondu</Badge>;
+        return <Badge variant="outline" className="border-green-500 text-green-500">Replied</Badge>;
       case 'archived':
-        return <Badge variant="outline" className="text-muted-foreground">Archivé</Badge>;
+        return <Badge variant="outline" className="text-muted-foreground">Archived</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
   };
 
-  // Filtrage des contacts
+  // Filter contacts
   const filteredContacts = useMemo(() => {
     if (!contacts) return [];
     
     return contacts.filter((contact: ProjectContact) => {
-      // Filtre par statut
+      // Filter by status
       if (statusFilter !== 'all' && contact.status !== statusFilter) {
         return false;
       }
       
-      // Filtre par recherche
+      // Filter by search
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         return (
@@ -125,14 +125,14 @@ export function Contact() {
     });
   }, [contacts, searchQuery, statusFilter]);
 
-  // Export Excel (CSV)
+  // Export to Excel (CSV)
   const handleExportExcel = () => {
     if (!filteredContacts.length) {
-      toast.error('Aucun contact à exporter');
+      toast.error('No contacts to export');
       return;
     }
 
-    const headers = ['Nom', 'Email', 'Téléphone', 'Message', 'Statut', 'Date'];
+    const headers = ['Name', 'Email', 'Phone', 'Message', 'Status', 'Date'];
     const csvContent = [
       headers.join(';'),
       ...filteredContacts.map((contact: ProjectContact) => [
@@ -152,7 +152,7 @@ export function Contact() {
     link.click();
     URL.revokeObjectURL(link.href);
     
-    toast.success(`${filteredContacts.length} contact(s) exporté(s)`);
+    toast.success(`${filteredContacts.length} contact(s) exported`);
   };
 
   if (!projectId) {
@@ -160,14 +160,14 @@ export function Contact() {
       <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground">
         <Users className="h-16 w-16 mb-4 opacity-30" />
         <h3 className="text-xl font-semibold text-foreground mb-2">Contacts</h3>
-        <p>Sélectionnez un projet pour voir les messages</p>
+        <p>Select a project to view messages</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-0">
-      {/* Header avec titre, recherche et bouton */}
+      {/* Header with title, search and button */}
       <div className="flex items-center justify-between py-4 border-b">
         <div className="flex items-center gap-3">
           <Users className="h-5 w-5 text-muted-foreground" />
@@ -177,7 +177,7 @@ export function Contact() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher..."
+              placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 w-[200px] h-9 rounded-lg border-border bg-background"
@@ -185,14 +185,14 @@ export function Contact() {
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[140px] h-9 rounded-lg">
-              <SelectValue placeholder="Statut" />
+              <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous</SelectItem>
-              <SelectItem value="new">Nouveau</SelectItem>
-              <SelectItem value="read">Lu</SelectItem>
-              <SelectItem value="replied">Répondu</SelectItem>
-              <SelectItem value="archived">Archivé</SelectItem>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="new">New</SelectItem>
+              <SelectItem value="read">Read</SelectItem>
+              <SelectItem value="replied">Replied</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>
           </Select>
           <Button 
@@ -203,7 +203,7 @@ export function Contact() {
             className="h-9 rounded-lg"
           >
             <Download className="h-4 w-4 mr-2" />
-            Exporter
+            Export
           </Button>
           <Button 
             onClick={() => setShowNewContactDialog(true)}
@@ -211,34 +211,34 @@ export function Contact() {
             variant="outline"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Nouveau contact
+            New contact
           </Button>
         </div>
       </div>
 
-      {/* En-tête du tableau */}
+      {/* Table header */}
       <div className="border-b">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-[200px] font-medium">Nom</TableHead>
+              <TableHead className="w-[200px] font-medium">Name</TableHead>
               <TableHead className="w-[220px] font-medium">Email</TableHead>
-              <TableHead className="font-medium">Dernier message</TableHead>
-              <TableHead className="w-[140px] font-medium">Téléphone</TableHead>
+              <TableHead className="font-medium">Last message</TableHead>
+              <TableHead className="w-[140px] font-medium">Phone</TableHead>
               <TableHead className="w-[140px] font-medium">
                 <div className="flex items-center gap-1">
-                  Date d'ajout
+                  Date added
                   <ArrowDown className="h-3 w-3" />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] font-medium">Statut</TableHead>
+              <TableHead className="w-[100px] font-medium">Status</TableHead>
               <TableHead className="w-[80px]"></TableHead>
             </TableRow>
           </TableHeader>
         </Table>
       </div>
 
-      {/* Corps du tableau ou état vide */}
+      {/* Table body or empty state */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -251,8 +251,8 @@ export function Contact() {
           <h3 className="text-xl font-semibold text-foreground mb-2">Contacts</h3>
           <p className="mb-4">
             {searchQuery || statusFilter !== 'all' 
-              ? "Aucun résultat trouvé" 
-              : "Vous n'avez pas encore de contacts."}
+              ? "No results found"
+              : "You don't have any contacts yet."}
           </p>
           <Button 
             onClick={() => setShowNewContactDialog(true)}
@@ -260,7 +260,7 @@ export function Contact() {
             className="rounded-lg"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Nouveau contact
+            New contact
           </Button>
         </div>
       ) : (
@@ -279,7 +279,7 @@ export function Contact() {
                   {contact.phone || '-'}
                 </TableCell>
                 <TableCell className="w-[140px] text-muted-foreground whitespace-nowrap">
-                  {format(new Date(contact.created_at), "d MMM yyyy", { locale: fr })}
+                  {format(new Date(contact.created_at), "d MMM yyyy", { locale: enUS })}
                 </TableCell>
                 <TableCell className="w-[100px]">
                   {getStatusBadge(contact.status)}
@@ -291,7 +291,7 @@ export function Contact() {
                       size="icon"
                       className="h-8 w-8"
                       onClick={() => setSelectedContact(contact)}
-                      title="Voir le détail"
+                      title="View details"
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -302,7 +302,7 @@ export function Contact() {
                         className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
                         onClick={() => handleStatusChange(contact, 'replied')}
                         disabled={updatingId === contact.id}
-                        title="Marquer comme répondu"
+                        title="Mark as replied"
                       >
                         {updatingId === contact.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -318,7 +318,7 @@ export function Contact() {
                         className="h-8 w-8"
                         onClick={() => handleStatusChange(contact, 'archived')}
                         disabled={updatingId === contact.id}
-                        title="Archiver"
+                        title="Archive"
                       >
                         <Archive className="h-4 w-4" />
                       </Button>
@@ -331,11 +331,11 @@ export function Contact() {
         </Table>
       )}
 
-      {/* Dialog détail contact */}
+      {/* Contact detail dialog */}
       <Dialog open={!!selectedContact} onOpenChange={() => setSelectedContact(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Détail du message</DialogTitle>
+            <DialogTitle>Message details</DialogTitle>
           </DialogHeader>
           {selectedContact && (
             <div className="space-y-4">
@@ -358,17 +358,17 @@ export function Contact() {
               <div>
                 <p className="text-sm font-medium mb-2">Message</p>
                 <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="text-sm whitespace-pre-wrap">{selectedContact.message || 'Aucun message'}</p>
+                  <p className="text-sm whitespace-pre-wrap">{selectedContact.message || 'No message'}</p>
                 </div>
               </div>
               
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">Statut :</span>
+                  <span className="text-muted-foreground">Status:</span>
                   {getStatusBadge(selectedContact.status)}
                 </div>
                 <span className="text-muted-foreground">
-                  {format(new Date(selectedContact.created_at), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
+                  {format(new Date(selectedContact.created_at), "d MMMM yyyy 'à' HH:mm", { locale: enUS })}
                 </span>
               </div>
               
@@ -384,7 +384,7 @@ export function Contact() {
                     variant="outline"
                   >
                     <Check className="h-4 w-4 mr-2" />
-                    Marquer comme répondu
+                    Mark as replied
                   </Button>
                 )}
                 {selectedContact.status !== 'archived' && (
@@ -398,7 +398,7 @@ export function Contact() {
                     className="rounded-full"
                   >
                     <Archive className="h-4 w-4 mr-2" />
-                    Archiver
+                    Archive
                   </Button>
                 )}
               </div>
@@ -407,19 +407,19 @@ export function Contact() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog nouveau contact */}
+      {/* New contact dialog */}
       <Dialog open={showNewContactDialog} onOpenChange={setShowNewContactDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Nouveau contact</DialogTitle>
+            <DialogTitle>New contact</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-1 block">Nom *</label>
+              <label className="text-sm font-medium mb-1 block">Name *</label>
               <Input
                 value={newContact.name}
                 onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-                placeholder="Nom complet"
+                placeholder="Full name"
               />
             </div>
             <div>
@@ -428,11 +428,11 @@ export function Contact() {
                 type="email"
                 value={newContact.email}
                 onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
-                placeholder="email@exemple.com"
+                placeholder="email@example.com"
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">Téléphone</label>
+              <label className="text-sm font-medium mb-1 block">Phone</label>
               <Input
                 value={newContact.phone}
                 onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
@@ -444,12 +444,12 @@ export function Contact() {
               <Input
                 value={newContact.message}
                 onChange={(e) => setNewContact({ ...newContact, message: e.target.value })}
-                placeholder="Note ou message..."
+                placeholder="Note or message..."
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setShowNewContactDialog(false)} className="rounded-full">
-                Annuler
+                Cancel
               </Button>
               <Button 
                 onClick={handleCreateContact}
@@ -458,7 +458,7 @@ export function Contact() {
                 variant="outline"
               >
                 {isCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                Créer
+                Create
               </Button>
             </div>
           </div>

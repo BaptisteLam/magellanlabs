@@ -27,11 +27,11 @@ const menuItems: {
   icon: typeof Globe;
 }[] = [{
   id: 'siteweb',
-  label: 'Site Web',
+  label: 'Website',
   icon: Globe
 }, {
   id: 'analytiques',
-  label: 'Analytiques',
+  label: 'Analytics',
   icon: BarChart3
 }, {
   id: 'contact',
@@ -39,7 +39,7 @@ const menuItems: {
   icon: Mail
 }, {
   id: 'facturation',
-  label: 'Facturation',
+  label: 'Billing',
   icon: CreditCard
 }];
 
@@ -114,13 +114,13 @@ export function SettingsSidebar({
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      toast.error('Veuillez sélectionner une image');
+      toast.error('Please select an image');
       return;
     }
 
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('L\'image ne doit pas dépasser 2MB');
+      toast.error('Image must not exceed 2MB');
       return;
     }
 
@@ -152,10 +152,10 @@ export function SettingsSidebar({
 
       // Update local state
       setCurrentProject(prev => prev ? { ...prev, project_icon: publicUrl } : null);
-      toast.success('Icône mise à jour');
+      toast.success('Icon updated');
     } catch (error) {
       console.error('Error uploading icon:', error);
-      toast.error('Erreur lors de l\'upload');
+      toast.error('Error uploading icon');
     } finally {
       setIsUploadingIcon(false);
       if (fileInputRef.current) {
@@ -205,7 +205,7 @@ export function SettingsSidebar({
               "relative flex-shrink-0 w-10 h-10 rounded-lg border-2 border-dashed border-border/50 hover:border-[#03A5C0] transition-colors flex items-center justify-center overflow-hidden group",
               isUploadingIcon && "opacity-50 cursor-wait"
             )}
-            title="Cliquez pour changer l'icône"
+            title="Click to change icon"
           >
             {currentProject?.project_icon ? (
               <>
@@ -232,7 +232,7 @@ export function SettingsSidebar({
           {/* Project Name */}
           <div className="flex-1 min-w-0">
             <h2 className="font-medium text-foreground truncate text-sm">
-              {currentProject?.title || 'Sélectionner un projet'}
+              {currentProject?.title || 'Select a project'}
             </h2>
           </div>
         </div>
@@ -276,7 +276,7 @@ export function SettingsSidebar({
             >
               <span className="flex items-center gap-3">
                 <FolderOpen className="h-5 w-5" />
-                <span>Projets</span>
+                <span>Projects</span>
               </span>
               <ChevronDown className="h-4 w-4" />
             </button>
@@ -287,9 +287,9 @@ export function SettingsSidebar({
             className="w-56 bg-popover border border-border shadow-lg z-50"
           >
             {isLoading ? (
-              <div className="text-sm text-muted-foreground py-2 px-3">Chargement...</div>
+              <div className="text-sm text-muted-foreground py-2 px-3">Loading...</div>
             ) : projects.length === 0 ? (
-              <div className="text-sm text-muted-foreground py-2 px-3">Aucun projet</div>
+              <div className="text-sm text-muted-foreground py-2 px-3">No projects</div>
             ) : (
               projects.map(project => {
                 const ProjIcon = getProjectIcon(project.project_type);
@@ -312,7 +312,7 @@ export function SettingsSidebar({
                     ) : (
                       <ProjIcon className="h-4 w-4 flex-shrink-0" />
                     )}
-                    <span className="truncate">{project.title || 'Sans titre'}</span>
+                    <span className="truncate">{project.title || 'Untitled'}</span>
                   </DropdownMenuItem>
                 );
               })
@@ -322,7 +322,7 @@ export function SettingsSidebar({
               className="flex items-center gap-2 cursor-pointer text-[#03A5C0] border-t border-border/30 mt-1 pt-2"
             >
               <Plus className="h-4 w-4 flex-shrink-0" />
-              <span>Nouveau projet</span>
+              <span>New project</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -337,7 +337,7 @@ export function SettingsSidebar({
           )}
         >
           <User className="h-5 w-5" />
-          <span>Profil</span>
+          <span>Profile</span>
         </button>
 
         {/* Settings button */}
@@ -350,7 +350,7 @@ export function SettingsSidebar({
           )}
         >
           <Settings className="h-5 w-5" />
-          <span>Paramètres</span>
+          <span>Settings</span>
         </button>
       </div>
     </div>

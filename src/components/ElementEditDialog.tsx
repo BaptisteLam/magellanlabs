@@ -24,16 +24,16 @@ export function ElementEditDialog({ isOpen, onClose, elementInfo, onModify }: El
 
   if (!elementInfo) return null;
 
-  const contextualPrompt = `Modifier l'élément suivant :
+  const contextualPrompt = `Modify the following element:
 
 Type: <${elementInfo.tagName.toLowerCase()}>
 ${elementInfo.id ? `ID: #${elementInfo.id}` : ''}
 ${elementInfo.classList.length > 0 ? `Classes: ${elementInfo.classList.join(', ')}` : ''}
-Texte actuel: "${elementInfo.textContent.substring(0, 100)}${elementInfo.textContent.length > 100 ? '...' : ''}"
+Current text: "${elementInfo.textContent.substring(0, 100)}${elementInfo.textContent.length > 100 ? '...' : ''}"
 
-Instruction de modification: ${prompt}
+Modification instruction: ${prompt}
 
-Ne modifie que cet élément spécifique identifié par son chemin CSS: ${elementInfo.path}`;
+Only modify this specific element identified by its CSS path: ${elementInfo.path}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -41,10 +41,10 @@ Ne modifie que cet élément spécifique identifié par son chemin CSS: ${elemen
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Tag className="w-5 h-5 text-primary" />
-            Modifier l'élément
+            Edit element
           </DialogTitle>
           <DialogDescription>
-            Décrivez les modifications à apporter à cet élément
+            Describe the changes you want to make to this element
           </DialogDescription>
         </DialogHeader>
 
@@ -74,7 +74,7 @@ Ne modifie que cet élément spécifique identifié par son chemin CSS: ${elemen
                   <div className="mt-2">
                     <div className="flex items-center gap-2 mb-1">
                       <FileText className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Contenu actuel:</span>
+                      <span className="text-xs text-muted-foreground">Current content:</span>
                     </div>
                     <p className="text-sm line-clamp-3 bg-background rounded px-2 py-1 border border-border/50">
                       {elementInfo.textContent}
@@ -92,12 +92,12 @@ Ne modifie que cet élément spécifique identifié par son chemin CSS: ${elemen
           {/* Champ de prompt */}
           <div className="space-y-2">
             <label className="text-sm font-medium">
-              Comment voulez-vous modifier cet élément ?
+              How would you like to modify this element?
             </label>
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Ex: Change le texte en 'Nouveau titre', augmente la taille, change la couleur en bleu..."
+              placeholder="E.g.: Change text to 'New title', increase size, change color to blue..."
               className="min-h-[100px] resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && e.ctrlKey) {
@@ -106,20 +106,20 @@ Ne modifie que cet élément spécifique identifié par son chemin CSS: ${elemen
               }}
             />
             <p className="text-xs text-muted-foreground">
-              Ctrl + Entrée pour soumettre
+              Ctrl + Enter to submit
             </p>
           </div>
 
           {/* Exemples de prompts */}
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Exemples de modifications :</p>
+            <p className="text-xs font-medium text-muted-foreground">Example modifications:</p>
             <div className="flex flex-wrap gap-2">
               {[
-                "Change la couleur en bleu",
-                "Augmente la taille de police",
-                "Centre ce texte",
-                "Ajoute une ombre",
-                "Rends-le plus visible"
+                "Change color to blue",
+                "Increase font size",
+                "Center this text",
+                "Add a shadow",
+                "Make it more visible"
               ].map((example, i) => (
                 <button
                   key={i}
@@ -135,7 +135,7 @@ Ne modifie que cet élément spécifique identifié par son chemin CSS: ${elemen
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Annuler
+            Cancel
           </Button>
           <Button 
             onClick={handleSubmit}

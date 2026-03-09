@@ -12,7 +12,7 @@ const PrivacyPolicy = () => {
         title="Privacy Policy"
         description="Trinity Studio privacy policy. Learn how we collect, use and protect your personal data."
         keywords="privacy policy, GDPR, data protection, Trinity Studio"
-        canonicalUrl="https://trinity-studio.fr/politique-de-confidentialite"
+        canonicalUrl="https://magellanlabs.com/privacy-policy"
       />
       <Header />
       <main className="min-h-screen bg-background">

@@ -39,7 +39,7 @@ const HeroSection = () => {
                 size="lg"
                 className="btn-trinity-outline group cursor-pointer hover:shadow-lg transform hover:scale-105 transition-all duration-300"
               >
-                <Link to="/portfolio" className="inline-flex items-center justify-center">
+                <Link to="/about" className="inline-flex items-center justify-center">
                   <Play className="mr-2 h-4 w-4" />
                   {t('hero.cta.secondary')}
                 </Link>
@@ -69,7 +69,7 @@ const HeroSection = () => {
             <div className="relative z-10 hover-lift">
               <img
                 src={heroMockup}
-                alt="Mockup d'un site web professionnel sur ordinateur portable"
+                alt="Professional website mockup on laptop"
                 className="w-full rounded-2xl shadow-trinity"
               />
             </div>

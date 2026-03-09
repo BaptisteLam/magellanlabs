@@ -1,5 +1,5 @@
-// Script d'inspection amélioré injecté dans les projets Sandpack
-// Avec overlay intelligent : dimensions, labels, navigation clavier
+// Enhanced inspection script injected into Sandpack projects
+// With smart overlay: dimensions, labels, keyboard navigation
 
 export const INSPECTOR_SCRIPT = `
 (function() {
@@ -18,14 +18,14 @@ export const INSPECTOR_SCRIPT = `
   const MARGIN_COLOR = 'rgba(255, 166, 0, 0.3)';
   const PADDING_COLOR = 'rgba(0, 255, 0, 0.2)';
   
-  // Éléments sémantiques à prioriser
+  // Semantic elements to prioritize
   const SEMANTIC_TAGS = ['section', 'article', 'nav', 'header', 'footer', 'main', 'aside', 'form', 'button', 'a', 'img'];
   const INTERACTIVE_TAGS = ['button', 'a', 'input', 'select', 'textarea', 'label'];
   
   function createOverlay() {
     if (highlightOverlay) return highlightOverlay;
     
-    // Overlay principal
+    // Main overlay
     highlightOverlay = document.createElement('div');
     highlightOverlay.id = '__inspector-overlay__';
     highlightOverlay.style.cssText = 
@@ -37,7 +37,7 @@ export const INSPECTOR_SCRIPT = `
       'box-shadow: 0 0 0 1px rgba(3, 165, 192, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);';
     document.body.appendChild(highlightOverlay);
     
-    // Label avec infos de l'élément
+    // Label with element info
     labelElement = document.createElement('div');
     labelElement.id = '__inspector-label__';
     labelElement.style.cssText = 
@@ -49,7 +49,7 @@ export const INSPECTOR_SCRIPT = `
       'white-space: nowrap; max-width: 300px; overflow: hidden; text-overflow: ellipsis;';
     document.body.appendChild(labelElement);
     
-    // Affichage des dimensions
+    // Dimensions display
     dimensionElement = document.createElement('div');
     dimensionElement.id = '__inspector-dimensions__';
     dimensionElement.style.cssText = 
@@ -59,7 +59,7 @@ export const INSPECTOR_SCRIPT = `
       'padding: 2px 6px; border-radius: 3px;';
     document.body.appendChild(dimensionElement);
     
-    // Overlay pour les marges
+    // Margin overlay
     marginOverlay = document.createElement('div');
     marginOverlay.id = '__inspector-margin__';
     marginOverlay.style.cssText = 
@@ -67,7 +67,7 @@ export const INSPECTOR_SCRIPT = `
       'display: none; background: ' + MARGIN_COLOR + '; border: 1px dashed orange;';
     document.body.appendChild(marginOverlay);
     
-    // Overlay pour le padding
+    // Padding overlay
     paddingOverlay = document.createElement('div');
     paddingOverlay.id = '__inspector-padding__';
     paddingOverlay.style.cssText = 
@@ -114,17 +114,17 @@ export const INSPECTOR_SCRIPT = `
   function getElementType(el) {
     const tag = el.tagName.toLowerCase();
     
-    // Types spécifiques
+    // Specific types
     if (tag === 'img') return '🖼️ Image';
-    if (tag === 'video') return '🎬 Vidéo';
+    if (tag === 'video') return '🎬 Video';
     if (tag === 'audio') return '🔊 Audio';
     if (tag === 'svg') return '📐 SVG';
-    if (tag === 'button') return '🔘 Bouton';
-    if (tag === 'a') return '🔗 Lien';
+    if (tag === 'button') return '🔘 Button';
+    if (tag === 'a') return '🔗 Link';
     if (tag === 'input') return '📝 Input';
     if (tag === 'textarea') return '📝 Textarea';
     if (tag === 'select') return '📋 Select';
-    if (tag === 'form') return '📄 Formulaire';
+    if (tag === 'form') return '📄 Form';
     if (tag === 'nav') return '🧭 Navigation';
     if (tag === 'header') return '📌 Header';
     if (tag === 'footer') return '📍 Footer';
@@ -132,13 +132,13 @@ export const INSPECTOR_SCRIPT = `
     if (tag === 'article') return '📰 Article';
     if (tag === 'aside') return '📎 Aside';
     if (tag === 'main') return '📄 Main';
-    if (tag === 'ul' || tag === 'ol') return '📋 Liste';
+    if (tag === 'ul' || tag === 'ol') return '📋 List';
     if (tag === 'table') return '📊 Table';
-    if (tag === 'h1' || tag === 'h2' || tag === 'h3' || tag === 'h4' || tag === 'h5' || tag === 'h6') return '📝 Titre';
-    if (tag === 'p') return '📝 Paragraphe';
+    if (tag === 'h1' || tag === 'h2' || tag === 'h3' || tag === 'h4' || tag === 'h5' || tag === 'h6') return '📝 Heading';
+    if (tag === 'p') return '📝 Paragraph';
     if (tag === 'span') return 'Span';
     if (tag === 'div') {
-      // Essayer de détecter le rôle du div
+      // Try to detect the role of the div
       const classes = el.className.toLowerCase();
       if (classes.includes('card')) return '🃏 Card';
       if (classes.includes('container')) return '📦 Container';
@@ -184,7 +184,7 @@ export const INSPECTOR_SCRIPT = `
     const rect = el.getBoundingClientRect();
     const styles = getComputedStyles(el);
     
-    // Overlay principal
+    // Main overlay
     overlay.style.display = 'block';
     overlay.style.left = rect.left + 'px';
     overlay.style.top = rect.top + 'px';

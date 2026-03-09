@@ -106,9 +106,9 @@ export const ExpoSnackPreview = ({ files, isDark = false }: ExpoSnackPreviewProp
           ? 'Timeout: L\'API Expo met trop de temps à répondre'
           : err instanceof Error 
             ? err.message 
-            : 'Erreur inconnue';
-            
-        setError(`Impossible de créer la preview mobile: ${errorMessage}`);
+            : 'Unknown error';
+
+        setError(`Unable to create mobile preview: ${errorMessage}`);
       } finally {
         setIsLoading(false);
       }

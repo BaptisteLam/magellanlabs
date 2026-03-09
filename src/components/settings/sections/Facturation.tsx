@@ -104,8 +104,8 @@ export function Facturation() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Facturation</h2>
-        <p className="text-muted-foreground">Gérez votre abonnement et votre utilisation</p>
+        <h2 className="text-2xl font-bold text-foreground">Billing</h2>
+        <p className="text-muted-foreground">Manage your subscription and usage</p>
       </div>
 
       {/* Current plan card */}
@@ -113,7 +113,7 @@ export function Facturation() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Crown className="h-5 w-5" style={{ color: '#03A5C0' }} />
-            Plan actuel
+            Current plan
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -127,11 +127,11 @@ export function Facturation() {
                   border: `1px solid ${isPremium ? 'rgba(3,165,192,0.3)' : 'rgba(148,163,184,0.3)'}`,
                 }}
               >
-                {isPremium ? 'Premium' : 'Gratuit'}
+                {isPremium ? 'Premium' : 'Free'}
               </div>
               {isPremium && (
                 <span className="text-sm text-muted-foreground">
-                  {usage?.cycleReset ? `Renouvellement le ${new Date(usage.cycleReset).toLocaleDateString('fr-FR')}` : ''}
+                  {usage?.cycleReset ? `Renews on ${new Date(usage.cycleReset).toLocaleDateString('en-US')}` : ''}
                 </span>
               )}
             </div>
@@ -152,7 +152,7 @@ export function Facturation() {
                 ) : (
                   <ExternalLink className="h-4 w-4" />
                 )}
-                Gérer l'abonnement
+                Manage subscription
               </button>
             )}
           </div>
@@ -162,7 +162,7 @@ export function Facturation() {
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MessageSquare className="h-4 w-4" />
-                Messages utilisés ce mois
+                Messages used this month
               </div>
               <span className="font-medium text-foreground">
                 {messagesUsed} / {messagesLimit}
@@ -178,7 +178,7 @@ export function Facturation() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {messagesLimit - messagesUsed} messages restants ce mois-ci
+              {messagesLimit - messagesUsed} messages remaining this month
             </p>
           </div>
 
@@ -190,7 +190,7 @@ export function Facturation() {
                 style={{ backgroundColor: 'rgba(3,165,192,0.06)', border: '1px solid rgba(3,165,192,0.15)' }}
               >
                 <Calendar className="h-4 w-4 mx-auto mb-1" style={{ color: '#03A5C0' }} />
-                <p className="text-xs text-muted-foreground">Générations ce mois</p>
+                <p className="text-xs text-muted-foreground">Generations this month</p>
                 <p className="text-lg font-bold text-foreground">{usage?.generationCount ?? 0}</p>
               </div>
               <div
@@ -198,7 +198,7 @@ export function Facturation() {
                 style={{ backgroundColor: 'rgba(3,165,192,0.06)', border: '1px solid rgba(3,165,192,0.15)' }}
               >
                 <Zap className="h-4 w-4 mx-auto mb-1" style={{ color: '#03A5C0' }} />
-                <p className="text-xs text-muted-foreground">Tokens utilisés</p>
+                <p className="text-xs text-muted-foreground">Tokens used</p>
                 <p className="text-lg font-bold text-foreground">
                   {usage?.totalTokens ? (usage.totalTokens / 1000).toFixed(1) + 'k' : '0'}
                 </p>
@@ -212,9 +212,9 @@ export function Facturation() {
       {!isPremium && (
         <>
           <div>
-            <h3 className="text-lg font-semibold text-foreground mb-1">Passer en Premium</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-1">Upgrade to Premium</h3>
             <p className="text-sm text-muted-foreground">
-              Débloquez toutes les fonctionnalités pour créer et publier votre site.
+              Unlock all features to create and publish your site.
             </p>
           </div>
 
@@ -223,12 +223,12 @@ export function Facturation() {
             <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm flex flex-col">
               <CardContent className="p-5 flex flex-col h-full">
                 <div className="mb-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Mensuel</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Monthly</p>
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-bold text-foreground">12,99€</span>
-                    <span className="text-sm text-muted-foreground">/mois</span>
+                    <span className="text-sm text-muted-foreground">/month</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Sans engagement</p>
+                  <p className="text-xs text-muted-foreground mt-1">No commitment</p>
                 </div>
 
                 <ul className="space-y-2 mb-5 flex-1">
@@ -257,7 +257,7 @@ export function Facturation() {
                   ) : (
                     <>
                       <Crown className="h-4 w-4" />
-                      Commencer
+                      Get started
                     </>
                   )}
                 </button>
@@ -273,17 +273,17 @@ export function Facturation() {
                 className="absolute top-0 right-0 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg"
                 style={{ backgroundColor: '#03A5C0' }}
               >
-                POPULAIRE
+                POPULAR
               </div>
               <CardContent className="p-5 flex flex-col h-full">
                 <div className="mb-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Annuel</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Annual</p>
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-bold text-foreground">119,99€</span>
-                    <span className="text-sm text-muted-foreground">/an</span>
+                    <span className="text-sm text-muted-foreground">/year</span>
                   </div>
                   <p className="text-xs mt-1" style={{ color: '#03A5C0' }}>
-                    soit ~10€/mois · 2 mois offerts
+                    i.e. ~10€/month · 2 months free
                   </p>
                 </div>
 
@@ -309,7 +309,7 @@ export function Facturation() {
                   ) : (
                     <>
                       <Crown className="h-4 w-4" />
-                      Souscrire annuellement
+                      Subscribe annually
                     </>
                   )}
                 </button>
@@ -318,7 +318,7 @@ export function Facturation() {
           </div>
 
           <p className="text-center text-xs text-muted-foreground">
-            Paiement sécurisé via Stripe · Résiliable à tout moment
+            Secure payment via Stripe · Cancel anytime
           </p>
         </>
       )}
@@ -329,7 +329,7 @@ export function Facturation() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Fonctionnalités incluses
+              Included features
             </CardTitle>
           </CardHeader>
           <CardContent>

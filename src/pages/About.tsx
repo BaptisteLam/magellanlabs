@@ -26,7 +26,7 @@ const About = () => {
     "mainEntity": {
       "@type": "SoftwareApplication",
       "name": "Magellan",
-      "description": "Plateforme IA révolutionnaire pour créer des sites web et applications mobiles instantanément",
+      "description": "Revolutionary AI platform for creating websites and mobile apps instantly",
       "applicationCategory": "DeveloperApplication"
     }
   };
@@ -99,10 +99,10 @@ const About = () => {
   return (
     <div className="min-h-screen">
       <SEOHead 
-        title="À Propos de Magellan | Plateforme IA de Création Web"
-        description="Découvrez Magellan : la plateforme d'intelligence artificielle qui permet de créer des sites web et applications mobiles professionnels en quelques secondes."
-        keywords="Magellan, IA création web, intelligence artificielle, générateur site, plateforme développement, création automatique"
-        canonicalUrl="https://magellan-studio.fr/about"
+        title="About Magellan | AI-Powered Web Creation Platform"
+        description="Discover Magellan: the AI platform that lets you create professional websites and mobile apps in seconds."
+        keywords="Magellan, AI web creation, artificial intelligence, website generator, development platform, automatic creation"
+        canonicalUrl="https://magellanlabs.com/about"
         structuredData={structuredData}
       />
       <Header />

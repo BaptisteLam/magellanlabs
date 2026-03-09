@@ -56,13 +56,13 @@ export function usePreloadSessions() {
       if (sessions && sessions.length > 0) {
         console.log(`🌐 Fetched ${sessions.length} sessions from Supabase`);
 
-        // Parser les fichiers avec le bon format
+        // Parse files with the correct format
         const parsedSessions = sessions.map(session => ({
           ...session,
           parsedFiles: parseProjectFiles(session.project_files)
         }));
 
-        // Mettre à jour le cache IndexedDB
+        // Update the IndexedDB cache
         await Promise.all(
           parsedSessions.map(session =>
             IndexedDBCache.saveProject(
@@ -82,7 +82,7 @@ export function usePreloadSessions() {
           }))
         );
 
-        // Calculer le taux de hit du cache
+        // Calculate the cache hit rate
         const cacheHits = cachedProjects.filter(cp =>
           sessions.some(s => s.id === cp.sessionId)
         ).length;
@@ -97,25 +97,25 @@ export function usePreloadSessions() {
   }, []);
 
   /**
-   * Obtient une session préchargée
+   * Get a preloaded session
    */
   const getPreloadedSession = useCallback((sessionId: string): PreloadedSession | null => {
     return preloadedSessions.find(s => s.sessionId === sessionId) || null;
   }, [preloadedSessions]);
 
   /**
-   * Précharge une session spécifique
+   * Preload a specific session
    */
   const preloadSession = useCallback(async (sessionId: string) => {
     try {
-      // Vérifier le cache d'abord
+      // Check the cache first
       const cached = await IndexedDBCache.getProject(sessionId);
       if (cached) {
         console.log(`📦 Session ${sessionId} loaded from cache`);
         return cached.projectFiles;
       }
 
-      // Sinon fetch depuis Supabase
+      // Otherwise fetch from Supabase
       const { data: session, error } = await supabase
         .from('build_sessions')
         .select('id, title, project_files')
@@ -125,10 +125,10 @@ export function usePreloadSessions() {
       if (error) throw error;
 
       if (session) {
-        // Parser les fichiers avec le bon format
+        // Parse files with the correct format
         const projectFiles = parseProjectFiles(session.project_files);
-        
-        // Sauvegarder dans le cache
+
+        // Save to cache
         await IndexedDBCache.saveProject(sessionId, projectFiles, 'synced');
         
         console.log(`🌐 Session ${sessionId} fetched and cached`);
@@ -143,7 +143,7 @@ export function usePreloadSessions() {
   }, []);
 
   /**
-   * Nettoie les vieux projets du cache
+   * Clean up old projects from cache
    */
   const cleanupCache = useCallback(async (daysOld: number = 30) => {
     try {
@@ -157,7 +157,7 @@ export function usePreloadSessions() {
   }, []);
 
   /**
-   * Obtient la taille du cache
+   * Get the cache size
    */
   const getCacheSize = useCallback(async () => {
     try {
@@ -170,10 +170,10 @@ export function usePreloadSessions() {
   }, []);
 
   /**
-   * Précharge automatiquement au montage
+   * Automatically preload on mount
    */
   useEffect(() => {
-    // Précharger après un court délai pour ne pas bloquer le rendu initial
+    // Preload after a short delay to avoid blocking the initial render
     const timeout = setTimeout(() => {
       preloadRecentSessions(5);
     }, 1000);

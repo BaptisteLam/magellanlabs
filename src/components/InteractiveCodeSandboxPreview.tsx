@@ -156,9 +156,9 @@ export function InteractiveCodeSandboxPreview({
           >
             <MousePointer2 className="w-4 h-4" />
             <span>
-              {inspectorReady 
-                ? 'Cliquez sur un élément • Shift+Clic = parent • Escape = quitter'
-                : 'Chargement...'
+              {inspectorReady
+                ? 'Click an element • Shift+Click = parent • Escape = exit'
+                : 'Loading...'
               }
             </span>
           </div>

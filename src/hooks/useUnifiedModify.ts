@@ -138,7 +138,7 @@ export function useUnifiedModify() {
         throw new Error('VITE_SUPABASE_URL not configured');
       }
 
-      // Récupérer le vibesdk_session_id de la session pour faire un follow-up
+      // Retrieve the vibesdk_session_id from the session for follow-up
       const { data: buildSession } = await supabase
         .from('build_sessions')
         .select('vibesdk_session_id')
@@ -147,7 +147,7 @@ export function useUnifiedModify() {
 
       const vibeAgentId = buildSession?.vibesdk_session_id;
 
-      // Utiliser vibesdk-chat avec isFollowUp si on a un agentId existant
+      // Use vibesdk-chat with isFollowUp if we have an existing agentId
       const url = `${supabaseUrl}/functions/v1/vibesdk-chat`;
 
       console.log('[useUnifiedModify] Starting VibeSDK request:', {
@@ -158,12 +158,12 @@ export function useUnifiedModify() {
         vibeAgentId,
       });
 
-      // Émettre l'événement d'analyse
+      // Emit the analysis event
       onGenerationEvent?.({
         type: 'phase',
         phase: 'analyze',
         status: 'starting',
-        message: 'Analyse de la demande via VibeSDK...',
+        message: 'Analyzing the request via VibeSDK...',
       });
 
       const response = await fetch(url, {
@@ -223,7 +223,7 @@ export function useUnifiedModify() {
               switch (data.type) {
                 case 'start':
                   console.log('[useUnifiedModify] VibeSDK session started:', data.data);
-                  onIntentMessage?.('Modification en cours via VibeSDK...');
+                  onIntentMessage?.('Modification in progress via VibeSDK...');
                   break;
 
                 case 'generation_event':
@@ -242,21 +242,21 @@ export function useUnifiedModify() {
                   if (data.data?.files) {
                     console.log('[useUnifiedModify] Files received:', Object.keys(data.data.files).length);
 
-                    // Calculer les modifications par rapport aux fichiers existants
+                    // Calculate modifications compared to existing files
                     const modifications: ASTModification[] = [];
                     const updatedFiles = data.data.files as Record<string, string>;
 
                     for (const [path, content] of Object.entries(updatedFiles)) {
                       if (!projectFiles[path]) {
                         modifications.push({ type: 'html-change', path, changes: { created: 'true' } });
-                        onFileModified?.(path, 'Fichier créé');
+                        onFileModified?.(path, 'File created');
                       } else if (projectFiles[path] !== content) {
                         modifications.push({ type: 'html-change', path, changes: { modified: 'true' } });
-                        onFileModified?.(path, 'Fichier modifié');
+                        onFileModified?.(path, 'File modified');
                       }
                     }
 
-                    // Appeler onASTModifications avec les fichiers mis à jour
+                    // Call onASTModifications with the updated files
                     if (modifications.length > 0) {
                       await onASTModifications?.(modifications, updatedFiles);
                     }
@@ -277,7 +277,7 @@ export function useUnifiedModify() {
                   const duration = Date.now() - startTime;
                   const completedFiles = data.data?.files || {};
 
-                  // Construire les modifications
+                  // Build the modifications
                   const finalModifications: ASTModification[] = [];
                   const filesAffected: FileAffected[] = [];
 
@@ -295,7 +295,7 @@ export function useUnifiedModify() {
                     success: true,
                     modifications: finalModifications,
                     updatedFiles: completedFiles,
-                    message: 'Modifications appliquées via VibeSDK',
+                    message: 'Modifications applied via VibeSDK',
                     intentMessage: 'Modification via VibeSDK',
                     filesAffected,
                     tokens: data.data?.tokens || { input: 0, output: 0, total: 0 },
