@@ -1,5 +1,6 @@
 import { InteractiveCodeSandboxPreview } from '@/components/InteractiveCodeSandboxPreview';
 import { GeneratingPreview } from '@/components/GeneratingPreview';
+import { VibePreviewIframe } from '@/components/builder/VibePreviewIframe';
 import type { ElementInfo } from '@/types/elementInfo';
 
 interface PreviewPanelProps {
@@ -23,26 +24,14 @@ export function PreviewPanel({
   onElementModify,
   previewUrl,
 }: PreviewPanelProps) {
-  // Afficher GeneratingPreview tant que la génération est en cours OU qu'aucun fichier/URL n'est disponible
   if (isGenerating || (Object.keys(projectFiles).length === 0 && !previewUrl)) {
     return <GeneratingPreview />;
   }
 
-  // Si on a un previewUrl VibeSDK, l'afficher directement dans un iframe
   if (previewUrl) {
-    return (
-      <div className="w-full h-full">
-        <iframe
-          src={previewUrl}
-          title="Preview"
-          className="w-full h-full border-0"
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
-        />
-      </div>
-    );
+    return <VibePreviewIframe src={previewUrl} />;
   }
 
-  // Fallback: Preview via CodeSandbox / LocalInspectablePreview
   return (
     <InteractiveCodeSandboxPreview
       projectFiles={projectFiles}

@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { FileTree } from "@/components/FileTree";
 import { InteractiveCodeSandboxPreview } from "@/components/InteractiveCodeSandboxPreview";
 import { GeneratingPreview } from "@/components/GeneratingPreview";
+import { VibePreviewIframe } from "@/components/builder/VibePreviewIframe";
 import { FakeUrlBar } from "@/components/FakeUrlBar";
 import { CodeTreeView } from "@/components/CodeEditor/CodeTreeView";
 import { FileTabs } from "@/components/CodeEditor/FileTabs";
@@ -2225,7 +2226,7 @@ export default function BuilderSession() {
               {(Object.keys(projectFiles).length === 0 && !vibePreviewUrl) || generateSiteHook.isGenerating ? <GeneratingPreview /> : <>
                 <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} previewMode="mobile" />
                 {vibePreviewUrl ? (
-                  <iframe src={vibePreviewUrl} title="Preview" className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" />
+                  <VibePreviewIframe src={vibePreviewUrl} />
                 ) : (
                   <InteractiveCodeSandboxPreview projectFiles={projectFiles} previewMode="mobile" inspectMode={false} onInspectModeChange={() => {}} />
                 )}
@@ -2402,12 +2403,7 @@ export default function BuilderSession() {
                   {(Object.keys(projectFiles).length === 0 && !vibePreviewUrl) || generateSiteHook.isGenerating ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} previewMode="mobile" />
                       {vibePreviewUrl ? (
-                        <iframe
-                          src={vibePreviewUrl}
-                          title="Preview"
-                          className="w-full h-full border-0"
-                          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
-                        />
+                        <VibePreviewIframe src={vibePreviewUrl} />
                       ) : (
                       <InteractiveCodeSandboxPreview
                         projectFiles={projectFiles}
@@ -2438,12 +2434,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                   {(Object.keys(projectFiles).length === 0 && !vibePreviewUrl) || generateSiteHook.isGenerating ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} previewMode={previewMode} />
                       {vibePreviewUrl ? (
-                        <iframe
-                          src={vibePreviewUrl}
-                          title="Preview"
-                          className="w-full h-full border-0"
-                          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
-                        />
+                        <VibePreviewIframe src={vibePreviewUrl} />
                       ) : (
                       <InteractiveCodeSandboxPreview
                         projectFiles={projectFiles}
