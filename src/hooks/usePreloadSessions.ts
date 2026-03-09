@@ -1,6 +1,6 @@
 /**
- * Hook de préchargement intelligent des sessions récentes
- * Charge en arrière-plan les projets fréquemment utilisés
+ * Smart preloading hook for recent sessions
+ * Loads frequently used projects in the background
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -21,7 +21,7 @@ export function usePreloadSessions() {
   const [cacheHitRate, setCacheHitRate] = useState(0);
 
   /**
-   * Précharge les sessions récentes au login
+   * Preload recent sessions on login
    */
   const preloadRecentSessions = useCallback(async (limit: number = 5) => {
     setIsPreloading(true);
@@ -29,7 +29,7 @@ export function usePreloadSessions() {
     try {
       console.log('🔄 Preloading recent sessions...');
 
-      // 1. Charger depuis IndexedDB d'abord (cache local)
+      // 1. Load from IndexedDB first (local cache)
       const cachedProjects = await IndexedDBCache.getRecentProjects(limit);
       
       if (cachedProjects.length > 0) {
@@ -44,7 +44,7 @@ export function usePreloadSessions() {
         );
       }
 
-      // 2. Fetch depuis Supabase en arrière-plan
+      // 2. Fetch from Supabase in the background
       const { data: sessions, error } = await supabase
         .from('build_sessions')
         .select('id, title, project_files, updated_at')

@@ -1,6 +1,6 @@
 /**
- * Inspector Injector - Injecte un script d'inspection dans les fichiers React
- * pour permettre la sélection d'éléments dans Sandpack (contourne les limitations cross-origin)
+ * Inspector Injector - Injects an inspection script into React files
+ * to allow element selection in Sandpack (bypasses cross-origin limitations)
  */
 
 export function injectInspectorScript(files: Record<string, string>): Record<string, string> {
@@ -18,13 +18,13 @@ export function injectInspectorScript(files: Record<string, string>): Record<str
   const getElementDescription = (tag) => {
     const tagLower = tag.toLowerCase();
     const labels = {
-      h1: 'Titre H1', h2: 'Titre H2', h3: 'Titre H3',
-      h4: 'Titre H4', h5: 'Titre H5', h6: 'Titre H6',
-      button: 'Bouton', a: 'Lien', p: 'Paragraphe',
-      img: 'Image', svg: 'Icône', div: 'Conteneur',
+      h1: 'Heading H1', h2: 'Heading H2', h3: 'Heading H3',
+      h4: 'Heading H4', h5: 'Heading H5', h6: 'Heading H6',
+      button: 'Button', a: 'Link', p: 'Paragraph',
+      img: 'Image', svg: 'Icon', div: 'Container',
       section: 'Section', article: 'Article', header: 'Header',
-      footer: 'Footer', nav: 'Navigation', ul: 'Liste',
-      li: 'Élément de liste', span: 'Texte', input: 'Champ'
+      footer: 'Footer', nav: 'Navigation', ul: 'List',
+      li: 'List item', span: 'Text', input: 'Field'
     };
     return labels[tagLower] || tagLower.toUpperCase();
   };
@@ -93,7 +93,7 @@ export function injectInspectorScript(files: Record<string, string>): Record<str
     highlights.forEach(h => h.remove());
   };
 
-  // Écouter les messages du parent
+  // Listen for messages from the parent
   window.addEventListener('message', (e) => {
     if (e.data.type === 'toggle-inspect') {
       inspectMode = e.data.enabled;
@@ -109,7 +109,7 @@ export function injectInspectorScript(files: Record<string, string>): Record<str
     }
   });
 
-  // Gérer le survol
+  // Handle hover
   document.addEventListener('mousemove', (e) => {
     if (!inspectMode) return;
     
@@ -131,7 +131,7 @@ export function injectInspectorScript(files: Record<string, string>): Record<str
     }
   }, true);
 
-  // Gérer le clic
+  // Handle click
   document.addEventListener('click', (e) => {
     if (!inspectMode) return;
     
@@ -160,22 +160,22 @@ export function injectInspectorScript(files: Record<string, string>): Record<str
       }
     };
 
-    console.log('✅ Élément sélectionné:', elementInfo);
+    console.log('✅ Element selected:', elementInfo);
     window.parent.postMessage({
       type: 'element-selected',
       data: elementInfo
     }, '*');
   }, true);
 
-  // Signaler que l'inspector est prêt
-  console.log('📡 Inspector ready, envoi du signal...');
+  // Signal that the inspector is ready
+  console.log('📡 Inspector ready, sending signal...');
   window.parent.postMessage({ type: 'inspect-ready' }, '*');
 })();
 `;
 
   const modifiedFiles = { ...files };
 
-  // Trouver le fichier d'entrée (index.tsx, main.tsx, App.tsx, etc.)
+  // Find the entry file (index.tsx, main.tsx, App.tsx, etc.)
   const entryFile = Object.keys(files).find(f => 
     f.includes('index.tsx') || 
     f.includes('main.tsx') || 
@@ -185,11 +185,11 @@ export function injectInspectorScript(files: Record<string, string>): Record<str
   );
 
   if (entryFile && modifiedFiles[entryFile]) {
-    console.log('🔧 Injection du script inspector dans:', entryFile);
-    // Injecter le script au début du fichier, avant les imports
+    console.log('🔧 Injecting inspector script into:', entryFile);
+    // Inject the script at the beginning of the file, before imports
     modifiedFiles[entryFile] = inspectorCode + '\n' + modifiedFiles[entryFile];
   } else {
-    console.warn('⚠️ Aucun fichier d\'entrée trouvé pour l\'injection');
+    console.warn('⚠️ No entry file found for injection');
   }
 
   return modifiedFiles;

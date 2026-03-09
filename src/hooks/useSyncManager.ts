@@ -1,6 +1,6 @@
 /**
- * Hook de gestion de la synchronisation avec Supabase
- * Sync différentiel, debounce, background sync
+ * Hook for managing synchronization with Supabase
+ * Differential sync, debounce, background sync
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -32,13 +32,13 @@ export function useSyncManager({
   const queuedSyncRef = useRef(false);
 
   /**
-   * Synchronise les changements avec Supabase
+   * Synchronize changes with Supabase
    */
   const syncToSupabase = useCallback(async (
     projectFiles: Record<string, string>,
     force: boolean = false
   ) => {
-    // Éviter les syncs multiples simultanés
+    // Avoid multiple simultaneous syncs
     if (syncInProgressRef.current && !force) {
       queuedSyncRef.current = true;
       return;
@@ -48,7 +48,7 @@ export function useSyncManager({
     setSyncStatus('syncing');
 
     try {
-      // Récupérer le projet actuel depuis Supabase
+      // Fetch the current project from Supabase
       const { data: currentSession, error: fetchError } = await supabase
         .from('build_sessions')
         .select('project_files')
@@ -59,7 +59,7 @@ export function useSyncManager({
 
       const oldFiles = parseProjectFiles(currentSession?.project_files);
 
-      // Calculer le diff
+      // Calculate the diff
       const diff = IndexedDBCache.calculateDiff(oldFiles, projectFiles);
 
       if (diff.length === 0) {
@@ -72,7 +72,7 @@ export function useSyncManager({
 
       console.log(`📤 Syncing ${diff.length} changes to Supabase`);
 
-      // Sauvegarder seulement les fichiers modifiés
+      // Save only the modified files
       const { error: updateError } = await supabase
         .from('build_sessions')
         .update({
@@ -83,7 +83,7 @@ export function useSyncManager({
 
       if (updateError) throw updateError;
 
-      // Marquer comme syncé dans IndexedDB
+      // Mark as synced in IndexedDB
       await IndexedDBCache.markAsSynced(sessionId);
       await IndexedDBCache.saveProject(sessionId, projectFiles, 'synced');
 
@@ -106,7 +106,7 @@ export function useSyncManager({
     } finally {
       syncInProgressRef.current = false;
 
-      // Si un sync était en attente, le lancer maintenant
+      // If a sync was queued, launch it now
       if (queuedSyncRef.current) {
         queuedSyncRef.current = false;
         setTimeout(() => syncToSupabase(projectFiles, false), 500);
@@ -115,22 +115,22 @@ export function useSyncManager({
   }, [sessionId, toast]);
 
   /**
-   * Déclenche un sync avec debounce
+   * Trigger a sync with debounce
    */
   const triggerSync = useCallback((projectFiles: Record<string, string>) => {
-    // Clear timeout précédent
+    // Clear previous timeout
     if (syncTimeoutRef.current) {
       clearTimeout(syncTimeoutRef.current);
     }
 
-    // Sauvegarder immédiatement en local
+    // Save immediately to local storage
     IndexedDBCache.saveProject(sessionId, projectFiles, 'synced');
     if (syncStatus !== 'syncing') {
       setSyncStatus('idle');
     }
     setPendingChanges(prev => prev + 1);
 
-    // Debounce le sync Supabase
+    // Debounce the Supabase sync
     syncTimeoutRef.current = setTimeout(() => {
       if (autoSync) {
         syncToSupabase(projectFiles);
@@ -139,7 +139,7 @@ export function useSyncManager({
   }, [sessionId, debounceMs, autoSync, syncToSupabase]);
 
   /**
-   * Force un sync immédiat (sans debounce)
+   * Force an immediate sync (no debounce)
    */
   const forceSyncNow = useCallback(async (projectFiles: Record<string, string>) => {
     if (syncTimeoutRef.current) {
@@ -149,7 +149,7 @@ export function useSyncManager({
   }, [syncToSupabase]);
 
   /**
-   * Récupère depuis le cache local
+   * Load from local cache
    */
   const loadFromCache = useCallback(async () => {
     try {
@@ -170,7 +170,7 @@ export function useSyncManager({
   }, [sessionId]);
 
   /**
-   * Récupère les changements en attente
+   * Retrieve pending changes
    */
   const loadPendingChanges = useCallback(async () => {
     try {
@@ -184,7 +184,7 @@ export function useSyncManager({
   }, [sessionId]);
 
   /**
-   * Détecte l'état online/offline
+   * Detect online/offline state
    */
   useEffect(() => {
     const handleOnline = () => {
@@ -200,7 +200,7 @@ export function useSyncManager({
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // État initial
+    // Initial state
     if (!navigator.onLine) {
       setSyncStatus('offline');
     }

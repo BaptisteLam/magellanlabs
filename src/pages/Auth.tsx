@@ -25,39 +25,39 @@ export default function Auth() {
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
 
   useEffect(() => {
-    // Vérifier la configuration Supabase au démarrage
+    // Check Supabase configuration on startup
     const checkSupabaseConfig = async () => {
       try {
-        // Test simple pour vérifier que Supabase est accessible
+        // Simple test to verify that Supabase is reachable
         const { error } = await supabase.auth.getSession();
         if (error) {
           console.error('❌ Supabase connection error:', error);
           if (error.message?.includes('Invalid API key') || error.message?.includes('Invalid URL')) {
-            toast.error('Configuration Supabase invalide. Vérifiez les variables d\'environnement.');
+            toast.error('Invalid Supabase configuration. Check your environment variables.');
           }
         } else {
           console.log('✅ Supabase connection OK');
         }
       } catch (e) {
         console.error('❌ Supabase unreachable:', e);
-        toast.error('Impossible de se connecter à Supabase. Vérifiez votre connexion.');
+        toast.error('Unable to connect to Supabase. Check your connection.');
       }
     };
 
     checkSupabaseConfig();
 
-    // Gérer les erreurs OAuth dans l'URL (ex: error=access_denied)
+    // Handle OAuth errors in the URL (e.g., error=access_denied)
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
 
     if (error) {
       console.error('OAuth error:', error, errorDescription);
-      toast.error(errorDescription || `Erreur d'authentification: ${error}`);
-      // Nettoyer l'URL
+      toast.error(errorDescription || `Authentication error: ${error}`);
+      // Clean the URL
       window.history.replaceState({}, '', '/auth');
     }
 
-    // Vérifier si l'utilisateur est déjà connecté
+    // Check if the user is already logged in
     const checkSession = async () => {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
@@ -68,7 +68,7 @@ export default function Auth() {
 
       if (session) {
         console.log('✅ User already logged in:', session.user.email);
-        // S'assurer que le profil existe avant de rediriger
+        // Make sure the profile exists before redirecting
         await ensureUserProfile(session.user);
         handleRedirectAfterAuth();
       }
@@ -76,14 +76,14 @@ export default function Auth() {
 
     checkSession();
 
-    // Écouter les changements d'authentification (important pour OAuth callback)
+    // Listen for authentication state changes (important for OAuth callback)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔄 Auth state changed:', event, session?.user?.email);
 
       if (event === 'SIGNED_IN' && session) {
-        // S'assurer que le profil utilisateur existe (fallback si le trigger DB échoue)
+        // Make sure the user profile exists (fallback if the DB trigger fails)
         await ensureUserProfile(session.user);
-        toast.success(`Bienvenue ${session.user.email}!`);
+        toast.success(`Welcome ${session.user.email}!`);
         handleRedirectAfterAuth();
       } else if (event === 'SIGNED_OUT') {
         console.log('User signed out');
@@ -95,10 +95,10 @@ export default function Auth() {
     return () => subscription.unsubscribe();
   }, [navigate, searchParams]);
 
-  // Vérifie et crée le profil utilisateur si nécessaire (fallback si le trigger DB échoue)
+  // Check and create the user profile if needed (fallback if the DB trigger fails)
   const ensureUserProfile = async (user: { id: string; email?: string }) => {
     try {
-      // Vérifier si le profil existe
+      // Check if the profile exists
       const { data: profile, error: fetchError } = await supabase
         .from('profiles')
         .select('id')
@@ -110,7 +110,7 @@ export default function Auth() {
         return;
       }
 
-      // Si le profil n'existe pas, le créer
+      // If the profile doesn't exist, create it
       if (!profile) {
         console.log('📝 Creating missing profile for user:', user.email);
         const { error: insertError } = await supabase
@@ -147,7 +147,7 @@ export default function Auth() {
     setOauthLoading(provider);
 
     try {
-      // Construire l'URL de redirection - utiliser /auth pour capturer le callback
+      // Build the redirect URL - use /auth to capture the callback
       const redirectUrl = `${window.location.origin}/auth`;
 
       console.log(`🚀 Starting ${provider} OAuth flow...`);
@@ -157,11 +157,11 @@ export default function Auth() {
         provider,
         options: {
           redirectTo: redirectUrl,
-          // Pour Apple, ajouter les scopes nécessaires
+          // For Apple, add the required scopes
           ...(provider === 'apple' && {
             scopes: 'email name',
           }),
-          // Pour Google, demander le profil complet
+          // For Google, request the full profile
           ...(provider === 'google' && {
             queryParams: {
               access_type: 'offline',
@@ -178,18 +178,18 @@ export default function Auth() {
 
       if (data?.url) {
         console.log(`✅ Redirecting to ${provider}:`, data.url);
-        // La redirection est gérée automatiquement par Supabase
+        // The redirect is handled automatically by Supabase
       }
     } catch (error: any) {
       console.error('OAuth error:', error);
 
-      // Messages d'erreur personnalisés
-      let errorMessage = error.message || "Une erreur est survenue";
+      // Custom error messages
+      let errorMessage = error.message || "An error occurred";
 
       if (error.message?.includes('provider is not enabled')) {
-        errorMessage = `L'authentification ${provider === 'google' ? 'Google' : 'Apple'} n'est pas encore configurée. Contactez l'administrateur.`;
+        errorMessage = `${provider === 'google' ? 'Google' : 'Apple'} authentication is not yet configured. Contact the administrator.`;
       } else if (error.message?.includes('redirect_uri_mismatch')) {
-        errorMessage = "Erreur de configuration. L'URL de redirection n'est pas autorisée.";
+        errorMessage = "Configuration error. The redirect URL is not authorized.";
       }
 
       toast.error(errorMessage);
@@ -200,7 +200,7 @@ export default function Auth() {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotEmail.trim()) {
-      toast.error("Veuillez entrer votre adresse email");
+      toast.error("Please enter your email address");
       return;
     }
     setForgotLoading(true);
@@ -209,11 +209,11 @@ export default function Auth() {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) throw error;
-      toast.success("Un lien de réinitialisation a été envoyé à votre adresse email. Vérifiez votre boîte mail.");
+      toast.success("A password reset link has been sent to your email address. Check your inbox.");
       setIsForgotPassword(false);
     } catch (error: any) {
       console.error('❌ Forgot password error:', error);
-      toast.error(error.message?.includes('rate limit') ? "Trop de tentatives. Réessayez dans quelques minutes." : "Erreur lors de l'envoi de l'email. Vérifiez l'adresse saisie.");
+      toast.error(error.message?.includes('rate limit') ? "Too many attempts. Please try again in a few minutes." : "Error sending the email. Please check the address you entered.");
     } finally {
       setForgotLoading(false);
     }
@@ -231,7 +231,7 @@ export default function Auth() {
         });
 
         if (error) throw error;
-        toast.success("Connexion réussie !");
+        toast.success("Successfully logged in!");
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -250,44 +250,44 @@ export default function Auth() {
           emailConfirmedAt: data.user?.email_confirmed_at,
         });
 
-        // Vérifier si l'utilisateur a déjà une session (confirmation d'email désactivée)
+        // Check if the user already has a session (email confirmation disabled)
         if (data.session) {
-          toast.success("Compte créé avec succès ! Vous êtes connecté.");
+          toast.success("Account created successfully! You are now logged in.");
         } else if (data.user && !data.user.email_confirmed_at) {
-          toast.success("Compte créé ! Vérifiez votre boîte mail pour confirmer votre inscription.");
+          toast.success("Account created! Check your inbox to confirm your registration.");
         } else {
-          toast.success("Compte créé !");
+          toast.success("Account created!");
         }
       }
     } catch (error: any) {
       console.error('❌ Auth error:', error);
 
-      // Messages d'erreur personnalisés en français
+      // Custom error messages
       let errorMessage = error.message;
 
-      // Erreurs de connexion
+      // Login errors
       if (error.message?.includes('Invalid login credentials')) {
-        errorMessage = "Email ou mot de passe incorrect";
+        errorMessage = "Incorrect email or password";
       } else if (error.message?.includes('Email not confirmed')) {
-        errorMessage = "Veuillez confirmer votre email avant de vous connecter";
+        errorMessage = "Please confirm your email before logging in";
       }
-      // Erreurs d'inscription
+      // Signup errors
       else if (error.message?.includes('User already registered')) {
-        errorMessage = "Un compte existe déjà avec cet email";
+        errorMessage = "An account already exists with this email";
       } else if (error.message?.includes('Password should be at least')) {
-        errorMessage = "Le mot de passe doit contenir au moins 6 caractères";
+        errorMessage = "Password must contain at least 6 characters";
       } else if (error.message?.includes('Unable to validate email address')) {
-        errorMessage = "Adresse email invalide";
+        errorMessage = "Invalid email address";
       } else if (error.message?.includes('Signups not allowed')) {
-        errorMessage = "Les inscriptions sont désactivées. Contactez l'administrateur.";
+        errorMessage = "Signups are disabled. Contact the administrator.";
       } else if (error.message?.includes('Email rate limit exceeded')) {
-        errorMessage = "Trop de tentatives. Veuillez réessayer plus tard.";
+        errorMessage = "Too many attempts. Please try again later.";
       } else if (error.message?.includes('Database error')) {
-        errorMessage = "Erreur de base de données. Veuillez réessayer.";
+        errorMessage = "Database error. Please try again.";
       } else if (error.message?.includes('Failed to fetch')) {
-        errorMessage = "Erreur de connexion au serveur. Vérifiez votre connexion internet.";
+        errorMessage = "Server connection error. Check your internet connection.";
       } else if (error.message?.includes('AuthApiError')) {
-        errorMessage = "Erreur d'authentification. Veuillez réessayer.";
+        errorMessage = "Authentication error. Please try again.";
       }
 
       console.error('📋 Error details:', {
@@ -309,7 +309,7 @@ export default function Auth() {
     <>
       <Header />
       <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden pt-20">
-      {/* Grid background - adapté au thème */}
+      {/* Grid background - adapted to theme */}
       <div className="absolute inset-0"
            style={{
              backgroundImage: isDark
@@ -335,14 +335,14 @@ export default function Auth() {
       <Card className={`w-full max-w-md backdrop-blur-sm border-white/20 shadow-2xl ${isDark ? 'bg-[#1F1F20]/95' : 'bg-white/95'}`}>
         <CardHeader>
           <CardTitle className="text-2xl">
-            {isForgotPassword ? "Mot de passe oublié" : isLogin ? "Connexion" : "Inscription"}
+            {isForgotPassword ? "Forgot password" : isLogin ? "Login" : "Sign up"}
           </CardTitle>
           <CardDescription>
             {isForgotPassword
-              ? "Entrez votre email pour recevoir un lien de réinitialisation"
+              ? "Enter your email to receive a reset link"
               : isLogin
-              ? "Connectez-vous pour enregistrer vos sites web"
-              : "Créez un compte pour commencer"}
+              ? "Log in to save your websites"
+              : "Create an account to get started"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -355,7 +355,7 @@ export default function Auth() {
                   <Input
                     id="forgot-email"
                     type="email"
-                    placeholder="votre@email.com"
+                    placeholder="your@email.com"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
                     required
@@ -371,12 +371,12 @@ export default function Auth() {
                   {forgotLoading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Envoi en cours...
+                      Sending...
                     </>
                   ) : (
                     <>
                       <Mail className="h-4 w-4" />
-                      Envoyer le lien de réinitialisation
+                      Send reset link
                     </>
                   )}
                 </Button>
@@ -388,7 +388,7 @@ export default function Auth() {
                     disabled={forgotLoading}
                   >
                     <ArrowLeft className="h-3.5 w-3.5" />
-                    Retour à la connexion
+                    Back to login
                   </button>
                 </div>
               </form>
@@ -425,7 +425,7 @@ export default function Auth() {
                     />
                   </svg>
                 )}
-                {oauthLoading === 'google' ? 'Connexion...' : 'Continuer avec Google'}
+                {oauthLoading === 'google' ? 'Logging in...' : 'Continue with Google'}
               </Button>
 
               <Button
@@ -442,7 +442,7 @@ export default function Auth() {
                     <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
                   </svg>
                 )}
-                {oauthLoading === 'apple' ? 'Connexion...' : 'Continuer avec Apple'}
+                {oauthLoading === 'apple' ? 'Logging in...' : 'Continue with Apple'}
               </Button>
             </div>
 
@@ -452,7 +452,7 @@ export default function Auth() {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className={`px-2 text-muted-foreground ${isDark ? 'bg-[#1F1F20]' : 'bg-white'}`}>
-                  Ou continuer avec
+                  Or continue with
                 </span>
               </div>
             </div>
@@ -464,7 +464,7 @@ export default function Auth() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="votre@email.com"
+                  placeholder="your@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -473,7 +473,7 @@ export default function Auth() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Mot de passe</Label>
+                  <Label htmlFor="password">Password</Label>
                   {isLogin && (
                     <button
                       type="button"
@@ -481,7 +481,7 @@ export default function Auth() {
                       className="text-xs text-primary hover:underline"
                       disabled={isButtonDisabled}
                     >
-                      Mot de passe oublié ?
+                      Forgot password?
                     </button>
                   )}
                 </div>
@@ -505,12 +505,12 @@ export default function Auth() {
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    {isLogin ? "Connexion..." : "Inscription..."}
+                    {isLogin ? "Logging in..." : "Signing up..."}
                   </>
                 ) : (
                   <>
                     <Mail className="h-4 w-4" />
-                    {isLogin ? "Se connecter" : "S'inscrire"}
+                    {isLogin ? "Log in" : "Sign up"}
                   </>
                 )}
               </Button>
@@ -524,8 +524,8 @@ export default function Auth() {
                 disabled={isButtonDisabled}
               >
                 {isLogin
-                  ? "Pas encore de compte ? S'inscrire"
-                  : "Déjà un compte ? Se connecter"}
+                  ? "Don't have an account? Sign up"
+                  : "Already have an account? Log in"}
               </button>
             </div>
             </>

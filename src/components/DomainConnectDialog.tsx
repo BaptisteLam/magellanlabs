@@ -46,7 +46,7 @@ interface DiscoveryResult {
   };
 }
 
-// Logos des providers Domain Connect supportés
+// Logos of supported Domain Connect providers
 const PROVIDER_LOGOS: Record<string, string> = {
   'GoDaddy': 'https://img1.wsimg.com/cdn/Image/All/Logos/1/en-US/8f087ce7-2ff0-4e3f-9199-4d42afd4bc78/GoDaddy-Mascot-Full-Color-Dark-Bkgnd-RGB.png',
   '1&1 IONOS': 'https://www.ionos.com/favicon.ico',
@@ -70,14 +70,14 @@ export function DomainConnectDialog({
 
   const handleDiscover = async () => {
     if (!domain.trim()) {
-      toast.error('Veuillez entrer un nom de domaine');
+      toast.error('Please enter a domain name');
       return;
     }
 
     setStep('discovering');
     setDiscoveryProgress(0);
 
-    // Animation du progress
+    // Progress animation
     const progressInterval = setInterval(() => {
       setDiscoveryProgress(prev => {
         if (prev >= 90) {
@@ -101,7 +101,7 @@ export function DomainConnectDialog({
       if (data?.success) {
         setDiscoveryResult(data);
 
-        // Petit délai pour l'animation
+        // Short delay for animation
         setTimeout(() => {
           if (data.supported && data.method === 'automatic') {
             setStep('provider-choice');
@@ -110,13 +110,13 @@ export function DomainConnectDialog({
           }
         }, 500);
       } else {
-        toast.error(data?.message || 'Erreur lors de la découverte');
+        toast.error(data?.message || 'Error during discovery');
         setStep('input');
       }
     } catch (error) {
       clearInterval(progressInterval);
       console.error('Error discovering provider:', error);
-      toast.error('Erreur lors de la découverte du provider');
+      toast.error('Error discovering the provider');
       setStep('input');
     }
   };
@@ -126,7 +126,7 @@ export function DomainConnectDialog({
 
     setStep('automatic');
 
-    // Ouvrir popup Domain Connect
+    // Open Domain Connect popup
     const popup = window.open(
       discoveryResult.connectUrl,
       'domain-connect',
@@ -134,16 +134,16 @@ export function DomainConnectDialog({
     );
 
     if (!popup) {
-      toast.error('Popup bloquée. Veuillez autoriser les popups pour ce site.');
+      toast.error('Popup blocked. Please allow popups for this site.');
       setStep('provider-choice');
       return;
     }
 
-    // Surveiller la fermeture de la popup
+    // Monitor popup closure
     const interval = setInterval(() => {
       if (popup.closed) {
         clearInterval(interval);
-        // Lancer la vérification DNS
+        // Start DNS verification
         startVerification();
       }
     }, 1000);
@@ -159,13 +159,13 @@ export function DomainConnectDialog({
     setVerificationAttempt(0);
     setElapsedTime(0);
 
-    // Timer pour temps écoulé
+    // Timer for elapsed time
     const timeInterval = setInterval(() => {
       setElapsedTime(prev => prev + 1);
     }, 1000);
 
     const maxAttempts = 60; // 10 minutes
-    const pollInterval = 10000; // 10 secondes
+    const pollInterval = 10000; // 10 seconds
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       setVerificationAttempt(attempt + 1);
@@ -181,7 +181,7 @@ export function DomainConnectDialog({
         if (data?.configured) {
           clearInterval(timeInterval);
           setStep('success');
-          toast.success('🎉 Domaine connecté avec succès!');
+          toast.success('Domain connected successfully!');
 
           // Fermer après 3 secondes
           setTimeout(() => {

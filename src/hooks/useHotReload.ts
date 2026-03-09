@@ -38,7 +38,7 @@ export function useHotReload(
       const currentFiles = projectFiles;
       const previousFiles = previousFilesRef.current;
 
-      // Détecter fichiers modifiés et ajoutés
+      // Detect modified and added files
       for (const [path, content] of Object.entries(currentFiles)) {
         if (!previousFiles[path]) {
           changes.push({ path, type: 'added', content });
@@ -47,7 +47,7 @@ export function useHotReload(
         }
       }
 
-      // Détecter fichiers supprimés
+      // Detect deleted files
       for (const path of Object.keys(previousFiles)) {
         if (!currentFiles[path]) {
           changes.push({ path, type: 'deleted' });
@@ -60,9 +60,9 @@ export function useHotReload(
     const changes = detectChanges();
 
     if (changes.length > 0) {
-      console.log('🔥 Hot Reload: Changements détectés:', changes.length);
+      console.log('🔥 Hot Reload: Changes detected:', changes.length);
       
-      // Classifier le type de changement
+      // Classify the type of change
       const hasCSSOnly = changes.every(c => c.path.endsWith('.css'));
       const hasHTML = changes.some(c => c.path.endsWith('.html'));
       const hasJS = changes.some(c => c.path.endsWith('.js') || c.path.endsWith('.jsx') || c.path.endsWith('.ts') || c.path.endsWith('.tsx'));
@@ -71,27 +71,27 @@ export function useHotReload(
 
       if (hasCSSOnly) {
         updateType = 'css';
-        console.log('🎨 Hot Reload: CSS uniquement');
+        console.log('🎨 Hot Reload: CSS only');
       } else if (hasHTML && !hasJS) {
         updateType = 'html';
-        console.log('📄 Hot Reload: HTML uniquement');
+        console.log('📄 Hot Reload: HTML only');
       } else {
         updateType = 'full';
-        console.log('🔄 Hot Reload: Rechargement complet requis');
+        console.log('🔄 Hot Reload: Full reload required');
       }
 
       setIsUpdating(true);
       setLastUpdateType(updateType);
       options.onUpdate?.(updateType, changes[0]?.path);
 
-      // Animation de feedback
+      // Feedback animation
       setTimeout(() => {
         setIsUpdating(false);
         setLastUpdateType(null);
       }, 300);
     }
 
-    // Mettre à jour la référence
+    // Update the reference
     previousFilesRef.current = { ...projectFiles };
   }, [projectFiles]);
 

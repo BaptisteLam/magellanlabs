@@ -48,7 +48,7 @@ export default function ChatOnlyMessage({
   const contentString = typeof message.content === 'string' ? message.content : '';
   const generation_events = message.metadata?.generation_events || [];
 
-  // Calculer la progression pour la barre de chargement
+  // Calculate progress for the loading bar
   const currentFile = useMemo(() => {
     const inProgressEvents = generation_events.filter(e => e.status === 'in-progress');
     const lastInProgress = inProgressEvents[inProgressEvents.length - 1];
@@ -63,12 +63,12 @@ export default function ChatOnlyMessage({
     return Math.min(5 + (completedEvents / totalEvents) * 90, 95);
   }, [generation_events, isLoading]);
 
-  // Effet machine à écrire rapide
+  // Fast typewriter effect
   useEffect(() => {
     if (!contentString) return;
     
     let currentIndex = 0;
-    const typingSpeed = 10; // Très rapide (10ms par caractère)
+    const typingSpeed = 10; // Very fast (10ms per character)
     
     const typeNextChar = () => {
       if (currentIndex < contentString.length) {
@@ -97,7 +97,7 @@ export default function ChatOnlyMessage({
         </div>
       )}
 
-      {/* Barre de chargement - pendant la génération */}
+      {/* Loading bar - during generation */}
       {isLoading && (
         <LoadingProgress
           isLoading={isLoading}
@@ -110,7 +110,7 @@ export default function ChatOnlyMessage({
         />
       )}
 
-      {/* CollapsedAiTasks - toujours affiché si events présents */}
+      {/* CollapsedAiTasks - always shown if events are present */}
       {generation_events.length > 0 && (
         <CollapsedAiTasks 
           events={generation_events}
@@ -123,7 +123,7 @@ export default function ChatOnlyMessage({
         />
       )}
 
-      {/* Message avec formatage markdown */}
+      {/* Message with markdown formatting */}
       <div 
         className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} prose prose-sm max-w-none`}
         style={{
@@ -151,10 +151,10 @@ export default function ChatOnlyMessage({
         {isTyping && <span className="inline-block w-1 h-4 bg-current animate-pulse ml-1" />}
       </div>
 
-      {/* Action buttons - seulement quand le typing est fini ET c'est le dernier message */}
+      {/* Action buttons - only when typing is finished AND it's the latest message */}
       {!isTyping && isLatestMessage && (
         <div className="space-y-3">
-          {/* Bouton "Implémenter le plan" - UNIQUEMENT en mode chat */}
+          {/* "Implement the plan" button - ONLY in chat mode */}
           {showImplementButton && onImplementPlan && (
             <button
               onClick={() => onImplementPlan(contentString)}
@@ -165,7 +165,7 @@ export default function ChatOnlyMessage({
                 color: 'rgb(3,165,192)'
               }}
             >
-              Implémenter le plan
+              Implement the plan
             </button>
           )}
           

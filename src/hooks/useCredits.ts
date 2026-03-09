@@ -1,6 +1,6 @@
 /**
- * useCredits - Hook pour gérer les crédits et l'utilisation
- * Affiche les crédits restants, le plan, et vérifie les limites
+ * useCredits - Hook to manage credits and usage
+ * Displays remaining credits, plan info, and checks limits
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -78,12 +78,12 @@ export function useCredits() {
     }
   }, []);
 
-  // Charger au montage
+  // Load on mount
   useEffect(() => {
     fetchUsage();
   }, [fetchUsage]);
 
-  // Calculer les infos du plan
+  // Calculate plan info
   const planInfo = usage ? PLANS[usage.plan] : PLANS.free;
 
   const percentUsed = usage

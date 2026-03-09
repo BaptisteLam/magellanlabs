@@ -35,7 +35,7 @@ export function useBuildSession() {
         .eq('id', sessionId)
         .single();
 
-      // Récupérer les données website associées
+      // Fetch associated website data
       const { data: websiteData } = await supabase
         .from('build_sessions')
         .select('website_id, websites!inner(id, netlify_url, ga_property_id)')
@@ -44,13 +44,13 @@ export function useBuildSession() {
 
       if (error) {
         console.error('Error loading session:', error);
-        sonnerToast.error('Session introuvable');
+        sonnerToast.error('Session not found');
         navigate('/builder');
         return;
       }
 
       if (data) {
-        // Parser les fichiers du projet
+        // Parse project files
         let filesMap: Record<string, string> = {};
         const projectFilesData = data.project_files as any;
 
@@ -117,7 +117,7 @@ export function useBuildSession() {
 
       if (error) throw error;
 
-      // Publier automatiquement le projet
+      // Automatically publish the project
       if (sessionData.title && Object.keys(sessionData.projectFiles).length > 0) {
         try {
           await supabase.functions.invoke('publish-project', {
@@ -128,7 +128,7 @@ export function useBuildSession() {
         }
       }
 
-      // Mettre à jour le state local
+      // Update local state
       setSessionData(prev => prev ? { ...prev, ...updates } : null);
     } catch (error) {
       console.error('Error saving session:', error);

@@ -52,8 +52,8 @@ export function Parametres() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Paramètres</h2>
-        <p className="text-muted-foreground">Configurez vos préférences générales</p>
+        <h2 className="text-2xl font-bold text-foreground">Settings</h2>
+        <p className="text-muted-foreground">Configure your general preferences</p>
       </div>
 
       {/* Subscription Card */}
@@ -67,16 +67,16 @@ export function Parametres() {
         <CardHeader className="relative">
           <CardTitle className="flex items-center gap-2">
             <Crown className="h-5 w-5" style={{ color: '#03A5C0' }} />
-            Abonnement
+            Subscription
           </CardTitle>
         </CardHeader>
         <CardContent className="relative space-y-6">
           {/* Current Plan */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Plan actuel</p>
+              <p className="text-sm text-muted-foreground">Current plan</p>
               <p className="text-lg font-semibold text-foreground">
-                {creditsLoading ? '...' : isPremium ? 'Premium' : 'Gratuit'}
+                {creditsLoading ? '...' : isPremium ? 'Premium' : 'Free'}
               </p>
             </div>
             {!isPremium && (
@@ -88,7 +88,7 @@ export function Parametres() {
                   border: '1px solid rgba(3,165,192,0.3)'
                 }}
               >
-                Limité
+                Limited
               </div>
             )}
           </div>
@@ -98,7 +98,7 @@ export function Parametres() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Messages utilisés</span>
+                <span className="text-sm text-muted-foreground">Messages used</span>
               </div>
               <span className="text-sm font-medium text-foreground">
                 {creditsLoading ? '...' : `${messagesUsed} / ${messagesLimit}`}
@@ -120,7 +120,7 @@ export function Parametres() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              {creditsLoading ? '...' : `${messagesLimit - messagesUsed} messages restants ce mois-ci`}
+              {creditsLoading ? '...' : `${messagesLimit - messagesUsed} messages remaining this month`}
             </p>
           </div>
 
@@ -141,9 +141,9 @@ export function Parametres() {
                   <Zap className="h-5 w-5" style={{ color: '#03A5C0' }} />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-foreground">Passez en Premium</h4>
+                  <h4 className="font-semibold text-foreground">Upgrade to Premium</h4>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Débloquez <span className="font-semibold" style={{ color: '#03A5C0' }}>50 messages/mois</span> et accédez à toutes les fonctionnalités avancées.
+                    Unlock <span className="font-semibold" style={{ color: '#03A5C0' }}>50 messages/month</span> and access all advanced features.
                   </p>
                 </div>
               </div>
@@ -151,7 +151,7 @@ export function Parametres() {
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-2xl font-bold text-foreground">20€</span>
-                  <span className="text-sm text-muted-foreground">/mois</span>
+                  <span className="text-sm text-muted-foreground">/month</span>
                 </div>
                 <button
                   onClick={handleUpgradeClick}
@@ -170,7 +170,7 @@ export function Parametres() {
                   }}
                 >
                   <Crown className="h-4 w-4" />
-                  Passer en Premium
+                  Upgrade to Premium
                 </button>
               </div>
             </div>
@@ -182,35 +182,35 @@ export function Parametres() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            Apparence
+            Appearance
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="theme" className="text-foreground">
-              Thème
+              Theme
             </Label>
             <Select value={themeMode} onValueChange={handleThemeChange}>
               <SelectTrigger className="w-[180px] rounded-[8px]">
-                <SelectValue placeholder="Sélectionner un thème" />
+                <SelectValue placeholder="Select a theme" />
               </SelectTrigger>
               <SelectContent className="rounded-[8px]">
                 <SelectItem value="light">
                   <div className="flex items-center gap-2">
                     <Sun className="h-4 w-4" />
-                    Clair
+                    Light
                   </div>
                 </SelectItem>
                 <SelectItem value="dark">
                   <div className="flex items-center gap-2">
                     <Moon className="h-4 w-4" />
-                    Sombre
+                    Dark
                   </div>
                 </SelectItem>
                 <SelectItem value="system">
                   <div className="flex items-center gap-2">
                     <Monitor className="h-4 w-4" />
-                    Système
+                    System
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -221,19 +221,19 @@ export function Parametres() {
 
       <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
         <CardHeader>
-          <CardTitle>Langue</CardTitle>
+          <CardTitle>Language</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <Label htmlFor="language" className="text-foreground">
-              Langue de l'interface
+              Interface language
             </Label>
             <Select value={language} onValueChange={setLanguage}>
               <SelectTrigger className="w-[180px] rounded-[8px]">
-                <SelectValue placeholder="Sélectionner une langue" />
+                <SelectValue placeholder="Select a language" />
               </SelectTrigger>
               <SelectContent className="rounded-[8px]">
-                <SelectItem value="fr">Français</SelectItem>
+                <SelectItem value="fr">French</SelectItem>
                 <SelectItem value="en">English</SelectItem>
               </SelectContent>
             </Select>
@@ -243,16 +243,16 @@ export function Parametres() {
 
       <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
         <CardHeader>
-          <CardTitle>Sauvegarde automatique</CardTitle>
+          <CardTitle>Auto-save</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="auto-save" className="text-foreground">
-                Activer la sauvegarde automatique
+                Enable auto-save
               </Label>
               <p className="text-sm text-muted-foreground">
-                Sauvegarde automatiquement vos modifications
+                Automatically saves your changes
               </p>
             </div>
             <Switch id="auto-save" checked={autoSave} onCheckedChange={setAutoSave} />
@@ -265,15 +265,15 @@ export function Parametres() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-red-500">
             <LogOut className="h-5 w-5" />
-            Déconnexion
+            Log out
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <p className="text-sm text-foreground font-medium">Se déconnecter du compte</p>
+              <p className="text-sm text-foreground font-medium">Log out of your account</p>
               <p className="text-sm text-muted-foreground">
-                Vous serez redirigé vers la page d'inscription
+                You will be redirected to the sign-up page
               </p>
             </div>
             <button
@@ -294,7 +294,7 @@ export function Parametres() {
               }}
             >
               <LogOut className="h-4 w-4" />
-              {isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
+              {isLoggingOut ? 'Logging out...' : 'Log out'}
             </button>
           </div>
         </CardContent>
