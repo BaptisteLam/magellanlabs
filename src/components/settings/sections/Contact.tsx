@@ -100,17 +100,17 @@ export function Contact() {
     }
   };
 
-  // Filtrage des contacts
+  // Filter contacts
   const filteredContacts = useMemo(() => {
     if (!contacts) return [];
     
     return contacts.filter((contact: ProjectContact) => {
-      // Filtre par statut
+      // Filter by status
       if (statusFilter !== 'all' && contact.status !== statusFilter) {
         return false;
       }
       
-      // Filtre par recherche
+      // Filter by search
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         return (
@@ -125,7 +125,7 @@ export function Contact() {
     });
   }, [contacts, searchQuery, statusFilter]);
 
-  // Export Excel (CSV)
+  // Export to Excel (CSV)
   const handleExportExcel = () => {
     if (!filteredContacts.length) {
       toast.error('No contacts to export');
@@ -167,7 +167,7 @@ export function Contact() {
 
   return (
     <div className="space-y-0">
-      {/* Header avec titre, recherche et bouton */}
+      {/* Header with title, search and button */}
       <div className="flex items-center justify-between py-4 border-b">
         <div className="flex items-center gap-3">
           <Users className="h-5 w-5 text-muted-foreground" />
@@ -216,7 +216,7 @@ export function Contact() {
         </div>
       </div>
 
-      {/* En-tête du tableau */}
+      {/* Table header */}
       <div className="border-b">
         <Table>
           <TableHeader>
@@ -238,7 +238,7 @@ export function Contact() {
         </Table>
       </div>
 
-      {/* Corps du tableau ou état vide */}
+      {/* Table body or empty state */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -251,7 +251,7 @@ export function Contact() {
           <h3 className="text-xl font-semibold text-foreground mb-2">Contacts</h3>
           <p className="mb-4">
             {searchQuery || statusFilter !== 'all' 
-              ? "No results found" 
+              ? "No results found"
               : "You don't have any contacts yet."}
           </p>
           <Button 
@@ -331,11 +331,11 @@ export function Contact() {
         </Table>
       )}
 
-      {/* Dialog détail contact */}
+      {/* Contact detail dialog */}
       <Dialog open={!!selectedContact} onOpenChange={() => setSelectedContact(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Détail du message</DialogTitle>
+            <DialogTitle>Message details</DialogTitle>
           </DialogHeader>
           {selectedContact && (
             <div className="space-y-4">
@@ -364,7 +364,7 @@ export function Contact() {
               
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">Status :</span>
+                  <span className="text-muted-foreground">Status:</span>
                   {getStatusBadge(selectedContact.status)}
                 </div>
                 <span className="text-muted-foreground">
@@ -407,7 +407,7 @@ export function Contact() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog nouveau contact */}
+      {/* New contact dialog */}
       <Dialog open={showNewContactDialog} onOpenChange={setShowNewContactDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>

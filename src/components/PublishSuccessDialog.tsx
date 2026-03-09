@@ -34,9 +34,9 @@ export function PublishSuccessDialog({
   const handleCopyUrl = async () => {
     try {
       await navigator.clipboard.writeText(publicUrl);
-      sonnerToast.success('URL copiée !');
+      sonnerToast.success('URL copied!');
     } catch {
-      sonnerToast.error('Erreur lors de la copie');
+      sonnerToast.error('Error copying URL');
     }
   };
 
@@ -60,10 +60,10 @@ export function PublishSuccessDialog({
             {/* Message de confirmation */}
             <div className="space-y-2">
               <h2 className="text-2xl font-semibold text-foreground">
-                Site publié avec succès !
+                Site published successfully!
               </h2>
               <p className="text-muted-foreground">
-                Votre projet est maintenant en ligne et accessible au public
+                Your project is now live and publicly accessible
               </p>
             </div>
 
@@ -94,7 +94,7 @@ export function PublishSuccessDialog({
                     className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
                   >
                     <Server className="w-3 h-3" />
-                    {showTechnicalUrl ? 'Masquer' : 'Voir'} l'URL technique
+                    {showTechnicalUrl ? 'Hide' : 'Show'} technical URL
                   </button>
                   
                   {showTechnicalUrl && (
@@ -107,7 +107,7 @@ export function PublishSuccessDialog({
                         size="sm"
                         onClick={async () => {
                           await navigator.clipboard.writeText(cloudflareUrl);
-                          sonnerToast.success('URL technique copiée !');
+                          sonnerToast.success('Technical URL copied!');
                         }}
                         className="h-6 w-6 p-0 flex-shrink-0"
                       >
@@ -129,7 +129,7 @@ export function PublishSuccessDialog({
                 }}
               >
                 <ExternalLink className="w-4 h-4" />
-                Voir le site
+                View site
               </Button>
 
               {/* Bouton Ajouter un domaine */}
@@ -139,7 +139,7 @@ export function PublishSuccessDialog({
                 className="w-full rounded-full h-10 border-[#3a3a3b] text-foreground hover:bg-[#181818]"
               >
                 <Globe className="w-4 h-4 mr-2" />
-                Ajouter un nom de domaine
+                Add a custom domain
               </Button>
             </div>
           </div>

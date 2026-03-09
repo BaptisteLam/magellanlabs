@@ -72,10 +72,10 @@ export function VisualEditToolbar({
     } else {
       // Fallback: générer un prompt
       const prompts = {
-        color: `Changer la couleur de ce ${elementInfo.tagName.toLowerCase()} en ${value || '#03A5C0'}`,
-        font: `Modifier la police de ce ${elementInfo.tagName.toLowerCase()}`,
-        edit: `Permettre l'édition directe de ce ${elementInfo.tagName.toLowerCase()}`,
-        delete: `Supprimer ce ${elementInfo.tagName.toLowerCase()}`
+        color: `Change the color of this ${elementInfo.tagName.toLowerCase()} to ${value || '#03A5C0'}`,
+        font: `Change the font of this ${elementInfo.tagName.toLowerCase()}`,
+        edit: `Allow direct editing of this ${elementInfo.tagName.toLowerCase()}`,
+        delete: `Delete this ${elementInfo.tagName.toLowerCase()}`
       };
       onModify(prompts[action]);
     }
@@ -174,7 +174,7 @@ export function VisualEditToolbar({
             onClick={() => handleQuickAction('delete')}
           >
             <Trash2 className="w-4 h-4" />
-            <span className="text-xs">Supprimer</span>
+            <span className="text-xs">Delete</span>
           </Button>
           
           <div className="flex-1" />

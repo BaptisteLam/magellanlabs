@@ -17,36 +17,36 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
     if (!userId) return;
 
     const fetchMessageData = async () => {
-      console.log('💬 MessageCounter: Récupération des messages pour userId:', userId);
+      console.log('💬 MessageCounter: Fetching messages for userId:', userId);
 
       const { data, error } = await supabase
-        .from('profiles')
-        .select('messages_used, plan')
-        .eq('id', userId)
+        .from('billing')
+        .select('messages_used_this_month, messages_limit, plan')
+        .eq('user_id', userId)
         .maybeSingle();
 
       if (error) {
-        console.error('💬 MessageCounter: Erreur récupération messages:', error);
+        console.error('💬 MessageCounter: Error fetching messages:', error);
       } else if (data) {
-        const used = (data as any).messages_used || 0;
+        const used = (data as any).messages_used_this_month || 0;
         const plan = ((data as any).plan || 'free') as PlanId;
-        const quota = PLANS[plan]?.messagesPerMonth ?? 5;
-        console.log('💬 MessageCounter: Messages utilisés -', {
+        const limit = (data as any).messages_limit || PLANS[plan]?.messagesPerMonth || 5;
+        console.log('💬 MessageCounter: Messages used -', {
           messages_used: used,
           plan,
-          messages_quota: quota
+          messages_limit: limit
         });
-        setMessagesUsed(Math.min(used, quota));
-        setMessagesQuota(quota);
+        setMessagesUsed(Math.min(used, limit));
+        setMessagesQuota(limit);
       } else {
-        console.warn('💬 MessageCounter: Aucune donnée de profil trouvée');
+        console.warn('💬 MessageCounter: No billing data found');
       }
     };
 
     fetchMessageData();
 
-    // Écouter les changements en temps réel
-    console.log('💬 MessageCounter: Abonnement aux mises à jour en temps réel');
+    // Listen for real-time changes
+    console.log('💬 MessageCounter: Subscribing to real-time updates');
     const channel = supabase
       .channel('message-updates')
       .on(
@@ -54,29 +54,29 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${userId}`,
+          table: 'billing',
+          filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          console.log('💬 MessageCounter: Mise à jour en temps réel reçue:', payload.new);
+          console.log('💬 MessageCounter: Real-time update received:', payload.new);
           if (payload.new) {
-            const used = (payload.new as any).messages_used || 0;
+            const used = (payload.new as any).messages_used_this_month || 0;
             const plan = ((payload.new as any).plan || 'free') as PlanId;
-            const quota = PLANS[plan]?.messagesPerMonth ?? 5;
-            console.log('💬 MessageCounter: Nouveaux messages utilisés -', {
+            const limit = (payload.new as any).messages_limit || PLANS[plan]?.messagesPerMonth || 5;
+            console.log('💬 MessageCounter: Updated messages used -', {
               messages_used: used,
               plan,
-              messages_quota: quota
+              messages_limit: limit
             });
-            setMessagesUsed(Math.min(used, quota));
-            setMessagesQuota(quota);
+            setMessagesUsed(Math.min(used, limit));
+            setMessagesQuota(limit);
           }
         }
       )
       .subscribe();
 
     return () => {
-      console.log('💬 MessageCounter: Désinscription des mises à jour');
+      console.log('💬 MessageCounter: Unsubscribing from updates');
       supabase.removeChannel(channel);
     };
   }, [userId]);
@@ -92,10 +92,8 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
         borderColor: '#03A5C0',
       }}
     >
-      {/* Icône message à gauche */}
       <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#03A5C0' }} />
 
-      {/* Barre de progression */}
       <div className="flex items-center gap-2.5">
         <Progress
           value={progressPercentage}
@@ -105,7 +103,6 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
           }}
         />
 
-        {/* Compteur de messages - Messages restants/Total */}
         <span className="text-xs font-medium whitespace-nowrap" style={{ color: '#ffffff', fontSize: '12px' }}>
           {messagesRemaining}/{messagesQuota}
         </span>

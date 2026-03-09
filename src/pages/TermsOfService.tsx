@@ -12,7 +12,7 @@ const TermsOfService = () => {
         title="Terms of Service"
         description="Trinity Studio terms of service. Review our terms for website creation, development and SEO services."
         keywords="terms of service, general conditions, terms of sale, Trinity Studio, web agency"
-        canonicalUrl="https://trinity-studio.fr/cgv"
+        canonicalUrl="https://magellanlabs.com/terms-of-service"
       />
       <Header />
       <main className="min-h-screen bg-background">
@@ -176,39 +176,39 @@ const TermsOfService = () => {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">14. Force majeure</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">14. Force Majeure</h2>
               <p>
-                Trinity Studio ne pourra être tenu responsable de l'inexécution de ses obligations en cas de force majeure, notamment en cas de grève, panne informatique, interruption de services tiers, catastrophe naturelle ou tout événement échappant à son contrôle.
+                Trinity Studio cannot be held liable for the non-performance of its obligations in the event of force majeure, including strikes, computer failures, third-party service interruptions, natural disasters or any event beyond its control.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">15. Protection des données</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">15. Data Protection</h2>
               <p>
-                Les données personnelles collectées dans le cadre de nos prestations sont traitées conformément à notre <a href="/politique-de-confidentialite" className="text-primary hover:underline">Politique de Confidentialité</a> et au RGPD.
+                Personal data collected as part of our services is processed in accordance with our <a href="/privacy-policy" className="text-primary hover:underline">Privacy Policy</a> and the GDPR.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">16. Droit applicable et litiges</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">16. Applicable Law and Disputes</h2>
               <p>
-                Les présentes CGV sont soumises au droit français. En cas de litige, les parties s'engagent à rechercher une solution amiable avant toute action judiciaire. À défaut d'accord, les tribunaux compétents seront ceux du ressort de Paris.
+                These Terms of Sale are governed by French law. In the event of a dispute, the parties agree to seek an amicable solution before any legal action. Failing agreement, the competent courts shall be those of Paris.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">17. Modification des CGV</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">17. Modification of Terms</h2>
               <p>
-                Trinity Studio se réserve le droit de modifier les présentes CGV à tout moment. Les conditions applicables sont celles en vigueur à la date de la commande.
+                Trinity Studio reserves the right to modify these Terms of Sale at any time. The applicable terms are those in effect on the date of the order.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">18. Contact</h2>
               <p>
-                Pour toute question concernant ces CGV, contactez-nous :<br />
-                Email : <a href="mailto:contact@trinity-studio.fr" className="text-primary hover:underline">contact@trinity-studio.fr</a><br />
-                Téléphone : <a href="tel:+33678015732" className="text-primary hover:underline">+33 6 78 01 57 32</a>
+                For any questions regarding these Terms of Sale, contact us:<br />
+                Email: <a href="mailto:contact@trinity-studio.fr" className="text-primary hover:underline">contact@trinity-studio.fr</a><br />
+                Phone: <a href="tel:+33678015732" className="text-primary hover:underline">+33 6 78 01 57 32</a>
               </p>
             </section>
           </div>

@@ -205,7 +205,7 @@ export function SettingsSidebar({
               "relative flex-shrink-0 w-10 h-10 rounded-lg border-2 border-dashed border-border/50 hover:border-[#03A5C0] transition-colors flex items-center justify-center overflow-hidden group",
               isUploadingIcon && "opacity-50 cursor-wait"
             )}
-            title="Cliquez pour changer l'icône"
+            title="Click to change icon"
           >
             {currentProject?.project_icon ? (
               <>
@@ -276,7 +276,7 @@ export function SettingsSidebar({
             >
               <span className="flex items-center gap-3">
                 <FolderOpen className="h-5 w-5" />
-                <span>Projets</span>
+                <span>Projects</span>
               </span>
               <ChevronDown className="h-4 w-4" />
             </button>
@@ -289,7 +289,7 @@ export function SettingsSidebar({
             {isLoading ? (
               <div className="text-sm text-muted-foreground py-2 px-3">Loading...</div>
             ) : projects.length === 0 ? (
-              <div className="text-sm text-muted-foreground py-2 px-3">No project</div>
+              <div className="text-sm text-muted-foreground py-2 px-3">No projects</div>
             ) : (
               projects.map(project => {
                 const ProjIcon = getProjectIcon(project.project_type);
@@ -312,7 +312,7 @@ export function SettingsSidebar({
                     ) : (
                       <ProjIcon className="h-4 w-4 flex-shrink-0" />
                     )}
-                    <span className="truncate">{project.title || 'Sans titre'}</span>
+                    <span className="truncate">{project.title || 'Untitled'}</span>
                   </DropdownMenuItem>
                 );
               })

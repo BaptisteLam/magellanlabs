@@ -117,7 +117,7 @@ export const CodeSandboxPreview = forwardRef<CodeSandboxPreviewHandle, CodeSandb
       <div className="w-full h-full flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-[#03A5C0]" />
-          <p className="text-sm text-muted-foreground">Chargement de la preview...</p>
+          <p className="text-sm text-muted-foreground">Loading preview...</p>
         </div>
       </div>
     );

@@ -20,43 +20,43 @@ const ServicesSection = () => {
       icon: Monitor,
       title: t('services.vitrine.title'),
       description: t('services.vitrine.description'),
-      features: ['Design sur-mesure', 'SEO optimisé', 'Mobile-first'],
+      features: ['Custom design', 'Optimized SEO', 'Mobile-first'],
     },
     {
       icon: Calendar,
       title: t('services.reservation.title'),
       description: t('services.reservation.description'),
-      features: ['Planning en temps réel', 'Notifications SMS/Email', 'Gestion des créneaux'],
+      features: ['Real-time scheduling', 'SMS/Email notifications', 'Slot management'],
     },
     {
       icon: ShoppingBag,
       title: t('services.ecommerce.title'),
       description: t('services.ecommerce.description'),
-      features: ['Paiement sécurisé', 'Gestion des stocks', 'Analytics avancées'],
+      features: ['Secure payment', 'Inventory management', 'Advanced analytics'],
     },
     {
       icon: Settings,
       title: t('services.crm.title'),
       description: t('services.crm.description'),
-      features: ['Gestion clients', 'Automatisation', 'Reporting'],
+      features: ['Client management', 'Automation', 'Reporting'],
     },
   ];
 
   const advantages = [
     {
       icon: Zap,
-      title: 'Innovation continue',
-      description: 'Nous utilisons les dernières technologies pour créer des solutions modernes et performantes.',
+      title: 'Continuous innovation',
+      description: 'We use the latest technologies to create modern and high-performance solutions.',
     },
     {
       icon: Users,
-      title: 'Accompagnement personnalisé',
-      description: 'Un suivi sur-mesure de A à Z, de la conception à la mise en ligne et au-delà.',
+      title: 'Personalized support',
+      description: 'Custom support from A to Z, from design to launch and beyond.',
     },
     {
       icon: Shield,
-      title: 'Fiabilité & réactivité',
-      description: 'Des solutions robustes avec un support réactif pour assurer la continuité de votre activité.',
+      title: 'Reliability & responsiveness',
+      description: 'Robust solutions with responsive support to ensure business continuity.',
     },
   ];
 
@@ -112,10 +112,10 @@ const ServicesSection = () => {
         <div className="bg-trinity-blue-soft rounded-3xl p-6 lg:p-8">
           <div className="text-center mb-8">
             <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-trinity-blue mb-4">
-              Pourquoi choisir Trinity Studio ?
+              Why choose Magellan?
             </h3>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Notre expertise et notre approche humaine font la différence dans chacun de nos projets.
+              Our expertise and human-centered approach make the difference in every project.
             </p>
           </div>
 
@@ -150,8 +150,8 @@ const ServicesSection = () => {
             size="lg"
             className="btn-trinity-hero group"
           >
-            <Link to="/portfolio">
-              Voir nos réalisations
+            <Link to="/about">
+              View our work
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>

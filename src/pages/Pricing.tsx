@@ -37,7 +37,7 @@ const Pricing = () => {
       // If not logged in, save the intent and redirect to auth
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        localStorage.setItem('redirectAfterAuth', '/tarifs');
+        localStorage.setItem('redirectAfterAuth', '/pricing');
         navigate('/auth');
         return;
       }

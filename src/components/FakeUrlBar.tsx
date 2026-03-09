@@ -78,7 +78,7 @@ export function FakeUrlBar({
         .maybeSingle();
       
       if (existingProject) {
-        setTitleError('Ce nom de projet existe déjà');
+        setTitleError('This project name already exists');
       } else {
         setTitleError(null);
       }
@@ -210,7 +210,7 @@ export function FakeUrlBar({
     
     // Bloquer la sauvegarde si le titre existe déjà
     if (titleError) {
-      toast.error('Ce nom de projet existe déjà. Veuillez en choisir un autre.');
+      toast.error('This project name already exists. Please choose another one.');
       return;
     }
 
@@ -227,7 +227,7 @@ export function FakeUrlBar({
         onTitleChange(editedTitle);
       }
       
-      toast.success('Nom du projet mis à jour');
+      toast.success('Project name updated');
 
       // Republier automatiquement le projet avec le nouveau subdomain
       console.log('🔄 Updating public URL with new title...');
@@ -242,14 +242,14 @@ export function FakeUrlBar({
       }
     } catch (error) {
       console.error('Error saving title:', error);
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error('Error saving');
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       if (titleError) {
-        toast.error('Ce nom de projet existe déjà');
+        toast.error('This project name already exists');
         return;
       }
       setIsEditing(false);
@@ -279,7 +279,7 @@ export function FakeUrlBar({
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(`https://${fullDomain}`);
     setCopied(true);
-    toast.success('URL copiée !');
+    toast.success('URL copied!');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -288,7 +288,7 @@ export function FakeUrlBar({
     if (!file || !sessionId) return;
 
     if (!file.type.startsWith('image/')) {
-      toast.error('Veuillez sélectionner une image');
+      toast.error('Please select an image');
       return;
     }
 
@@ -324,12 +324,12 @@ export function FakeUrlBar({
           onFaviconChange(base64);
         }
         
-        toast.success('Favicon mis à jour !');
+        toast.success('Favicon updated!');
       };
       reader.readAsDataURL(file);
     } catch (error) {
       console.error('Error uploading favicon:', error);
-      toast.error('Erreur lors de la mise à jour du favicon');
+      toast.error('Error updating favicon');
     }
   };
 
@@ -348,7 +348,7 @@ export function FakeUrlBar({
           disabled={!canGoBack}
           className="w-6 h-6 rounded flex items-center justify-center transition-colors disabled:opacity-40 hover:bg-opacity-80"
           style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
-          title="Retour"
+          title="Back"
           onMouseEnter={(e) => {
             if (canGoBack) {
               const icon = e.currentTarget.querySelector('svg');
@@ -370,7 +370,7 @@ export function FakeUrlBar({
           disabled={!canGoForward}
           className="w-6 h-6 rounded flex items-center justify-center transition-colors disabled:opacity-40 hover:bg-opacity-80"
           style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
-          title="Suivant"
+          title="Forward"
           onMouseEnter={(e) => {
             if (canGoForward) {
               const icon = e.currentTarget.querySelector('svg');
@@ -391,7 +391,7 @@ export function FakeUrlBar({
           onClick={handleReload}
           className="w-6 h-6 rounded flex items-center justify-center transition-colors hover:bg-opacity-80"
           style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
-          title="Recharger"
+          title="Reload"
           onMouseEnter={(e) => {
             const icon = e.currentTarget.querySelector('svg');
             if (icon) icon.style.color = '#03A5C0';
@@ -430,7 +430,7 @@ export function FakeUrlBar({
           onMouseEnter={() => setIsHoveringFavicon(true)}
           onMouseLeave={() => setIsHoveringFavicon(false)}
           className="flex-shrink-0 hover:text-[#03A5C0] transition-colors cursor-pointer bg-transparent border-0 p-0"
-          title="Changer le favicon"
+          title="Change favicon"
         >
           {currentFavicon && !isHoveringFavicon ? (
             <img src={currentFavicon} alt="favicon" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
@@ -486,7 +486,7 @@ export function FakeUrlBar({
             <button
               onClick={() => setShowCustomDomain(true)}
               className="flex-shrink-0 ml-1 p-0.5 hover:text-[#03A5C0] transition-colors cursor-pointer bg-transparent border-0"
-              title="Configurer un domaine personnalisé"
+              title="Configure custom domain"
             >
               <Settings 
                 className="w-3 h-3"
@@ -504,7 +504,7 @@ export function FakeUrlBar({
             onClick={handleCopyUrl}
             className="w-6 h-6 rounded flex items-center justify-center hover:bg-opacity-80 transition-colors"
             style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
-            title="Copier l'URL"
+            title="Copy URL"
           >
             {copied ? (
               <Check
@@ -523,7 +523,7 @@ export function FakeUrlBar({
             onClick={() => setIsEditing(true)}
             className="w-6 h-6 rounded flex items-center justify-center hover:bg-opacity-80 transition-colors"
             style={{ backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB' }}
-            title="Modifier le nom"
+            title="Edit name"
           >
             <Pencil
               className="w-3.5 h-3.5"
@@ -537,7 +537,7 @@ export function FakeUrlBar({
             style={{
               backgroundColor: isDark ? '#3A3A3B' : '#E5E7EB',
             }}
-            title="Voir le site publié"
+            title="View published site"
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = '#03A5C0';
             }}

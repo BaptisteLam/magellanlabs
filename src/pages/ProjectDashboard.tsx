@@ -52,8 +52,8 @@ export default function ProjectDashboard() {
       console.error('Error fetching project:', error);
       toast({
         variant: 'destructive',
-        title: 'Erreur',
-        description: 'Impossible de charger le projet',
+        title: 'Error',
+        description: 'Unable to load project',
       });
       navigate('/dashboard');
     } finally {
@@ -76,8 +76,8 @@ export default function ProjectDashboard() {
       window.open(project.cloudflare_deployment_url, '_blank');
     } else {
       toast({
-        title: 'Projet non publié',
-        description: 'Ce projet n\'a pas encore été publié.',
+        title: 'Project not published',
+        description: 'This project has not been published yet.',
       });
     }
   };
@@ -85,7 +85,7 @@ export default function ProjectDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center">
-        <div className="text-muted-foreground">Chargement...</div>
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
@@ -120,10 +120,10 @@ export default function ProjectDashboard() {
           </Button>
           <div>
             <h1 className="text-2xl font-semibold text-foreground">
-              {project.title || 'Sans titre'}
+              {project.title || 'Untitled'}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Créé le {new Date(project.created_at).toLocaleDateString('fr-FR')}
+              Created on {new Date(project.created_at).toLocaleDateString('en-US')}
             </p>
           </div>
         </div>
@@ -141,7 +141,7 @@ export default function ProjectDashboard() {
             variant="outline"
           >
             <Pencil className="h-6 w-6" />
-            <span>Modifier le projet</span>
+            <span>Edit project</span>
           </Button>
 
           <Button
@@ -155,7 +155,7 @@ export default function ProjectDashboard() {
             variant="outline"
           >
             <Eye className="h-6 w-6" />
-            <span>Voir en ligne</span>
+            <span>View live</span>
           </Button>
 
           <Button
@@ -169,11 +169,11 @@ export default function ProjectDashboard() {
             variant="outline"
           >
             <Globe className="h-6 w-6" />
-            <span>Prévisualiser</span>
+            <span>Preview</span>
           </Button>
 
           <Button
-            onClick={() => toast({ title: 'Bientôt disponible', description: 'Les analytics seront disponibles prochainement.' })}
+            onClick={() => toast({ title: 'Coming soon', description: 'Analytics will be available shortly.' })}
             className="h-24 flex flex-col items-center justify-center gap-2"
             style={{
               borderColor: 'rgb(3,165,192)',

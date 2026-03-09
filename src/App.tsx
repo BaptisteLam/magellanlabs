@@ -41,19 +41,19 @@ function AppContent() {
           <li><code>VITE_SUPABASE_PUBLISHABLE_KEY</code></li>
         </ul>
         <p>
-          Sur <strong>Vercel</strong> : Settings &gt; Environment Variables<br />
+          On <strong>Vercel</strong>: Settings &gt; Environment Variables<br />
           Locally: create a <code>.env</code> file (see <code>.env.example</code>)
         </p>
       </div>
     );
   }
 
-  // Si on est sur un sous-domaine, afficher directement le projet publié
+  // If on a subdomain, display the published project directly
   if (subdomain) {
     return <PublicProject />;
   }
   
-  // Sinon, afficher le SaaS normal
+  // Otherwise, display the normal SaaS app
   return (
     <>
       
@@ -70,9 +70,13 @@ function AppContent() {
         <Route path="/p/:subdomain" element={<PublicProject />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/tarifs" element={<Pricing />} />
-        <Route path="/politique-de-confidentialite" element={<PrivacyPolicy />} />
-        <Route path="/cgv" element={<TermsOfService />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        {/* Legacy French URL redirects */}
+        <Route path="/tarifs" element={<Navigate to="/pricing" replace />} />
+        <Route path="/politique-de-confidentialite" element={<Navigate to="/privacy-policy" replace />} />
+        <Route path="/cgv" element={<Navigate to="/terms-of-service" replace />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/careers" element={<Navigate to="/contact" replace />} />
         <Route path="/nous-rejoindre" element={<Navigate to="/contact" replace />} />

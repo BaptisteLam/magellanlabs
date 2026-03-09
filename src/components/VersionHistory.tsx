@@ -130,12 +130,12 @@ export function VersionHistory({ sessionId, open, onOpenChange, onRollback }: Ve
           <AlertDialogHeader>
             <AlertDialogTitle>Restaurer cette version ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Votre projet sera restauré à la version "{confirmRollback?.message || `Version ${confirmRollback?.number}`}". 
-              Cette action déploiera immédiatement la version sélectionnée sur Cloudflare.
+              Your project will be restored to version "{confirmRollback?.message || `Version ${confirmRollback?.number}`}".
+              This action will immediately deploy the selected version to Cloudflare.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRollback}
               disabled={isRollingBack}

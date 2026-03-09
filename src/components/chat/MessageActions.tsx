@@ -26,9 +26,9 @@ export function MessageActions({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(content);
-      toast.success('Message copié');
+      toast.success('Message copied');
     } catch (error) {
-      toast.error('Erreur lors de la copie');
+      toast.error('Error copying message');
     }
   };
 
@@ -64,7 +64,7 @@ export function MessageActions({
             </TooltipTrigger>
             <TooltipContent>
               <p className="text-xs">
-                {isLatestMessage ? 'Revenir à la version précédente' : 'Revenir à cette version'}
+                {isLatestMessage ? 'Go back to previous version' : 'Restore this version'}
               </p>
             </TooltipContent>
           </Tooltip>
@@ -83,7 +83,7 @@ export function MessageActions({
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p className="text-xs">Copier le message</p>
+            <p className="text-xs">Copy message</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

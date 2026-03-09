@@ -125,11 +125,11 @@ export function EnhancedEditToolbar({
   };
 
   const handleDelete = () => {
-    onModify(`Supprimer cet élément <${elementInfo.tagName}>`);
+    onModify(`Delete this element <${elementInfo.tagName}>`);
   };
 
   const handleDuplicate = () => {
-    onModify(`Dupliquer cet élément <${elementInfo.tagName}>`);
+    onModify(`Duplicate this element <${elementInfo.tagName}>`);
   };
 
   // Calculer la position optimale de la toolbar
@@ -292,7 +292,7 @@ export function EnhancedEditToolbar({
             onClick={handleDelete}
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Supprimer
+            Delete
           </Button>
         </div>
 

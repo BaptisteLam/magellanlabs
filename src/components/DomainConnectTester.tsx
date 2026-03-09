@@ -58,7 +58,7 @@ export function DomainConnectTester() {
         <div className="flex gap-2">
           <Input
             type="text"
-            placeholder="Entrer un domaine (ex: google.com)"
+            placeholder="Enter a domain (e.g. google.com)"
             value={domain}
             onChange={(e) => setDomain(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && testLocal()}
@@ -84,20 +84,20 @@ export function DomainConnectTester() {
 
         {loading && (
           <div className="p-4 bg-blue-50 rounded">
-            Analyse en cours...
+            Analyzing...
           </div>
         )}
 
         {result && (
           <div className="space-y-2">
-            <div className="font-semibold">Résultat:</div>
+            <div className="font-semibold">Result:</div>
             <pre className="bg-gray-100 p-4 rounded overflow-auto text-xs">
               {JSON.stringify(result, null, 2)}
             </pre>
 
             {result.provider && (
               <div className="p-4 bg-green-50 rounded">
-                ✅ Provider détecté: <strong>{result.provider}</strong>
+                Provider detected: <strong>{result.provider}</strong>
               </div>
             )}
 
@@ -120,7 +120,7 @@ export function DomainConnectTester() {
 
             {result.error && (
               <div className="p-4 bg-red-50 rounded text-red-700">
-                ❌ Erreur: {result.error}
+                Error: {result.error}
               </div>
             )}
           </div>

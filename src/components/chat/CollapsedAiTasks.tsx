@@ -131,19 +131,19 @@ export function CollapsedAiTasks({
     return `${minutes}m ${remainingSeconds}s`;
   };
 
-  // Compter les différents types d'événements
+  // Count the different event types
   const editCount = events.filter(e => e.type === 'edit' || e.type === 'create').length;
   const hasError = events.some(e => e.type === 'error');
 
-  // Si pas d'événements et pas de chargement, ne rien afficher
+  // If no events and not loading, don't display anything
   if (events.length === 0 && !isLoading) return null;
 
-  // Fonction pour obtenir l'icône selon le type d'événement et le message
+  // Function to get the icon based on event type and message
   const getEventIcon = (event: GenerationEvent) => {
     const iconClass = "h-4 w-4 flex-shrink-0";
     const color = isDark ? '#94a3b8' : '#64748b';
 
-    // Icônes spécifiques basées sur le message pour plus de variété
+    // Specific icons based on the message for more variety
     const message = event.message?.toLowerCase() || '';
 
     if (message.includes('graphique') || message.includes('chart')) {
@@ -155,23 +155,23 @@ export function CollapsedAiTasks({
     if (message.includes('style') || message.includes('css')) {
       return <Palette className={iconClass} style={{ color }} />;
     }
-    if (message.includes('composant') || message.includes('component')) {
+    if (message.includes('component')) {
       return <Component className={iconClass} style={{ color }} />;
     }
-    if (message.includes('formulaire') || message.includes('form') || message.includes('contact')) {
+    if (message.includes('form') || message.includes('contact')) {
       return <Mail className={iconClass} style={{ color }} />;
     }
     if (message.includes('html') || message.includes('structure')) {
       return <Layout className={iconClass} style={{ color }} />;
     }
-    if (message.includes('config') || message.includes('dépendances')) {
+    if (message.includes('config') || message.includes('dependencies')) {
       return <Settings className={iconClass} style={{ color }} />;
     }
     if (message.includes('code') || message.includes('typescript') || message.includes('javascript')) {
       return <Code className={iconClass} style={{ color }} />;
     }
 
-    // Icônes par type d'événement
+    // Icons by event type
     switch (event.type) {
       case 'thought':
         return <Lightbulb className={iconClass} style={{ color }} />;
@@ -194,7 +194,7 @@ export function CollapsedAiTasks({
     }
   };
 
-  // Fonction pour obtenir l'indicateur de statut
+  // Function to get the status indicator
   const getStatusIndicator = (event: GenerationEvent) => {
     if (event.type === 'error') {
       return <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />;
@@ -310,7 +310,7 @@ export function CollapsedAiTasks({
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="absolute right-0 top-0 text-xs transition-colors duration-200"
-          aria-label={isExpanded ? "Masquer" : "Voir"}
+          aria-label={isExpanded ? "Hide" : "Show"}
           style={{
             color: isDark ? '#64748b' : '#94a3b8',
           }}

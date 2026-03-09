@@ -183,7 +183,7 @@ export function DomainConnectDialog({
           setStep('success');
           toast.success('Domain connected successfully!');
 
-          // Fermer après 3 secondes
+          // Close after 3 seconds
           setTimeout(() => {
             handleClose();
             window.location.reload();
@@ -195,7 +195,7 @@ export function DomainConnectDialog({
         console.error('Verification error:', error);
       }
 
-      // Attendre avant le prochain essai
+      // Wait before next attempt
       if (attempt < maxAttempts - 1) {
         await sleep(pollInterval);
       }
@@ -203,7 +203,7 @@ export function DomainConnectDialog({
 
     // Timeout
     clearInterval(timeInterval);
-    toast.error('Délai d\'attente dépassé. Veuillez vérifier votre configuration DNS.');
+    toast.error('Timeout exceeded. Please check your DNS configuration.');
     setStep('manual');
   };
 
@@ -211,7 +211,7 @@ export function DomainConnectDialog({
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success('Copié dans le presse-papiers');
+    toast.success('Copied to clipboard');
   };
 
   const handleClose = () => {
@@ -234,19 +234,19 @@ export function DomainConnectDialog({
   const getTitle = () => {
     switch (step) {
       case 'input':
-        return 'Connecter votre domaine';
+        return 'Connect your domain';
       case 'discovering':
-        return 'Détection en cours...';
+        return 'Detecting...';
       case 'provider-choice':
-        return '✨ Bonne nouvelle !';
+        return 'Great news!';
       case 'automatic':
-        return 'Configuration automatique';
+        return 'Automatic configuration';
       case 'manual':
-        return 'Configuration manuelle';
+        return 'Manual configuration';
       case 'verifying':
-        return 'Vérification DNS';
+        return 'DNS Verification';
       case 'success':
-        return '🎉 Félicitations !';
+        return 'Congratulations!';
     }
   };
 
@@ -259,7 +259,7 @@ export function DomainConnectDialog({
           </DialogTitle>
           {step === 'input' && (
             <DialogDescription className="text-muted-foreground">
-              Quel est votre nom de domaine ?
+              What is your domain name?
             </DialogDescription>
           )}
         </DialogHeader>
@@ -270,7 +270,7 @@ export function DomainConnectDialog({
             <div className="space-y-3">
               <Input
                 type="text"
-                placeholder="exemple.com"
+                placeholder="example.com"
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleDiscover()}
@@ -278,7 +278,7 @@ export function DomainConnectDialog({
                 autoFocus
               />
               <p className="text-xs text-muted-foreground">
-                Entrez le nom de domaine que vous possédez déjà
+                Enter the domain name you already own
               </p>
             </div>
 
@@ -291,12 +291,12 @@ export function DomainConnectDialog({
                 color: 'white'
               }}
             >
-              Continuer →
+              Continue →
             </Button>
 
             <div className="pt-4 border-t border-[#3a3a3b] text-center">
               <p className="text-xs text-muted-foreground mb-2">
-                💡 Pas encore de domaine ?
+                Don't have a domain yet?
               </p>
               <a
                 href="https://www.namecheap.com"
@@ -305,7 +305,7 @@ export function DomainConnectDialog({
                 className="text-sm hover:underline"
                 style={{ color: 'rgb(3,165,192)' }}
               >
-                Acheter sur Namecheap →
+                Buy on Namecheap →
               </a>
             </div>
           </div>
@@ -321,10 +321,10 @@ export function DomainConnectDialog({
               </div>
               <div className="text-center space-y-2">
                 <p className="text-lg font-semibold text-foreground">
-                  ⚡ Analyse de votre domaine
+                  Analyzing your domain
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Détection du fournisseur DNS...
+                  Detecting DNS provider...
                 </p>
               </div>
             </div>
@@ -343,7 +343,7 @@ export function DomainConnectDialog({
           <div className="space-y-6 py-4">
             <div className="text-center space-y-4">
               <p className="text-muted-foreground">
-                Nous avons détecté que votre domaine est hébergé chez :
+                We detected that your domain is hosted at:
               </p>
 
               <div className="flex justify-center">
@@ -358,7 +358,7 @@ export function DomainConnectDialog({
               </div>
 
               <p className="text-muted-foreground">
-                Nous pouvons configurer automatiquement votre DNS !
+                We can automatically configure your DNS!
               </p>
             </div>
 
@@ -372,20 +372,20 @@ export function DomainConnectDialog({
                 }}
               >
                 <Sparkles className="mr-2 h-5 w-5" />
-                Configuration Automatique
+                Automatic Setup
                 <span className="ml-2 text-xs bg-white/20 px-2 py-1 rounded">
-                  Recommandé • 1 clic
+                  Recommended • 1 click
                 </span>
               </Button>
 
               <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-2">ou</p>
+                <p className="text-sm text-muted-foreground mb-2">or</p>
                 <Button
                   onClick={() => setStep('manual')}
                   variant="ghost"
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  Configuration manuelle →
+                  Manual setup →
                 </Button>
               </div>
             </div>
@@ -399,26 +399,26 @@ export function DomainConnectDialog({
               <ExternalLink className="h-16 w-16" style={{ color: 'rgb(3,165,192)' }} />
               <div className="text-center space-y-2">
                 <p className="text-lg font-semibold text-foreground">
-                  Fenêtre d'autorisation ouverte
+                  Authorization window opened
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Connectez-vous et autorisez la configuration DNS
+                  Sign in and authorize the DNS configuration
                 </p>
               </div>
             </div>
 
             <div className="p-4 bg-[#181818] rounded-lg space-y-2">
-              <p className="text-sm font-medium text-foreground">Étapes à suivre:</p>
+              <p className="text-sm font-medium text-foreground">Steps to follow:</p>
               <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                <li>Connectez-vous à votre compte {discoveryResult?.provider?.name}</li>
-                <li>Vérifiez les changements DNS proposés</li>
-                <li>Cliquez sur "Autoriser" ou "Approuver"</li>
+                <li>Sign in to your {discoveryResult?.provider?.name} account</li>
+                <li>Review the proposed DNS changes</li>
+                <li>Click "Authorize" or "Approve"</li>
               </ol>
             </div>
 
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-4 w-4" />
-              <span>La vérification démarrera automatiquement après autorisation</span>
+              <span>Verification will start automatically after authorization</span>
             </div>
           </div>
         )}
@@ -430,7 +430,7 @@ export function DomainConnectDialog({
               <div className="flex items-center gap-2 mb-2">
                 <AlertCircle className="h-5 w-5 text-yellow-500" />
                 <div className="text-sm font-medium text-foreground">
-                  Configuration manuelle requise
+                  Manual configuration required
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -439,7 +439,7 @@ export function DomainConnectDialog({
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Instructions:</h3>
+              <h3 className="text-sm font-semibold text-foreground">Instructions</h3>
 
               {discoveryResult.instructions.steps.map((stepItem, index) => (
                 <div key={index} className="space-y-1">
@@ -452,7 +452,7 @@ export function DomainConnectDialog({
 
               <div className="space-y-3 mt-6">
                 <p className="text-sm font-semibold text-foreground">
-                  Enregistrements DNS à ajouter:
+                  DNS records to add:
                 </p>
 
                 {discoveryResult.instructions.records.map((record, index) => (
@@ -464,7 +464,7 @@ export function DomainConnectDialog({
                     )}
                     <div className="grid grid-cols-3 gap-3 text-xs mb-3">
                       <div>
-                        <span className="text-muted-foreground block mb-1">Type:</span>
+                        <span className="text-muted-foreground block mb-1">Type</span>
                         <div 
                           className="font-mono font-bold px-2 py-1 rounded inline-block"
                           style={{ 
@@ -476,17 +476,17 @@ export function DomainConnectDialog({
                         </div>
                       </div>
                       <div>
-                        <span className="text-muted-foreground block mb-1">Nom:</span>
+                        <span className="text-muted-foreground block mb-1">Name</span>
                         <div className="text-foreground font-mono font-bold">{record.name}</div>
                       </div>
                       <div>
-                        <span className="text-muted-foreground block mb-1">TTL:</span>
+                        <span className="text-muted-foreground block mb-1">TTL</span>
                         <div className="text-foreground font-mono">{record.ttl}</div>
                       </div>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex-1">
-                        <span className="text-xs text-muted-foreground block mb-1">Valeur:</span>
+                        <span className="text-xs text-muted-foreground block mb-1">Value</span>
                         <div className="text-sm text-foreground font-mono break-all bg-[#0a0a0a] p-2 rounded">
                           {record.value}
                         </div>
@@ -496,7 +496,7 @@ export function DomainConnectDialog({
                         variant="ghost"
                         onClick={() => copyToClipboard(record.value)}
                         className="flex-shrink-0"
-                        title="Copier"
+                        title="Copy"
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
@@ -507,7 +507,7 @@ export function DomainConnectDialog({
                 {/* Notes explicatives */}
                 {discoveryResult.instructions.notes && discoveryResult.instructions.notes.length > 0 && (
                   <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                    <p className="text-xs font-medium text-blue-300 mb-2">💡 Notes importantes:</p>
+                    <p className="text-xs font-medium text-blue-300 mb-2">Important notes:</p>
                     <ul className="text-xs text-blue-200/80 space-y-1">
                       {discoveryResult.instructions.notes.map((note, idx) => (
                         <li key={idx}>• {note}</li>
@@ -526,7 +526,7 @@ export function DomainConnectDialog({
                 color: 'white'
               }}
             >
-              J'ai terminé la configuration
+              I've completed the setup
             </Button>
           </div>
         )}
@@ -541,13 +541,13 @@ export function DomainConnectDialog({
               </div>
               <div className="text-center space-y-2">
                 <p className="text-lg font-semibold text-foreground">
-                  ⏳ Vérification DNS en cours...
+                  DNS verification in progress...
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Configuration appliquée avec succès !
+                  Configuration applied successfully!
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Nous vérifions maintenant que les DNS sont bien propagés...
+                  We are now verifying that the DNS has propagated...
                 </p>
               </div>
             </div>
@@ -555,15 +555,15 @@ export function DomainConnectDialog({
             <div className="space-y-3">
               <Progress value={verificationProgress} className="h-3" />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Tentative {verificationAttempt}/60</span>
+                <span>Attempt {verificationAttempt}/60</span>
                 <span>⏱️ {formatTime(elapsedTime)}</span>
               </div>
             </div>
 
             <div className="p-4 bg-[#181818] rounded-lg space-y-2">
-              <p className="text-xs font-medium text-foreground">⏱️ Temps estimé: 2-10 minutes</p>
+              <p className="text-xs font-medium text-foreground">Estimated time: 2-10 minutes</p>
               <p className="text-xs text-muted-foreground">
-                La propagation DNS peut prendre quelques minutes. Patience...
+                DNS propagation may take a few minutes. Please be patient...
               </p>
             </div>
 
@@ -571,9 +571,9 @@ export function DomainConnectDialog({
               <div className="flex items-start gap-2">
                 <Mail className="h-4 w-4 text-blue-400 flex-shrink-0 mt-0.5" />
                 <div className="text-xs text-blue-200">
-                  <p className="font-medium mb-1">💡 Conseil</p>
+                  <p className="font-medium mb-1">Tip</p>
                   <p>
-                    Vous pouvez fermer cette fenêtre. Nous vous enverrons un email dès que votre domaine sera actif !
+                    You can close this window. We'll send you an email as soon as your domain is active!
                   </p>
                 </div>
               </div>
@@ -593,7 +593,7 @@ export function DomainConnectDialog({
               </div>
               <div className="text-center space-y-2">
                 <p className="text-2xl font-bold text-foreground">
-                  Votre site est maintenant en ligne !
+                  Your site is now live!
                 </p>
                 <div className="flex items-center justify-center gap-2 text-lg" style={{ color: 'rgb(3,165,192)' }}>
                   <Globe className="h-5 w-5" />
@@ -606,9 +606,9 @@ export function DomainConnectDialog({
               <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg">
                 <div className="flex items-center gap-2">
                   <Lock className="h-5 w-5 text-green-500" />
-                  <span className="text-sm text-foreground">Certificat SSL</span>
+                  <span className="text-sm text-foreground">SSL Certificate</span>
                 </div>
-                <span className="text-sm font-semibold text-green-500">✓ Activé</span>
+                <span className="text-sm font-semibold text-green-500">✓ Active</span>
               </div>
 
               <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg">
@@ -616,7 +616,7 @@ export function DomainConnectDialog({
                   <Globe className="h-5 w-5" style={{ color: 'rgb(3,165,192)' }} />
                   <span className="text-sm text-foreground">DNS Propagation</span>
                 </div>
-                <span className="text-sm font-semibold text-green-500">✓ Complète</span>
+                <span className="text-sm font-semibold text-green-500">✓ Complete</span>
               </div>
             </div>
 
@@ -630,20 +630,20 @@ export function DomainConnectDialog({
                 }}
               >
                 <ExternalLink className="mr-2 h-5 w-5" />
-                Voir mon site
+                View my site
               </Button>
               <Button
                 onClick={handleClose}
                 variant="outline"
                 className="flex-1 h-12 rounded-full border-[#3a3a3b]"
               >
-                Tableau de bord
+                Dashboard
               </Button>
             </div>
 
             <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
               <p className="text-xs text-green-200">
-                📧 Email de confirmation envoyé
+                Confirmation email sent
               </p>
             </div>
           </div>

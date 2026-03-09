@@ -13,19 +13,19 @@ interface UpgradeModalProps {
 }
 
 const monthlyFeatures = [
-  '50 messages IA par mois',
-  'Publication & hébergement inclus',
-  'Nom de domaine personnalisé',
-  'Design professionnel & responsive',
-  'Support par email en 24h',
-  'Sans engagement',
+  '50 AI messages per month',
+  'Publishing & hosting included',
+  'Custom domain name',
+  'Professional & responsive design',
+  'Email support within 24h',
+  'No commitment',
 ];
 
 const annualFeatures = [
-  'Toutes les fonctionnalités mensuelles',
-  '2 mois offerts (économisez ~26€)',
-  'Priorité sur les nouvelles fonctionnalités',
-  'Facturation unique, sans surprise',
+  'All monthly features',
+  '2 months free (save ~€26)',
+  'Priority access to new features',
+  'Single billing, no surprises',
 ];
 
 export function UpgradeModal({ open, onClose, context = 'message' }: UpgradeModalProps) {
@@ -39,7 +39,7 @@ export function UpgradeModal({ open, onClose, context = 'message' }: UpgradeModa
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast.error('Veuillez vous connecter pour continuer');
+        toast.error('Please log in to continue');
         return;
       }
 
@@ -57,9 +57,9 @@ export function UpgradeModal({ open, onClose, context = 'message' }: UpgradeModa
     } catch (err: any) {
       console.error('Checkout error:', err);
       if (err?.message?.includes('not configured')) {
-        toast.error('Le paiement n\'est pas encore configuré. Contactez le support.');
+        toast.error('Payment is not yet configured. Contact support.');
       } else {
-        toast.error('Erreur lors de la redirection vers le paiement. Réessayez.');
+        toast.error('Error redirecting to payment. Please try again.');
       }
     } finally {
       setLoadingPlan(null);
@@ -67,12 +67,12 @@ export function UpgradeModal({ open, onClose, context = 'message' }: UpgradeModa
   };
 
   const title = context === 'publish'
-    ? 'Publiez votre site avec le plan Premium'
-    : 'Vous avez atteint votre limite de messages';
+    ? 'Publish your site with the Premium plan'
+    : 'You have reached your message limit';
 
   const subtitle = context === 'publish'
-    ? 'La publication est réservée aux abonnés. Choisissez un plan pour mettre votre site en ligne.'
-    : 'Passez en Premium pour continuer à modifier votre site avec l\'IA.';
+    ? 'Publishing is reserved for subscribers. Choose a plan to put your site online.'
+    : 'Upgrade to Premium to continue editing your site with AI.';
 
   return (
     // Backdrop
@@ -154,18 +154,18 @@ export function UpgradeModal({ open, onClose, context = 'message' }: UpgradeModa
                   'text-xs font-semibold uppercase tracking-wider mb-1',
                   isDark ? 'text-slate-400' : 'text-slate-500'
                 )}>
-                  Mensuel
+                  Monthly
                 </p>
                 <div className="flex items-baseline gap-1">
                   <span className={cn('text-3xl font-bold', isDark ? 'text-white' : 'text-slate-900')}>
                     12,99€
                   </span>
                   <span className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>
-                    /mois
+                    /month
                   </span>
                 </div>
                 <p className={cn('text-xs mt-1', isDark ? 'text-slate-500' : 'text-slate-400')}>
-                  Sans engagement
+                  No commitment
                 </p>
               </div>
 
@@ -201,7 +201,7 @@ export function UpgradeModal({ open, onClose, context = 'message' }: UpgradeModa
                 ) : (
                   <>
                     <Crown className="h-4 w-4" />
-                    Choisir ce plan
+                    Choose this plan
                   </>
                 )}
               </button>
@@ -222,7 +222,7 @@ export function UpgradeModal({ open, onClose, context = 'message' }: UpgradeModa
                 className="absolute top-0 right-0 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg"
                 style={{ backgroundColor: '#03A5C0' }}
               >
-                POPULAIRE
+                POPULAR
               </div>
 
               <div className="mb-4">
@@ -230,18 +230,18 @@ export function UpgradeModal({ open, onClose, context = 'message' }: UpgradeModa
                   'text-xs font-semibold uppercase tracking-wider mb-1',
                   isDark ? 'text-slate-400' : 'text-slate-500'
                 )}>
-                  Annuel
+                  Annual
                 </p>
                 <div className="flex items-baseline gap-1">
                   <span className={cn('text-3xl font-bold', isDark ? 'text-white' : 'text-slate-900')}>
                     119,99€
                   </span>
                   <span className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>
-                    /an
+                    /year
                   </span>
                 </div>
                 <p className="text-xs mt-1" style={{ color: '#03A5C0' }}>
-                  soit ~10€/mois · 2 mois offerts
+                  ~€10/month · 2 months free
                 </p>
               </div>
 
@@ -273,7 +273,7 @@ export function UpgradeModal({ open, onClose, context = 'message' }: UpgradeModa
                 ) : (
                   <>
                     <Crown className="h-4 w-4" />
-                    Souscrire annuellement
+                    Subscribe annually
                   </>
                 )}
               </button>
@@ -285,7 +285,7 @@ export function UpgradeModal({ open, onClose, context = 'message' }: UpgradeModa
             'text-center text-xs mt-5',
             isDark ? 'text-slate-500' : 'text-slate-400'
           )}>
-            Paiement sécurisé via Stripe · Résiliable à tout moment
+            Secure payment via Stripe · Cancel anytime
           </p>
         </div>
       </div>

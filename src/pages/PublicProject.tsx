@@ -32,7 +32,7 @@ export default function PublicProject() {
 
   const loadPublicProject = async () => {
     if (!subdomain) {
-      setError('Sous-domaine manquant');
+      setError('Missing subdomain');
       setLoading(false);
       return;
     }
@@ -49,14 +49,14 @@ export default function PublicProject() {
 
       if (publishedError) {
         console.error('❌ Database error:', publishedError);
-        setError('Erreur de base de données');
+        setError('Database error');
         setLoading(false);
         return;
       }
 
       if (!publishedProject) {
         console.error('❌ Project not found for subdomain:', subdomain);
-        setError('Projet non trouvé');
+        setError('Project not found');
         setLoading(false);
         return;
       }
@@ -70,14 +70,14 @@ export default function PublicProject() {
 
       if (sessionError) {
         console.error('❌ Database error:', sessionError);
-        setError('Erreur de base de données');
+        setError('Database error');
         setLoading(false);
         return;
       }
 
       if (!session) {
         console.error('❌ Session not found');
-        setError('Session non trouvée');
+        setError('Session not found');
         setLoading(false);
         return;
       }
@@ -94,7 +94,7 @@ export default function PublicProject() {
 
       setProject({
         id: session.id,
-        title: session.title || 'Projet sans titre',
+        title: session.title || 'Untitled project',
         project_files: projectFiles,
         project_type: (session.project_type as 'website' | 'webapp' | 'mobile') || 'website',
         created_at: session.created_at,
@@ -109,7 +109,7 @@ export default function PublicProject() {
       setLoading(false);
     } catch (err) {
       console.error('❌ Error loading project:', err);
-      setError('Erreur lors du chargement du projet');
+      setError('Error loading project');
       setLoading(false);
     }
   };
@@ -119,7 +119,7 @@ export default function PublicProject() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-[#03A5C0] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600 text-lg">Chargement du projet...</p>
+          <p className="text-slate-600 text-lg">Loading project...</p>
         </div>
       </div>
     );
@@ -132,7 +132,7 @@ export default function PublicProject() {
           <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-4xl">😕</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Projet non trouvé</h1>
+          <h1 className="text-2xl font-bold text-slate-800 mb-2">Project not found</h1>
           <p className="text-slate-600 mb-6">{error}</p>
           <button
             onClick={() => navigate('/')}
@@ -143,7 +143,7 @@ export default function PublicProject() {
               color: 'white'
             }}
           >
-            Retour à l'accueil
+            Back to home
           </button>
         </div>
       </div>
@@ -166,7 +166,7 @@ export default function PublicProject() {
               <div>
                 <h1 className="text-xl font-bold text-slate-800">{project.title}</h1>
                 <p className="text-sm text-slate-500">
-                  Créé le {new Date(project.created_at).toLocaleDateString('fr-FR')}
+                  Created on {new Date(project.created_at).toLocaleDateString('en-US')}
                 </p>
               </div>
             </div>
@@ -174,7 +174,7 @@ export default function PublicProject() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-slate-600">
                 <Eye className="w-5 h-5" />
-                <span className="text-sm font-medium">{project.view_count} vues</span>
+                <span className="text-sm font-medium">{project.view_count} views</span>
               </div>
               
               <a
@@ -188,7 +188,7 @@ export default function PublicProject() {
                 }}
               >
                 <ExternalLink className="w-4 h-4" />
-                Créer mon site
+                Create my site
               </a>
             </div>
           </div>
@@ -207,8 +207,8 @@ export default function PublicProject() {
       <footer className="bg-white border-t border-slate-200 py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-slate-600">
-            Propulsé par <span className="font-semibold text-[#03A5C0]">Magellan</span> - 
-            Créateur de sites web IA
+            Powered by <span className="font-semibold text-[#03A5C0]">Magellan</span> -
+            AI Website Builder
           </p>
         </div>
       </footer>

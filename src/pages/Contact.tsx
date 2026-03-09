@@ -50,7 +50,7 @@ const Contact = () => {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Charger le script Calendly
+  // Load the Calendly script
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://assets.calendly.com/assets/external/widget.js';
@@ -58,7 +58,7 @@ const Contact = () => {
     document.head.appendChild(script);
 
     return () => {
-      // Nettoyage lors du démontage du composant
+      // Cleanup on component unmount
       const existingScript = document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]');
       if (existingScript) {
         document.head.removeChild(existingScript);
@@ -69,9 +69,9 @@ const Contact = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation simple
+    // Simple validation
     if (!formData.name || !formData.email || !formData.projectType) {
-      toast.error('Veuillez remplir tous les champs obligatoires');
+      toast.error('Please fill in all required fields');
       return;
     }
     
@@ -83,19 +83,20 @@ const Contact = () => {
       });
       
       if (error) {
-        console.error('Erreur Supabase:', error);
-        toast.error('Erreur lors de l\'envoi du message. Veuillez réessayer.');
+        console.error('Supabase error:', error);
+        toast.error('Error sending the message. Please try again.');
         return;
       }
       
-      console.log('Réponse de la fonction:', data);
+      console.log('Function response:', data);
       
-      // Redirect to thank you page
-      navigate('/merci');
+      // Show success and redirect to home
+      toast.success('Message sent successfully! We will get back to you shortly.');
+      navigate('/');
       
     } catch (error) {
-      console.error('Erreur lors de l\'envoi:', error);
-      toast.error('Erreur lors de l\'envoi du message. Veuillez réessayer.');
+      console.error('Error sending:', error);
+      toast.error('Error sending the message. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -175,9 +176,9 @@ const Contact = () => {
     <div className="min-h-screen">
       <SEOHead 
         title="Contact Magellan | Support & Assistance"
-        description="Contactez l'équipe Magellan pour toute question sur la création de votre site web ou application mobile avec notre IA. Support rapide et assistance personnalisée."
-        keywords="contact Magellan, support IA, assistance création site, aide développement web, questions plateforme"
-        canonicalUrl="https://magellan-studio.fr/contact"
+        description="Contact the Magellan team for any question about creating your website or mobile app with our AI. Fast support and personalized assistance."
+        keywords="contact Magellan, AI support, website creation help, web development assistance, platform questions"
+        canonicalUrl="https://magellanlabs.com/contact"
         structuredData={structuredData}
       />
       <Header />
@@ -211,13 +212,13 @@ const Contact = () => {
                    <form onSubmit={handleSubmit} className="space-y-6">
                      {/* Nom */}
                      <div>
-                       <Label htmlFor="name">Nom *</Label>
+                       <Label htmlFor="name">Name *</Label>
                        <Input
                          id="name"
                          type="text"
                          value={formData.name}
                          onChange={(e) => handleInputChange('name', e.target.value)}
-                         placeholder="Votre nom complet"
+                         placeholder="Your full name"
                          required
                          className="mt-2"
                        />
@@ -225,13 +226,13 @@ const Contact = () => {
 
                      {/* Entreprise */}
                      <div>
-                       <Label htmlFor="company">Entreprise</Label>
+                       <Label htmlFor="company">Company</Label>
                        <Input
                          id="company"
                          type="text"
                          value={formData.company}
                          onChange={(e) => handleInputChange('company', e.target.value)}
-                         placeholder="Nom de votre entreprise"
+                         placeholder="Your company name"
                          className="mt-2"
                        />
                      </div>
@@ -252,7 +253,7 @@ const Contact = () => {
 
                      {/* Téléphone */}
                      <div>
-                       <Label htmlFor="phone">Numéro de téléphone</Label>
+                       <Label htmlFor="phone">Phone number</Label>
                        <Input
                          id="phone"
                          type="tel"
@@ -265,13 +266,13 @@ const Contact = () => {
 
                      {/* Type de projet */}
                      <div>
-                       <Label htmlFor="projectType">Type de projet *</Label>
+                       <Label htmlFor="projectType">Project type *</Label>
                        <Select 
                          value={formData.projectType} 
                          onValueChange={(value) => handleInputChange('projectType', value)}
                        >
                          <SelectTrigger className="mt-2">
-                           <SelectValue placeholder="Sélectionnez votre type de projet" />
+                           <SelectValue placeholder="Select your project type" />
                          </SelectTrigger>
                          <SelectContent>
                            {projectTypes.map((type) => (
@@ -294,11 +295,11 @@ const Contact = () => {
                        ) : (
                          <Send className="mr-2 h-4 w-4" />
                        )}
-                       {isSubmitting ? 'Envoi en cours...' : 'Envoyer la demande'}
+                       {isSubmitting ? 'Sending...' : 'Send request'}
                      </Button>
 
                    <p className="text-sm text-muted-foreground text-center mt-4">
-                     Vos données sont protégées et ne seront utilisées que pour vous répondre.
+                     Your data is protected and will only be used to respond to you.
                    </p>
                    </form>
                 </div>

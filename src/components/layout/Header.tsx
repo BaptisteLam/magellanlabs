@@ -131,7 +131,7 @@ const Header = () => {
                       e.currentTarget.style.color = '';
                     }}
                   >
-                    Connexion
+                    Sign in
                   </Button>
                   
                   <button
@@ -216,7 +216,7 @@ const Header = () => {
                         e.currentTarget.style.color = '';
                       }}
                     >
-                      Connexion
+                      Sign in
                     </Button>
                   )}
 
