@@ -918,42 +918,6 @@ export default function BuilderSession() {
               console.warn('⚠️ Failed to save preview URL to DB:', err);
             }
           }
-          // ──────────────────────────────────────────────
-          // Auto-publish: enregistre le subdomain builtbymagellan.com
-          // dès qu'une nouvelle URL VibeSDK est disponible
-          // ──────────────────────────────────────────────
-          if (canDeploy && sessionId) {
-            try {
-              const title = websiteTitleRef.current;
-              const siteName = (title || 'mon-projet')
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9\s-]/g, '')
-                .trim()
-                .replace(/\s+/g, '-')
-                .replace(/-+/g, '-')
-                .substring(0, 50) || 'mon-projet';
-
-              console.log('🚀 [BuilderSession] Auto-publishing to builtbymagellan.com...');
-              const { data: result } = await supabase.functions.invoke('publish-to-cloudflare', {
-                body: { sessionId, siteName, vibePreviewUrl: url },
-              });
-              if (result?.success && result?.url) {
-                console.log('✅ [BuilderSession] Auto-published:', result.url);
-                setDeployedUrl(result.url);
-                setLastPublishResult({
-                  publicUrl: result.url,
-                  cloudflareUrl: result.cloudflareUrl || result.url,
-                  subdomain: result.subdomain,
-                });
-                // Persister l'URL publique
-                await supabase.from('build_sessions').update({ public_url: result.url }).eq('id', sessionId);
-              }
-            } catch (publishErr) {
-              console.warn('⚠️ [BuilderSession] Auto-publish failed (non-blocking):', publishErr);
-            }
-          }
         },
         onProgress: (content) => {
           console.log('📝 Progress:', content.length, 'characters');
@@ -1834,15 +1798,16 @@ export default function BuilderSession() {
       navigate('/auth');
       return;
     }
-    if (!projectFiles || Object.keys(projectFiles).length === 0) {
-      sonnerToast.error("No content to publish");
-      return;
-    }
-
-    // Vérification du plan pour la publication
+    // Vérification du plan pour la publication (avant le check fichiers pour montrer l'UpgradeModal aux free users)
     if (!canDeploy) {
       setUpgradeContext('publish');
       setShowUpgradeModal(true);
+      return;
+    }
+
+    // Vérifier qu'il y a du contenu à publier (fichiers locaux OU URL VibeSDK)
+    if ((!projectFiles || Object.keys(projectFiles).length === 0) && !vibePreviewUrl) {
+      sonnerToast.error("No content to publish");
       return;
     }
 
@@ -2269,10 +2234,10 @@ export default function BuilderSession() {
           ) : (
             /* Mobile Preview */
             <div className="h-full w-full flex flex-col overflow-hidden" style={{ backgroundColor: isDark ? 'hsl(var(--background))' : 'hsl(var(--background))' }}>
-              {(Object.keys(projectFiles).length === 0 && !vibePreviewUrl && !deployedUrl) || generateSiteHook.isGenerating ? <GeneratingPreview /> : <>
+              {(Object.keys(projectFiles).length === 0 && !vibePreviewUrl) || generateSiteHook.isGenerating ? <GeneratingPreview /> : <>
                 <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} previewMode="mobile" />
-                {(deployedUrl || vibePreviewUrl) ? (
-                  <VibePreviewIframe src={deployedUrl || vibePreviewUrl!} />
+                {vibePreviewUrl ? (
+                  <VibePreviewIframe src={vibePreviewUrl} />
                 ) : (
                   <InteractiveCodeSandboxPreview projectFiles={projectFiles} previewMode="mobile" inspectMode={false} onInspectModeChange={() => {}} />
                 )}
@@ -2446,7 +2411,7 @@ export default function BuilderSession() {
             backgroundColor: isDark ? 'hsl(var(--background))' : 'hsl(var(--background))',
             borderColor: isDark ? 'hsl(var(--border))' : 'hsl(var(--border))'
           }}>
-                  {(Object.keys(projectFiles).length === 0 && !vibePreviewUrl && !deployedUrl) || generateSiteHook.isGenerating ? <GeneratingPreview /> : <>
+                  {(Object.keys(projectFiles).length === 0 && !vibePreviewUrl) || generateSiteHook.isGenerating ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} cloudflareProjectName={cloudflareProjectName || undefined} previewMode="mobile" />
                       {vibePreviewUrl ? (
                         <VibePreviewIframe src={vibePreviewUrl} />
@@ -2477,7 +2442,7 @@ Ne modifie que cet élément spécifique, pas le reste du code.`;
                       )}
                     </>}
                 </div> : <>
-                  {(Object.keys(projectFiles).length === 0 && !vibePreviewUrl && !deployedUrl) || generateSiteHook.isGenerating ? <GeneratingPreview /> : <>
+                  {(Object.keys(projectFiles).length === 0 && !vibePreviewUrl) || generateSiteHook.isGenerating ? <GeneratingPreview /> : <>
                       <FakeUrlBar projectTitle={websiteTitle || 'Mon Projet'} isDark={isDark} sessionId={sessionId} onTitleChange={setWebsiteTitle} currentFavicon={currentFavicon} onFaviconChange={setCurrentFavicon} cloudflareProjectName={cloudflareProjectName || undefined} previewMode={previewMode} />
                       {vibePreviewUrl ? (
                         <VibePreviewIframe src={vibePreviewUrl} />
