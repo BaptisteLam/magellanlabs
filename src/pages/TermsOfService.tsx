@@ -9,20 +9,20 @@ const TermsOfService = () => {
   return (
     <>
       <SEOHead
-        title="Conditions Générales de Vente"
-        description="Conditions générales de vente de Trinity Studio. Consultez nos conditions pour la création de sites web, le développement et les services SEO."
-        keywords="CGV, conditions générales, conditions de vente, Trinity Studio, agence web"
+        title="Terms of Service"
+        description="Trinity Studio terms of service. Review our terms for website creation, development and SEO services."
+        keywords="terms of service, general conditions, terms of sale, Trinity Studio, web agency"
         canonicalUrl="https://trinity-studio.fr/cgv"
       />
       <Header />
       <main className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-16 max-w-4xl">
-          <h1 className="text-4xl font-bold mb-8 text-foreground">Conditions Générales de Vente</h1>
+          <h1 className="text-4xl font-bold mb-8 text-foreground">Terms of Sale</h1>
           
           <div className="space-y-8 text-foreground/80">
             <section>
               <p className="mb-4">
-                <strong>Date de dernière mise à jour :</strong> 10 janvier 2025
+                <strong>Last updated:</strong> January 10, 2025
               </p>
               <p>
                 Les présentes Conditions Générales de Vente (CGV) régissent les relations contractuelles entre Trinity Studio et ses clients pour la fourniture de services de création de sites web, développement, design et référencement.

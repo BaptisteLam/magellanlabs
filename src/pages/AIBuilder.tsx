@@ -32,18 +32,18 @@ const AIBuilder = () => {
 
   const handleSubmit = async () => {
     if (!inputValue.trim()) {
-      sonnerToast.error("Veuillez entrer votre message");
+      sonnerToast.error("Please enter your message");
       return;
     }
 
     if (!user) {
-      sonnerToast.error("Vous devez être connecté pour créer un projet");
+      sonnerToast.error("You must be logged in to create a project");
       navigate('/auth');
       return;
     }
 
     try {
-      // Créer une nouvelle session avec les images attachées
+      // Create a new session with attached images
       const { data: sessionData, error: sessionError } = await supabase
         .from('build_sessions')
         .insert({
@@ -61,7 +61,7 @@ const AIBuilder = () => {
 
       if (sessionError) throw sessionError;
 
-      // Rediriger IMMÉDIATEMENT vers la session (génération en arrière-plan)
+      // Redirect IMMEDIATELY to the session (generation in background)
       navigate(`/builder/${sessionData.id}`, { 
         state: { 
           initialPrompt: inputValue,
@@ -70,7 +70,7 @@ const AIBuilder = () => {
       });
     } catch (error) {
       console.error('Error:', error);
-      sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
+      sonnerToast.error(error instanceof Error ? error.message : "An error occurred");
     }
   };
 
@@ -103,17 +103,17 @@ const AIBuilder = () => {
         <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border backdrop-blur-sm mb-4 sm:mb-6"
              style={{ borderColor: 'rgba(1, 74, 173, 0.3)', backgroundColor: 'rgba(1, 74, 173, 0.1)' }}>
           <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: '#014AAD' }} />
-          <span className="text-xs sm:text-sm font-light" style={{ color: '#014AAD' }}>Propulsé par Claude AI</span>
+          <span className="text-xs sm:text-sm font-light" style={{ color: '#014AAD' }}>Powered by Claude AI</span>
         </div>
 
         {/* Main title */}
         <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-3 sm:mb-4 leading-tight">
-          Crée ton site web en quelques secondes avec l'IA
+          Create your website in seconds with AI
         </h1>
 
         {/* Subtitle */}
         <p className="text-sm sm:text-lg md:text-xl text-slate-600 font-light mb-6 sm:mb-10">
-          Décris ton activité en une phrase... l'IA s'occupe du reste.
+          Describe your business in one sentence... AI takes care of the rest.
         </p>
 
         {/* AI Input Area */}
@@ -133,7 +133,7 @@ const AIBuilder = () => {
               for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 if (!file.type.startsWith('image/')) {
-                  sonnerToast.error(`${file.name} n'est pas une image`);
+                  sonnerToast.error(`${file.name} is not an image`);
                   continue;
                 }
                 const reader = new FileReader();

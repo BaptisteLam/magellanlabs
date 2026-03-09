@@ -15,14 +15,14 @@ const NotFound = () => {
   return (
     <>
       <Helmet>
-        <title>Page Non Trouvée - 404 | Magellan</title>
-        <meta name="description" content="La page que vous recherchez n'existe pas ou a été déplacée. Retournez à l'accueil de Magellan pour créer votre site web par IA." />
+        <title>Page Not Found - 404 | Magellan</title>
+        <meta name="description" content="The page you are looking for does not exist or has been moved. Return to the Magellan homepage to create your website with AI." />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <h1 className="text-8xl font-normal mb-4 bg-gradient-to-br from-[#03A5C0] to-[#0284a8] bg-clip-text text-transparent">404</h1>
-          <p className="text-xs text-muted-foreground mb-8">Page introuvable</p>
+          <p className="text-xs text-muted-foreground mb-8">Page not found</p>
           <a
             href="/"
             className="inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-sm gap-2 transition-all border rounded-full px-4 py-2"
@@ -34,7 +34,7 @@ const NotFound = () => {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(3,165,192,0.15)'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(3,165,192,0.1)'}
           >
-            Retourner à l'accueil
+            Return to homepage
           </a>
         </div>
       </div>

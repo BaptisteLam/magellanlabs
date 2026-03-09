@@ -13,7 +13,7 @@ const Home = () => {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "Magellan",
-    "description": "Plateforme IA pour créer des sites web et applications mobiles en quelques secondes",
+    "description": "AI platform to create websites and mobile applications in seconds",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Web",
     "offers": {
@@ -26,9 +26,9 @@ const Home = () => {
   return (
     <div className="min-h-screen">
       <SEOHead 
-        title="Magellan : Crée ton site web avec l'IA en un prompt."
-        description="Magellan créer votre site web ou votre app mobile en quelques secondes grâce à l'IA. Votre projet digital en un prompt."
-        keywords="création site web IA, générateur site internet, app mobile IA, création site automatique, intelligence artificielle, développement web rapide"
+        title="Magellan: Create your website with AI in one prompt."
+        description="Magellan creates your website or mobile app in seconds using AI. Your digital project in one prompt."
+        keywords="AI website creation, website generator, AI mobile app, automatic website creation, artificial intelligence, fast web development"
         canonicalUrl="https://magellan-studio.fr"
         structuredData={structuredData}
       />

@@ -48,7 +48,7 @@ export default function ChatOnlyMessage({
   const contentString = typeof message.content === 'string' ? message.content : '';
   const generation_events = message.metadata?.generation_events || [];
 
-  // Calculer la progression pour la barre de chargement
+  // Calculate progress for the loading bar
   const currentFile = useMemo(() => {
     const inProgressEvents = generation_events.filter(e => e.status === 'in-progress');
     const lastInProgress = inProgressEvents[inProgressEvents.length - 1];
@@ -63,12 +63,12 @@ export default function ChatOnlyMessage({
     return Math.min(5 + (completedEvents / totalEvents) * 90, 95);
   }, [generation_events, isLoading]);
 
-  // Effet machine à écrire rapide
+  // Fast typewriter effect
   useEffect(() => {
     if (!contentString) return;
     
     let currentIndex = 0;
-    const typingSpeed = 10; // Très rapide (10ms par caractère)
+    const typingSpeed = 10; // Very fast (10ms per character)
     
     const typeNextChar = () => {
       if (currentIndex < contentString.length) {
@@ -97,7 +97,7 @@ export default function ChatOnlyMessage({
         </div>
       )}
 
-      {/* Barre de chargement - pendant la génération */}
+      {/* Loading bar - during generation */}
       {isLoading && (
         <LoadingProgress
           isLoading={isLoading}

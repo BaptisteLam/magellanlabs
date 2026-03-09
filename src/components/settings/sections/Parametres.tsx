@@ -52,8 +52,8 @@ export function Parametres() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Paramètres</h2>
-        <p className="text-muted-foreground">Configurez vos préférences générales</p>
+        <h2 className="text-2xl font-bold text-foreground">Settings</h2>
+        <p className="text-muted-foreground">Configure your general preferences</p>
       </div>
 
       {/* Subscription Card */}
@@ -67,16 +67,16 @@ export function Parametres() {
         <CardHeader className="relative">
           <CardTitle className="flex items-center gap-2">
             <Crown className="h-5 w-5" style={{ color: '#03A5C0' }} />
-            Abonnement
+            Subscription
           </CardTitle>
         </CardHeader>
         <CardContent className="relative space-y-6">
           {/* Current Plan */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Plan actuel</p>
+              <p className="text-sm text-muted-foreground">Current plan</p>
               <p className="text-lg font-semibold text-foreground">
-                {creditsLoading ? '...' : isPremium ? 'Premium' : 'Gratuit'}
+                {creditsLoading ? '...' : isPremium ? 'Premium' : 'Free'}
               </p>
             </div>
             {!isPremium && (
@@ -88,7 +88,7 @@ export function Parametres() {
                   border: '1px solid rgba(3,165,192,0.3)'
                 }}
               >
-                Limité
+                Limited
               </div>
             )}
           </div>
@@ -98,7 +98,7 @@ export function Parametres() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Messages utilisés</span>
+                <span className="text-sm text-muted-foreground">Messages used</span>
               </div>
               <span className="text-sm font-medium text-foreground">
                 {creditsLoading ? '...' : `${messagesUsed} / ${messagesLimit}`}
@@ -120,7 +120,7 @@ export function Parametres() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              {creditsLoading ? '...' : `${messagesLimit - messagesUsed} messages restants ce mois-ci`}
+              {creditsLoading ? '...' : `${messagesLimit - messagesUsed} messages remaining this month`}
             </p>
           </div>
 
@@ -141,9 +141,9 @@ export function Parametres() {
                   <Zap className="h-5 w-5" style={{ color: '#03A5C0' }} />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-foreground">Passez en Premium</h4>
+                  <h4 className="font-semibold text-foreground">Upgrade to Premium</h4>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Débloquez <span className="font-semibold" style={{ color: '#03A5C0' }}>50 messages/mois</span> et accédez à toutes les fonctionnalités avancées.
+                    Unlock <span className="font-semibold" style={{ color: '#03A5C0' }}>50 messages/month</span> and access all advanced features.
                   </p>
                 </div>
               </div>
@@ -151,7 +151,7 @@ export function Parametres() {
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-2xl font-bold text-foreground">20€</span>
-                  <span className="text-sm text-muted-foreground">/mois</span>
+                  <span className="text-sm text-muted-foreground">/month</span>
                 </div>
                 <button
                   onClick={handleUpgradeClick}
@@ -170,7 +170,7 @@ export function Parametres() {
                   }}
                 >
                   <Crown className="h-4 w-4" />
-                  Passer en Premium
+                  Upgrade to Premium
                 </button>
               </div>
             </div>
@@ -182,29 +182,29 @@ export function Parametres() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            Apparence
+            Appearance
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="theme" className="text-foreground">
-              Thème
+              Theme
             </Label>
             <Select value={themeMode} onValueChange={handleThemeChange}>
               <SelectTrigger className="w-[180px] rounded-[8px]">
-                <SelectValue placeholder="Sélectionner un thème" />
+                <SelectValue placeholder="Select a theme" />
               </SelectTrigger>
               <SelectContent className="rounded-[8px]">
                 <SelectItem value="light">
                   <div className="flex items-center gap-2">
                     <Sun className="h-4 w-4" />
-                    Clair
+                    Light
                   </div>
                 </SelectItem>
                 <SelectItem value="dark">
                   <div className="flex items-center gap-2">
                     <Moon className="h-4 w-4" />
-                    Sombre
+                    Dark
                   </div>
                 </SelectItem>
                 <SelectItem value="system">

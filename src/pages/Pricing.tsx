@@ -14,27 +14,27 @@ const Pricing = () => {
   const [loadingPlan, setLoadingPlan] = useState<'monthly' | 'annual' | null>(null);
 
   const monthlyFeatures = [
-    "Création instantanée de votre site par intelligence artificielle",
-    "Design professionnel et responsive",
-    "Hébergement inclus",
-    "Connexion facile à votre propre nom de domaine",
-    "50 messages IA par mois",
-    "Support par email en 24h",
-    "Sans engagement, résiliable à tout moment"
+    "Instant website creation powered by artificial intelligence",
+    "Professional and responsive design",
+    "Hosting included",
+    "Easy connection to your own domain name",
+    "50 AI messages per month",
+    "Email support within 24 hours",
+    "No commitment, cancel anytime"
   ];
 
   const annualFeatures = [
-    "Toutes les fonctionnalités de l'offre mensuelle",
-    "Tarif avantageux : 2 mois gratuits",
-    "Priorité sur les mises à jour et nouveautés",
-    "Facturation unique, sans surprise",
-    "Idéal pour les pros qui veulent s'installer durablement en ligne"
+    "All features from the monthly plan",
+    "Great value: 2 months free",
+    "Priority access to updates and new features",
+    "Single billing, no surprises",
+    "Ideal for professionals who want a lasting online presence"
   ];
 
   const handleCheckout = async (plan: 'monthly' | 'annual') => {
     setLoadingPlan(plan);
     try {
-      // Si non connecté, sauvegarder l'intention et rediriger vers auth
+      // If not logged in, save the intent and redirect to auth
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         localStorage.setItem('redirectAfterAuth', '/tarifs');
@@ -56,9 +56,9 @@ const Pricing = () => {
     } catch (err: any) {
       console.error('Checkout error:', err);
       if (err?.message?.includes('not configured')) {
-        toast.error('Le paiement n\'est pas encore configuré. Contactez le support.');
+        toast.error('Payment is not yet configured. Please contact support.');
       } else {
-        toast.error('Erreur lors de la redirection vers le paiement. Réessayez.');
+        toast.error('Error redirecting to payment. Please try again.');
       }
     } finally {
       setLoadingPlan(null);
@@ -68,10 +68,10 @@ const Pricing = () => {
   return (
     <div className="min-h-screen bg-white">
       <SEOHead
-        title="Tarifs - Magellan | Abonnement Site Web IA dès 12,99€/mois"
-        description="Créez votre site professionnel avec l'IA dès 12,99€/mois. Sans engagement, hébergement inclus, 50 messages IA/mois. Offre annuelle à 119,99€/an avec 2 mois offerts."
-        keywords="tarif site web, abonnement site internet, prix création site IA, hébergement inclus, site web mensuel"
-        canonicalUrl="https://magellanlabs.com/tarifs"
+        title="Pricing - Magellan | AI Website Subscription from 12.99€/month"
+        description="Create your professional website with AI from 12.99€/month. No commitment, hosting included, 50 AI messages/month. Annual plan at 119.99€/year with 2 months free."
+        keywords="website pricing, website subscription, AI website creation price, hosting included, monthly website"
+        canonicalUrl="https://magellanlabs.com/pricing"
       />
       <Header />
 
@@ -99,10 +99,10 @@ const Pricing = () => {
           {/* Header Section */}
           <div className="text-center mb-10 sm:mb-16">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-3 sm:mb-4">
-              Tarifs simples et transparents
+              Simple and transparent pricing
             </h1>
             <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto px-2">
-              Choisissez l'offre qui correspond à vos besoins. Création instantanée par IA, hébergement inclus, sans surprise.
+              Choose the plan that fits your needs. Instant AI creation, hosting included, no surprises.
             </p>
           </div>
 
@@ -111,10 +111,10 @@ const Pricing = () => {
             {/* Monthly Plan */}
             <Card className="p-5 sm:p-8 bg-white/40 backdrop-blur-md border border-slate-200/50 hover:bg-white/50 transition-all flex flex-col">
               <div className="mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">Offre Mensuelle</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">Monthly Plan</h2>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl sm:text-5xl font-bold text-slate-900">12,99€</span>
-                  <span className="text-slate-600">/ mois</span>
+                  <span className="text-4xl sm:text-5xl font-bold text-slate-900">12.99€</span>
+                  <span className="text-slate-600">/ month</span>
                 </div>
               </div>
 
@@ -137,10 +137,10 @@ const Pricing = () => {
                 {loadingPlan === 'monthly' ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Redirection...
+                    Redirecting...
                   </>
                 ) : (
-                  'Commencer maintenant'
+                  'Get started now'
                 )}
               </Button>
             </Card>
@@ -149,16 +149,16 @@ const Pricing = () => {
             <Card className="p-5 sm:p-8 bg-white/40 backdrop-blur-md border border-slate-200/50 hover:bg-white/50 transition-all relative overflow-hidden flex flex-col">
               {/* Popular Badge */}
               <div className="absolute top-0 right-0 bg-slate-900 text-white text-xs font-semibold px-3 py-1.5">
-                2 MOIS OFFERTS
+                2 MONTHS FREE
               </div>
 
               <div className="mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">Offre Annuelle</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">Annual Plan</h2>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl sm:text-5xl font-bold text-slate-900">119,99€</span>
-                  <span className="text-slate-600">/ an</span>
+                  <span className="text-4xl sm:text-5xl font-bold text-slate-900">119.99€</span>
+                  <span className="text-slate-600">/ year</span>
                 </div>
-                <p className="text-sm text-slate-500 mt-1">soit ~10€/mois</p>
+                <p className="text-sm text-slate-500 mt-1">i.e. ~10€/month</p>
               </div>
 
               <ul className="space-y-3 mb-8 flex-grow">
@@ -180,10 +180,10 @@ const Pricing = () => {
                 {loadingPlan === 'annual' ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Redirection...
+                    Redirecting...
                   </>
                 ) : (
-                  'Souscrire à l\'offre annuelle'
+                  'Subscribe to the annual plan'
                 )}
               </Button>
             </Card>
@@ -191,19 +191,19 @@ const Pricing = () => {
 
           {/* FAQ */}
           <div className="mt-10 sm:mt-16 text-center max-w-3xl mx-auto">
-            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4">Questions fréquentes</h3>
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4">Frequently Asked Questions</h3>
             <div className="space-y-3 sm:space-y-4 text-left">
               <div className="p-4 sm:p-6 bg-white/40 backdrop-blur-md border border-slate-200/50 rounded-lg">
-                <h4 className="font-semibold text-slate-900 mb-2">Puis-je changer d'offre en cours d'abonnement ?</h4>
-                <p className="text-slate-600">Oui, vous pouvez passer de l'offre mensuelle à l'offre annuelle à tout moment. La différence sera calculée au prorata.</p>
+                <h4 className="font-semibold text-slate-900 mb-2">Can I switch plans during my subscription?</h4>
+                <p className="text-slate-600">Yes, you can switch from the monthly plan to the annual plan at any time. The difference will be prorated.</p>
               </div>
               <div className="p-4 sm:p-6 bg-white/40 backdrop-blur-md border border-slate-200/50 rounded-lg">
-                <h4 className="font-semibold text-slate-900 mb-2">Comment résilier mon abonnement ?</h4>
-                <p className="text-slate-600">L'offre mensuelle est sans engagement. Vous pouvez résilier à tout moment depuis votre espace client, sans frais.</p>
+                <h4 className="font-semibold text-slate-900 mb-2">How do I cancel my subscription?</h4>
+                <p className="text-slate-600">The monthly plan has no commitment. You can cancel at any time from your account dashboard, free of charge.</p>
               </div>
               <div className="p-4 sm:p-6 bg-white/40 backdrop-blur-md border border-slate-200/50 rounded-lg">
-                <h4 className="font-semibold text-slate-900 mb-2">Que se passe-t-il après l'abonnement ?</h4>
-                <p className="text-slate-600">Votre site reste en ligne tant que votre abonnement est actif. Si vous résiliez, vous aurez accès à une sauvegarde complète de votre site.</p>
+                <h4 className="font-semibold text-slate-900 mb-2">What happens after the subscription ends?</h4>
+                <p className="text-slate-600">Your website stays online as long as your subscription is active. If you cancel, you will have access to a full backup of your website.</p>
               </div>
             </div>
           </div>

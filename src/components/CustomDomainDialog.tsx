@@ -27,12 +27,12 @@ export function CustomDomainDialog({
 
   const handleAddDomain = async () => {
     if (!customDomain.trim()) {
-      toast.error('Veuillez entrer un nom de domaine');
+      toast.error('Please enter a domain name');
       return;
     }
 
     if (!sessionId || !cloudflareProjectName) {
-      toast.error('Informations de projet manquantes');
+      toast.error('Missing project information');
       return;
     }
 
@@ -53,13 +53,13 @@ export function CustomDomainDialog({
         // Cloudflare Pages URL format: projectname.pages.dev
         setCnameTarget(`${cloudflareProjectName}.pages.dev`);
         setStep(2);
-        toast.success('Domaine ajouté à Cloudflare !');
+        toast.success('Domain added to Cloudflare!');
       } else {
-        toast.error(data?.message || 'Erreur lors de la configuration du domaine');
+        toast.error(data?.message || 'Error configuring the domain');
       }
     } catch (error) {
       console.error('Error adding custom domain:', error);
-      toast.error('Erreur lors de la configuration du domaine');
+      toast.error('Error configuring the domain');
     } finally {
       setIsAnalyzing(false);
     }
@@ -74,7 +74,7 @@ export function CustomDomainDialog({
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success('Copié dans le presse-papiers');
+    toast.success('Copied to clipboard');
   };
 
   return (
@@ -82,7 +82,7 @@ export function CustomDomainDialog({
       <DialogContent className="sm:max-w-[600px] bg-[#1f1f20] border-[#3a3a3b]">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-foreground">
-            {step === 1 ? 'Domaine Personnalisé' : 'Configuration DNS'}
+            {step === 1 ? 'Custom Domain' : 'DNS Configuration'}
           </DialogTitle>
         </DialogHeader>
         
@@ -90,7 +90,7 @@ export function CustomDomainDialog({
           <div className="space-y-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="domain" className="text-sm font-medium text-foreground">
-                Nom de domaine
+                Domain name
               </Label>
               <Input
                 id="domain"
