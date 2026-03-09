@@ -34,8 +34,8 @@ function AppContent() {
   if (supabaseMisconfigured) {
     return (
       <div style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif', maxWidth: 600, margin: '4rem auto' }}>
-        <h1 style={{ color: '#dc2626' }}>Missing Configuration</h1>
-        <p>Supabase environment variables are not set:</p>
+        <h1 style={{ color: '#dc2626' }}>Missing configuration</h1>
+        <p>Supabase environment variables are not configured:</p>
         <ul>
           <li><code>VITE_SUPABASE_URL</code></li>
           <li><code>VITE_SUPABASE_PUBLISHABLE_KEY</code></li>

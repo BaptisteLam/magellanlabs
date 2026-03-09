@@ -5,9 +5,7 @@ import { useThemeStore } from '@/stores/themeStore';
 const Footer = () => {
   const { isDark } = useThemeStore();
   const navigation = [
-    { name: 'Company', href: '/about' },
     { name: 'Pricing', href: '/pricing' },
-    { name: 'Support', href: '/contact' },
   ];
 
   const socialLinks = [
@@ -34,13 +32,13 @@ const Footer = () => {
             <div className="flex items-center space-x-3 mb-4">
               <img
                 src={isDark ? "/assets/magellan-logo-dark.png" : "/assets/magellan-logo-light.png"}
-                alt="Magellan - Web Agency"
+                alt="Magellan"
                 className="h-16 w-auto"
               />
             </div>
             <p className="text-foreground/70 max-w-md text-sm">
               At Magellan, our mission is simple: make website creation as fast as a Google search.
-              No need to code, hire an agency, or wait — AI generates a professional website for you, in real time.
+              No coding, no agency costs, no waiting—AI generates a professional website for you in real time.
             </p>
           </div>
 

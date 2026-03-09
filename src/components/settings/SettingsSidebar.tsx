@@ -120,7 +120,7 @@ export function SettingsSidebar({
 
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image must not exceed 2MB');
+      toast.error('Image size must be under 2MB');
       return;
     }
 
@@ -155,7 +155,7 @@ export function SettingsSidebar({
       toast.success('Icon updated');
     } catch (error) {
       console.error('Error uploading icon:', error);
-      toast.error('Error uploading icon');
+      toast.error('Upload failed');
     } finally {
       setIsUploadingIcon(false);
       if (fileInputRef.current) {

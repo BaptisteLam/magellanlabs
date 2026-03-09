@@ -54,7 +54,7 @@ export function Contact() {
       await update(contact.id, { status: newStatus });
       toast.success('Status updated');
     } catch {
-      toast.error('Error updating');
+      toast.error('Failed to update status');
     } finally {
       setUpdatingId(null);
     }
@@ -62,7 +62,7 @@ export function Contact() {
 
   const handleCreateContact = async () => {
     if (!newContact.name || !newContact.email) {
-      toast.error('Name and email required');
+      toast.error('Name and email are required');
       return;
     }
     setIsCreating(true);
@@ -79,7 +79,7 @@ export function Contact() {
       setShowNewContactDialog(false);
       setNewContact({ name: '', email: '', phone: '', message: '' });
     } catch {
-      toast.error('Error creating contact');
+      toast.error('Failed to create contact');
     } finally {
       setIsCreating(false);
     }
@@ -223,11 +223,11 @@ export function Contact() {
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-[200px] font-medium">Name</TableHead>
               <TableHead className="w-[220px] font-medium">Email</TableHead>
-              <TableHead className="font-medium">Last message</TableHead>
+              <TableHead className="font-medium">Latest message</TableHead>
               <TableHead className="w-[140px] font-medium">Phone</TableHead>
               <TableHead className="w-[140px] font-medium">
                 <div className="flex items-center gap-1">
-                  Date added
+                  Added on
                   <ArrowDown className="h-3 w-3" />
                 </div>
               </TableHead>

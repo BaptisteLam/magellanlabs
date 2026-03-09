@@ -41,9 +41,7 @@ const Header = () => {
   };
   
   const navigation = [
-    { name: 'Company', href: '/about' },
     { name: 'Pricing', href: '/pricing' },
-    { name: 'Support', href: '/contact' },
   ];
 
   useEffect(() => {
