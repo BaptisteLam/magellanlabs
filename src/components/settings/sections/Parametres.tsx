@@ -210,7 +210,7 @@ export function Parametres() {
                 <SelectItem value="system">
                   <div className="flex items-center gap-2">
                     <Monitor className="h-4 w-4" />
-                    Système
+                    System
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -221,19 +221,19 @@ export function Parametres() {
 
       <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
         <CardHeader>
-          <CardTitle>Langue</CardTitle>
+          <CardTitle>Language</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <Label htmlFor="language" className="text-foreground">
-              Langue de l'interface
+              Interface language
             </Label>
             <Select value={language} onValueChange={setLanguage}>
               <SelectTrigger className="w-[180px] rounded-[8px]">
-                <SelectValue placeholder="Sélectionner une langue" />
+                <SelectValue placeholder="Select a language" />
               </SelectTrigger>
               <SelectContent className="rounded-[8px]">
-                <SelectItem value="fr">Français</SelectItem>
+                <SelectItem value="fr">French</SelectItem>
                 <SelectItem value="en">English</SelectItem>
               </SelectContent>
             </Select>
@@ -243,16 +243,16 @@ export function Parametres() {
 
       <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
         <CardHeader>
-          <CardTitle>Sauvegarde automatique</CardTitle>
+          <CardTitle>Auto-save</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="auto-save" className="text-foreground">
-                Activer la sauvegarde automatique
+                Enable auto-save
               </Label>
               <p className="text-sm text-muted-foreground">
-                Sauvegarde automatiquement vos modifications
+                Automatically saves your changes
               </p>
             </div>
             <Switch id="auto-save" checked={autoSave} onCheckedChange={setAutoSave} />
@@ -265,15 +265,15 @@ export function Parametres() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-red-500">
             <LogOut className="h-5 w-5" />
-            Déconnexion
+            Log out
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <p className="text-sm text-foreground font-medium">Se déconnecter du compte</p>
+              <p className="text-sm text-foreground font-medium">Log out of your account</p>
               <p className="text-sm text-muted-foreground">
-                Vous serez redirigé vers la page d'inscription
+                You will be redirected to the sign-up page
               </p>
             </div>
             <button
@@ -294,7 +294,7 @@ export function Parametres() {
               }}
             >
               <LogOut className="h-4 w-4" />
-              {isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
+              {isLoggingOut ? 'Logging out...' : 'Log out'}
             </button>
           </div>
         </CardContent>

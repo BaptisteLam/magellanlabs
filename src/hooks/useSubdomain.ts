@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
 
 /**
- * Hook pour détecter si on est sur un sous-domaine
- * Retourne le nom du sous-domaine ou null si on est sur le domaine principal
+ * Hook to detect if we are on a subdomain
+ * Returns the subdomain name or null if on the main domain
  */
 export function useSubdomain(): string | null {
   return useMemo(() => {
     const hostname = window.location.hostname;
 
-    // En développement (localhost)
+    // In development (localhost)
     if (
       hostname === 'localhost' ||
       hostname === '127.0.0.1'
@@ -16,7 +16,7 @@ export function useSubdomain(): string | null {
       return null;
     }
 
-    // Domaines de plateforme à ignorer (pas de subdomain)
+    // Platform domains to ignore (no subdomain)
     const platformDomains = [
       '.pages.dev',           // Cloudflare Pages
       '.netlify.app',         // Netlify
@@ -26,7 +26,7 @@ export function useSubdomain(): string | null {
       '.fly.dev',             // Fly.io
     ];
 
-    // Si c'est un domaine de plateforme, pas de subdomain
+    // If it's a platform domain, no subdomain
     for (const domain of platformDomains) {
       if (hostname.endsWith(domain) || hostname === domain.substring(1)) {
         return null;
@@ -35,11 +35,11 @@ export function useSubdomain(): string | null {
 
     const parts = hostname.split('.');
 
-    // Si on a au moins 3 parties (ex: subdomain.builtbymagellan.com)
+    // If we have at least 3 parts (e.g., subdomain.builtbymagellan.com)
     if (parts.length >= 3) {
       const subdomain = parts[0];
 
-      // Ignorer 'www' comme sous-domaine
+      // Ignore 'www' as a subdomain
       if (subdomain !== 'www' && hostname.includes('builtbymagellan.com')) {
         return subdomain;
       }

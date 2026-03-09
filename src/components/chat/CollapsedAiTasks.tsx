@@ -28,7 +28,7 @@ export function CollapsedAiTasks({
   const [elapsedTime, setElapsedTime] = useState(0);
   const [estimatedTime, setEstimatedTime] = useState<number | null>(null);
   
-  // Mise à jour du temps écoulé en temps réel
+  // Real-time elapsed time update
   useEffect(() => {
     if (!isLoading || !startTime) {
       setElapsedTime(0);
@@ -42,26 +42,26 @@ export function CollapsedAiTasks({
     return () => clearInterval(interval);
   }, [isLoading, startTime]);
   
-  // Auto-collapse quand la génération est terminée
+  // Auto-collapse when generation is complete
   useEffect(() => {
     if (autoCollapse && !isLoading && events.length > 0) {
       const timer = setTimeout(() => setIsExpanded(false), 800);
       return () => clearTimeout(timer);
     }
-    // Auto-expand pendant le chargement
+    // Auto-expand during loading
     if (autoExpand && isLoading) {
       setIsExpanded(true);
     }
   }, [autoCollapse, autoExpand, isLoading, events.length]);
 
-  // Calcul du fichier en cours de modification
+  // Calculate the file currently being modified
   const currentFile = useMemo(() => {
     const inProgressEvents = events.filter(e => e.status === 'in-progress');
     const lastInProgress = inProgressEvents[inProgressEvents.length - 1];
     return lastInProgress?.file || null;
   }, [events]);
 
-  // Estimation du temps restant
+  // Estimate remaining time
   useEffect(() => {
     if (!isLoading) {
       setEstimatedTime(null);
@@ -69,60 +69,60 @@ export function CollapsedAiTasks({
     }
 
     const completedEvents = events.filter(e => e.status === 'completed');
-    const totalEvents = Math.max(events.length, 5); // Estimer au moins 5 étapes
+    const totalEvents = Math.max(events.length, 5); // Estimate at least 5 steps
 
     if (completedEvents.length > 2 && elapsedTime > 0) {
-      // Calcul basé sur la vitesse moyenne
+      // Calculation based on average speed
       const avgTimePerEvent = elapsedTime / completedEvents.length;
       const remainingEvents = Math.max(totalEvents - completedEvents.length, 2);
       const estimated = avgTimePerEvent * remainingEvents;
-      setEstimatedTime(Math.max(estimated, 1000)); // Minimum 1 seconde
+      setEstimatedTime(Math.max(estimated, 1000)); // Minimum 1 second
     } else if (elapsedTime > 0) {
-      // Estimation initiale : 10-20 secondes pour une génération moyenne
+      // Initial estimate: 10-20 seconds for an average generation
       const baseEstimate = 15000;
       setEstimatedTime(Math.max(baseEstimate - elapsedTime, 2000));
     }
   }, [events, elapsedTime, isLoading]);
 
-  // Calcul de la progression amélioré
+  // Improved progress calculation
   const progress = useMemo(() => {
     if (!isLoading) return 100;
 
     const completedEvents = events.filter(e => e.status === 'completed').length;
     const inProgressEvents = events.filter(e => e.status === 'in-progress').length;
 
-    // Déterminer le nombre total d'événements attendus basé sur la phase
+    // Determine total expected events based on the phase
     const phases = events.map(e => e.phase).filter(Boolean);
     const currentPhase = phases[phases.length - 1];
 
-    // Estimation du nombre total d'étapes en fonction de la phase
-    let estimatedTotal = 10; // Par défaut
+    // Estimate total steps based on the phase
+    let estimatedTotal = 10; // Default
     if (currentPhase === 'analyze') {
       estimatedTotal = 2;
     } else if (currentPhase === 'context') {
       estimatedTotal = 4;
     } else if (currentPhase === 'generation') {
-      // Pendant la génération, estimer selon le nombre de fichiers déjà créés
+      // During generation, estimate based on the number of files already created
       const fileEvents = events.filter(e => e.file).length;
-      estimatedTotal = Math.max(fileEvents + 3, 8); // Au moins 8 étapes
+      estimatedTotal = Math.max(fileEvents + 3, 8); // At least 8 steps
     } else if (currentPhase === 'validation') {
       estimatedTotal = completedEvents + 2;
     }
 
     const totalEvents = Math.max(events.length, estimatedTotal);
 
-    if (completedEvents === 0 && inProgressEvents === 0) return 5; // Début
+    if (completedEvents === 0 && inProgressEvents === 0) return 5; // Start
 
-    // Ajouter un bonus pour les événements en cours (compte comme 0.5)
+    // Add a bonus for in-progress events (counts as 0.5)
     const effectiveCompleted = completedEvents + (inProgressEvents * 0.5);
 
-    // Progress de 5% à 95% basé sur les événements complétés
+    // Progress from 5% to 95% based on completed events
     const calculatedProgress = 5 + (effectiveCompleted / totalEvents) * 90;
 
     return Math.min(Math.max(calculatedProgress, 5), 95);
   }, [events, isLoading]);
 
-  // Format du temps
+  // Time formatting
   const formatTime = (ms: number) => {
     const seconds = Math.floor(ms / 1000);
     if (seconds < 60) return `${seconds}s`;

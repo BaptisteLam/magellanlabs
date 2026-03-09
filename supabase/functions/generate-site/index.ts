@@ -12,7 +12,7 @@ interface ProjectFile {
   type: string;
 }
 
-// ============= UTILITAIRES =============
+// ============= UTILITIES =============
 
 function cleanFileContent(content: string): string {
   let cleaned = content.trim();
@@ -35,7 +35,7 @@ function getFileType(extension: string): string {
   return typeMap[extension.toLowerCase()] || 'text';
 }
 
-// Détection du secteur d'activité pour fallback thématique
+// Business sector detection for thematic fallback
 function detectSector(prompt: string): 'restaurant' | 'tech' | 'nature' | 'luxury' | 'health' | 'neutral' {
   const lower = prompt.toLowerCase();
   
@@ -58,7 +58,7 @@ function detectSector(prompt: string): 'restaurant' | 'tech' | 'nature' | 'luxur
   return 'neutral';
 }
 
-// ============= CSS FALLBACKS THÉMATIQUES =============
+// ============= THEMATIC CSS FALLBACKS =============
 
 const CSS_THEMES: Record<string, string> = {
   restaurant: `
@@ -108,7 +108,7 @@ function getThemedFallbackCSS(sector: string): string {
   const themeVars = CSS_THEMES[sector] || CSS_THEMES.neutral;
   
   return `/* ============================================
-   FALLBACK CSS - Thème: ${sector}
+   FALLBACK CSS - Theme: ${sector}
    ============================================ */
 
 :root {
@@ -283,10 +283,10 @@ p { color: var(--text-light); margin-bottom: 1rem; }
 .shadow-lg { box-shadow: var(--shadow-lg); }
 
 /* ============================================
-   STYLES NATIFS (fallback pour éléments sans classes)
+   NATIVE STYLES (fallback for elements without classes)
    ============================================ */
 
-/* Formulaires - éléments natifs */
+/* Forms - native elements */
 form { max-width: 600px; }
 form > * + * { margin-top: 1rem; }
 
@@ -355,7 +355,7 @@ button:hover, input[type="submit"]:hover, input[type="button"]:hover {
   box-shadow: var(--shadow-lg);
 }
 
-/* Footer natif */
+/* Native footer */
 footer {
   background: var(--secondary);
   color: white;
@@ -370,7 +370,7 @@ footer p { color: rgba(255,255,255,0.6); }
 footer ul { list-style: none; }
 footer ul li + li { margin-top: 0.5rem; }
 
-/* Icônes sociales basiques */
+/* Basic social icons */
 footer svg, .social svg, .social-icons svg {
   width: 24px;
   height: 24px;
@@ -381,7 +381,7 @@ footer svg, .social svg, .social-icons svg {
 `;
 }
 
-// JS de base pour fallback
+// Base JS for fallback
 const BASE_JS = `document.addEventListener('DOMContentLoaded', function() {
   console.log('Site loaded');
   
@@ -431,10 +431,10 @@ const BASE_JS = `document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       const btn = this.querySelector('button[type="submit"]');
       const originalText = btn.textContent;
-      btn.textContent = 'Envoi...';
+      btn.textContent = 'Sending...';
       btn.disabled = true;
       setTimeout(() => {
-        btn.textContent = 'Envoyé ✓';
+        btn.textContent = 'Sent ✓';
         btn.style.background = '#10b981';
         setTimeout(() => { btn.textContent = originalText; btn.style.background = ''; btn.disabled = false; this.reset(); }, 3000);
       }, 1500);
@@ -448,7 +448,7 @@ const BASE_JS = `document.addEventListener('DOMContentLoaded', function() {
 });
 `;
 
-// ============= VALIDATION STRUCTURELLE =============
+// ============= STRUCTURAL VALIDATION =============
 
 interface ValidationResult {
   valid: boolean;
@@ -460,7 +460,7 @@ function validateHTML(html: string): ValidationResult {
   const issues: string[] = [];
   let score = 0;
   
-  // Sections requises
+  // Required sections
   const sections = [
     { id: 'hero', weight: 2 },
     { id: 'services', weight: 2 },
@@ -473,31 +473,31 @@ function validateHTML(html: string): ValidationResult {
     if (html.includes(`id="${section.id}"`) || html.includes(`class="${section.id}"`) || html.includes(`class=".*${section.id}.*"`)) {
       score += section.weight;
     } else {
-      issues.push(`Section manquante: ${section.id}`);
+      issues.push(`Missing section: ${section.id}`);
     }
   }
   
-  // Vérifications additionnelles
+  // Additional checks
   if (html.includes('<nav') || html.includes('class="navbar"') || html.includes('class="nav-links"')) {
     score += 1;
   } else {
-    issues.push('Navigation manquante');
+    issues.push('Missing navigation');
   }
-  
+
   if (html.includes('<form') || html.includes('contactForm')) {
     score += 1;
   } else {
-    issues.push('Formulaire de contact manquant');
+    issues.push('Missing contact form');
   }
-  
-  // Détection de problèmes
+
+  // Problem detection
   if (html.includes('cdn.tailwindcss.com') || html.includes('tailwindcdn')) {
-    issues.push('Tailwind CDN détecté (interdit)');
+    issues.push('Tailwind CDN detected (forbidden)');
     score -= 5;
   }
-  
+
   if (html.includes('<style>') && html.match(/<style[^>]*>[\s\S]{200,}<\/style>/)) {
-    issues.push('Style inline important détecté (devrait être dans styles.css)');
+    issues.push('Significant inline style detected (should be in styles.css)');
   }
   
   return {
@@ -513,21 +513,21 @@ function validateCSS(css: string): ValidationResult {
   
   const lines = css.split('\n').length;
   
-  // Seuil minimum: 80 lignes pour un CSS professionnel
+  // Minimum threshold: 80 lines for professional CSS
   if (lines >= 100) {
     score += 3;
   } else if (lines >= 50) {
     score += 1;
-    issues.push(`CSS court (${lines} lignes, recommandé: 100+)`);
+    issues.push(`CSS too short (${lines} lines, recommended: 100+)`);
   } else {
-    issues.push(`CSS trop court (${lines} lignes)`);
+    issues.push(`CSS too short (${lines} lines)`);
   }
-  
-  // Vérifications structurelles
+
+  // Structural checks
   if (css.includes(':root') && css.includes('--primary')) {
     score += 2;
   } else {
-    issues.push('Variables CSS manquantes (:root avec --primary)');
+    issues.push('Missing CSS variables (:root with --primary)');
   }
   
   if (css.includes('@media')) {

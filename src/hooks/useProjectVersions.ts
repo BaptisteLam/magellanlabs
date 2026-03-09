@@ -57,7 +57,7 @@ export function useProjectVersions(sessionId: string | undefined): UseProjectVer
       console.error('Error fetching versions:', error);
       // Don't show toast for empty versions (Worker not deployed yet)
       if (error.message !== 'Worker not found') {
-        toast.error('Erreur lors du chargement des versions');
+        toast.error('Error loading versions');
       }
       setVersions([]);
     } finally {
@@ -76,12 +76,12 @@ export function useProjectVersions(sessionId: string | undefined): UseProjectVer
 
       if (error) throw error;
 
-      toast.success(`Restauré vers la version`);
+      toast.success(`Restored to version`);
       await fetchVersions();
       return true;
     } catch (error: any) {
       console.error('Error rolling back:', error);
-      toast.error('Erreur lors de la restauration');
+      toast.error('Error restoring version');
       return false;
     } finally {
       setIsRollingBack(false);

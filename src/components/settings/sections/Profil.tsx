@@ -60,7 +60,7 @@ export function Profil() {
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-      toast.error('Erreur lors du chargement du profil');
+      toast.error('Error loading profile');
     } finally {
       setIsLoading(false);
     }
@@ -78,10 +78,10 @@ export function Profil() {
       if (error) throw error;
 
       setProfile(prev => prev ? { ...prev, display_name: displayName.trim() || null } : null);
-      toast.success('Profil mis à jour');
+      toast.success('Profile updated');
     } catch (error) {
       console.error('Error saving profile:', error);
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error('Error saving profile');
     } finally {
       setIsSaving(false);
     }
@@ -92,11 +92,11 @@ export function Profil() {
     if (!file || !profile) return;
 
     if (!file.type.startsWith('image/')) {
-      toast.error('Veuillez sélectionner une image');
+      toast.error('Please select an image');
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('L\'image ne doit pas dépasser 2 Mo');
+      toast.error('Image must not exceed 2 MB');
       return;
     }
 
@@ -123,10 +123,10 @@ export function Profil() {
       if (updateError) throw updateError;
 
       setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
-      toast.success('Photo de profil mise à jour');
+      toast.success('Profile picture updated');
     } catch (error) {
       console.error('Error uploading avatar:', error);
-      toast.error('Erreur lors de l\'upload');
+      toast.error('Error uploading file');
     } finally {
       setIsUploadingAvatar(false);
       if (avatarInputRef.current) avatarInputRef.current.value = '';
@@ -150,8 +150,8 @@ export function Profil() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Profil</h2>
-        <p className="text-muted-foreground">Gérez vos informations personnelles</p>
+        <h2 className="text-2xl font-bold text-foreground">Profile</h2>
+        <p className="text-muted-foreground">Manage your personal information</p>
       </div>
 
       {/* Avatar Card */}
@@ -159,7 +159,7 @@ export function Profil() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <User className="h-5 w-5" />
-            Photo de profil
+            Profile picture
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -180,7 +180,7 @@ export function Profil() {
                   "relative w-20 h-20 rounded-full border-2 border-dashed border-border/50 overflow-hidden group transition-colors hover:border-[#03A5C0]",
                   isUploadingAvatar && "opacity-50 cursor-wait"
                 )}
-                title="Cliquez pour changer la photo"
+                title="Click to change the photo"
               >
                 {profile?.avatar_url ? (
                   <>
@@ -213,10 +213,10 @@ export function Profil() {
                 {displayName || profile?.email}
               </p>
               <p className="text-xs text-muted-foreground">
-                Cliquez sur l'avatar pour changer la photo
+                Click on the avatar to change the photo
               </p>
               <p className="text-xs text-muted-foreground">
-                JPG, PNG ou GIF · max 2 Mo
+                JPG, PNG or GIF · max 2 MB
               </p>
             </div>
           </div>
@@ -228,29 +228,29 @@ export function Profil() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Mail className="h-5 w-5" />
-            Informations personnelles
+            Personal information
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Email (read-only) */}
           <div className="space-y-1.5">
-            <Label className="text-foreground">Adresse e-mail</Label>
+            <Label className="text-foreground">Email address</Label>
             <Input
               value={profile?.email || ''}
               disabled
               className="rounded-lg bg-muted/30 cursor-not-allowed"
             />
             <p className="text-xs text-muted-foreground">
-              L'adresse e-mail ne peut pas être modifiée ici
+              The email address cannot be changed here
             </p>
           </div>
 
           {/* Display name */}
           <div className="space-y-1.5">
-            <Label htmlFor="display-name" className="text-foreground">Nom affiché</Label>
+            <Label htmlFor="display-name" className="text-foreground">Display name</Label>
             <Input
               id="display-name"
-              placeholder="Votre nom complet"
+              placeholder="Your full name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               className="rounded-lg"
@@ -277,7 +277,7 @@ export function Profil() {
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+              {isSaving ? 'Saving...' : 'Save'}
             </Button>
           </div>
         </CardContent>

@@ -95,13 +95,13 @@ export function CustomDomainDialog({
               <Input
                 id="domain"
                 type="text"
-                placeholder="exemple.com"
+                placeholder="example.com"
                 value={customDomain}
                 onChange={(e) => setCustomDomain(e.target.value)}
                 className="bg-[#181818] border-[#3a3a3b] text-foreground"
               />
               <p className="text-xs text-muted-foreground">
-                Cloudflare recherchera automatiquement les enregistrements DNS courants et les importera pour vous.
+                Cloudflare will automatically search for common DNS records and import them for you.
               </p>
             </div>
 
@@ -118,10 +118,10 @@ export function CustomDomainDialog({
               {isAnalyzing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analyse en cours...
+                  Analyzing...
                 </>
               ) : (
-                'Ajouter le domaine'
+                'Add domain'
               )}
             </Button>
           </div>
@@ -132,29 +132,29 @@ export function CustomDomainDialog({
                 <div className="flex items-center gap-2 mb-2">
                   <div className="text-sm font-medium text-foreground">{customDomain}</div>
                   <div className="text-xs text-muted-foreground px-2 py-1 bg-[#1f1f20] rounded">
-                    Inactif (nécessite une configuration DNS)
+                    Inactive (requires DNS configuration)
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-foreground">Terminer la configuration DNS</h3>
+                <h3 className="text-sm font-semibold text-foreground">Complete DNS configuration</h3>
                 
                 <div className="space-y-3">
                   <div>
-                    <p className="text-sm font-medium text-foreground mb-2">1. Connectez-vous à votre fournisseur DNS</p>
-                    <p className="text-xs text-muted-foreground mb-3">Ajoutez l'enregistrement CNAME suivant :</p>
+                    <p className="text-sm font-medium text-foreground mb-2">1. Log in to your DNS provider</p>
+                    <p className="text-xs text-muted-foreground mb-3">Add the following CNAME record:</p>
                     
                     <div className="space-y-2">
                       <div className="bg-[#181818] p-3 rounded border border-[#3a3a3b]">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-muted-foreground">Nom</span>
+                          <span className="text-xs text-muted-foreground">Name</span>
                           <button
                             onClick={() => copyToClipboard(customDomain)}
                             className="text-xs hover:underline"
                             style={{ color: 'rgb(3,165,192)' }}
                           >
-                            Cliquez pour copier
+                            Click to copy
                           </button>
                         </div>
                         <div className="text-sm text-foreground font-mono">{customDomain}</div>
@@ -162,13 +162,13 @@ export function CustomDomainDialog({
 
                       <div className="bg-[#181818] p-3 rounded border border-[#3a3a3b]">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-muted-foreground">Cible</span>
+                          <span className="text-xs text-muted-foreground">Target</span>
                           <button
                             onClick={() => copyToClipboard(cnameTarget)}
                             className="text-xs hover:underline"
                             style={{ color: 'rgb(3,165,192)' }}
                           >
-                            Cliquez pour copier
+                            Click to copy
                           </button>
                         </div>
                         <div className="text-sm text-foreground font-mono">{cnameTarget}</div>
@@ -177,17 +177,17 @@ export function CustomDomainDialog({
                   </div>
 
                   <div>
-                    <p className="text-sm font-medium text-foreground mb-2">2. Enregistrez vos modifications</p>
+                    <p className="text-sm font-medium text-foreground mb-2">2. Save your changes</p>
                     <p className="text-xs text-muted-foreground">
-                      Une fois les enregistrements ajoutés, vérifiez les enregistrements DNS pour initier la vérification.
+                      Once the records are added, verify the DNS records to initiate verification.
                     </p>
                   </div>
                 </div>
 
                 <div className="p-3 bg-[#181818] rounded border border-[#3a3a3b]">
                   <p className="text-xs text-muted-foreground">
-                    <strong>{customDomain}</strong> sera automatiquement activé si vos enregistrements sont correctement configurés. 
-                    Les modifications DNS auprès de votre fournisseur peuvent prendre jusqu'à 24 heures pour être mises à jour globalement.
+                    <strong>{customDomain}</strong> will be automatically activated if your records are correctly configured.
+                    DNS changes at your provider may take up to 24 hours to propagate globally.
                   </p>
                 </div>
               </div>
@@ -201,7 +201,7 @@ export function CustomDomainDialog({
                   color: 'rgb(3,165,192)'
                 }}
               >
-                Terminer
+                Done
               </Button>
             </div>
           </div>

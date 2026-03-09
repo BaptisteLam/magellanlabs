@@ -119,9 +119,9 @@ export function SiteWeb() {
       
       setProject(prev => prev ? { ...prev, title: editedTitle.trim() } : null);
       setIsEditingTitle(false);
-      toast.success('Nom du projet mis à jour');
+      toast.success('Project name updated');
     } catch (error) {
-      toast.error('Erreur lors de la mise à jour');
+      toast.error('Error updating');
     }
   };
 
@@ -130,9 +130,9 @@ export function SiteWeb() {
   const getSubdomain = () => {
     if (project?.public_url) {
       const match = project.public_url.match(/^https?:\/\/([^.]+)\.builtbymagellan\.com/);
-      return match ? match[1] : project.title?.toLowerCase().replace(/\s+/g, '-') || 'projet';
+      return match ? match[1] : project.title?.toLowerCase().replace(/\s+/g, '-') || 'project';
     }
-    return project?.title?.toLowerCase().replace(/\s+/g, '-') || 'projet';
+    return project?.title?.toLowerCase().replace(/\s+/g, '-') || 'project';
   };
 
   const togglePage = (path: string) => {
@@ -168,9 +168,9 @@ export function SiteWeb() {
         .eq('id', project.id);
 
       if (error) throw error;
-      toast.success('Descriptions SEO enregistrées');
+      toast.success('SEO descriptions saved');
     } catch (error) {
-      toast.error('Erreur lors de l\'enregistrement');
+      toast.error('Error saving');
     } finally {
       setIsSavingSEO(false);
     }
@@ -190,13 +190,13 @@ export function SiteWeb() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Site Web</h2>
-          <p className="text-muted-foreground">Aucun projet sélectionné</p>
+          <h2 className="text-2xl font-bold text-foreground">Website</h2>
+          <p className="text-muted-foreground">No project selected</p>
         </div>
         <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
           <CardContent className="py-12 text-center">
             <Globe className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground mb-4">Créez votre premier projet pour commencer</p>
+            <p className="text-muted-foreground mb-4">Create your first project to get started</p>
             <Button 
               onClick={() => navigate('/builder')}
               className="rounded-full px-6 py-0 border transition-all"
@@ -206,7 +206,7 @@ export function SiteWeb() {
                 color: 'rgb(3,165,192)' 
               }}
             >
-              Nouveau projet
+              New project
             </Button>
           </CardContent>
         </Card>
@@ -217,11 +217,11 @@ export function SiteWeb() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Site Web</h2>
-        <p className="text-muted-foreground">Gérez votre site et ses paramètres</p>
+        <h2 className="text-2xl font-bold text-foreground">Website</h2>
+        <p className="text-muted-foreground">Manage your site and its settings</p>
       </div>
 
-      {/* Widget Preview du site */}
+      {/* Site Preview Widget */}
       <Card className="rounded-[8px] overflow-hidden border border-border/50 bg-background/50 shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -248,7 +248,7 @@ export function SiteWeb() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span>{project.title || 'Sans titre'}</span>
+                  <span>{project.title || 'Untitled'}</span>
                   <button
                     onClick={handleStartEditTitle}
                     className="p-1 hover:bg-muted rounded transition-colors"
@@ -269,7 +269,7 @@ export function SiteWeb() {
                   "text-xs font-medium",
                   isOnline ? "text-green-600" : "text-orange-500"
                 )}>
-                  {isOnline ? 'En ligne' : 'Déconnecté'}
+                  {isOnline ? 'Online' : 'Offline'}
                 </span>
               </div>
               
@@ -284,7 +284,7 @@ export function SiteWeb() {
                 }}
               >
                 <Pencil className="h-4 w-4" />
-                Modifier
+                Edit
               </Button>
             </div>
           </div>
@@ -295,28 +295,28 @@ export function SiteWeb() {
             {project.thumbnail_url ? (
               <img
                 src={project.thumbnail_url}
-                alt={`Aperçu de ${project.title || 'votre site'}`}
+                alt={`Preview of ${project.title || 'your site'}`}
                 className="w-full h-full object-cover object-top"
               />
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                <p>Aucun aperçu disponible</p>
+                <p>No preview available</p>
               </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Widget Nom de domaine */}
+      {/* Domain Name Widget */}
       <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Link2 className="h-5 w-5" />
-            Nom de domaine
+            Domain name
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Domaine Magellan */}
+          {/* Magellan Domain */}
           <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border/50">
             <div className="flex items-center gap-3">
               <div className={cn(
@@ -328,7 +328,7 @@ export function SiteWeb() {
                   <span className="text-foreground">{getSubdomain()}</span>
                   <span className="text-muted-foreground">.builtbymagellan.com</span>
                 </p>
-                <p className="text-xs text-muted-foreground">Domaine Magellan</p>
+                <p className="text-xs text-muted-foreground">Magellan Domain</p>
               </div>
             </div>
             {isOnline && (
@@ -343,12 +343,12 @@ export function SiteWeb() {
             )}
           </div>
 
-          {/* Domaine personnalisé */}
+          {/* Custom Domain */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Domaine personnalisé</label>
+            <label className="text-sm font-medium text-foreground">Custom domain</label>
             <div className="flex gap-2">
               <Input
-                placeholder="monsite.com"
+                placeholder="mysite.com"
                 value={customDomain}
                 onChange={(e) => setCustomDomain(e.target.value)}
                 className="flex-1 rounded-lg"
@@ -362,23 +362,23 @@ export function SiteWeb() {
                   color: 'rgb(3,165,192)'
                 }}
               >
-                Connecter
+                Connect
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Ajoutez votre propre nom de domaine pour personnaliser l'URL de votre site
+              Add your own domain name to customize your site's URL
             </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Widget SEO */}
+      {/* SEO Widget */}
       <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Globe className="h-5 w-5" />
-              SEO - Descriptions des pages
+              SEO - Page Descriptions
             </CardTitle>
             <Button
               onClick={handleSaveSEO}
@@ -391,14 +391,14 @@ export function SiteWeb() {
               }}
             >
               <Save className="h-4 w-4" />
-              {isSavingSEO ? 'Enregistrement...' : 'Enregistrer'}
+              {isSavingSEO ? 'Saving...' : 'Save'}
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
           {pageSEO.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
-              Aucune page HTML trouvée dans le projet
+              No HTML pages found in the project
             </p>
           ) : (
             pageSEO.map((page) => (
@@ -425,7 +425,7 @@ export function SiteWeb() {
                 <CollapsibleContent>
                   <div className="p-3 border border-t-0 border-border/50 rounded-b-lg bg-background">
                     <Textarea
-                      placeholder="Description de la page pour les moteurs de recherche (max 250 caractères)"
+                      placeholder="Page description for search engines (max 250 characters)"
                       value={page.description}
                       onChange={(e) => updatePageSEO(page.path, e.target.value)}
                       maxLength={250}

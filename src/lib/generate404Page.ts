@@ -1,7 +1,7 @@
 /**
- * Génère une page 404 stylisée pour l'affichage dans la preview
- * Utilisée quand un utilisateur navigue vers une page inexistante
- * Complètement isolée du SaaS Magellan - navigation uniquement dans la preview
+ * Generates a styled 404 page for display in the preview
+ * Used when a user navigates to a non-existent page
+ * Completely isolated from the Magellan SaaS - navigation only within the preview
  */
 export function generate404Page(isDark: boolean = false): string {
   const logoUrl = isDark 
@@ -9,11 +9,11 @@ export function generate404Page(isDark: boolean = false): string {
     : '/assets/magellan-logo-light.png';
     
   return `<!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Page non trouvée - Magellan</title>
+  <title>Page Not Found - Magellan</title>
   <style>
     * {
       margin: 0;
@@ -104,31 +104,31 @@ export function generate404Page(isDark: boolean = false): string {
 <body>
   <div class="container">
     <div class="error-code">404</div>
-    <h1>Page non trouvée</h1>
-    <p>La page que vous recherchez n'existe pas ou n'a pas encore été créée dans ce projet.</p>
+    <h1>Page Not Found</h1>
+    <p>The page you are looking for does not exist or has not yet been created in this project.</p>
     <button class="button" onclick="navigateToHome(event)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
         <polyline points="9 22 9 12 15 12 15 22"></polyline>
       </svg>
-      Retour à l'accueil
+      Back to home
     </button>
   </div>
   
   <script>
     (function() {
-      console.log('🏠 404 Page - Script de navigation chargé');
+      console.log('🏠 404 Page - Navigation script loaded');
       
-      // Navigation isolée dans la preview uniquement - retour à index.html
+      // Navigation isolated within the preview only - return to index.html
       window.navigateToHome = function(e) {
         if (e) {
           e.preventDefault();
           e.stopPropagation();
         }
         
-        console.log('🏠 Retour à l\'accueil de la preview (index.html)');
+        console.log('🏠 Returning to preview home (index.html)');
         
-        // Envoyer message au parent pour charger index.html dans la preview
+        // Send message to parent to load index.html in the preview
         window.parent.postMessage({
           type: 'navigate',
           file: 'index.html'
@@ -137,7 +137,7 @@ export function generate404Page(isDark: boolean = false): string {
         return false;
       };
       
-      console.log('✅ 404 - Bouton de navigation configuré');
+      console.log('✅ 404 - Navigation button configured');
     })();
   </script>
 </body>

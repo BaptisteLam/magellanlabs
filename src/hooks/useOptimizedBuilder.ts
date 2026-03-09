@@ -1,6 +1,6 @@
 /**
- * Hook combiné pour builder sessions avec toutes les optimisations
- * Intègre: cache IndexedDB, sync manager, hot reload, lazy loading
+ * Combined hook for builder sessions with all optimizations
+ * Integrates: IndexedDB cache, sync manager, hot reload, lazy loading
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -15,7 +15,7 @@ interface UseOptimizedBuilderOptions {
   initialFiles?: Record<string, string>;
   autoSave?: boolean;
   debounceMs?: number;
-  autoLoad?: boolean; // Désactiver le chargement automatique si false
+  autoLoad?: boolean; // Disable automatic loading if false
 }
 
 export function useOptimizedBuilder({
@@ -23,15 +23,15 @@ export function useOptimizedBuilder({
   initialFiles = {},
   autoSave = true,
   debounceMs = 2000,
-  autoLoad = true // Par défaut, charger automatiquement
+  autoLoad = true // By default, load automatically
 }: UseOptimizedBuilderOptions) {
   const [projectFiles, setProjectFiles] = useState<Record<string, string>>(initialFiles);
   const [visibleFiles, setVisibleFiles] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  // ✅ FIX: Flag pour indiquer que des fichiers ont été chargés au moins une fois
+  // ✅ FIX: Flag to indicate that files have been loaded at least once
   const [hasLoadedFiles, setHasLoadedFiles] = useState(false);
 
-  // Sync manager pour sauvegarde optimisée
+  // Sync manager for optimized saving
   const {
     syncStatus,
     lastSyncTime,
@@ -46,18 +46,18 @@ export function useOptimizedBuilder({
     autoSync: autoSave
   });
 
-  // Préchargement intelligent
+  // Smart preloading
   const {
     preloadedSessions,
     getPreloadedSession,
     preloadSession
   } = usePreloadSessions();
 
-  // Hot reload pour updates instantanés
+  // Hot reload for instant updates
   const hotReload = useHotReload(projectFiles);
 
   /**
-   * Charge la session au montage (seulement si autoLoad = true)
+   * Load the session on mount (only if autoLoad = true)
    */
   useEffect(() => {
     if (!autoLoad) {
@@ -69,7 +69,7 @@ export function useOptimizedBuilder({
       setIsLoading(true);
 
       try {
-        // 1. Essayer le cache préchargé d'abord
+        // 1. Try the preloaded cache first
         const preloaded = getPreloadedSession(sessionId);
         if (preloaded) {
           console.log('⚡ Using preloaded session');
@@ -78,7 +78,7 @@ export function useOptimizedBuilder({
           return;
         }
 
-        // 2. Essayer le cache IndexedDB
+        // 2. Try the IndexedDB cache
         const cached = await loadFromCache();
         if (cached) {
           console.log('📦 Loaded from IndexedDB cache');
@@ -87,7 +87,7 @@ export function useOptimizedBuilder({
           return;
         }
 
-        // 3. Précharger depuis Supabase
+        // 3. Preload from Supabase
         const files = await preloadSession(sessionId);
         if (files) {
           console.log('🌐 Loaded from Supabase');
@@ -104,14 +104,14 @@ export function useOptimizedBuilder({
   }, [sessionId, autoLoad, getPreloadedSession, loadFromCache, preloadSession]);
 
   /**
-   * Met à jour les fichiers avec lazy loading
+   * Update files with lazy loading
    */
   const updateFiles = useCallback((
     newFiles: Record<string, string>,
     triggerSave: boolean = true
   ) => {
-    // ✅ FIX: Mettre à jour IMMÉDIATEMENT avec TOUS les fichiers
-    // Sans passer par LazyFileLoader qui peut retourner des fichiers incomplets
+    // ✅ FIX: Update IMMEDIATELY with ALL files
+    // Without going through LazyFileLoader which may return incomplete files
     setProjectFiles(prev => {
       const merged = { ...prev, ...newFiles };
       console.log('📁 updateFiles: Updated projectFiles', {
@@ -122,24 +122,24 @@ export function useOptimizedBuilder({
       return merged;
     });
 
-    // ✅ FIX: Marquer que des fichiers ont été chargés
+    // ✅ FIX: Mark that files have been loaded
     if (Object.keys(newFiles).length > 0) {
       setHasLoadedFiles(true);
     }
 
-    // Lazy loading en arrière-plan (optionnel, ne bloque pas l'affichage)
+    // Lazy loading in the background (optional, does not block rendering)
     if (visibleFiles.length > 0) {
       LazyFileLoader.loadFiles(newFiles, visibleFiles).catch(console.error);
     }
     
-    // Trigger sync si autoSave activé
+    // Trigger sync if autoSave is enabled
     if (triggerSave && autoSave) {
       triggerSync(newFiles);
     }
   }, [visibleFiles, autoSave, triggerSync]);
 
   /**
-   * Met à jour un seul fichier
+   * Update a single file
    */
   const updateFile = useCallback((path: string, content: string) => {
     const newFiles = { ...projectFiles, [path]: content };
@@ -147,12 +147,12 @@ export function useOptimizedBuilder({
   }, [projectFiles, updateFiles]);
 
   /**
-   * Marque des fichiers comme visibles (pour lazy loading)
+   * Mark files as visible (for lazy loading)
    */
   const setFilesVisible = useCallback((paths: string[]) => {
     setVisibleFiles(paths);
 
-    // Charger les fichiers visibles si pas encore chargés
+    // Load visible files if not yet loaded
     paths.forEach(path => {
       if (projectFiles[path] && !LazyFileLoader.getStats().loadedCount) {
         LazyFileLoader.loadFileOnDemand(path, projectFiles);
@@ -161,14 +161,14 @@ export function useOptimizedBuilder({
   }, [projectFiles]);
 
   /**
-   * Force une sauvegarde immédiate
+   * Force an immediate save
    */
   const saveNow = useCallback(async () => {
     await forceSyncNow(projectFiles);
   }, [projectFiles, forceSyncNow]);
 
   /**
-   * Nettoie les ressources
+   * Clean up resources
    */
   useEffect(() => {
     return () => {
@@ -178,11 +178,11 @@ export function useOptimizedBuilder({
   }, []);
 
   return {
-    // État
+    // State
     projectFiles,
     isLoading,
     isOnline,
-    hasLoadedFiles, // ✅ FIX: Exposer le flag
+    hasLoadedFiles, // ✅ FIX: Expose the flag
     
     // Sync status
     syncStatus,
@@ -199,7 +199,7 @@ export function useOptimizedBuilder({
     saveNow,
     setFilesVisible,
     
-    // Sessions préchargées
+    // Preloaded sessions
     preloadedSessions
   };
 }

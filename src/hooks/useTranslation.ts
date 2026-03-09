@@ -592,19 +592,19 @@ const translations = {
   },
 };
 
-// Fonction pour détecter la langue du navigateur
+// Function to detect the browser language
 const detectBrowserLanguage = (): 'fr' | 'en' => {
-  if (typeof window === 'undefined') return 'fr';
-  
+  if (typeof window === 'undefined') return 'en';
+
   const language = navigator.language || navigator.languages[0];
   const languageCode = language.split('-')[0].toLowerCase();
-  
-  // Si c'est français, retourner FR
+
+  // If it's French, return FR
   if (languageCode === 'fr') {
     return 'fr';
   }
-  
-  // Pour toutes les autres langues, retourner EN
+
+  // For all other languages, return EN
   return 'en';
 };
 

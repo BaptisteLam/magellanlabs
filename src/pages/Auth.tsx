@@ -505,12 +505,12 @@ export default function Auth() {
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    {isLogin ? "Logging in..." : "Inscription..."}
+                    {isLogin ? "Logging in..." : "Signing up..."}
                   </>
                 ) : (
                   <>
                     <Mail className="h-4 w-4" />
-                    {isLogin ? "Se connecter" : "S'inscrire"}
+                    {isLogin ? "Log in" : "Sign up"}
                   </>
                 )}
               </Button>
@@ -524,8 +524,8 @@ export default function Auth() {
                 disabled={isButtonDisabled}
               >
                 {isLogin
-                  ? "Pas encore de compte ? S'inscrire"
-                  : "Déjà un compte ? Se connecter"}
+                  ? "Don't have an account? Sign up"
+                  : "Already have an account? Log in"}
               </button>
             </div>
             </>

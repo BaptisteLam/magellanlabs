@@ -110,7 +110,7 @@ export default function ChatOnlyMessage({
         />
       )}
 
-      {/* CollapsedAiTasks - toujours affiché si events présents */}
+      {/* CollapsedAiTasks - always shown if events are present */}
       {generation_events.length > 0 && (
         <CollapsedAiTasks 
           events={generation_events}
@@ -123,7 +123,7 @@ export default function ChatOnlyMessage({
         />
       )}
 
-      {/* Message avec formatage markdown */}
+      {/* Message with markdown formatting */}
       <div 
         className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'} prose prose-sm max-w-none`}
         style={{
@@ -151,10 +151,10 @@ export default function ChatOnlyMessage({
         {isTyping && <span className="inline-block w-1 h-4 bg-current animate-pulse ml-1" />}
       </div>
 
-      {/* Action buttons - seulement quand le typing est fini ET c'est le dernier message */}
+      {/* Action buttons - only when typing is finished AND it's the latest message */}
       {!isTyping && isLatestMessage && (
         <div className="space-y-3">
-          {/* Bouton "Implémenter le plan" - UNIQUEMENT en mode chat */}
+          {/* "Implement the plan" button - ONLY in chat mode */}
           {showImplementButton && onImplementPlan && (
             <button
               onClick={() => onImplementPlan(contentString)}
@@ -165,7 +165,7 @@ export default function ChatOnlyMessage({
                 color: 'rgb(3,165,192)'
               }}
             >
-              Implémenter le plan
+              Implement the plan
             </button>
           )}
           

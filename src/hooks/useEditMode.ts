@@ -1,6 +1,6 @@
 /**
- * Hook pour gérer le mode édition avec survol
- * Permet de sélectionner des éléments en les survolant et de les modifier
+ * Hook to manage edit mode with hover
+ * Allows selecting elements by hovering and modifying them
  */
 
 import { useState, useCallback } from 'react';
@@ -20,7 +20,7 @@ export function useEditMode() {
   const toggleEditMode = useCallback(() => {
     setEditMode(prev => {
       if (prev) {
-        // En quittant le mode édition, on désélectionne tout
+        // When leaving edit mode, deselect everything
         setSelectedElement(null);
         setHoveredElement(null);
       }

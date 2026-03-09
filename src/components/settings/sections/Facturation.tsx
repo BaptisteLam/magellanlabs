@@ -8,18 +8,18 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const monthlyFeatures = [
-  '50 messages IA par mois',
-  'Publication & hébergement inclus',
-  'Nom de domaine personnalisé',
-  'Support par email en 24h',
-  'Sans engagement',
+  '50 AI messages per month',
+  'Publishing & hosting included',
+  'Custom domain name',
+  'Email support within 24h',
+  'No commitment',
 ];
 
 const annualFeatures = [
-  'Toutes les fonctionnalités mensuelles',
-  '2 mois offerts (économisez ~26€)',
-  'Priorité sur les nouvelles fonctionnalités',
-  'Facturation unique',
+  'All monthly features',
+  '2 months free (save ~26€)',
+  'Priority access to new features',
+  'Single billing',
 ];
 
 export function Facturation() {
@@ -37,7 +37,7 @@ export function Facturation() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast.error('Veuillez vous connecter pour continuer');
+        toast.error('Please log in to continue');
         return;
       }
 
@@ -55,9 +55,9 @@ export function Facturation() {
     } catch (err: any) {
       console.error('Checkout error:', err);
       if (err?.message?.includes('not configured')) {
-        toast.error('Le paiement n\'est pas encore configuré. Contactez le support.');
+        toast.error('Payment is not yet configured. Contact support.');
       } else {
-        toast.error('Erreur lors de la redirection vers le paiement. Réessayez.');
+        toast.error('Error redirecting to payment. Please try again.');
       }
     } finally {
       setLoadingPlan(null);
@@ -69,7 +69,7 @@ export function Facturation() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast.error('Veuillez vous connecter pour continuer');
+        toast.error('Please log in to continue');
         return;
       }
 
@@ -82,11 +82,11 @@ export function Facturation() {
       if (data?.url) {
         window.location.href = data.url;
       } else {
-        toast.info('Le portail de facturation sera disponible prochainement.');
+        toast.info('The billing portal will be available soon.');
       }
     } catch (err: any) {
       console.error('Portal error:', err);
-      toast.info('Le portail de facturation sera disponible prochainement.');
+      toast.info('The billing portal will be available soon.');
     } finally {
       setIsManaging(false);
     }
