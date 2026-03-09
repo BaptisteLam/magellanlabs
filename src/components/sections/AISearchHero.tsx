@@ -37,7 +37,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
       const file = files[i];
       
       if (!file.type.startsWith('image/')) {
-        sonnerToast.error(`${file.name} n'est pas une image`);
+        sonnerToast.error(`${file.name} is not an image`);
         continue;
       }
 
@@ -62,13 +62,13 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
 
   const handleSubmit = async () => {
     if (!inputValue.trim()) {
-      sonnerToast.error("Veuillez entrer votre message");
+      sonnerToast.error("Please enter your message");
       return;
     }
 
     if (!user) {
       localStorage.setItem('redirectAfterAuth', '/');
-      sonnerToast.info("Connectez-vous pour générer votre site");
+      sonnerToast.info("Sign in to generate your website");
       navigate('/auth');
       return;
     }
@@ -90,7 +90,7 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         .single();
 
       if (sessionError) {
-        throw new Error('Erreur lors de la création de la session');
+        throw new Error('Error while creating the session');
       }
 
       setInputValue('');
@@ -100,8 +100,8 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         state: { attachedFiles } 
       });
     } catch (error) {
-      console.error('Erreur:', error);
-      sonnerToast.error(error instanceof Error ? error.message : "Une erreur est survenue");
+      console.error('Error:', error);
+      sonnerToast.error(error instanceof Error ? error.message : "Something went wrong");
     } finally {
       setIsLoading(false);
     }
@@ -133,17 +133,17 @@ const AISearchHero = ({ onGeneratedChange }: AISearchHeroProps) => {
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full border border-[#4cc9f0] bg-transparent mb-4 sm:mb-6 leading-none cursor-pointer backdrop-blur-sm">
           <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#4cc9f0]" />
-          <span className="text-xs sm:text-sm font-light text-[#4cc9f0]">Chat avec Magellan</span>
+          <span className="text-xs sm:text-sm font-light text-[#4cc9f0]">Chat with Magellan</span>
         </div>
 
         {/* Main title */}
         <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          Crée ton site web en quelques secondes avec l'IA
+          Create your website in seconds with AI
         </h1>
 
         {/* Subtitle */}
         <p className={`text-sm sm:text-lg md:text-xl font-light mb-6 sm:mb-10 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-          Décris ton activité en une phrase... l'IA s'occupe du reste.
+          Describe your business in one sentence... AI handles the rest.
         </p>
 
         {/* AI Input Area */}

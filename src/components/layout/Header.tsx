@@ -41,9 +41,7 @@ const Header = () => {
   };
   
   const navigation = [
-    { name: 'Entreprise', href: '/about' },
-    { name: 'Tarifs', href: '/tarifs' },
-    { name: 'Support', href: '/contact' },
+    { name: 'Pricing', href: '/pricing' },
   ];
 
   useEffect(() => {
@@ -229,7 +227,7 @@ const Header = () => {
                     className="justify-start text-sm gap-2 rounded-full px-4 py-2 text-foreground/70 hover:text-[#03A5C0] transition-colors"
                   >
                     {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                    <span>{isDark ? 'Mode clair' : 'Mode sombre'}</span>
+                    <span>{isDark ? 'Light mode' : 'Dark mode'}</span>
                   </Button>
                 </div>
               </SheetContent>
