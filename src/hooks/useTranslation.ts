@@ -609,7 +609,7 @@ const detectBrowserLanguage = (): 'fr' | 'en' => {
 };
 
 export const useTranslation = create<TranslationStore>((set, get) => ({
-  language: detectBrowserLanguage(),
+  language: 'en',
   setLanguage: (lang: 'fr' | 'en') => set({ language: lang }),
   t: (key: string) => {
     const { language } = get();

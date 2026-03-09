@@ -34,15 +34,15 @@ function AppContent() {
   if (supabaseMisconfigured) {
     return (
       <div style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif', maxWidth: 600, margin: '4rem auto' }}>
-        <h1 style={{ color: '#dc2626' }}>Configuration manquante</h1>
-        <p>Les variables d'environnement Supabase ne sont pas définies :</p>
+        <h1 style={{ color: '#dc2626' }}>Missing configuration</h1>
+        <p>Supabase environment variables are not configured:</p>
         <ul>
           <li><code>VITE_SUPABASE_URL</code></li>
           <li><code>VITE_SUPABASE_PUBLISHABLE_KEY</code></li>
         </ul>
         <p>
           Sur <strong>Vercel</strong> : Settings &gt; Environment Variables<br />
-          En local : créez un fichier <code>.env</code> (voir <code>.env.example</code>)
+          Locally: create a <code>.env</code> file (see <code>.env.example</code>)
         </p>
       </div>
     );
