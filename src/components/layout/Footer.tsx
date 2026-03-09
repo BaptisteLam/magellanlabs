@@ -4,9 +4,7 @@ import { useThemeStore } from '@/stores/themeStore';
 
 const Footer = () => {
   const { isDark } = useThemeStore();
-  const navigation = [
-    { name: 'Pricing', href: '/pricing' },
-  ];
+  const navigation: { name: string; href: string }[] = [];
 
   const socialLinks = [
     { name: 'Facebook', href: '#', icon: Facebook },

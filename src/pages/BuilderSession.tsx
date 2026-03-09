@@ -2106,7 +2106,7 @@ export default function BuilderSession() {
           <span>
             You only have <strong>{usage?.remaining ?? '?'} message{(usage?.remaining ?? 0) > 1 ? 's' : ''}</strong> left this month.{' '}
             <button
-              onClick={() => navigate('/pricing')}
+              onClick={() => { setUpgradeContext('message'); setShowUpgradeModal(true); }}
               className="underline font-semibold hover:opacity-80 transition-opacity"
             >
               Upgrade to Premium

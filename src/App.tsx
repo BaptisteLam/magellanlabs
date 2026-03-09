@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
-import Pricing from "./pages/Pricing";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
@@ -70,11 +69,10 @@ function AppContent() {
         <Route path="/p/:subdomain" element={<PublicProject />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/pricing" element={<Pricing />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
         {/* Legacy French URL redirects */}
-        <Route path="/tarifs" element={<Navigate to="/pricing" replace />} />
+        <Route path="/tarifs" element={<Navigate to="/" replace />} />
         <Route path="/politique-de-confidentialite" element={<Navigate to="/privacy-policy" replace />} />
         <Route path="/cgv" element={<Navigate to="/terms-of-service" replace />} />
         <Route path="/home" element={<Navigate to="/" replace />} />

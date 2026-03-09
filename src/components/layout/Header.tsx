@@ -40,9 +40,7 @@ const Header = () => {
     navigate('/');
   };
   
-  const navigation = [
-    { name: 'Pricing', href: '/pricing' },
-  ];
+  const navigation: { name: string; href: string }[] = [];
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
