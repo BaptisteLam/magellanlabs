@@ -125,6 +125,8 @@ export default function BuilderSession() {
   } | null>(null);
   // URL de preview VibeSDK (deployed React app, utilisée pour la preview et le publish)
   const [vibePreviewUrl, setVibePreviewUrl] = useState<string | null>(null);
+  // Ref pour accéder au titre du projet dans les callbacks async (évite les stale closures)
+  const websiteTitleRef = useRef<string>('');
 
   // Hook optimisé pour la gestion des fichiers avec cache et sync
   const {
@@ -446,6 +448,12 @@ export default function BuilderSession() {
           setVibePreviewUrl(data.cloudflare_deployment_url);
         }
 
+        // Restaurer l'URL publique builtbymagellan.com si déjà publiée
+        if ((data as any).public_url) {
+          console.log('🌐 Restoring published URL:', (data as any).public_url);
+          setDeployedUrl((data as any).public_url);
+        }
+
         // Charger le type de projet
         if (data.project_type) {
           setProjectType(data.project_type as 'website' | 'webapp' | 'mobile');
@@ -532,6 +540,7 @@ export default function BuilderSession() {
         // Charger le titre et s'assurer qu'il est synchronisé avec cloudflare_project_name
         const loadedTitle = data.title || '';
         setWebsiteTitle(loadedTitle);
+        websiteTitleRef.current = loadedTitle; // sync ref au chargement
         console.log('📋 Titre du projet chargé:', loadedTitle);
       }
     } catch (error) {
@@ -892,6 +901,7 @@ export default function BuilderSession() {
         onProjectName: (name) => {
           console.log('📛 [BuilderSession] Project name received:', name);
           setWebsiteTitle(name);
+          websiteTitleRef.current = name; // sync ref immédiatement pour les callbacks async
         },
         onPreviewUrl: async (url) => {
           console.log('🌐 [BuilderSession] VibeSDK preview URL received:', url);
@@ -1788,15 +1798,16 @@ export default function BuilderSession() {
       navigate('/auth');
       return;
     }
-    if (!projectFiles || Object.keys(projectFiles).length === 0) {
-      sonnerToast.error("No content to publish");
-      return;
-    }
-
-    // Vérification du plan pour la publication
+    // Vérification du plan pour la publication (avant le check fichiers pour montrer l'UpgradeModal aux free users)
     if (!canDeploy) {
       setUpgradeContext('publish');
       setShowUpgradeModal(true);
+      return;
+    }
+
+    // Vérifier qu'il y a du contenu à publier (fichiers locaux OU URL VibeSDK)
+    if ((!projectFiles || Object.keys(projectFiles).length === 0) && !vibePreviewUrl) {
+      sonnerToast.error("No content to publish");
       return;
     }
 
@@ -1922,8 +1933,8 @@ export default function BuilderSession() {
         <div className="flex items-center gap-2 md:gap-3">
           <button onClick={() => navigate('/dashboard')} className="h-8 w-8 flex items-center justify-center transition-colors group" title="Dashboard">
             <Home className="w-4 h-4 transition-colors" style={{
-            color: isDark ? '#fff' : '#9CA3AF'
-          }} onMouseEnter={e => e.currentTarget.style.color = '#03A5C0'} onMouseLeave={e => e.currentTarget.style.color = isDark ? '#fff' : '#9CA3AF'} />
+            color: isDark ? '#fff' : '#1F2937'
+          }} onMouseEnter={e => e.currentTarget.style.color = '#03A5C0'} onMouseLeave={e => e.currentTarget.style.color = isDark ? '#fff' : '#1F2937'} />
           </button>
 
           {/* Mobile toggle: Chat / Preview */}
@@ -1986,7 +1997,7 @@ export default function BuilderSession() {
                     <Button onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')} variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
                     borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
                     backgroundColor: 'transparent',
-                    color: isDark ? 'hsl(var(--foreground))' : '#64748b'
+                    color: isDark ? 'hsl(var(--foreground))' : '#1F2937'
                   }}>
                       {previewMode === 'desktop' ? <Smartphone className="w-3.5 h-3.5" /> : <Monitor className="w-3.5 h-3.5" />}
                     </Button>
@@ -2005,7 +2016,7 @@ export default function BuilderSession() {
                     <Button onClick={() => setInspectMode(!inspectMode)} type="button" variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
                     borderColor: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
                     backgroundColor: inspectMode ? 'rgba(3, 165, 192, 0.1)' : 'transparent',
-                    color: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--foreground))' : '#64748b'
+                    color: inspectMode ? '#03A5C0' : isDark ? 'hsl(var(--foreground))' : '#1F2937'
                   }}>
                       <Edit className="w-3.5 h-3.5" />
                     </Button>
@@ -2023,7 +2034,7 @@ export default function BuilderSession() {
                   <Button onClick={() => setShowVersionHistory(true)} variant="iconOnly" size="sm" className="h-8 w-8 p-0" style={{
                     borderColor: isDark ? 'hsl(var(--border))' : 'rgba(203, 213, 225, 0.5)',
                     backgroundColor: 'transparent',
-                    color: isDark ? 'hsl(var(--foreground))' : '#64748b'
+                    color: isDark ? 'hsl(var(--foreground))' : '#1F2937'
                   }}>
                     <History className="w-3.5 h-3.5" />
                   </Button>

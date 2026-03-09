@@ -103,7 +103,7 @@ export function MessageCounter({ isDark, userId }: MessageCounterProps) {
           }}
         />
 
-        <span className="text-xs font-medium whitespace-nowrap" style={{ color: '#ffffff', fontSize: '12px' }}>
+        <span className="text-xs font-medium whitespace-nowrap" style={{ color: isDark ? '#ffffff' : '#1F2937', fontSize: '12px' }}>
           {messagesRemaining}/{messagesQuota}
         </span>
       </div>
