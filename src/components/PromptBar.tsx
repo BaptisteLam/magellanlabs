@@ -160,7 +160,7 @@ const PromptBar = ({
               }
             }
           }}
-          placeholder={modificationMode ? "Décris les modifications à apporter..." : ""}
+          placeholder={modificationMode ? "Describe the changes to apply..." : ""}
           className="w-full min-h-[60px] sm:min-h-[100px] resize-none border-0 p-2 sm:p-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
           style={{
             fontSize: '14px',
@@ -171,16 +171,16 @@ const PromptBar = ({
           <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 pointer-events-none text-slate-400 whitespace-normal text-left" style={{ fontSize: '14px', textAlign: 'left' }}>
             <TextType
               text={[
-                "Je veux un site pour présenter mon activité d'artisan et faciliter la prise de contact.",
-                "Je souhaite un site professionnel pour valoriser mon cabinet de conseil et mes offres.",
-                "Je veux un site attractif pour présenter mon restaurant, le menu et les réservations.",
-                "Je souhaite une plateforme claire pour expliquer mon activité de coach ou formateur.",
-                "Je veux une présence en ligne moderne pour mettre en avant mon agence digitale.",
-                "Je souhaite un site pour présenter mes prestations dans le bâtiment.",
-                "Je veux un site visuel pour exposer mon travail de photographe ou vidéaste.",
-                "Je souhaite un site institutionnel pour présenter mon cabinet juridique ou comptable.",
-                "Je veux un site pour valoriser mon commerce local et mes produits.",
-                "Je souhaite un site informatif pour présenter mon association et ses actions."
+                "I want a website to showcase my craft business and make it easy for customers to contact me.",
+                "I need a professional website to present my consulting services and offers.",
+                "I want an engaging website for my restaurant with menu and booking features.",
+                "I need a clear platform to explain my coaching or training business.",
+                "I want a modern online presence for my digital agency.",
+                "I need a website to showcase my construction services.",
+                "I want a visual website to display my photographer/videographer portfolio.",
+                "I need a corporate website for my legal or accounting firm.",
+                "I want a website to promote my local store and products.",
+                "I need an informational website for my non-profit and its actions."
               ]}
               typingSpeed={30}
               deletingSpeed={20}
@@ -213,7 +213,7 @@ const PromptBar = ({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  <p className="text-xs">{inspectMode ? 'Désactiver inspection' : 'Mode Inspect'}</p>
+                  <p className="text-xs">{inspectMode ? 'Disable inspect mode' : 'Inspect mode'}</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -233,7 +233,7 @@ const PromptBar = ({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  <p className="text-xs">{chatMode ? 'Désactiver chat' : 'Mode Chat'}</p>
+                  <p className="text-xs">{chatMode ? 'Disable chat mode' : 'Chat mode'}</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -252,7 +252,7 @@ const PromptBar = ({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top">
-                <p className="text-xs">Déposer un document</p>
+                <p className="text-xs">Attach a document</p>
               </TooltipContent>
             </Tooltip>
 
@@ -389,7 +389,7 @@ const PromptBar = ({
                 </Button>
             </TooltipTrigger>
             <TooltipContent side="top">
-              <p className="text-xs">{isLoading ? 'Arrêter la génération' : 'Envoyer'}</p>
+              <p className="text-xs">{isLoading ? 'Stop generation' : 'Send'}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
