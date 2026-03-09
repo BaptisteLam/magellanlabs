@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { UpgradeModal } from '@/components/UpgradeModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -17,6 +18,7 @@ export function Parametres() {
   const [language, setLanguage] = useState('fr');
   const [autoSave, setAutoSave] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const { usage, isLoading: creditsLoading } = useCredits();
 
@@ -32,7 +34,7 @@ export function Parametres() {
   };
 
   const handleUpgradeClick = () => {
-    navigate('/pricing');
+    setShowUpgradeModal(true);
   };
 
   const handleLogout = async () => {
@@ -57,9 +59,9 @@ export function Parametres() {
       </div>
 
       {/* Subscription Card */}
-      <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm overflow-hidden">
+      <Card className="relative rounded-[8px] border border-border/50 bg-background/50 shadow-sm overflow-hidden">
         <div
-          className="absolute inset-0 opacity-10"
+          className="absolute inset-0 opacity-10 pointer-events-none"
           style={{
             background: 'linear-gradient(135deg, rgba(3,165,192,0.3) 0%, transparent 50%)'
           }}
@@ -299,6 +301,12 @@ export function Parametres() {
           </div>
         </CardContent>
       </Card>
+
+      <UpgradeModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        context="message"
+      />
     </div>
   );
 }
