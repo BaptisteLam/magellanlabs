@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Globe, ExternalLink, Pencil, Check, ChevronDown, ChevronRight, Save, Link2 } from 'lucide-react';
+import { Globe, ExternalLink, Pencil, Check, ChevronDown, ChevronRight, Save, Link2, Eye, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -273,14 +273,31 @@ export function SiteWeb() {
                 </span>
               </div>
               
+              {/* View button */}
+              {isOnline && (
+                <a
+                  href={project.public_url || project.cloudflare_deployment_url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button
+                    className="rounded-full px-4 py-0 border transition-all text-sm gap-2"
+                    variant="outline"
+                  >
+                    <Eye className="h-4 w-4" />
+                    View
+                  </Button>
+                </a>
+              )}
+
               {/* Edit button */}
               <Button
                 onClick={handleEditProject}
                 className="rounded-full px-4 py-0 border transition-all text-sm gap-2"
-                style={{ 
-                  borderColor: 'rgb(3,165,192)', 
-                  backgroundColor: 'rgba(3,165,192,0.1)', 
-                  color: 'rgb(3,165,192)' 
+                style={{
+                  borderColor: 'rgb(3,165,192)',
+                  backgroundColor: 'rgba(3,165,192,0.1)',
+                  color: 'rgb(3,165,192)'
                 }}
               >
                 <Pencil className="h-4 w-4" />
@@ -306,6 +323,16 @@ export function SiteWeb() {
           </div>
         </CardContent>
       </Card>
+
+      {/* New Project Button */}
+      <Button
+        onClick={() => navigate('/builder')}
+        variant="outline"
+        className="w-full rounded-lg border-dashed border-2 border-border/50 hover:border-[#03A5C0] hover:text-[#03A5C0] transition-all py-5 text-muted-foreground gap-2"
+      >
+        <Plus className="h-4 w-4" />
+        New project
+      </Button>
 
       {/* Domain Name Widget */}
       <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
