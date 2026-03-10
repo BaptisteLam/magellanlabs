@@ -49,7 +49,7 @@ serve(async (req) => {
     // 2. Vérifier la clé Stripe
     const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY');
     if (!STRIPE_SECRET_KEY) {
-      console.error('❌ STRIPE_SECRET_KEY not configured');
+      console.error('STRIPE_SECRET_KEY not configured');
       return new Response(JSON.stringify({
         error: 'Stripe not configured. Please set STRIPE_SECRET_KEY in Supabase secrets.',
       }), {
@@ -58,8 +58,68 @@ serve(async (req) => {
       });
     }
 
-    // 3. Lire le plan demandé
-    const { plan } = await req.json();
+    // 3. Lire la requête
+    const { plan, action } = await req.json();
+
+    // Récupérer le stripe_customer_id depuis billing ou profiles
+    const { data: billing } = await supabaseAdmin
+      .from('billing')
+      .select('stripe_customer_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    let stripeCustomerId = billing?.stripe_customer_id;
+
+    // Fallback: chercher dans profiles
+    if (!stripeCustomerId) {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('stripe_customer_id, email')
+        .eq('id', user.id)
+        .maybeSingle();
+      stripeCustomerId = profile?.stripe_customer_id;
+    }
+
+    // ===== ACTION: PORTAL (gérer l'abonnement) =====
+    if (action === 'portal') {
+      if (!stripeCustomerId) {
+        return new Response(JSON.stringify({ error: 'No Stripe customer found' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const portalRes = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${STRIPE_SECRET_KEY}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          customer: stripeCustomerId,
+          return_url: `${Deno.env.get('SITE_URL') || 'https://magellanlabs.com'}/dashboard?section=facturation`,
+        }),
+      });
+
+      const portalSession = await portalRes.json();
+
+      if (!portalRes.ok) {
+        console.error('Failed to create portal session:', portalSession);
+        return new Response(JSON.stringify({ error: 'Failed to create portal session' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log('Portal session created:', portalSession.id);
+
+      return new Response(
+        JSON.stringify({ url: portalSession.url }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ===== ACTION: CHECKOUT =====
     if (!plan || !['monthly', 'annual'].includes(plan)) {
       return new Response(JSON.stringify({ error: 'Invalid plan. Must be "monthly" or "annual".' }), {
         status: 400,
@@ -70,16 +130,7 @@ serve(async (req) => {
     const priceId = PRICE_IDS[plan as 'monthly' | 'annual'];
 
     // 4. Récupérer ou créer le customer Stripe
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('stripe_customer_id, email')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    let stripeCustomerId = profile?.stripe_customer_id;
-
     if (!stripeCustomerId) {
-      // Créer un nouveau customer Stripe
       const customerRes = await fetch('https://api.stripe.com/v1/customers', {
         method: 'POST',
         headers: {
@@ -87,15 +138,15 @@ serve(async (req) => {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          email: user.email || profile?.email || '',
-          metadata: JSON.stringify({ supabase_user_id: user.id }),
+          email: user.email || '',
+          'metadata[supabase_user_id]': user.id,
         }),
       });
 
       const customer = await customerRes.json();
 
       if (!customerRes.ok) {
-        console.error('❌ Failed to create Stripe customer:', customer);
+        console.error('Failed to create Stripe customer:', customer);
         return new Response(JSON.stringify({ error: 'Failed to create Stripe customer' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -104,18 +155,27 @@ serve(async (req) => {
 
       stripeCustomerId = customer.id;
 
-      // Sauvegarder le customer ID en base
+      // Sauvegarder le customer ID dans billing et profiles
+      await supabaseAdmin
+        .from('billing')
+        .upsert({
+          user_id: user.id,
+          stripe_customer_id: stripeCustomerId,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+
       await supabaseAdmin
         .from('profiles')
         .update({ stripe_customer_id: stripeCustomerId })
         .eq('id', user.id);
 
-      console.log('✅ Stripe customer created:', stripeCustomerId);
+      console.log('Stripe customer created:', stripeCustomerId);
     }
 
     // 5. Créer la session Checkout Stripe
-    const successUrl = `${Deno.env.get('SITE_URL') || 'https://magellanlabs.com'}/dashboard?checkout=success`;
-    const cancelUrl = `${Deno.env.get('SITE_URL') || 'https://magellanlabs.com'}/tarifs?checkout=cancelled`;
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://magellanlabs.com';
+    const successUrl = `${siteUrl}/dashboard?checkout=success&section=facturation`;
+    const cancelUrl = `${siteUrl}/dashboard?checkout=cancelled&section=facturation`;
 
     const checkoutRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
@@ -140,14 +200,14 @@ serve(async (req) => {
     const checkoutSession = await checkoutRes.json();
 
     if (!checkoutRes.ok) {
-      console.error('❌ Failed to create Stripe checkout session:', checkoutSession);
+      console.error('Failed to create Stripe checkout session:', checkoutSession);
       return new Response(JSON.stringify({ error: 'Failed to create checkout session' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log('✅ Stripe checkout session created:', checkoutSession.id);
+    console.log('Stripe checkout session created:', checkoutSession.id);
 
     return new Response(
       JSON.stringify({ url: checkoutSession.url, sessionId: checkoutSession.id }),
@@ -155,7 +215,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ Unexpected error in create-checkout-session:', error);
+    console.error('Unexpected error in create-checkout-session:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

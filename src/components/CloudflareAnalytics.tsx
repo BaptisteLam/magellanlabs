@@ -60,7 +60,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
       setData(responseData);
     } catch (err: any) {
       console.error('Error fetching Cloudflare analytics:', err);
-      setError(err.message || 'Erreur lors du chargement des analytics');
+      setError(err.message || 'Error loading analytics');
     } finally {
       setLoading(false);
     }
@@ -75,7 +75,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
   };
 
   if (loading) {
@@ -104,7 +104,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
             <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {currentVisitors} visiteur{currentVisitors > 1 ? 's' : ''} en ligne
+              {currentVisitors} visitor{currentVisitors > 1 ? 's' : ''} online
             </span>
           </div>
         </div>
@@ -113,9 +113,9 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="1d">Dernières 24h</SelectItem>
-            <SelectItem value="7d">7 derniers jours</SelectItem>
-            <SelectItem value="30d">30 derniers jours</SelectItem>
+            <SelectItem value="1d">Last 24h</SelectItem>
+            <SelectItem value="7d">Last 7 days</SelectItem>
+            <SelectItem value="30d">Last 30 days</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -125,7 +125,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
         <Card className={`p-4 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'} ${period === '7d' ? 'border-[#03A5C0]' : ''}`}>
           <div className="flex items-center gap-2 mb-2">
             <Eye className="w-4 h-4 text-[#03A5C0]" />
-            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Visiteurs</span>
+            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Visitors</span>
           </div>
           <div className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {data.metrics.visitors}
@@ -135,7 +135,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
         <Card className={`p-4 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <div className="flex items-center gap-2 mb-2">
             <MousePointer className="w-4 h-4 text-slate-400" />
-            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Pages vues</span>
+            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Pageviews</span>
           </div>
           <div className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {data.metrics.pageviews}
@@ -145,7 +145,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
         <Card className={`p-4 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-4 h-4 text-slate-400" />
-            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Vues/Visite</span>
+            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Views/Visit</span>
           </div>
           <div className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {data.metrics.viewsPerVisit}
@@ -155,7 +155,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
         <Card className={`p-4 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <div className="flex items-center gap-2 mb-2">
             <Timer className="w-4 h-4 text-slate-400" />
-            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Durée visite</span>
+            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Visit Duration</span>
           </div>
           <div className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {formatDuration(data.metrics.visitDuration)}
@@ -165,7 +165,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
         <Card className={`p-4 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <div className="flex items-center gap-2 mb-2">
             <Activity className="w-4 h-4 text-slate-400" />
-            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Taux rebond</span>
+            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Bounce Rate</span>
           </div>
           <div className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {data.metrics.bounceRate}%
@@ -177,8 +177,8 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
       {data.timeSeries.length === 0 && data.metrics.visitors === 0 && (
         <div className={`p-3 rounded-lg mb-6 flex items-start gap-2 ${isDark ? 'bg-[#181818]' : 'bg-slate-100'}`}>
           <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            <strong>Note:</strong> Les données peuvent prendre jusqu'à 24h pour apparaître après la première publication. 
-            Visitez votre site pour générer des données analytiques.
+            <strong>Note:</strong> Data may take up to 24h to appear after the first publication.
+            Visit your site to generate analytics data.
           </span>
         </div>
       )}
@@ -239,7 +239,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
                 </div>
               ))
             ) : (
-              <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Aucune donnée</p>
+              <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No data</p>
             )}
           </div>
         </Card>
@@ -261,7 +261,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
                 </div>
               ))
             ) : (
-              <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Aucune donnée</p>
+              <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No data</p>
             )}
           </div>
         </Card>
@@ -269,7 +269,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
         {/* Country */}
         <Card className={`p-6 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <h3 className={`text-sm font-medium mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            Pays
+            Countries
           </h3>
           <div className="space-y-2">
             {data.lists.countries.length > 0 ? (
@@ -283,7 +283,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
                 </div>
               ))
             ) : (
-              <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Aucune donnée</p>
+              <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No data</p>
             )}
           </div>
         </Card>
@@ -291,7 +291,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
         {/* Device */}
         <Card className={`p-6 ${isDark ? 'bg-[#181818] border-slate-700' : 'bg-white'}`}>
           <h3 className={`text-sm font-medium mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            Appareils
+            Devices
           </h3>
           <div className="space-y-2">
             {data.lists.devices.length > 0 ? (
@@ -305,7 +305,7 @@ export default function CloudflareAnalytics({ sessionId, isDark }: CloudflareAna
                 </div>
               ))
             ) : (
-              <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Aucune donnée</p>
+              <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No data</p>
             )}
           </div>
         </Card>

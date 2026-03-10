@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Globe, ExternalLink, Pencil, Check, ChevronDown, ChevronRight, Save, Link2 } from 'lucide-react';
+import { Globe, ExternalLink, Pencil, Check, ChevronDown, ChevronRight, Save, Link2, Eye, Plus, Settings2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DomainConnectDialog } from '@/components/DomainConnectDialog';
+import { DomainManageWidget } from '@/components/DomainManageWidget';
 
 interface Project {
   id: string;
@@ -41,7 +42,10 @@ export function SiteWeb() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
   const [showDomainConnectDialog, setShowDomainConnectDialog] = useState(false);
+  const [showDomainManageWidget, setShowDomainManageWidget] = useState(false);
   const [cloudflareProjectName, setCloudflareProjectName] = useState<string>('');
+  const [customDomainInfo, setCustomDomainInfo] = useState<{domain: string; status: string; dns_verified: boolean} | null>(null);
+  const [domainDnsStatus, setDomainDnsStatus] = useState<'checking' | 'active' | 'pending' | null>(null);
 
   useEffect(() => {
     fetchLatestProject();
@@ -74,6 +78,25 @@ export function SiteWeb() {
         // Set cloudflare project name for domain connection
         if (data.cloudflare_project_name) {
           setCloudflareProjectName(data.cloudflare_project_name);
+        }
+
+        // Fetch custom domain info for this project
+        const { data: domainData } = await supabase
+          .from('custom_domains')
+          .select('domain, status, dns_verified')
+          .eq('session_id', data.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (domainData) {
+          setCustomDomainInfo(domainData);
+          // Check DNS status
+          if (domainData.status === 'active' && domainData.dns_verified) {
+            setDomainDnsStatus('active');
+          } else {
+            setDomainDnsStatus('pending');
+          }
         }
 
         // Extract HTML pages for SEO, loading saved descriptions from DB
@@ -273,14 +296,31 @@ export function SiteWeb() {
                 </span>
               </div>
               
+              {/* View button */}
+              {isOnline && (
+                <a
+                  href={project.public_url || project.cloudflare_deployment_url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button
+                    className="rounded-full px-4 py-0 border transition-all text-sm gap-2"
+                    variant="outline"
+                  >
+                    <Eye className="h-4 w-4" />
+                    View
+                  </Button>
+                </a>
+              )}
+
               {/* Edit button */}
               <Button
                 onClick={handleEditProject}
                 className="rounded-full px-4 py-0 border transition-all text-sm gap-2"
-                style={{ 
-                  borderColor: 'rgb(3,165,192)', 
-                  backgroundColor: 'rgba(3,165,192,0.1)', 
-                  color: 'rgb(3,165,192)' 
+                style={{
+                  borderColor: 'rgb(3,165,192)',
+                  backgroundColor: 'rgba(3,165,192,0.1)',
+                  color: 'rgb(3,165,192)'
                 }}
               >
                 <Pencil className="h-4 w-4" />
@@ -307,6 +347,16 @@ export function SiteWeb() {
         </CardContent>
       </Card>
 
+      {/* New Project Button */}
+      <Button
+        onClick={() => navigate('/builder')}
+        variant="outline"
+        className="w-full rounded-lg border-dashed border-2 border-border/50 hover:border-[#03A5C0] hover:text-[#03A5C0] transition-all py-5 text-muted-foreground gap-2"
+      >
+        <Plus className="h-4 w-4" />
+        New project
+      </Button>
+
       {/* Domain Name Widget */}
       <Card className="rounded-[8px] border border-border/50 bg-background/50 shadow-sm">
         <CardHeader>
@@ -332,7 +382,7 @@ export function SiteWeb() {
               </div>
             </div>
             {isOnline && (
-              <a 
+              <a
                 href={project.public_url || project.cloudflare_deployment_url || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -343,32 +393,66 @@ export function SiteWeb() {
             )}
           </div>
 
-          {/* Custom Domain */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Custom domain</label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="mysite.com"
-                value={customDomain}
-                onChange={(e) => setCustomDomain(e.target.value)}
-                className="flex-1 rounded-lg"
-              />
+          {/* Custom Domain - Show connected domain with status indicator */}
+          {customDomainInfo ? (
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border/50">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-2 h-2 rounded-full",
+                  domainDnsStatus === 'active' ? "bg-green-500" : "bg-orange-500"
+                )} />
+                <div>
+                  <p className="text-sm font-medium font-mono text-foreground">{customDomainInfo.domain}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Custom domain {domainDnsStatus === 'active' ? (
+                      <span className="text-green-500">- Active</span>
+                    ) : (
+                      <span className="text-orange-500">- DNS pending</span>
+                    )}
+                  </p>
+                </div>
+              </div>
               <Button
-                onClick={() => setShowDomainConnectDialog(true)}
-                className="rounded-full px-4 py-0 border transition-all"
+                onClick={() => setShowDomainManageWidget(true)}
+                variant="outline"
+                className="rounded-full px-3 py-0 text-xs gap-1.5 border transition-all"
                 style={{
-                  borderColor: 'rgb(3,165,192)',
-                  backgroundColor: 'rgba(3,165,192,0.1)',
-                  color: 'rgb(3,165,192)'
+                  borderColor: 'rgba(3,165,192,0.4)',
+                  color: '#03A5C0',
+                  backgroundColor: 'rgba(3,165,192,0.08)',
                 }}
               >
-                Connect
+                <Settings2 className="h-3.5 w-3.5" />
+                Manage domain
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Add your own domain name to customize your site's URL
-            </p>
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Custom domain</label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="mysite.com"
+                  value={customDomain}
+                  onChange={(e) => setCustomDomain(e.target.value)}
+                  className="flex-1 rounded-lg"
+                />
+                <Button
+                  onClick={() => setShowDomainConnectDialog(true)}
+                  className="rounded-full px-4 py-0 border transition-all"
+                  style={{
+                    borderColor: 'rgb(3,165,192)',
+                    backgroundColor: 'rgba(3,165,192,0.1)',
+                    color: 'rgb(3,165,192)'
+                  }}
+                >
+                  Connect
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Add your own domain name to customize your site's URL
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -453,6 +537,14 @@ export function SiteWeb() {
         onOpenChange={setShowDomainConnectDialog}
         sessionId={project?.id}
         cloudflareProjectName={cloudflareProjectName}
+      />
+
+      <DomainManageWidget
+        open={showDomainManageWidget}
+        onOpenChange={setShowDomainManageWidget}
+        sessionId={project?.id}
+        cloudflareProjectName={cloudflareProjectName}
+        position="center"
       />
     </div>
   );

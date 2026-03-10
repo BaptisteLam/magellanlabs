@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CustomDomainDialog } from './CustomDomainDialog';
+import { DomainManageWidget } from './DomainManageWidget';
 
 interface FakeUrlBarProps {
   projectTitle: string;
@@ -36,6 +37,7 @@ export function FakeUrlBar({
   const [copied, setCopied] = useState(false);
   const [isHoveringFavicon, setIsHoveringFavicon] = useState(false);
   const [showCustomDomain, setShowCustomDomain] = useState(false);
+  const [showDomainManage, setShowDomainManage] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
   const [displayRoute, setDisplayRoute] = useState(currentRoute);
@@ -467,28 +469,31 @@ export function FakeUrlBar({
             )}
           </div>
         ) : (
-          <div 
+          <div
             className="flex-1 flex items-center gap-1 min-w-0 cursor-pointer"
             onClick={() => setIsEditing(true)}
           >
-            <span 
+            <span
               className="text-sm font-medium truncate"
               style={{ color: isDark ? '#E5E7EB' : '#1F2937' }}
             >
               {domainName}
             </span>
-            <span 
+            <span
               className="text-sm font-medium flex-shrink-0"
               style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
             >
               .builtbymagellan.com
             </span>
             <button
-              onClick={() => setShowCustomDomain(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDomainManage(true);
+              }}
               className="flex-shrink-0 ml-1 p-0.5 hover:text-[#03A5C0] transition-colors cursor-pointer bg-transparent border-0"
-              title="Configure custom domain"
+              title="Manage custom domain"
             >
-              <Settings 
+              <Settings
                 className="w-3 h-3"
                 style={{ color: isDark ? '#6B7280' : '#9CA3AF' }}
               />
@@ -558,6 +563,14 @@ export function FakeUrlBar({
         onOpenChange={setShowCustomDomain}
         sessionId={sessionId}
         cloudflareProjectName={cloudflareProjectName}
+      />
+
+      <DomainManageWidget
+        open={showDomainManage}
+        onOpenChange={setShowDomainManage}
+        sessionId={sessionId}
+        cloudflareProjectName={cloudflareProjectName}
+        position="center"
       />
     </div>
   );
