@@ -86,8 +86,17 @@ const Footer = () => {
           </div>
         </div>
         
-        <div className="mt-8 pt-8 border-t border-border text-center text-sm text-foreground/60">
+        <div className="mt-8 pt-8 border-t border-border text-center text-sm text-foreground/60 space-y-3">
           <p>&copy; {new Date().getFullYear()} Built by Magellan. All rights reserved.</p>
+          <p>
+            <a
+              href="https://www.trinitystudio.fr"
+              title="Plateforme produit développée par Trinity Studio"
+              className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/80 transition-colors text-xs"
+            >
+              Plateforme produit par Trinity Studio
+            </a>
+          </p>
         </div>
       </div>
     </footer>
