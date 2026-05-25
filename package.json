@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run seo:sitemap && vite build && npm run seo:prerender",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seo:sitemap": "node scripts/generate-seo-sitemap.mjs",
+    "seo:prerender": "node scripts/prerender-seo.mjs"
   },
   "dependencies": {
     "@babel/generator": "^7.28.5",

@@ -17,6 +17,8 @@ import BuilderSession from "./pages/BuilderSession";
 import SessionPreview from "./pages/SessionPreview";
 import PublicProject from "./pages/PublicProject";
 import ProjectDashboard from "./pages/ProjectDashboard";
+import SeoLanding from "./pages/seo/SeoLanding";
+import SeoIndex from "./pages/seo/SeoIndex";
 import ScrollToTop from "./components/ScrollToTop";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -71,6 +73,9 @@ function AppContent() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
+        {/* Programmatic SEO routes */}
+        <Route path="/creer" element={<SeoIndex />} />
+        <Route path="/creer/:slug" element={<SeoLanding />} />
         {/* Legacy French URL redirects */}
         <Route path="/tarifs" element={<Navigate to="/" replace />} />
         <Route path="/politique-de-confidentialite" element={<Navigate to="/privacy-policy" replace />} />

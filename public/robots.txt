@@ -13,5 +13,13 @@ Allow: /
 User-agent: *
 Allow: /
 
+# Disallow private app routes
+Disallow: /dashboard
+Disallow: /builder
+Disallow: /preview/
+Disallow: /project/
+Disallow: /auth
+Disallow: /reset-password
+
 # Sitemap pour l'indexation optimale
-Sitemap: https://trinity-studio.fr/sitemap.xml
+Sitemap: https://magellanlabs.com/sitemap.xml
