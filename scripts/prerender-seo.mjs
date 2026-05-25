@@ -33,7 +33,11 @@ const indexHtml = readFileSync(resolve(DIST, "index.html"), "utf8");
 function parseObjects(filePath, fields) {
   // Naive parser that grabs each "{ ... }" object from a TS array, then extracts the requested fields by regex.
   const src = readFileSync(filePath, "utf8");
-  const arr = src.slice(src.indexOf("[") + 1, src.lastIndexOf("]"));
+  // Anchor on `= [` to skip interface/type declarations that contain `string[]` etc.
+  const arrayStart = src.search(/=\s*\[/);
+  if (arrayStart < 0) throw new Error(`No array literal found in ${filePath}`);
+  const openIdx = src.indexOf("[", arrayStart);
+  const arr = src.slice(openIdx + 1, src.lastIndexOf("]"));
   const objs = [];
   let depth = 0;
   let start = -1;
